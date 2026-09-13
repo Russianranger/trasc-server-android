@@ -6,7 +6,7 @@ A standalone Android control app for [Russianranger/Triptych-Triumvirate](https:
 
 ## Downloads and first setup
 
-**App 0.1.1 update:** fixes MariaDB initialization failing to resolve `localhost` during database import. Shut down the runtime, install the new APK over the existing app, open the runtime and retry the full database seed. Source, maps and settings are retained; runtime 1.1 needs no further download. [App update details](docs/preview-notes.md).
+**App 0.1.2:** fixes MariaDB initialization failing to resolve `localhost` and the seed's nonzero default ruleset. The original preview signing key was not preserved. This build installs alongside it as **TRASC Server Preview**, keeping the old app and data intact. Export the original source/maps ZIPs, shut down the old runtime, and import them into the new preview after its runtime setup. [Migration and update details](docs/preview-notes.md).
 
 **Runtime 1.1 update:** fixes the missing `uuid/uuid.h` compilation error by including `uuid-dev`. Existing users can select **Setup → Shut down runtime → Download runtime**, then retry **Build imported source**. This preserves imported files and the build cache; no APK reinstall is needed. [Runtime update details](docs/runtime-release-notes.md).
 
@@ -97,7 +97,7 @@ python3 -m unittest discover -s tests -v
 gradle :app:assembleDebug :app:lintDebug
 ```
 
-Build the runtime on an ARM64 Docker host with `bash scripts/build-runtime.sh`. `tests/integration_runtime.py` checks real MariaDB import, rules, SQL and backup/restore inside that image. GitHub workflows build and publish both deliverables. Main builds cache the debug signing key for preview updates; losing the cache can require reinstalling. Export before uninstalling. Stable production signing is a later release-management step. Release manifests identify each artifact's source commit and checksum, and preview tags follow the published builds.
+Build the runtime on an ARM64 Docker host with `bash scripts/build-runtime.sh`. `tests/integration_runtime.py` checks real MariaDB import, rules, SQL and backup/restore inside that image. GitHub workflows build and publish both deliverables. Since 0.1.2, main builds explicitly select and cache the preview key before compiling; the pinned public certificate stops publication if that key is lost or changes. Production signing remains a later release-management step. Release manifests identify each artifact's source commit, checksum and signing certificate, and preview tags follow the published builds.
 
 ## Tests and scope
 

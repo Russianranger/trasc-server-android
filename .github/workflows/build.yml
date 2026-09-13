@@ -57,6 +57,8 @@ jobs:
             database-test/runtime-manifest.json
   apk:
     runs-on: ubuntu-latest
+    env:
+      TRASC_PREVIEW_KEYSTORE: ${{ github.ref == 'refs/heads/main' && format('{0}/runtime-work/signing/preview.keystore', github.workspace) || '' }}
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-java@v4
@@ -70,11 +72,21 @@ jobs:
         with:
           gradle-version: '8.11.1'
       - name: Reuse preview signing key between main builds
+        id: preview-key
         if: github.ref == 'refs/heads/main'
-        uses: actions/cache@v4
+        uses: actions/cache/restore@v4
         with:
-          path: ~/.android/debug.keystore
-          key: trasc-preview-signing-v1
+          path: runtime-work/signing/preview.keystore
+          key: trasc-preview-signing-v2
+      - name: Prepare and verify the explicit preview signing key
+        if: github.ref == 'refs/heads/main'
+        run: bash scripts/prepare-preview-signing.sh
+      - name: Persist the preview key before compiling
+        if: github.ref == 'refs/heads/main' && steps.preview-key.outputs.cache-hit != 'true'
+        uses: actions/cache/save@v4
+        with:
+          path: runtime-work/signing/preview.keystore
+          key: trasc-preview-signing-v2
       - name: Test control backend
         run: python3 -m unittest discover -s tests -v
       - name: Build packaged Android launcher
@@ -83,12 +95,22 @@ jobs:
         run: bash scripts/pack-launcher-sources.sh
       - name: Compile APK and check Android lint
         run: gradle --no-daemon :app:assembleDebug :app:lintDebug
+      - name: Verify the APK uses the preserved signing certificate
+        if: github.ref == 'refs/heads/main'
+        run: |
+          "$ANDROID_HOME/build-tools/35.0.0/apksigner" verify --print-certs app/build/outputs/apk/debug/app-debug.apk > dist/apk-signing.txt
+          python3 - <<'PY'
+          import pathlib,re
+          actual=re.search(r'Signer #1 certificate SHA-256 digest: ([0-9a-f]+)',pathlib.Path('dist/apk-signing.txt').read_text()).group(1)
+          assert actual==pathlib.Path('dist/preview-signing.sha256').read_text().strip()
+          PY
       - uses: actions/upload-artifact@v4
         with:
           name: trasc-server-android-debug
           path: |
             app/build/outputs/apk/debug/app-debug.apk
             dist/launcher-sources.tar.gz
+            dist/preview-signing.sha256
       - uses: actions/upload-artifact@v4
         if: always()
         with:
@@ -120,7 +142,8 @@ jobs:
           p=pathlib.Path('dist/trasc-server-android-preview.apk')
           import re
           version=re.search(r"versionName '([^']+)'",pathlib.Path('app/build.gradle').read_text()).group(1)
-          pathlib.Path('dist/preview-build.json').write_text(json.dumps({'commit':os.environ['GITHUB_SHA'],'sha256':hashlib.sha256(p.read_bytes()).hexdigest(),'file':p.name,'version':version},indent=2))
+          signing=pathlib.Path('dist/dist/preview-signing.sha256').read_text().strip()
+          pathlib.Path('dist/preview-build.json').write_text(json.dumps({'commit':os.environ['GITHUB_SHA'],'sha256':hashlib.sha256(p.read_bytes()).hexdigest(),'file':p.name,'version':version,'application_id':'io.github.russianranger.trasc.preview','signing_certificate_sha256':signing},indent=2))
           PY
           gh release upload preview dist/trasc-server-android-preview.apk --clobber
           gh release upload preview dist/dist/launcher-sources.tar.gz --clobber
