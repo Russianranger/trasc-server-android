@@ -65,6 +65,7 @@ class Supervisor:
                         WINEDLLOVERRIDES='winemenubuilder,mscoree,mshtml,winegstreamer=',
                         BOX64_DYNAREC_STRONGMEM='1', BOX64_DYNAREC_BIGBLOCK='0', BOX64_DYNAREC_SAFEFLAGS='2',
                         BOX64_LOG='1', BOX64_NOBANNER='0', BOX64_PATH='/opt/wine/bin',
+                        BOX64_LD_LIBRARY_PATH='/usr/lib/x86_64-linux-gnu:/lib/x86_64-linux-gnu:/opt/wine/lib/wine/x86_64-unix',
                         LIBGL_ALWAYS_SOFTWARE='1', GALLIUM_DRIVER='llvmpipe', LP_NUM_THREADS='4')
 
     def update(self, phase=None, **fields):

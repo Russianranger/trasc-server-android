@@ -4,6 +4,9 @@ on:
     branches: [main, codex/client-bootstrap]
     paths: ['client-runtime/**', 'scripts/build-client-runtime.sh', 'backend/client_runner.py', 'tests/*client*', '.github/workflows/client-runtime.yml']
   workflow_dispatch:
+concurrency:
+  group: client-runtime-${{ github.ref }}
+  cancel-in-progress: true
 permissions:
   contents: read
   actions: read
@@ -33,12 +36,18 @@ jobs:
       contents: write
     steps:
       - uses: actions/checkout@v4
-      - uses: actions/cache@v4
+      - uses: actions/cache/restore@v4
+        id: client-image
         with:
           path: runtime-work/client-image.tar
           key: client-image-arm64-${{ hashFiles('client-runtime/Dockerfile') }}
       - name: Build isolated ARM64 Wine and display runtime
         run: bash scripts/build-client-runtime.sh
+      - uses: actions/cache/save@v4
+        if: steps.client-image.outputs.cache-hit != 'true'
+        with:
+          path: runtime-work/client-image.tar
+          key: client-image-arm64-${{ hashFiles('client-runtime/Dockerfile') }}
       - name: Compile our own Windows 32-bit test program and DLL
         run: |
           sudo apt-get update

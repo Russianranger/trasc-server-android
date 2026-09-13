@@ -11,13 +11,14 @@ RUN curl -fL --retry 3 -o /tmp/wine.tar.xz https://github.com/Kron4ek/Wine-Build
 
 FROM debian:bookworm-slim
 ENV DEBIAN_FRONTEND=noninteractive
-RUN apt-get update && apt-get install -y --no-install-recommends \
+RUN dpkg --add-architecture amd64 && apt-get update && apt-get install -y --no-install-recommends \
     ca-certificates python3 tigervnc-standalone-server xauth xfonts-base mesa-utils \
     libgl1-mesa-dri libglx-mesa0 libgl1 libvulkan1 libsdl2-2.0-0 \
     libx11-6 libxext6 libxrender1 libxrandr2 libxi6 libxfixes3 libxcursor1 libxinerama1 libxxf86vm1 \
     libfontconfig1 libfreetype6 fonts-liberation libasound2 libpulse0 libdbus-1-3 libudev1 \
     libgnutls30 libgcrypt20 libgphoto2-6 libpcap0.8 libjpeg62-turbo libpng16-16 \
     libsane1 libcups2 libusb-1.0-0 libkrb5-3 libunwind8 libopenal1 libosmesa6 procps \
+    libgcc-s1:amd64 libstdc++6:amd64 libunwind8:amd64 \
  && apt-get clean && rm -rf /var/lib/apt/lists/* /var/log/* \
  && mkdir -p /client /prefix /session /logs /opt/trasc-client /tmp
 COPY --from=builder /src/box64/build/box64 /usr/local/bin/box64
