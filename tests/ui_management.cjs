@@ -18,11 +18,17 @@ for(const [name,type,value,min,max]of [['Character:RaidExpMultiplier','real','0.
   await page.addInitScript(data=>{
    let seq=0,jobs=[];const actions=['None','MouseLeft','MouseRight','PointerUp','PointerDown','PointerLeft','PointerRight','KeyW','KeyT','Space','Escape'];
    let profile={sources:['A','B','RightUp','RightDown','RightLeft','RightRight'],actions,bindings:{A:'Space',B:'Escape',RightUp:'PointerUp',RightDown:'PointerDown',RightLeft:'PointerLeft',RightRight:'PointerRight'},deadzone:.2,sensitivity:700};
-   window.__saves=[];window.__alive=true;window.__calls=[];window.__exports=[];
+   window.__saves=[];window.__alive=true;window.__calls=[];window.__exports=[];window.__clientStarts=[];window.__clientViews=0;
+   let clientRuntime={installed:true,alive:false,busy:false,status:'Client runtime installed'};
    const state=()=>({version:'0.2.1',running:false,settings:{ip:'127.0.0.1',login_port:5999,repo:'https://github.com/Russianranger/Triptych-Triumvirate',ref:'main',workers:3,jobs:2},source:{commit:'test'},maps_ready:true,database_imported:true,binaries_ready:true,processes:{},jobs,free_bytes:50e9,nektulos:{legacy_ready:true},client:{imported:false}});
    window.Trasc={call(id,op,input){setTimeout(()=>{
     const args=JSON.parse(input);let result;window.__calls.push(op);
     if(op==='native_state')result={installed:true,alive:window.__alive,status:window.__alive?'Runtime ready':'Runtime stopped. Logs are still available.',free_bytes:50e9};
+    else if(op==='client_native_state')result=clientRuntime;
+    else if(op==='client_runtime_online'){clientRuntime.installed=true;result=clientRuntime;}
+    else if(op==='client_start'){window.__clientStarts.push(args);clientRuntime={...clientRuntime,alive:true,display_ready:true,launch:{phase:'launch_requested',native_dinput8_requested:args.native_dinput8,native_loaded:false}};result=clientRuntime;}
+    else if(op==='client_view'){window.__clientViews++;result={};}
+    else if(op==='client_stop'){clientRuntime.alive=false;result=clientRuntime;}
     else if(op==='state'){
      if(!window.__alive){window.nativeReply(id,{ok:false,error:'Backend is deliberately unavailable in this regression test'});return;}
      result=state();
@@ -65,6 +71,15 @@ for(const [name,type,value,min,max]of [['Character:RaidExpMultiplier','real','0.
   await page.evaluate(()=>{window.clientInputEvent({type:'button',action:'KeyT',down:true});window.clientInputEvent({type:'pointer',x:90,y:20});});
   assert((await page.locator('#client-input-status').textContent()).includes('KeyT'));
   await page.screenshot({path:'ui-reports/client-mobile.png',fullPage:true});
+  await page.locator('#client-resolution').selectOption('960x540');await page.locator('#client-desktop').click();
+  await page.waitForFunction(()=>window.__clientViews===1);
+  assert.deepEqual(await page.evaluate(()=>window.__clientStarts[0]),{mode:'desktop',resolution:'960x540',native_dinput8:true});
+  assert(!(await page.locator('#client-launch-status').textContent()).includes('load confirmed'),'File presence/request must not claim DLL loaded');
+  await page.locator('#client-stop').click();await page.waitForFunction(()=>document.getElementById('client-launch-status').textContent.startsWith('Client stopped.'));
+  await page.locator('#client-launch').click();await page.waitForFunction(()=>window.__clientViews===2);
+  assert.equal(await page.evaluate(()=>window.__clientStarts[1].mode),'client');
+  await page.locator('#client-view').click();await page.waitForFunction(()=>window.__clientViews===3);
+  await page.locator('#client-stop').click();await page.waitForFunction(()=>document.getElementById('client-launch-status').textContent.startsWith('Client stopped.'));
   await page.locator('nav [data-tab=setup]').click();await page.waitForFunction(()=>document.getElementById('controller-focus').textContent==='Controller capture is off.');
   assert(!(await page.locator('#client-input-status').textContent()).includes('KeyT'),'Leaving tab releases input');
   assert(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth+1),'No horizontal page overflow on mobile');

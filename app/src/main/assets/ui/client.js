@@ -41,3 +41,25 @@ document.addEventListener('visibilitychange',()=>{if(document.hidden)api('contro
 // Editing controls releases capture so controller buttons never operate settings.
 $('client').addEventListener('pointerdown',event=>{if(captureActive&&event.target.id!=='client-surface')api('controller_capture',{active:false}).catch(()=>{});});
 drawClientInput();
+
+async function clientRuntimeState(){
+ const s=await api('client_native_state');
+ $('client-runtime-status').textContent=(s.installed?'Installed · ':'Not installed · ')+s.status;
+ const launch=s.launch;
+ $('client-launch-status').textContent=launch?.error?launch.error:s.alive?
+  (launch?.phase||'Starting').replaceAll('_',' ')+' · '+(launch?.mode==='desktop'?'Wine desktop test.':launch?.native_loaded?'Native dinput8.dll load confirmed.':launch?.native_dinput8_requested?'Native dinput8.dll requested; load not yet confirmed.':'Built-in dinput8 comparison mode.'):
+  'Client stopped. '+(launch?.native_loaded?'Last session confirmed native dinput8.dll loading.':'');
+ return s;
+}
+const launchOptions=mode=>({mode,resolution:$('client-resolution').value,native_dinput8:$('client-native-dll').checked});
+action('client-runtime-online',async()=>{notice('Downloading the client runtime…');await api('client_runtime_online');await clientRuntimeState();notice('Client runtime installed. Try Wine desktop first.');});
+action('client-runtime-offline',async()=>{await api('pick',{kind:'client-runtime'});await clientRuntimeState();notice('Client runtime installed.');});
+action('client-prepare',async()=>{await job('prepare_client',{resolution:$('client-resolution').value});});
+for(const [id,mode] of [['client-desktop','desktop'],['client-launch','client']])action(id,async()=>{
+ await api('controller_capture',{active:false});notice('Opening the client display. First-time Wine setup can take a minute…');
+ await api('client_start',launchOptions(mode));await clientRuntimeState();await api('client_view');
+});
+action('client-view',()=>api('client_view'));
+action('client-stop',async()=>{await api('client_stop');await clientRuntimeState();notice('Client stopped. Manage the server separately in Server.');});
+setInterval(()=>{if(currentTab==='client')clientRuntimeState().catch(e=>{$('client-runtime-status').textContent=e.message;});},1500);
+clientRuntimeState().catch(()=>{});

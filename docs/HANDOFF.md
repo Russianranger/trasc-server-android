@@ -1,6 +1,20 @@
 # Development handoff — 2026-09-13
 
-## Current request
+## Current request: embedded client (0.3.0 in progress)
+
+The user confirmed: “Session backup and restore worked perfectly. control inputs work, client input works. Lets move to the next step with the client.” Latest bundle `logs-338733800756477711.zip` reports 0.2.1 on Thor Android 13, completed client ZIP import, and no current runtime-start failure. Do not redo server/database installation.
+
+- Working branch: `codex/client-bootstrap`; main remains the tested 0.2.1 handoff commit `23f8421f59b37254a602464157d081cf43372b2c` until gates pass.
+- Client runtime: separate Debian rootfs in `work/client/runtime`, Wine 10.0 WoW64 + Box64 0.4.4, WineD3D/llvmpipe baseline, TigerVNC display over private Unix socket. No TCP VNC listener; X11 cookie authentication.
+- New files: `ClientRuntime`, `ClientActivity`, `RfbConnection`, `DisplayInput`, `backend/client_runner.py`, `client-runtime/Dockerfile`, client runtime build workflow/script and native Windows probe/integration tests.
+- Existing controller profile reaches actual native display; physical keyboard/mouse/touch also wired. Dialog Type/Send + Enter, focus-release and combined-input reference counts implemented. Client runtime/prefix are included by existing complete-session client component; temporary sockets live outside the archive. Backup/restore stops client first.
+- Client GUI includes online/offline runtime setup, Wine desktop, ROF2 launch, return/stop and server-data preparation. Preparation preserves original handshake/INI files and imported DLL; native trace is required to claim DLL load.
+- Runtime CI first failed on missing x86 `libgcc_s.so.1`; graphics/display already passed startup. Added Debian amd64 libgcc/libstdc++/libunwind plus Box64 library path. Run 34787655979 now executes PE32, loads the native test DLL and creates a D3D9 device. Corrected the display test to wait for successful Present and ignore the undefined RGB888 padding byte. Full feature checkpoint is ready for APK/UI and ARM64 display/input gates; resolve failures before publication.
+- Initial local validation: 34 Python tests passed, native JVM archive/RFB/input tests passed, JS syntax passed. APK/UI/ARM64 full client probe checks still pending for the complete feature checkpoint.
+- Client documentation: `docs/client-runtime.md`; first physical goal Wine desktop, then ROF2 startup/login with native dinput8 trace. Software graphics only; sound and hardware acceleration remain later work. Do not claim actual ROF2 acceptance until user reports it.
+- Preserve the existing application ID and pinned signing certificate. Target APK 0.3.0 / version code 6. Server runtime remains 1.1. Update this section with final code/run/artifact identifiers once published.
+
+## Previous request: 0.2.1 export fixes
 
 Latest device report: Preview 0.2.0 session export fails with `Unsafe session path: runtime/var/lib/dpkg/info/binutils-common:arm64.conffiles`. Log export then fails with `Failed to connect to /127.0.0.1:18775`, because backup preparation closed the runtime. Fix both and publish an in-place APK update; preserve the existing world and signing key.
 

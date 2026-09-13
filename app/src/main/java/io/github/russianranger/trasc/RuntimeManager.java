@@ -109,6 +109,7 @@ public final class RuntimeManager {
         // Only native diagnostics: no credentials, settings, API token or backend request.
         JSONObject metadata=new JSONObject().put("version",BuildConfig.VERSION_NAME)
             .put("created_utc",java.time.Instant.now().toString()).put("native",nativeState())
+            .put("client",ClientRuntime.get(context).state())
             .put("android_sdk",android.os.Build.VERSION.SDK_INT).put("device",android.os.Build.MODEL);
         File archive=LocalLogs.export(work,metadata.toString(2));
         return new JSONObject().put("file","exports/"+archive.getName());
@@ -158,13 +159,14 @@ public final class RuntimeManager {
     }
     private synchronized void beginSession()throws IOException {
         if(recoveryError!=null)throw new IOException(recoveryError);
-        if(sessionBusy||installing)throw new IOException("Wait for the current runtime or session operation");
+        if(sessionBusy||installing||ClientRuntime.get(context).busy)throw new IOException("Wait for the current runtime, client or session operation");
         sessionBusy=true;
     }
     JSONObject backupSession()throws Exception {
         beginSession();
         File target=new File(work,"exports/session-"+System.currentTimeMillis()+".zip");
         try {
+            ClientRuntime.get(context).stop();
             start();
             status="Stopping the server and making a database snapshot…";
             awaitJob("prepare_session_backup");
@@ -200,6 +202,7 @@ public final class RuntimeManager {
         try {
             if((installed()||new File(work,"settings.json").isFile())&&!replace)
                 throw new IOException("Select Replace this app's current session before restoring");
+            ClientRuntime.get(context).stop();
             if(alive()) {
                 JSONObject s=request("state",new JSONObject()).getJSONObject("result");
                 org.json.JSONArray jobs=s.getJSONArray("jobs");
@@ -255,6 +258,9 @@ public final class RuntimeManager {
         } finally {TarExtractor.remove(staging);}
     }
     void download(String url,File target) throws Exception {
+        download(url,target,text->status=text);
+    }
+    void download(String url,File target,SessionArchive.Progress progress) throws Exception {
         URL u=new URL(url); HttpURLConnection c=null;
         for(int redirect=0;redirect<6;redirect++) {
             if(!u.getProtocol().equals("https")) throw new IOException("HTTPS is required");
@@ -267,7 +273,7 @@ public final class RuntimeManager {
             if(size>home.getUsableSpace()-512L*1024*1024) {c.disconnect(); throw new IOException("Not enough storage for download");}
             try(InputStream in=c.getInputStream(); OutputStream out=new FileOutputStream(target)) {
                 byte[] b=new byte[1024*1024]; int n;
-                while((n=in.read(b))!=-1) {done+=n; if(done>4L*1024*1024*1024) throw new IOException("Runtime archive is too large"); out.write(b,0,n); status="Downloading runtime · "+(done/1048576)+" MB";}
+                while((n=in.read(b))!=-1) {done+=n; if(done>4L*1024*1024*1024) throw new IOException("Runtime archive is too large"); out.write(b,0,n); progress.update("Downloading runtime · "+(done/1048576)+" MB");}
             } finally {c.disconnect();}
             return;
         }

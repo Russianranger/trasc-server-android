@@ -12,6 +12,26 @@ import zipfile
 NEKTULOS = ('base/nektulos.map', 'nav/nektulos.nav')
 
 
+def update_ini(text, section, values):
+    """Update only selected INI values, preserving unrelated settings/comments."""
+    result, pending, active, found = [], dict(values), False, False
+    for line in text.splitlines():
+        stripped = line.strip()
+        if stripped.startswith('[') and stripped.endswith(']'):
+            if active:
+                result.extend(f'{k}={v}' for k, v in pending.items()); pending.clear()
+            active = stripped[1:-1].casefold() == section.casefold(); found |= active
+        elif active and '=' in line and not stripped.startswith((';', '#')):
+            key = line.split('=', 1)[0].strip()
+            match = next((k for k in values if k.casefold() == key.casefold()), None)
+            if match:
+                line = key + '=' + str(values[match]); pending.pop(match, None)
+        result.append(line)
+    if not found: result += ['', '[' + section + ']']
+    result.extend(f'{k}={v}' for k, v in pending.items())
+    return '\r\n'.join(result) + '\r\n'
+
+
 def digest(path):
     with Path(path).open('rb') as f:
         return hashlib.file_digest(f, 'sha256').hexdigest()
@@ -132,6 +152,61 @@ class ManagedContent:
         marker = self.work / 'client/current/trasc-client.json'
         return json.loads(marker.read_text()) if marker.exists() else {'imported': False}
 
+    def prepare_client(self, args):
+        from engine import CLIENT_FILES, atomic_json, safe_path
+        client = self.work / 'client/current'
+        if client.is_symlink() or not (client / 'trasc-client.json').is_file(): raise ValueError('Import a client ZIP first')
+        resolution = args.get('resolution', '800x600')
+        if resolution not in ('640x480', '800x600', '960x540', '1024x768'): raise ValueError('Unsupported client resolution')
+        self.export_client({})
+        backup = self.work / 'backups/client-setup' / (time.strftime('%Y%m%d-%H%M%S') + '-' + secrets.token_hex(3))
+        backup.mkdir(parents=True)
+        changes = {}
+        def existing(parent, name):
+            matches = [p for p in parent.iterdir() if p.name.casefold() == name.casefold()] if parent.exists() else []
+            if len(matches) > 1: raise ValueError('Ambiguous client filename: ' + name)
+            path = matches[0] if matches else parent / name
+            if path.is_symlink(): raise ValueError('Client setup cannot replace symlinks: ' + name)
+            return path
+        resources = existing(client, 'Resources')
+        if resources.exists() and not resources.is_dir(): raise ValueError('Resources must be a directory')
+        for name in CLIENT_FILES:
+            for parent in (client, resources): changes[existing(parent, name)] = self.work / 'server/export' / name
+        host = existing(client, 'eqhost.txt')
+        changes[host] = '[LoginServer]\r\nHost=' + self.config['ip'] + ':' + str(self.config['login_port']) + '\r\n'
+        ini = existing(client, 'eqclient.ini')
+        text = ini.read_text(encoding='cp1252') if ini.exists() else ''
+        width, height = resolution.split('x')
+        text = update_ini(text, 'Defaults', {'WindowedMode':'TRUE'})
+        changes[ini] = update_ini(text, 'VideoMode', {'Width':width,'Height':height,'WindowedWidth':width,'WindowedHeight':height})
+        record = {'state':'prepared','files':{},'created':time.time()}
+        for target in changes:
+            relative = str(target.relative_to(client)); safe_path(client, relative)
+            record['files'][relative] = target.exists()
+            if target.exists():
+                if not target.is_file(): raise ValueError('Expected a client file: ' + relative)
+                saved = backup / relative; saved.parent.mkdir(parents=True, exist_ok=True); shutil.copy2(target, saved)
+        atomic_json(backup / 'manifest.json', record)
+        applied = []
+        try:
+            for target, value in changes.items():
+                self.check_cancel();target.parent.mkdir(parents=True, exist_ok=True)
+                temp = target.with_name(target.name + '.trasc-new')
+                if isinstance(value, Path): shutil.copy2(value, temp)
+                else: temp.write_text(value, encoding='cp1252')
+                applied.append(target);os.replace(temp, target)
+            record['state'] = 'applied';atomic_json(backup / 'manifest.json', record)
+        except Exception:
+            for target in reversed(applied):
+                relative = str(target.relative_to(client))
+                if record['files'][relative]: shutil.copy2(backup / relative, target)
+                else: target.unlink(missing_ok=True)
+            record['state'] = 'rolled_back';atomic_json(backup / 'manifest.json', record)
+            raise
+        finally:
+            for target in changes: target.with_name(target.name + '.trasc-new').unlink(missing_ok=True)
+        return {'message':'Client data, login address and windowed resolution prepared. Existing files saved in ' + str(backup.relative_to(self.work)), 'backup':str(backup.relative_to(self.work))}
+
     def import_client_zip(self, args):
         from engine import atomic_json, safe_path, extract_archive
         archive = safe_path(self.work / 'incoming', args['file'], True)
@@ -160,7 +235,7 @@ class ManagedContent:
             except Exception:
                 if previous.exists(): os.replace(previous, current)
                 raise
-            return {'message': 'Client extracted. The temporary ZIP inside this app was deleted; your original ZIP is unchanged. Client launch is a later phase.', 'client': record}
+            return {'message': 'Client extracted. The temporary ZIP inside this app was deleted; your original ZIP is unchanged. Install the client runtime to launch it.', 'client': record}
         finally:
             if stage.exists(): shutil.rmtree(stage)
             archive.unlink(missing_ok=True)

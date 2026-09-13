@@ -1,6 +1,16 @@
-TRASC Server Android **0.2.1** fixes the session and log export failures reported on the Thor.
+TRASC Server Android **0.3.0** starts the embedded ROF2 client milestone. The user confirmed session backup/restore and input on 0.2.1.
 
-Install this APK over **TRASC Server Preview 0.1.2 or 0.2.0**. It uses the same application ID and pinned signing certificate. Shut down the runtime before updating. Your existing runtime 1.1, source, maps, database and binaries are retained; this APK update needs no server recompile.
+- Download the separate client runtime in Client, with an offline archive option.
+- Try Wine desktop, launch the imported ROF2 client, return to the display or stop it.
+- Saved controllers, touch and physical keyboard/mouse feed the native display. Its Keyboard dialog supports Type and Send + Enter.
+- Prepare client data/login/windowed resolution with original-file backups.
+- Require matching PE32 DLL architecture and report native dinput8 loading only from Wine's actual trace.
+
+This is an experimental software-graphics compatibility pass. ROF2/device/plugin behavior is not yet verified; sound, hardware acceleration and performance tuning remain later work. [Device sequence](https://github.com/Russianranger/trasc-server-android/blob/main/docs/client-runtime.md).
+
+The following server/export fixes remain included:
+
+Install this APK over **TRASC Server Preview 0.1.2, 0.2.0 or 0.2.1**. It uses the same application ID and pinned signing certificate. Stop the client and server runtime before updating. Your existing runtime 1.1, source, maps, database and binaries are retained; this APK update needs no server recompile.
 
 - **Session export/import:** accept valid Debian `:arm64` filenames while retaining path traversal and drive-prefix checks.
 - **Logs:** native Android listing, viewing and ZIP export work with the runtime closed, including after a failed session backup. Both log export buttons work without the localhost control service.
@@ -13,10 +23,10 @@ All 0.2.0 management features remain included:
 - **Setup:** apply the legacy Nektulos map/nav pair with original-file backups, and revert it.
 - **Server:** create and export a complete session ZIP. It stops the session cleanly and includes runtime, database, SQL snapshot, binaries, maps, logs, sources/builds, configuration, backups and imported client.
 - **Setup:** restore that ZIP into a fresh app without downloading a runtime or recompiling. Checksums, modes and symlinks are verified/restored before activation. Existing sessions have a recovery generation.
-- **Client:** ZIP import, private temporary-ZIP cleanup, DLL inventory, saved controller-to-keyboard/mouse bindings and a focused input diagnostic. Client launch/rendering/DLL loading remain a later phase.
+- **Client:** ZIP import, private temporary-ZIP cleanup, DLL inventory, saved controller-to-keyboard/mouse bindings and a focused input diagnostic. The separate client runtime adds an experimental launch/display/DLL-loading path.
 - **Continuity:** implementation decisions, validation and remaining work are recorded in `docs/HANDOFF.md`.
 
-For this device pass, export logs while the runtime is closed, then retry complete session export and restoration. Continue the rules and Nektulos tests afterward. Client testing remains explicitly deferred. See `docs/device-tests.md` for the sequence.
+For this device pass, follow `docs/client-runtime.md`: install the client runtime, try Wine desktop, stop, prepare the imported client, start the server and attempt ROF2. Export Logs after the attempt.
 
 Backups contain accounts, credentials and client files and are not encrypted. Save them privately outside the app. Only the private temporary copy of an imported session/client ZIP is removed; the selected source document remains intact.
 

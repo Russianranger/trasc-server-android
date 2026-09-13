@@ -2,11 +2,11 @@
 
 A standalone Android control app for [Russianranger/Triptych-Triumvirate](https://github.com/Russianranger/Triptych-Triumvirate), initially targeting the AYN Thor's ARM64 Android environment. The app owns its runtime, database, source, builds and server files. It does **not** require installing Termux, root, a PC-hosted server or a web service.
 
-**Status: device testing preview.** On the AYN Thor, the user has confirmed compilation, database import and connection from the existing client. Version 0.2.0 adds management and client-preparation features; their device acceptance tests are still pending. Zone-state shutdown survival and embedded client execution are not claimed as verified.
+**Status: device testing preview.** On the AYN Thor, the user has confirmed compilation, database import and connection from the existing client. The user has also confirmed complete session backup/restore, controller bindings and client input on 0.2.1. Version 0.3.0 begins embedded Windows client testing. Zone-state shutdown survival and embedded client execution are not claimed as verified.
 
 ## Downloads and first setup
 
-**App 0.2.0:** adds the complete rule editor, reversible Nektulos fix, complete session ZIP migration, and client import/controller groundwork. Install over **TRASC Server Preview 0.1.2** using the same application ID and pinned signing certificate. Existing runtime 1.1, source, maps, database and binaries are retained. Shut down the runtime before installing the APK. [Update and test details](docs/preview-notes.md).
+**App 0.3.0:** adds a separate Wine/Box64 client runtime, native in-app display, controller/touch/keyboard input, client data preparation and native DLL loading diagnostics. Install over **TRASC Server Preview 0.1.2–0.2.1** using the same application ID and pinned signing certificate. Existing runtime 1.1, source, maps, database and binaries are retained. Shut down the runtime before installing the APK. [Update and test details](docs/preview-notes.md).
 
 **Runtime 1.1 update:** fixes the missing `uuid/uuid.h` compilation error by including `uuid-dev`. Existing users can select **Setup → Shut down runtime → Download runtime**, then retry **Build imported source**. This preserves imported files and the build cache; no APK reinstall is needed. [Runtime update details](docs/runtime-release-notes.md).
 
@@ -105,13 +105,13 @@ Build the runtime on an ARM64 Docker host with `bash scripts/build-runtime.sh`. 
 
 See [device test sequence](docs/device-tests.md). Automated tests cover hostile archive paths, symlink rejection, size limits, nested database discovery, map replacement backups, preservation of runtime edits, rule validation, SQL restrictions and process cancellation. They do not replace physical Android testing.
 
-The Client tab imports an owned ROF2 client and reports whether `dinput8.dll` is present. Configurable AYN gamepad mappings deliver keyboard/mouse events to an input diagnostic surface. Actual ROF2 execution, Wine/x86 integration, rendering and DLL loading remain deferred to the client phase. The first acceptance target is the standalone server and management GUI, connected to your current client. No EverQuest client assets or maps are distributed in this repository.
+The Client tab imports an owned ROF2 client and can launch it through the optional client runtime. Configurable AYN gamepad mappings, touch and physical keyboard/mouse reach the embedded display. Native DLL loading is reported only after Wine logs confirm it. The software graphics path is an experimental compatibility milestone; actual ROF2 startup/login/world entry, sound and hardware acceleration are not yet verified. See [client setup and tests](docs/client-runtime.md). No EverQuest client assets or maps are distributed in this repository.
 
 See [third-party notices](THIRD_PARTY_NOTICES.md) for runtime component sources and licenses.
 
 ## Complete session backup and restore
 
-Use **Server → Create & export complete session**. The manager stops the game processes, makes a SQL snapshot, stops MariaDB cleanly, closes the runtime and streams a ZIP64 archive. Choose an Android document destination to save it outside the app. The local ZIP remains in `exports/`; the server stays stopped until you open the runtime and start it again.
+Use **Server → Create & export complete session**. The manager stops the embedded client and game server processes, makes a SQL snapshot, stops MariaDB cleanly, closes the runtime and streams a ZIP64 archive. Choose an Android document destination to save it outside the app. The local ZIP remains in `exports/`; the server stays stopped until you open the runtime and start it again.
 
 Preview **0.2.1** fixes backup/restore of Debian multiarch filenames such as `binutils-common:arm64.conffiles`. If a backup fails after shutdown, its error is saved in `logs/app.log` and the runtime stays stopped. Open it again when ready to continue; no database reimport or server recompile is needed.
 
@@ -137,6 +137,6 @@ After importing the complete maps, stop the server and select **Setup → Apply 
 
 Open the runtime, then use **Client → Choose client ZIP**. The archive must contain one Windows `eqgame.exe`; wrapper folders and case variations are recognized. `dinput8.dll` presence/hash is recorded without claiming that it loads. The imported client lives in `client/current`, with one previous client retained. The app deletes only its temporary incoming ZIP after the import attempt; Android's source document is never deleted.
 
-Bindings work without a running Linux runtime. Each gamepad button, trigger, D-pad and stick direction can target a keyboard key, mouse button, pointer direction or wheel step. Profiles include stick deadzone and pointer speed. Two physical inputs sharing a key keep it held until both release. Capture is limited to the client input area; focus loss, leaving Client, disconnection or changing profiles releases held inputs. These events currently reach the diagnostic canvas through a reusable input sink. Future Wine/client hosting must attach an actual injection sink; no gameplay execution is implemented in this release.
+Bindings work without a running Linux runtime. Each gamepad button, trigger, D-pad and stick direction can target a keyboard key, mouse button, pointer direction or wheel step. Profiles include stick deadzone and pointer speed. Two physical inputs sharing a key keep it held until both release. Capture is limited to the client input area; focus loss, leaving Client, disconnection or changing profiles releases held inputs. The same profile also feeds the native Wine display. The diagnostic canvas remains available for checking bindings separately. See [embedded client milestone](docs/client-runtime.md) for setup, launch, diagnostics and current limitations.
 
 Development continuation: [handoff](docs/HANDOFF.md).

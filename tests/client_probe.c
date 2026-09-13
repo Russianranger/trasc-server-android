@@ -27,13 +27,18 @@ int WINAPI WinMain(HINSTANCE instance,HINSTANCE previous,LPSTR command,int show)
     if(!d3d||FAILED(IDirect3D9_CreateDevice(d3d,0,D3DDEVTYPE_HAL,window,D3DCREATE_SOFTWARE_VERTEXPROCESSING,&params,&device))) {
         marker("D:\\probe-error.txt","Direct3D9 device creation failed");return 2;
     }
-    marker("D:\\probe-result.json","{\"pe32\":true,\"native_dinput8\":true,\"direct3d9\":true}");
+    BOOL ready=FALSE;
     DWORD until=GetTickCount()+120000;
     while(GetTickCount()<until) {
         MSG msg;
         while(PeekMessage(&msg,NULL,0,0,PM_REMOVE)){if(msg.message==WM_QUIT)goto done;TranslateMessage(&msg);DispatchMessage(&msg);}
-        IDirect3DDevice9_Clear(device,0,NULL,D3DCLEAR_TARGET,D3DCOLOR_XRGB(24,72,96),1,0);
-        IDirect3DDevice9_Present(device,NULL,NULL,NULL,NULL);Sleep(30);
+        HRESULT cleared=IDirect3DDevice9_Clear(device,0,NULL,D3DCLEAR_TARGET,D3DCOLOR_XRGB(24,72,96),1,0);
+        HRESULT presented=IDirect3DDevice9_Present(device,NULL,NULL,NULL,NULL);
+        if(!ready&&SUCCEEDED(cleared)&&SUCCEEDED(presented)) {
+            marker("D:\\probe-result.json","{\"pe32\":true,\"native_dinput8\":true,\"direct3d9\":true}");
+            ready=TRUE;
+        }
+        Sleep(30);
     }
 done:
     IDirect3DDevice9_Release(device);IDirect3D9_Release(d3d);return 0;

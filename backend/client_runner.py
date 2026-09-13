@@ -58,10 +58,10 @@ class Supervisor:
         self.request = request
         self.children = []
         self.status = {'phase': 'starting', 'mode': request['mode'], 'resolution': request['resolution'],
-                       'native_dinput8_requested': request.get('native_dinput8', True), 'native_loaded': False,
+                       'native_dinput8_requested': request['mode']=='client' and request.get('native_dinput8', True), 'native_loaded': False,
                        'renderer': 'WineD3D / llvmpipe (software)', 'started_at': time.time()}
         self.env = dict(os.environ, DISPLAY=':7', XAUTHORITY=str(SESSION / 'Xauthority'),
-                        WINEPREFIX=str(PREFIX), WINEARCH='win64', WINEDEBUG='+timestamp,+pid,+loaddll,+seh',
+                        WINEPREFIX=str(PREFIX), WINEARCH='win64', WINEDEBUG='+timestamp,+pid,+loaddll',
                         WINEDLLOVERRIDES='winemenubuilder,mscoree,mshtml,winegstreamer=',
                         BOX64_DYNAREC_STRONGMEM='1', BOX64_DYNAREC_BIGBLOCK='0', BOX64_DYNAREC_SAFEFLAGS='2',
                         BOX64_LOG='1', BOX64_NOBANNER='0', BOX64_PATH='/opt/wine/bin',

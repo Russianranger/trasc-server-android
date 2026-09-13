@@ -1,5 +1,6 @@
 """Execute our own 32-bit Windows/DLL/D3D9 probe under ARM64 Box64, then test its display/input."""
 import json
+from collections import Counter
 import os
 from pathlib import Path
 import socket
@@ -52,20 +53,29 @@ def main():
             # RGB888, little endian; raw rectangles only, matching the Android client.
             display.sendall(b'\0\0\0\0'+struct.pack('>BBBBHHHBBBxxx',32,24,0,1,255,255,255,16,8,0))
             display.sendall(struct.pack('>BBHi',2,0,1,0))
-            display.sendall(struct.pack('>BBHHHH',3,0,0,0,width,height))
-            pixels=bytearray()
-            while True:
-                message=recv(display,1)[0]
-                if message==2: continue
-                if message==3:
-                    recv(display,3);recv(display,struct.unpack('>I',recv(display,4))[0]);continue
-                assert message==0,message
-                recv(display,1);count=struct.unpack('>H',recv(display,2))[0]
-                for _ in range(count):
-                    x,y,w,h,encoding=struct.unpack('>HHHHi',recv(display,12));assert encoding==0
-                    pixels.extend(recv(display,w*h*4))
-                break
-            assert pixels.count(bytes([96,72,24,0]))>1000,'Direct3D output not visible in native display protocol'
+            deadline=time.monotonic()+20
+            colors=Counter()
+            while time.monotonic()<deadline:
+                display.sendall(struct.pack('>BBHHHH',3,0,0,0,width,height))
+                colors.clear()
+                while True:
+                    message=recv(display,1)[0]
+                    if message==2: continue
+                    if message==3:
+                        recv(display,3);recv(display,struct.unpack('>I',recv(display,4))[0]);continue
+                    assert message==0,message
+                    recv(display,1);count=struct.unpack('>H',recv(display,2))[0]
+                    for _ in range(count):
+                        x,y,w,h,encoding=struct.unpack('>HHHHi',recv(display,12));assert encoding==0
+                        pixels=recv(display,w*h*4)
+                        # Depth 24 leaves the fourth byte unspecified; inspect aligned BGR only.
+                        colors.update(pixels[i:i+3] for i in range(0,len(pixels),4))
+                    break
+                if colors[bytes([96,72,24])]>1000: break
+                time.sleep(.2) # Wine Present and X damage delivery are asynchronous.
+            summary={color.hex():count for color,count in colors.most_common(16)}
+            Path('/logs/display-colors.json').write_text(json.dumps(summary,indent=2))
+            assert colors[bytes([96,72,24])]>1000,('Direct3D output not visible in native display protocol',summary)
             # Focus the probe interior, then deliver a keyboard press/release.
             display.sendall(struct.pack('>BBHH',5,1,200,200)+struct.pack('>BBHH',5,0,200,200))
             display.sendall(struct.pack('>BBHI',4,1,0,ord('t'))+struct.pack('>BBHI',4,0,0,ord('t')))

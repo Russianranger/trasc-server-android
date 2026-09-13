@@ -22,7 +22,7 @@ public final class ServerService extends Service {
     }
     @Override public int onStartCommand(Intent intent,int flags,int startId){
         if(intent!=null&&STOP.equals(intent.getAction()))Executors.newSingleThreadExecutor().execute(()->{
-            try{RuntimeManager.get(this).stop();}catch(Exception e){RuntimeManager.get(this).status=e.getMessage();}
+            try{ClientRuntime.get(this).stop();RuntimeManager.get(this).stop();}catch(Exception e){RuntimeManager.get(this).status=e.getMessage();}
             stopForeground(STOP_FOREGROUND_REMOVE);stopSelf();
         });
         return START_NOT_STICKY;

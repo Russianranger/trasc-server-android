@@ -31,7 +31,7 @@ from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from rule_catalog import KNOWN, metadata, parse_source, validate_value
 from managed_content import ManagedContent
 
-VERSION = '0.2.1'
+VERSION = '0.3.0'
 DEFAULT_REPO = 'https://github.com/Russianranger/Triptych-Triumvirate'
 BINARIES = ('world', 'zone', 'loginserver', 'shared_memory', 'ucs', 'eqlaunch', 'queryserv', 'export_client_files')
 CLIENT_FILES = ('spells_us.txt', 'dbstr_us.txt', 'SkillCaps.txt', 'BaseData.txt')
@@ -919,6 +919,7 @@ class Engine(ManagedContent):
             'prepare_session_backup':self.prepare_session_backup,
             'fix_nektulos':self.fix_nektulos,'revert_nektulos':self.revert_nektulos,
             'import_client_zip':self.import_client_zip,
+            'prepare_client':self.prepare_client,
             'files':self.files,'edit_file':self.edit_file,'export_logs':self.export_logs,'logs':self.logs,
             'databases':lambda a:{'candidates':self.database_candidates()},'state':lambda a:self.state()}
         if op not in methods: raise ValueError('Unknown operation')

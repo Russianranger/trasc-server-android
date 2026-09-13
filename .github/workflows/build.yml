@@ -1,7 +1,7 @@
 name: Build Android preview
 on:
   push:
-    branches: [main]
+    branches: [main, codex/client-bootstrap]
   pull_request:
   workflow_dispatch:
 permissions:
@@ -10,6 +10,12 @@ concurrency:
   group: android-${{ github.ref }}
   cancel-in-progress: true
 jobs:
+  client-runtime:
+    if: github.ref == 'refs/heads/main'
+    uses: ./.github/workflows/client-runtime.yml
+    permissions:
+      contents: write
+      actions: read
   database:
     runs-on: ubuntu-24.04-arm
     timeout-minutes: 30
@@ -139,7 +145,7 @@ jobs:
           path: app/build/reports/
   preview:
     if: github.ref == 'refs/heads/main' && github.event_name != 'pull_request'
-    needs: [apk, database]
+    needs: [apk, database, client-runtime]
     runs-on: ubuntu-latest
     permissions:
       contents: write

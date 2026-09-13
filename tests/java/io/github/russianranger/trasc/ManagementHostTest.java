@@ -35,6 +35,9 @@ public final class ManagementHostTest {
             write(work,"database/triune/test.ibd","world data");write(work,"maps/base/nektulos.map","map data");
             write(work,"backups/database.sql.gz","snapshot");write(work,"logs/control.log","log");write(work,"server/logs/world.log","world log");
             write(work,"client/current/eqgame.exe","MZclient");write(work,"client/controller.json","bindings");
+            write(work,"client/runtime/etc/trasc-client-runtime.json","client runtime");
+            write(work,"client/prefix/drive_c/user.reg","Wine settings");
+            Files.createDirectories(work.resolve("client/prefix/dosdevices"));Files.createSymbolicLink(work.resolve("client/prefix/dosdevices/d:"),Paths.get("/client"));
             write(work,"sources/current/file.cpp","source");write(work,"builds/current/cache","build cache");
             write(work,"run/api-token","do not archive");write(work,"incoming/source.zip","temporary");write(work,"exports/old.zip","do not recurse");
             Files.createSymbolicLink(work.resolve("server/maps"),Paths.get("/work/maps"));
@@ -51,6 +54,8 @@ public final class ManagementHostTest {
             check(Files.readSymbolicLink(restored.resolve("rootfs/bin")).toString().equals("usr/bin"),"Runtime symlink preserved");
             check(Files.readSymbolicLink(restored.resolve("work/server/maps")).toString().equals("/work/maps"),"Guest absolute symlink preserved");
             check(Files.isDirectory(restored.resolve("work/run")),"Fresh process directory created");
+            check(Files.readString(restored.resolve("work/client/runtime/etc/trasc-client-runtime.json")).equals("client runtime"),"Embedded client runtime included");
+            check(Files.readSymbolicLink(restored.resolve("work/client/prefix/dosdevices/d:")).toString().equals("/client"),"Wine drive symlink roundtrip");
             check(Files.readString(restored.resolve("rootfs/"+multiarch)).equals("/etc/test.conf\n"),"Exact reported Debian multiarch filename must roundtrip");
             check(Files.readString(restored.resolve("work/logs/2026-09-13T15:16:00.log")).equals("timestamp filename"),"Linux colon filenames must roundtrip in other components too");
             for(String unsafe:new String[]{"/absolute","C:/Windows/file","c:relative","runtime/../escape","runtime//file","runtime/./file","runtime/back\\slash","runtime/nul\0file"}) {

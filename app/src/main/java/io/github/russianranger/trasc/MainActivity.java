@@ -18,12 +18,13 @@ public final class MainActivity extends Activity {
     private WebView web;
     private RuntimeManager runtime;
     private ControllerManager controller;
+    private ClientRuntime clientRuntime;
     private final ExecutorService tasks=Executors.newFixedThreadPool(3);
     private String pickerId,pickerKind,exportPath;
     private boolean pickerReplace;
     private static final int IMPORT=10,EXPORT=11;
     @Override public void onCreate(Bundle saved){
-        super.onCreate(saved);runtime=RuntimeManager.get(this);
+        super.onCreate(saved);runtime=RuntimeManager.get(this);clientRuntime=ClientRuntime.get(this);
         getWindow().setStatusBarColor(0xff10191c); getWindow().setNavigationBarColor(0xff10191c);
         web=new WebView(this);setContentView(web);
         controller=new ControllerManager(this,runtime.work,event->runOnUiThread(()->{
@@ -68,9 +69,17 @@ public final class MainActivity extends Activity {
             tasks.execute(()->{
                 try {
                     JSONObject args=new JSONObject(input);Object result;
-                    if(runtime.sessionBusy&&!operation.equals("native_state")&&!operation.equals("runtime_log")&&!operation.equals("logs"))throw new IOException("A complete session transfer is in progress");
+                    if(runtime.sessionBusy&&!operation.equals("native_state")&&!operation.equals("runtime_log")&&!operation.equals("logs")&&!operation.equals("client_native_state"))throw new IOException("A complete session transfer is in progress");
+                    if((operation.equals("import_client_zip")||operation.equals("prepare_client"))&&(clientRuntime.alive()||clientRuntime.busy))throw new IOException("Stop the embedded client before changing its files");
                     switch(operation){
                         case "native_state": result=runtime.nativeState();break;
+                        case "client_native_state": result=clientRuntime.state();break;
+                        case "client_runtime_online": service();result=clientRuntime.installOnline();break;
+                        case "client_start": service();runOnUiThread(()->controller.capture(false));result=clientRuntime.start(args);break;
+                        case "client_stop": clientRuntime.stop();if(!runtime.alive()&&!runtime.installing)stopService(new Intent(MainActivity.this,ServerService.class));result=clientRuntime.state();break;
+                        case "client_view":
+                            if(!clientRuntime.alive()||!clientRuntime.displaySocket().exists())throw new IOException("Launch Wine desktop or ROF2 before opening its display");
+                            runOnUiThread(()->startActivity(new Intent(MainActivity.this,ClientActivity.class)));result=new JSONObject();break;
                         case "runtime_install": service();runtime.installOnline();result=runtime.nativeState();break;
                         case "runtime_start": service();runtime.start();result=runtime.nativeState();break;
                         case "runtime_stop": runtime.stop();stopService(new Intent(MainActivity.this,ServerService.class));result=runtime.nativeState();break;
@@ -91,7 +100,7 @@ public final class MainActivity extends Activity {
                     reply(id,result,null);
                 }catch(Exception e){
                     if(operation.startsWith("runtime_"))runtime.status=e.getMessage();
-                    if(operation.startsWith("runtime_")||operation.equals("export_logs"))runtime.recordFailure(operation,e);
+                    if(operation.startsWith("runtime_")||operation.startsWith("client_")||operation.equals("export_logs"))runtime.recordFailure(operation,e);
                     reply(id,null,e);
                 }
             });
@@ -148,6 +157,8 @@ public final class MainActivity extends Activity {
                         runOnUiThread(()->controller.reload());
                         reply(id,result,null);
                     } finally {temp.delete();}
+                }else if("client-runtime".equals(kind)){
+                    try{reply(id,clientRuntime.installOffline(temp),null);}finally{temp.delete();}
                 }else if("runtime".equals(kind)){
                     runtime.beginInstall();try{runtime.installArchive(temp);}finally{runtime.installing=false;temp.delete();}
                     reply(id,runtime.nativeState(),null);
