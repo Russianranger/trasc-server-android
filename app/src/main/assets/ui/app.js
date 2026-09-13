@@ -44,7 +44,7 @@ action('restart-server',async()=>{await job('stop');await job('start');});
 action('save-network',()=>job('network',{ip:$('server-ip').value.trim()}));
 action('export-client',async()=>exportResult(await job('export_client')));
 for(const id of ['quick-backup','db-backup'])action(id,async()=>exportResult(await job('backup_database')));
-for(const id of ['quick-logs','export-logs'])action(id,async()=>exportResult(await job('export_logs')));
+for(const id of ['quick-logs','export-logs'])action(id,async()=>exportResult(await api('export_logs')));
 action('refresh-source',()=>job('import_source',sourceArgs()));
 action('build-server',()=>job('build',{jobs:Number($('build-jobs').value)}));
 action('deploy-build',()=>job('deploy'));action('rollback-build',()=>job('rollback'));
@@ -58,7 +58,7 @@ action('file-go',browse);action('file-up',async()=>{$('file-path').value=$('file
 action('file-upload',async()=>{const f=await api('pick',{kind:'file'});$('selected-file').value=f.path;$('file-path').value='incoming';await browse();notice('File imported. Set its destination, then Copy or Move.');});
 for(const op of ['copy','move'])action('file-'+op,async()=>{await job('edit_file',{action:op,path:$('selected-file').value,destination:$('destination-file').value.trim()});await browse();});
 action('file-export',()=>api('export',{path:$('selected-file').value}));
-async function logs(){const name=$('log-name').value;const r=name==='runtime.log'?await api('runtime_log'):await api('logs',{name});const view=$('log-output');view.textContent=r.text;for(const entry of r.names||[]){if(![...$('log-name').options].some(o=>o.value===entry)){const option=document.createElement('option');option.value=option.textContent=entry;$('log-name').append(option);}}if($('follow-log').checked)view.scrollTop=view.scrollHeight;}
+async function logs(){const name=$('log-name').value;const r=await api('logs',{name});const view=$('log-output');view.textContent=r.text;for(const entry of r.names||[]){if(![...$('log-name').options].some(o=>o.value===entry)){const option=document.createElement('option');option.value=option.textContent=entry;$('log-name').append(option);}}if($('follow-log').checked)view.scrollTop=view.scrollHeight;}
 action('refresh-log',logs);$('log-name').addEventListener('change',()=>logs().catch(e=>notice(e.message,true)));
 action('export-runtime-log',()=>api('export',{path:'logs/runtime.log'}));
 setInterval(()=>{poll();if(currentTab==='logs'&&$('follow-log').checked)logs().catch(()=>{});},2500);poll();

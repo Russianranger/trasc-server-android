@@ -23,7 +23,15 @@ Use a copy of your world/database initially. Record the APK commit from GitHub A
 | 17 | Shutdown runtime, reopen app | Clean MariaDB shutdown; existing data available; server starts only when requested |
 | 18 | Offline source, maps and database imports | All three complete with network disabled after runtime installation |
 
-If a step fails, export Logs and include the step number and visible error. If the runtime cannot open, select **Logs → runtime.log** and **Save runtime log**; both remain accessible without the Python backend. Do not uninstall or clear storage as a troubleshooting step before exporting backups.
+If a step fails, export Logs and include the step number and visible error. In 0.2.1 all log viewing and both log bundle buttons remain accessible without the Python backend, including `app.log` for native failures. Do not uninstall or clear storage as a troubleshooting step before exporting backups.
+
+## Version 0.2.1 export regression pass
+
+1. Update the existing Preview installation in place. Keep the runtime closed. Open Logs, view operation.log/runtime.log and any nested server log; export a bundle using Android's save picker. Confirm the ZIP contains the logs and status.json with native.alive=false.
+2. Use Server's Export logs button while the runtime remains closed. It must also save a bundle without a localhost connection error or starting the runtime.
+3. Create a complete session backup. It should cleanly stop server/database and save a ZIP without rejecting `runtime/var/lib/dpkg/info/binutils-common:arm64.conffiles`. Save it outside the app. Log viewing/export must still work after completion.
+4. Restore the externally saved session using the 0.2.0 acceptance sequence below. Confirm restored runtime opens and the existing world works without a build/import.
+5. If any archive operation fails, capture the on-screen message and export Logs; check `app.log` and `runtime.log`. An error after clean shutdown should say the runtime is stopped and logs remain available. Do not deliberately fill the working device's storage to simulate failure.
 
 ## Version 0.2.0 acceptance pass
 

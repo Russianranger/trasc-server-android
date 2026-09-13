@@ -18,12 +18,21 @@ for(const [name,type,value,min,max]of [['Character:RaidExpMultiplier','real','0.
   await page.addInitScript(data=>{
    let seq=0,jobs=[];const actions=['None','MouseLeft','MouseRight','PointerUp','PointerDown','PointerLeft','PointerRight','KeyW','KeyT','Space','Escape'];
    let profile={sources:['A','B','RightUp','RightDown','RightLeft','RightRight'],actions,bindings:{A:'Space',B:'Escape',RightUp:'PointerUp',RightDown:'PointerDown',RightLeft:'PointerLeft',RightRight:'PointerRight'},deadzone:.2,sensitivity:700};
-   window.__saves=[];
-   const state=()=>({version:'0.2.0',running:false,settings:{ip:'127.0.0.1',login_port:5999,repo:'https://github.com/Russianranger/Triptych-Triumvirate',ref:'main',workers:3,jobs:2},source:{commit:'test'},maps_ready:true,database_imported:true,binaries_ready:true,processes:{},jobs,free_bytes:50e9,nektulos:{legacy_ready:true},client:{imported:false}});
+   window.__saves=[];window.__alive=true;window.__calls=[];window.__exports=[];
+   const state=()=>({version:'0.2.1',running:false,settings:{ip:'127.0.0.1',login_port:5999,repo:'https://github.com/Russianranger/Triptych-Triumvirate',ref:'main',workers:3,jobs:2},source:{commit:'test'},maps_ready:true,database_imported:true,binaries_ready:true,processes:{},jobs,free_bytes:50e9,nektulos:{legacy_ready:true},client:{imported:false}});
    window.Trasc={call(id,op,input){setTimeout(()=>{
-    const args=JSON.parse(input);let result;
-    if(op==='native_state')result={installed:true,alive:true,status:'Runtime ready',free_bytes:50e9};
-    else if(op==='state')result=state();
+    const args=JSON.parse(input);let result;window.__calls.push(op);
+    if(op==='native_state')result={installed:true,alive:window.__alive,status:window.__alive?'Runtime ready':'Runtime stopped. Logs are still available.',free_bytes:50e9};
+    else if(op==='state'){
+     if(!window.__alive){window.nativeReply(id,{ok:false,error:'Backend is deliberately unavailable in this regression test'});return;}
+     result=state();
+    }
+    else if(op==='session_backup'){
+     window.__alive=false;window.nativeReply(id,{ok:false,error:'Session backup failed: simulated storage error. Runtime is stopped. Logs are still available; open runtime to continue.'});return;
+    }
+    else if(op==='logs')result={text:args.name==='app.log'?'session_backup failed: simulated storage error':'Saved output: '+args.name,names:['app.log','runtime.log','control.log','operation.log','server/zones/cabeast.log']};
+    else if(op==='export_logs')result={file:'exports/logs-native.zip'};
+    else if(op==='export'){window.__exports.push(args.path);result={message:'File exported'};}
     else if(op==='controller_state')result=profile;
     else if(op==='controller_save'){profile={...profile,...args};result=profile;}
     else if(op==='controller_capture'){window.clientInputEvent?.({type:'capture',down:args.active});result={...profile,active:args.active};}
@@ -60,6 +69,24 @@ for(const [name,type,value,min,max]of [['Character:RaidExpMultiplier','real','0.
   assert(!(await page.locator('#client-input-status').textContent()).includes('KeyT'),'Leaving tab releases input');
   assert(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth+1),'No horizontal page overflow on mobile');
   await page.setViewportSize({width:960,height:540});await page.screenshot({path:'ui-reports/setup-landscape.png',fullPage:true});
-  assert.deepEqual(errors,[],'UI JavaScript errors');console.log('PASS: large categorized rule UI, bounds errors, dirty-only saves, sentinel/tiny values, client bindings and capture lifecycle');
+  await page.locator('nav [data-tab=server]').click();await page.locator('#session-export').click();
+  await page.waitForFunction(()=>document.getElementById('notice').textContent.includes('simulated storage error'));
+  await page.waitForFunction(()=>document.getElementById('badge').textContent==='RUNTIME CLOSED');
+  await page.evaluate(async()=>{await poll();window.__calls=[];});
+  await page.locator('nav [data-tab=logs]').click();await page.locator('#log-name').selectOption('operation.log');
+  await page.waitForFunction(()=>document.getElementById('log-output').textContent==='Saved output: operation.log');
+  await page.locator('#log-name').selectOption('server/zones/cabeast.log');
+  await page.waitForFunction(()=>document.getElementById('log-output').textContent.includes('server/zones/cabeast.log'));
+  await page.locator('#log-name').selectOption('app.log');
+  await page.waitForFunction(()=>document.getElementById('log-output').textContent.includes('session_backup failed'));
+  await page.locator('#export-logs').click();await page.waitForFunction(()=>window.__exports.length===1);
+  await page.waitForFunction(()=>document.getElementById('notice').textContent==='File exported. A local copy is retained.');
+  await page.screenshot({path:'ui-reports/logs-runtime-closed.png',fullPage:true});
+  await page.locator('nav [data-tab=server]').click();await page.locator('#quick-logs').click();
+  await page.waitForFunction(()=>window.__exports.length===2);
+  assert.deepEqual(await page.evaluate(()=>window.__exports),['exports/logs-native.zip','exports/logs-native.zip'],'Both buttons save a native log bundle through Android');
+  const calls=await page.evaluate(()=>window.__calls);
+  assert(!calls.includes('state')&&!calls.includes('runtime_start'),'Offline log access must neither poll backend jobs nor start the runtime');
+  assert.deepEqual(errors,[],'UI JavaScript errors');console.log('PASS: categorized rules, field errors, controller lifecycle, and both log export buttons/readers after session failure with runtime closed');
  }finally{await browser.close();server.close();}
 })().catch(e=>{console.error(e);server.close();process.exitCode=1;});

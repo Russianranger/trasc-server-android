@@ -68,17 +68,15 @@ public final class MainActivity extends Activity {
             tasks.execute(()->{
                 try {
                     JSONObject args=new JSONObject(input);Object result;
-                    if(runtime.sessionBusy&&!operation.equals("native_state")&&!operation.equals("runtime_log"))throw new IOException("A complete session transfer is in progress");
+                    if(runtime.sessionBusy&&!operation.equals("native_state")&&!operation.equals("runtime_log")&&!operation.equals("logs"))throw new IOException("A complete session transfer is in progress");
                     switch(operation){
                         case "native_state": result=runtime.nativeState();break;
                         case "runtime_install": service();runtime.installOnline();result=runtime.nativeState();break;
                         case "runtime_start": service();runtime.start();result=runtime.nativeState();break;
                         case "runtime_stop": runtime.stop();stopService(new Intent(MainActivity.this,ServerService.class));result=runtime.nativeState();break;
-                        case "runtime_log": {
-                            File log=new File(runtime.work,"logs/runtime.log");String text="No runtime log yet.";
-                            if(log.exists())try(RandomAccessFile f=new RandomAccessFile(log,"r")){f.seek(Math.max(0,f.length()-64000));byte[] b=new byte[(int)(f.length()-f.getFilePointer())];f.readFully(b);text=new String(b,java.nio.charset.StandardCharsets.UTF_8);}
-                            result=new JSONObject().put("text",text);break;
-                        }
+                        case "runtime_log": result=runtime.logs("runtime.log");break;
+                        case "logs": result=runtime.logs(args.optString("name","control.log"));break;
+                        case "export_logs": service();result=runtime.exportLogs();break;
                         case "session_backup": service();runOnUiThread(()->controller.capture(false));result=runtime.backupSession();break;
                         case "controller_state": runOnUiThread(()->{try{reply(id,controller.state(),null);}catch(Exception e){reply(id,null,e);}});return;
                         case "controller_save": runOnUiThread(()->{try{controller.configure(args,true);reply(id,controller.state(),null);}catch(Exception e){reply(id,null,e);}});return;
@@ -91,7 +89,11 @@ public final class MainActivity extends Activity {
                             result=response.get("result");
                     }
                     reply(id,result,null);
-                }catch(Exception e){if(operation.startsWith("runtime_"))runtime.status=e.getMessage();reply(id,null,e);}
+                }catch(Exception e){
+                    if(operation.startsWith("runtime_"))runtime.status=e.getMessage();
+                    if(operation.startsWith("runtime_")||operation.equals("export_logs"))runtime.recordFailure(operation,e);
+                    reply(id,null,e);
+                }
             });
         }
     }
@@ -150,7 +152,7 @@ public final class MainActivity extends Activity {
                     runtime.beginInstall();try{runtime.installArchive(temp);}finally{runtime.installing=false;temp.delete();}
                     reply(id,runtime.nativeState(),null);
                 }else {runtime.status="File imported: "+name;reply(id,new JSONObject().put("file",unique).put("path","incoming/"+unique).put("name",name),null);}
-            }catch(Exception e){if(temp!=null)temp.delete();runtime.status=e.getMessage();reply(id,null,e);}
+            }catch(Exception e){if(temp!=null)temp.delete();runtime.status=e.getMessage();runtime.recordFailure(request==EXPORT?"save_export":"import_"+kind,e);reply(id,null,e);}
         });
     }
     @Override public boolean dispatchKeyEvent(KeyEvent event){return controller!=null&&controller.key(event)||super.dispatchKeyEvent(event);}

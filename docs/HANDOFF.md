@@ -2,6 +2,20 @@
 
 ## Current request
 
+Latest device report: Preview 0.2.0 session export fails with `Unsafe session path: runtime/var/lib/dpkg/info/binutils-common:arm64.conffiles`. Log export then fails with `Failed to connect to /127.0.0.1:18775`, because backup preparation closed the runtime. Fix both and publish an in-place APK update; preserve the existing world and signing key.
+
+### 0.2.1 fix in progress
+
+- Base: `fe84687345bcb4328ec6ab85a71c453829bd2073` (handoff after the published 0.2.0 code).
+- `SessionArchive.confined` accepts ordinary Linux colons and still rejects drive prefixes, traversal, absolute paths, backslashes and NULs. Both export and restore share the fix.
+- New platform-independent `LocalLogs` reads/lists/zips app and nested server logs without a backend; checks symlink parents/leaves, tails 64 KB for viewing and streams full snapshot lengths into bundles. Native status is included without loading credentials/settings/API tokens.
+- MainActivity routes logs/export_logs directly to Android. Both UI log export buttons now consume the direct result instead of polling Python jobs. Backup failure persists to app.log and explicitly reports stopped-runtime recovery. The game server is not automatically restarted.
+- Version 0.2.1 / code 5, same application ID and pinned certificate. No new runtime or server rebuild required.
+- Local checks: 29 Python tests passed; native host-JVM roundtrip/log regressions passed; JavaScript syntax and whitespace checks passed. CI now also backs up/restores the complete published Debian ARM64 runtime, verifying every file hash; UI regression simulates backup failure with backend unavailable and tests both log buttons and readers.
+- Publication and CI outcome will be recorded below after the build. Physical Thor acceptance is pending.
+
+## Previous feature request (retained context)
+
 Implement in `Russianranger/trasc-server-android`:
 
 1. All database rules in searchable, collapsible categories, with typed controls and field-specific validation for established limits.
@@ -41,7 +55,7 @@ The user explicitly declined any faction/deity change. Yukovis was a disposable 
 - Session archive excludes incoming/exports/run; includes rootfs, database, binaries, maps, logs, server data, source, builds, backups, configuration and client. Native restore works without Python and stages/validates before swapping. Previous session stays in work-session-previous/rootfs-session-previous.
 - Physical Android acceptance still pending: in-place update, rule editing, Nektulos apply/revert and complete session migration. Client execution remains unimplemented by design; controller input is a diagnostic/future injection boundary.
 
-## Verification and release
+## Previous release: 0.2.0
 
 Published **0.2.0**, version code **4**, on 2026-09-13.
 
@@ -59,7 +73,7 @@ Published **0.2.0**, version code **4**, on 2026-09-13.
 
 ## Next user/device pass
 
-1. Shut down the runtime in Preview 0.1.2; install 0.2.0 over it and reopen the runtime. No server rebuild/database reimport is needed.
+1. Install 0.2.1 over the existing Preview; follow the export regression pass in `docs/device-tests.md` first, starting with logs while the runtime is closed. No server rebuild/database reimport is needed.
 2. Test categorized rules, field validation and value persistence.
 3. Stop the server; test Nektulos Apply/Revert (then Apply again if desired).
 4. Create and externally save a complete session ZIP, then test restoration while retaining the working installation/external backup. Review login IP and check the character/world through the existing Winlator client.

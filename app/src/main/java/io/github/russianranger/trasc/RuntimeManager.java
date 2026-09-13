@@ -100,6 +100,22 @@ public final class RuntimeManager {
             .put("session_busy",sessionBusy)
             .put("status",status).put("free_bytes",home.getUsableSpace()).put("abi",android.os.Build.SUPPORTED_ABIS[0]);
     }
+    JSONObject logs(String name)throws Exception {
+        return new JSONObject().put("text",LocalLogs.tail(work,name))
+            .put("names",new org.json.JSONArray(LocalLogs.inventory(work).keySet()));
+    }
+    synchronized JSONObject exportLogs()throws Exception {
+        if(sessionBusy)throw new IOException("Wait for the complete session transfer before exporting logs");
+        // Only native diagnostics: no credentials, settings, API token or backend request.
+        JSONObject metadata=new JSONObject().put("version",BuildConfig.VERSION_NAME)
+            .put("created_utc",java.time.Instant.now().toString()).put("native",nativeState())
+            .put("android_sdk",android.os.Build.VERSION.SDK_INT).put("device",android.os.Build.MODEL);
+        File archive=LocalLogs.export(work,metadata.toString(2));
+        return new JSONObject().put("file","exports/"+archive.getName());
+    }
+    void recordFailure(String operation,Exception error) {
+        try{LocalLogs.failure(work,operation,error);}catch(IOException ignored){android.util.Log.e("TRASC",operation+" failed",error);}
+    }
     void installOnline() throws Exception {
         File manifest=new File(context.getCacheDir(),"runtime-manifest.json"), archive=new File(context.getCacheDir(),"runtime.tar.gz");
         beginInstall();
@@ -156,7 +172,12 @@ public final class RuntimeManager {
             if(alive())throw new IOException("Runtime must be stopped before copying session files");
             target.getParentFile().mkdirs();
             SessionArchive.create(rootfs,work,target,BuildConfig.VERSION_NAME,text->status=text);
+            status="Complete session ZIP ready. Runtime stopped; open runtime to continue.";
             return new JSONObject().put("file","exports/"+target.getName()).put("message","Complete session created. Save it outside the app. The runtime is stopped.");
+        } catch(Exception e) {
+            status="Session backup failed: "+e.getMessage()+(alive()?". See Logs for details.":". Runtime is stopped. Logs are still available; open runtime to continue.");
+            recordFailure("session_backup",e);
+            throw new IOException(status,e);
         } finally {sessionBusy=false;}
     }
     private File sessionJournal(){return new File(home,"session-swap.properties");}

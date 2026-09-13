@@ -25,6 +25,10 @@ public final class ManagementHostTest {
             Path runtime=tmp.resolve("rootfs"),work=tmp.resolve("work");
             write(runtime,"etc/trasc-runtime.json","{\"format\":1,\"architecture\":\"arm64\"}");
             write(runtime,"usr/bin/test","runtime binary");SessionArchive.chmod(runtime.resolve("usr/bin/test"),0755);
+            String multiarch="var/lib/dpkg/info/binutils-common:arm64.conffiles";
+            write(runtime,multiarch,"/etc/test.conf\n");
+            write(runtime,"var/lib/dpkg/info/libc6:arm64.list","/usr/lib/aarch64-linux-gnu/libc.so.6\n");
+            write(work,"logs/2026-09-13T15:16:00.log","timestamp filename");
             Files.createSymbolicLink(runtime.resolve("bin"),Paths.get("usr/bin"));
             write(work,"settings.json","{\"test\":true}");SessionArchive.chmod(work.resolve("settings.json"),0600);
             write(work,"server/bin/world","binary");SessionArchive.chmod(work.resolve("server/bin/world"),0755);
@@ -47,6 +51,11 @@ public final class ManagementHostTest {
             check(Files.readSymbolicLink(restored.resolve("rootfs/bin")).toString().equals("usr/bin"),"Runtime symlink preserved");
             check(Files.readSymbolicLink(restored.resolve("work/server/maps")).toString().equals("/work/maps"),"Guest absolute symlink preserved");
             check(Files.isDirectory(restored.resolve("work/run")),"Fresh process directory created");
+            check(Files.readString(restored.resolve("rootfs/"+multiarch)).equals("/etc/test.conf\n"),"Exact reported Debian multiarch filename must roundtrip");
+            check(Files.readString(restored.resolve("work/logs/2026-09-13T15:16:00.log")).equals("timestamp filename"),"Linux colon filenames must roundtrip in other components too");
+            for(String unsafe:new String[]{"/absolute","C:/Windows/file","c:relative","runtime/../escape","runtime//file","runtime/./file","runtime/back\\slash","runtime/nul\0file"}) {
+                try{SessionArchive.confined(tmp,unsafe);throw new AssertionError("Unsafe path accepted: "+unsafe);}catch(IOException expected){}
+            }
             File corrupt=tmp.resolve("corrupt.zip").toFile();rewriteZip(archive,corrupt,"maps/base/nektulos.map","bad data");
             try{SessionArchive.restore(corrupt,tmp.resolve("bad").toFile(),s->{});throw new AssertionError("Corrupt file accepted");}catch(IOException expected){check(expected.getMessage().contains("checksum"),"Corruption must be detected by hash");}
             String index;try(ZipFile z=new ZipFile(archive);InputStream in=z.getInputStream(z.getEntry(SessionArchive.INDEX))){index=new String(in.readAllBytes(),java.nio.charset.StandardCharsets.UTF_8);}
@@ -56,6 +65,38 @@ public final class ManagementHostTest {
             String conflicting=index+"F\t420\t0\t"+"0".repeat(64)+"\t"+SessionArchive.encode("server/maps/escape")+"\t\n";
             File links=tmp.resolve("link-attack.zip").toFile();rewriteZip(archive,links,SessionArchive.INDEX,conflicting);
             try{SessionArchive.restore(links,tmp.resolve("links").toFile(),s->{});throw new AssertionError("Link-child attack accepted");}catch(IOException expected){}
+            // No Python server/process exists in this test: diagnostics must be fully native.
+            LocalLogs.failure(work.toFile(),"session_backup",new IOException("simulated archive failure"));
+            write(work,"logs/operation.log","x".repeat(100000)+"LATEST");
+            write(work,"logs/runtime.log","runtime stopped");
+            write(work,"server/logs/zones/cabeast.log","nested zone log");
+            write(tmp,"outside/secret.log","do not export");
+            Files.createSymbolicLink(work.resolve("logs/secret.log"),tmp.resolve("outside/secret.log"));
+            Files.createSymbolicLink(work.resolve("logs/linked-directory"),tmp.resolve("outside"));
+            check(LocalLogs.tail(work.toFile(),"app.log").contains("simulated archive failure"),"Native backup error is readable after runtime failure");
+            String tail=LocalLogs.tail(work.toFile(),"operation.log");
+            check(tail.length()==LocalLogs.TAIL_BYTES&&tail.endsWith("LATEST"),"Log viewer returns bounded latest output");
+            check(LocalLogs.tail(work.toFile(),"server/zones/cabeast.log").equals("nested zone log"),"Nested server logs readable");
+            check(LocalLogs.tail(work.toFile(),"missing.log").equals("No log output yet."),"Missing log is not a connection failure");
+            Map<String,Path> names=LocalLogs.inventory(work.toFile());
+            check(names.containsKey("app.log")&&names.containsKey("server/zones/cabeast.log"),"Native inventory includes app and nested server logs");
+            check(!names.containsKey("secret.log")&&!names.containsKey("linked-directory/secret.log"),"Inventory never follows symlinks");
+            for(String unsafe:new String[]{"../settings.json","server/../../settings.json","secret.log","linked-directory/secret.log"}) {
+                try{LocalLogs.tail(work.toFile(),unsafe);throw new AssertionError("Unsafe log read accepted: "+unsafe);}catch(IOException expected){}
+            }
+            File bundle=LocalLogs.export(work.toFile(),"{\"native\":{\"alive\":false}}");
+            try(ZipFile z=new ZipFile(bundle)) {
+                check(z.getEntry("logs/operation.log").getSize()==100006,"Log bundle includes full output, not just the viewer tail");
+                for(String needed:new String[]{"logs/app.log","logs/runtime.log","server/logs/zones/cabeast.log","status.json","export-notes.txt"})check(z.getEntry(needed)!=null,"Missing log bundle entry: "+needed);
+                check(z.stream().noneMatch(e->e.getName().contains("secret")||e.getName().contains("settings")||e.getName().contains("api-token")),"Bundle excludes linked data and credentials");
+            }
+            Path empty=tmp.resolve("fresh-app");Files.createDirectories(empty);
+            try(ZipFile z=new ZipFile(LocalLogs.export(empty.toFile(),"{}"))){check(z.getEntry("status.json")!=null,"Fresh installation still exports diagnostics");}
+            Files.createSymbolicLink(empty.resolve("logs"),tmp.resolve("outside"));
+            try(ZipFile z=new ZipFile(LocalLogs.export(empty.toFile(),"{}"))){check(z.stream().noneMatch(e->e.getName().contains("secret")),"Symlinked log root cannot export outside data");}
+            Files.delete(empty.resolve("logs"));Files.createDirectory(empty.resolve("logs"));
+            Files.createSymbolicLink(empty.resolve("server"),tmp.resolve("outside"));
+            check(LocalLogs.inventory(empty.toFile()).isEmpty(),"Symlinked server parent is ignored");
             List<String> emitted=new ArrayList<>();
             ControllerInput input=new ControllerInput(new ControllerInput.Sink(){public void button(String a,boolean d){emitted.add(a+":"+d);}public void pointer(float x,float y){emitted.add("move");}public void wheel(int v){emitted.add("wheel:"+v);}});
             Map<String,String> bindings=ControllerInput.defaults();bindings.put("A","KeyW");bindings.put("B","KeyW");input.configure(bindings,.2f,700);
@@ -67,7 +108,7 @@ public final class ManagementHostTest {
             input.axis("RightLeft","RightRight",.8f);input.tick(.016f);check(emitted.contains("move"),"Analog pointer moves");
             input.value("L2",1);input.activate(false);check(emitted.contains("MouseRight:false"),"Focus loss releases mouse");
             emitted.clear();input.tick(.016f);check(emitted.isEmpty(),"No pointer motion after losing focus");
-            System.out.println("PASS: session components, checksums, traversal rejection, permissions, symlinks, controller focus, held-key reference counts and analog pointer");
+            System.out.println("PASS: Debian multiarch session roundtrip, checksums, traversal rejection, permissions, symlinks, native offline log reading/export, controller focus, held-key reference counts and analog pointer");
         } finally {TarExtractor.remove(tmp.toFile());}
     }
 }

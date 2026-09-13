@@ -46,7 +46,9 @@ final class SessionArchive {
     static String hex(byte[] data){StringBuilder b=new StringBuilder();for(byte v:data)b.append(String.format(Locale.ROOT,"%02x",v&255));return b.toString();}
     static MessageDigest sha()throws IOException {try{return MessageDigest.getInstance("SHA-256");}catch(NoSuchAlgorithmException e){throw new IOException(e);}}
     static Path confined(Path root,String name)throws IOException {
-        if(name.isEmpty()||name.startsWith("/")||name.contains("\\")||name.indexOf('\0')>=0||name.contains(":"))throw new IOException("Unsafe session path: "+name);
+        // Debian multiarch files use colons (e.g. binutils-common:arm64.conffiles).
+        // Reject drive-prefixed paths, not ordinary Linux filename characters.
+        if(name.isEmpty()||name.startsWith("/")||name.contains("\\")||name.indexOf('\0')>=0||name.matches("(?s)^[A-Za-z]:.*"))throw new IOException("Unsafe session path: "+name);
         for(String p:name.split("/",-1))if(p.isEmpty()||p.equals(".")||p.equals(".."))throw new IOException("Unsafe session path: "+name);
         Path out=root.resolve(name).normalize();
         if(!out.startsWith(root))throw new IOException("Session path escapes staging");
