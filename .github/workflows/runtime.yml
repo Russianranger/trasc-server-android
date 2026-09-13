@@ -28,7 +28,8 @@ jobs:
         run: |
           git clone --depth 1 --filter=blob:none --sparse https://github.com/Russianranger/Triptych-Triumvirate.git runtime-work/server-source
           git -C runtime-work/server-source sparse-checkout set Release-NMS-Server
-          docker run --rm -v "$PWD/runtime-work/server-source:/source:ro" trasc-runtime:1 bash -ec '
+          # This fork's bundled zlib runs a CMake probe inside its source directory.
+          docker run --rm -v "$PWD/runtime-work/server-source:/source" trasc-runtime:1 bash -ec '
             perl -MJSON -MDBI -MDBD::mysql -e "print qq(Quest modules available\n)"
             cmake -S /source/Release-NMS-Server -B /tmp/server-build -G Ninja -DCMAKE_BUILD_TYPE=Release -DEQEMU_BUILD_LOGIN=ON -DEQEMU_BUILD_SERVER=ON -DEQEMU_BUILD_CLIENT_FILES=ON -DEQEMU_PREFER_LUA=ON -DLUA_INCLUDE_DIR=/usr/include/lua5.1 -DLUA_LIBRARY=/usr/lib/aarch64-linux-gnu/liblua5.1.so
           '
