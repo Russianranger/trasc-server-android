@@ -1,18 +1,46 @@
 # Development handoff — 2026-09-13
 
-## Current request: embedded client (0.3.0 in progress)
+## Current milestone: embedded client 0.3.0
 
-The user confirmed: “Session backup and restore worked perfectly. control inputs work, client input works. Lets move to the next step with the client.” Latest bundle `logs-338733800756477711.zip` reports 0.2.1 on Thor Android 13, completed client ZIP import, and no current runtime-start failure. Do not redo server/database installation.
+The user confirmed: “Session backup and restore worked perfectly. control inputs work, client input works. Lets move to the next step with the client.” Latest bundle `logs-338733800756477711.zip` reports 0.2.1 on Thor Android 13, completed client ZIP import, and no current runtime-start failure. The confirmation concerns the previous input diagnostic; actual ROF2 execution inside this app remains the next physical test. Do not redo server/database installation.
 
-- Working branch: `codex/client-bootstrap`; main remains the tested 0.2.1 handoff commit `23f8421f59b37254a602464157d081cf43372b2c` until gates pass.
-- Client runtime: separate Debian rootfs in `work/client/runtime`, Wine 10.0 WoW64 + Box64 0.4.4, WineD3D/llvmpipe baseline, TigerVNC display over private Unix socket. No TCP VNC listener; X11 cookie authentication.
-- New files: `ClientRuntime`, `ClientActivity`, `RfbConnection`, `DisplayInput`, `backend/client_runner.py`, `client-runtime/Dockerfile`, client runtime build workflow/script and native Windows probe/integration tests.
-- Existing controller profile reaches actual native display; physical keyboard/mouse/touch also wired. Dialog Type/Send + Enter, focus-release and combined-input reference counts implemented. Client runtime/prefix are included by existing complete-session client component; temporary sockets live outside the archive. Backup/restore stops client first.
-- Client GUI includes online/offline runtime setup, Wine desktop, ROF2 launch, return/stop and server-data preparation. Preparation preserves original handshake/INI files and imported DLL; native trace is required to claim DLL load.
-- Runtime CI first failed on missing x86 `libgcc_s.so.1`; graphics/display already passed startup. Added Debian amd64 libgcc/libstdc++/libunwind plus Box64 library path. Run 34787655979 now executes PE32, loads the native test DLL and creates a D3D9 device. Corrected the display test to wait for successful Present and ignore the undefined RGB888 padding byte. Full feature checkpoint `38906ea34ce84fcd1f79477b55557f6d7088f3a4` passed real PE32/native-DLL/D3D9 pixels/input in ARM64 run 34788312176. APK/UI/database run 34788312260 is pending; the following checkpoint also adds full client-runtime archive roundtrip verification before publication.
-- Initial local validation: 34 Python tests passed, native JVM archive/RFB/input tests passed, JS syntax passed. APK/UI/ARM64 full client probe checks still pending for the complete feature checkpoint.
-- Client documentation: `docs/client-runtime.md`; first physical goal Wine desktop, then ROF2 startup/login with native dinput8 trace. Software graphics only; sound and hardware acceleration remain later work. Do not claim actual ROF2 acceptance until user reports it.
-- Preserve the existing application ID and pinned signing certificate. Target APK 0.3.0 / version code 6. Server runtime remains 1.1. Update this section with final code/run/artifact identifiers once published.
+### Code and verification
+
+- Client milestone merged into main: `a472dea0d914f6279a2d4179920d0b050823ec07`, developed on `codex/client-bootstrap`. APK 0.3.0 / version code 6. Server runtime stays 1.1.
+- Final branch APK/UI/database workflow: https://github.com/Russianranger/trasc-server-android/actions/runs/34788669730 — passed.
+- Final branch ARM64 client workflow: https://github.com/Russianranger/trasc-server-android/actions/runs/34788669699 — passed.
+- Main release workflow: https://github.com/Russianranger/trasc-server-android/actions/runs/34788877454 — all jobs passed; signed APK and client runtime published. Both release tags point to the code commit above. This handoff-only follow-up changes no APK/runtime code.
+- 34 Python tests passed; host JVM archive/RFB/input tests passed; management browser flows passed; Android compilation/lint passed. Existing full server-runtime archive, offline seed import, SQL/rules and cold database migration checks passed.
+- Real ARM64 probe passed: Box64/Wine executes our own PE32 Windows EXE, loads our native test dinput8 DLL, presents Direct3D9 pixels through the private RFB socket, and receives mouse/keyboard events. The probe contains no EverQuest code. This does not establish compatibility with the user's modified ROF2 client.
+- The actual client runtime archive passed production TarExtractor/SessionArchive extraction and full roundtrip: executable permissions, multiarch paths, file inventory and all restored hashes verified. Existing full server runtime has its own separate gate.
+- Development issues resolved: missing emulated x86 libgcc/libstdc++/libunwind; display test waited too early and assumed a value for RGB888's undefined padding byte; client-only archive fixture needed the required server marker. Do not weaken production archive checks to accommodate test fixtures.
+
+### Published artifacts
+
+- APK: https://github.com/Russianranger/trasc-server-android/releases/download/preview/trasc-server-android-preview.apk — 250,918 bytes; SHA-256 `e96e53c6347470ea3f19f7be1edb67e64004fec0ed6bc6310eda859e0f9381df`.
+- Client runtime: https://github.com/Russianranger/trasc-server-android/releases/download/client-runtime-v1/client-runtime-arm64.tar.gz — 353,710,645 bytes; SHA-256 `31fa8092b9679d861e853542d0ee05a7762c5740398b5efe8271486b64a98e18`.
+- `preview-build.json` identifies 0.3.0 / code commit above / the preserved application ID and certificate. `client-runtime-manifest.json` identifies client-1.0 / the same source commit / matching archive hash and bytes. Both tags and asset digests were read back from GitHub; the downloaded APK hash and manifest contents were independently checked.
+- Main release gates passed: 34 Python tests, host JVM, browser flows, APK compile/lint/preserved signing certificate, full server database/runtime integration, actual ARM64 Windows/DLL/Direct3D/input probe, actual client-runtime archive roundtrip.
+- Reuse the existing server runtime and imported game. Only the separate client runtime is new. Actual Thor Wine/ROF2 acceptance remains pending.
+
+### Implementation
+
+- Separate Debian rootfs in `work/client/runtime`, Wine 10.0 WoW64 + pinned Box64 0.4.4, WineD3D/llvmpipe baseline. Existing server rootfs/database is retained.
+- `ClientRuntime` uses the packaged PRoot loader for the second environment; it installs the release runtime online with checksum validation or from an offline archive, and preserves the prefix/game during replacement.
+- `backend/client_runner.py` supervises Wine and TigerVNC. RFB listens only on a private Unix socket, mode 0600; no TCP RFB/X11 listeners, random X11 authorization cookie. Prefix initialization is bounded and supports stopping.
+- `ClientActivity`, `RfbConnection`, `DisplayInput` implement native display, saved controller mappings, touch, physical keyboard/mouse, text Type/Send + Enter, focus releases and combined input reference counts. Android Back returns to management without stopping the client.
+- Client tab offers runtime setup, Wine desktop, resolution, ROF2 launch, return/stop and preparation. Preparation generates the four handshake files into the root/Resources, writes login endpoint and windowed resolution, preserves unrelated INI settings/DLL, and retains originals in `backups/client-setup/` with rollback on errors.
+- Native dinput8 is the default request (`dinput8=n`); PE32 executable/DLL architecture must match. Only Wine's actual native loaddll trace marks it confirmed. Built-in mode is an explicit diagnostic comparison. Desktop mode does not claim DLL loading.
+- Client start is coordinated with queued/running import/preparation jobs. Rejecting a second launch does not kill the current client. Stopping the server runtime retains the foreground service while the client is active; notification Shut down stops both.
+- Client runtime, imported files, controller profile and Wine prefix are part of the complete session client component. Temporary sockets/auth/process state stay under home/tmp outside archives. Complete backup/restore stops the client first. Prefix D: maps to `/client`.
+- Logs include client-runtime.log, client-wine.log, client-display.log, client-graphics.log and client-state.json; native log export remains usable with the server closed.
+- Build recipes/workflow live in `client-runtime/`, `scripts/build-client-runtime.sh`, `.github/workflows/client-runtime.yml`. Main preview publication is gated on the client workflow as well as APK/database jobs. Sources accompany runtime binaries.
+
+### Next device pass
+
+Follow `docs/client-runtime.md`: update in place, download the separate client runtime, try Wine desktop at 800x600, stop, prepare the already imported client, start the server, then launch ROF2 with native dinput8 enabled. Return and export Logs after the attempt, reporting visible screen/error and native DLL status. No server rebuild, seed import or client ZIP reimport is needed for the update.
+
+Software graphics only. Hardware acceleration, sound, performance tuning and actual ROF2 login/world entry remain unverified/later work. Keep the existing Winlator fallback. Preserve application ID `io.github.russianranger.trasc.preview` and pinned certificate `ff9c09cdc3e2404d1d7f72d61ce2f8651464f5e03dff340f70bd4df28c70e869`; never regenerate a lost preview key.
 
 ## Previous request: 0.2.1 export fixes
 
@@ -31,7 +59,7 @@ Latest device report: Preview 0.2.0 session export fails with `Unsafe session pa
 - Actual runtime roundtrip passed using the production TarExtractor/SessionArchive classes: more than 28,000 regular files restored with SHA-256 verification, plus inventory counts and executable-mode checks. The exact `binutils-common:arm64.conffiles` path roundtripped.
 - ARM64 full seed import, rules/SQL checks and cold database migration passed. Browser tests passed both native log export buttons and nested log reading after a simulated session failure with the backend unavailable. APK compilation, Android lint and the pinned-certificate check passed.
 - APK: https://github.com/Russianranger/trasc-server-android/releases/download/preview/trasc-server-android-preview.apk — **225,637 bytes**, SHA-256 `5667d5fc697cc48f347b2952b5065c8405083c3ad0aeae652a7fffa66136a2aa`. Release asset and preview tag were read back from GitHub after publication.
-- Runtime 1.1 and the pinned signing certificate remain unchanged. Physical Thor acceptance is pending; ask the user to start with log export while closed, then complete session export/restore. No reset, recompile or database reimport is required for this APK update.
+- Runtime 1.1 and the pinned signing certificate remain unchanged. The user subsequently confirmed session backup/restore and input on Thor; preserve those working paths. No reset, recompile or database reimport is required for this APK update.
 
 ## Previous feature request (retained context)
 
@@ -90,13 +118,6 @@ Published **0.2.0**, version code **4**, on 2026-09-13.
 - `gradle --no-daemon :app:assembleDebug :app:lintDebug`: passed; stable-signature verification and preview publication passed.
 - Preview tag and final APK release asset were read back from GitHub to verify the published commit and checksum.
 
-## Next user/device pass
+## Current device follow-up
 
-1. Install 0.2.1 over the existing Preview; follow the export regression pass in `docs/device-tests.md` first, starting with logs while the runtime is closed. No server rebuild/database reimport is needed.
-2. Test categorized rules, field validation and value persistence.
-3. Stop the server; test Nektulos Apply/Revert (then Apply again if desired).
-4. Create and externally save a complete session ZIP, then test restoration while retaining the working installation/external backup. Review login IP and check the character/world through the existing Winlator client.
-5. Investigate any returned support bundle against `docs/device-tests.md`.
-6. Client import/input groundwork is delivered; user explicitly deferred client tests. Actual Windows client execution, rendering and dinput8 loading remain the next development phase.
-
-Do not claim the new features have passed physical-device acceptance until the user reports results.
+The 0.2.1 backup/restore and input pass is confirmed by the user. Continue with the 0.3.0 client sequence at the top of this file and in `docs/client-runtime.md`. Retain `docs/device-tests.md` for server regressions if a later support bundle indicates one. Do not claim actual ROF2 device acceptance until the user reports results.
