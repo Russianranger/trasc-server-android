@@ -64,6 +64,11 @@ class ManagedContent:
         if self.server_running(): raise ValueError('Stop the server before changing Nektulos maps')
         self.recover_nektulos()
         if self.nektulos_status()['applied']:
+            for name in NEKTULOS:
+                live = safe_path(self.work / 'maps', name)
+                legacy = safe_path(self.work / 'maps', 'legacy/' + name)
+                if not live.is_file() or not legacy.is_file() or digest(live) != digest(legacy):
+                    raise ValueError('Nektulos files changed since Apply. Use Revert Nektulos before applying again; the intervening files will be backed up.')
             return {'message': 'Legacy Nektulos maps are already applied. The original backup is still retained.'}
         for name in NEKTULOS:
             src = safe_path(self.work / 'maps', 'legacy/' + name, True)

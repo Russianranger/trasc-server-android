@@ -33,13 +33,13 @@ The user explicitly declined any faction/deity change. Yukovis was a disposable 
 
 - Feature implementation is present locally: `rule_catalog.py`, `managed_content.py`, expanded Engine; native `SessionArchive`, `ControllerInput`, `ControllerManager`; RuntimeManager/MainActivity integration; rules/client UI and docs.
 - APK version 0.2.0 / code 4; application ID/signing unchanged. Runtime 1.1 remains compatible.
-- Local Python: 28 tests passed. Host JVM archive/input tests passed (the local javac launcher is missing, but `java -m jdk.compiler/com.sun.tools.javac.Main` works; script includes fallback).
+- Local Python: 29 tests passed (including detection of map edits/imports after Apply). Host JVM archive/input tests passed (the local javac launcher is missing, but `java -m jdk.compiler/com.sun.tools.javac.Main` works; script includes fallback).
 - Source parsing found all 1,122 active rules, 47 categories; no definitions missed. Static JS syntax and HTML-ID checks passed.
-- Expanded ARM64 integration now checks all-rule visibility, escaped values, invalid-batch atomicity, clean snapshot/shutdown and cold physical database migration. CI has not run these changes yet.
-- Remaining: browser UI verification, CI Android compilation/lint and ARM64 integration, address failures, publish and verify signed APK. No new device acceptance claimed.
-- Local browser download is unavailable/timing out; browser checks can run in CI.
+- Expanded ARM64 integration now checks all-rule visibility, escaped values, invalid-batch atomicity, clean snapshot/shutdown and cold physical database migration. The ARM64 job in workflow 34770980656 passed these checks, including the actual full seed import and cold database restore.
+- Workflow 34770980656 passed backend tests, host JVM session/input tests, browser UI checks, ARM64 integration, APK compilation/lint and the pinned signing check. Its feature commit is `0eef6dcef9278d4881071d2681af1dd7fe9c8fd3`. A small follow-up adds explicit detection of maps changed since Apply; its final build/release still needs verification. No new device acceptance claimed.
+- Browser tests ran successfully in CI with Playwright 1.55.0. They cover 1,105 fixture rules, collapsed/lazy categories, tiny/negative values, bounds errors, changed-only saves, controller binding save and capture release, and mobile horizontal overflow. UI screenshots are in the workflow artifact `management-ui-reports`; downloading its temporary file URL locally returned HTTP 403, so do not claim manual screenshot inspection.
 - Session archive excludes incoming/exports/run; includes rootfs, database, binaries, maps, logs, server data, source, builds, backups, configuration and client. Native restore works without Python and stages/validates before swapping. Previous session stays in work-session-previous/rootfs-session-previous.
-- Watch remaining review concerns: native archive restore/activation, Android API lint, large rule UI and cold DB roundtrip. Do not claim tests passed until CI confirms.
+- Physical Android acceptance still pending: in-place update, rule editing, Nektulos apply/revert and complete session migration. Client execution remains unimplemented by design; controller input is a diagnostic/future injection boundary.
 
 ## Verification and release
 

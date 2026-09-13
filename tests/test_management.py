@@ -48,6 +48,15 @@ class ManagementTests(unittest.TestCase):
         for name in NEKTULOS:
             self.assertEqual((self.root / 'maps' / name).read_text(), 'original ' + name)
 
+    def test_reapply_detects_intervening_map_import_or_edit(self):
+        self.maps()
+        self.engine.fix_nektulos({})
+        (self.root / 'maps/base/nektulos.map').write_text('later map import')
+        with self.assertRaisesRegex(ValueError, 'changed since Apply'): self.engine.fix_nektulos({})
+        self.engine.revert_nektulos({})
+        saved = list((self.root / 'backups/nektulos').glob('before-revert-*/base/nektulos.map'))
+        self.assertEqual(saved[0].read_text(), 'later map import')
+
     def test_second_map_copy_failure_rolls_back_both_files(self):
         self.maps()
         copy = shutil.copy2
