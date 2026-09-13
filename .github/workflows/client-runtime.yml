@@ -1,0 +1,54 @@
+name: Build embedded client runtime
+on:
+  push:
+    branches: [main, codex/client-bootstrap]
+    paths: ['client-runtime/**', 'scripts/build-client-runtime.sh', 'backend/client_runner.py', 'tests/*client*', '.github/workflows/client-runtime.yml']
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  client-runtime:
+    runs-on: ubuntu-24.04-arm
+    timeout-minutes: 60
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v4
+      - name: Build isolated ARM64 Wine and display runtime
+        run: bash scripts/build-client-runtime.sh
+      - name: Compile our own Windows 32-bit test program and DLL
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y gcc-mingw-w64-i686
+          mkdir -p runtime-work/client-test/client runtime-work/client-test/logs
+          i686-w64-mingw32-gcc tests/client_probe.c -o runtime-work/client-test/client/eqgame.exe -mwindows -ld3d9
+          i686-w64-mingw32-gcc tests/client_probe_dll.c -shared -o runtime-work/client-test/client/dinput8.dll
+      - name: Verify real PE32 launch, native DLL, Direct3D9 and display input on ARM64
+        run: |
+          docker run --rm --network none \
+            -v "$PWD/backend:/opt/trasc-client:ro" -v "$PWD/tests:/tests:ro" \
+            -v "$PWD/runtime-work/client-test/client:/client" \
+            -v "$PWD/runtime-work/client-test/logs:/logs" \
+            trasc-client:1 python3 /tests/integration_client.py
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: client-runtime-verification
+          path: |
+            runtime-work/client-test/logs/
+            runtime-work/client-test/client/probe-*.json
+            runtime-work/client-test/client/probe-*.txt
+      - uses: actions/upload-artifact@v4
+        with:
+          name: client-runtime
+          path: dist/client-runtime*
+      - name: Publish separate online and offline client runtime
+        if: github.ref == 'refs/heads/main'
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          if ! gh release view client-runtime-v1 >/dev/null 2>&1; then
+            gh release create client-runtime-v1 --prerelease --title 'Embedded client runtime 1.0' --notes 'App-private ARM64 Debian, Wine 10.0 WoW64, Box64 0.4.4 and software graphics. No EverQuest files included. Native Windows DLL, Direct3D9, keyboard and mouse verified with an open test program; ROF2 device testing remains required.'
+          fi
+          gh api --method PATCH "repos/$GITHUB_REPOSITORY/git/refs/tags/client-runtime-v1" -f sha="$GITHUB_SHA" -F force=true
+          gh release upload client-runtime-v1 dist/client-runtime-arm64.tar.gz dist/client-runtime-manifest.json dist/client-runtime-sources.tar.gz --clobber
