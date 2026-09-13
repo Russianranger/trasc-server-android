@@ -40,4 +40,5 @@ jobs:
           if ! gh release view runtime-v1 >/dev/null 2>&1; then
             gh release create runtime-v1 --prerelease --title 'ARM64 runtime v1' --notes 'App-private Debian ARM64 runtime with database and compiler. Import runtime-arm64.tar.gz in the APK for offline setup. Package list and license notices are included inside the archive.'
           fi
+          gh api --method PATCH "repos/$GITHUB_REPOSITORY/git/refs/tags/runtime-v1" -f sha="$GITHUB_SHA" -F force=true
           gh release upload runtime-v1 dist/runtime-arm64.tar.gz dist/runtime-manifest.json --clobber

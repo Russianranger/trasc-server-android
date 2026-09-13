@@ -7,6 +7,6 @@ This is the first TRASC Server Android preview for ARM64 devices, targeting the 
 
 The APK is a development build. Physical Android runtime, compilation, zone persistence and Winlator connectivity still need device acceptance testing. Automated build checks are not a claim that these have passed on the Thor.
 
-Updates to this preview may require reinstalling if GitHub's ephemeral debug signing key changes. **Export your database and edited files before uninstalling.** Do not clear app storage to update the runtime.
+Main builds cache the preview signing key so later APKs can normally be installed over this one. If that cache is lost, a changed debug key can require reinstalling. **Export your database and edited files before uninstalling.** Do not clear app storage to update the runtime. `preview-build.json` identifies the exact source commit and APK checksum.
 
 See the repository README and `docs/device-tests.md` for setup, scope and the test sequence. Client integration remains a later phase; the app exports the four database-generated client files for your current Winlator client.

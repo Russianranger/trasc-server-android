@@ -24,6 +24,12 @@ jobs:
       - uses: gradle/actions/setup-gradle@v4
         with:
           gradle-version: '8.11.1'
+      - name: Reuse preview signing key between main builds
+        if: github.ref == 'refs/heads/main'
+        uses: actions/cache@v4
+        with:
+          path: ~/.android/debug.keystore
+          key: trasc-preview-signing-v1
       - name: Test control backend
         run: python3 -m unittest discover -s tests -v
       - name: Build packaged Android launcher
@@ -63,6 +69,13 @@ jobs:
           if ! gh release view preview >/dev/null 2>&1; then
             gh release create preview --prerelease --title 'TRASC Android preview' --notes-file docs/preview-notes.md
           fi
+          gh api --method PATCH "repos/$GITHUB_REPOSITORY/git/refs/tags/preview" -f sha="$GITHUB_SHA" -F force=true
+          python3 - <<'PY'
+          import hashlib,json,os,pathlib
+          p=pathlib.Path('dist/trasc-server-android-preview.apk')
+          pathlib.Path('dist/preview-build.json').write_text(json.dumps({'commit':os.environ['GITHUB_SHA'],'sha256':hashlib.sha256(p.read_bytes()).hexdigest(),'file':p.name,'version':'0.1.0'},indent=2))
+          PY
           gh release upload preview dist/trasc-server-android-preview.apk --clobber
           gh release upload preview dist/dist/launcher-sources.tar.gz --clobber
+          gh release upload preview dist/preview-build.json --clobber
           gh release edit preview --notes-file docs/preview-notes.md

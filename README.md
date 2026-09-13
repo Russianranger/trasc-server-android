@@ -93,7 +93,7 @@ python3 -m unittest discover -s tests -v
 gradle :app:assembleDebug :app:lintDebug
 ```
 
-Build the runtime on an ARM64 Docker host with `bash scripts/build-runtime.sh`. `tests/integration_runtime.py` checks real MariaDB import, rules, SQL and backup/restore inside that image. GitHub workflows build and publish both deliverables. The APK is debug-signed; runner key changes can prevent installing it over an earlier preview. Export before uninstalling. Stable release signing is a later release-management step.
+Build the runtime on an ARM64 Docker host with `bash scripts/build-runtime.sh`. `tests/integration_runtime.py` checks real MariaDB import, rules, SQL and backup/restore inside that image. GitHub workflows build and publish both deliverables. Main builds cache the debug signing key for preview updates; losing the cache can require reinstalling. Export before uninstalling. Stable production signing is a later release-management step. Release manifests identify each artifact's source commit and checksum, and preview tags follow the published builds.
 
 ## Tests and scope
 
