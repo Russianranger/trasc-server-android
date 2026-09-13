@@ -31,16 +31,39 @@ The user explicitly declined any faction/deity change. Yukovis was a disposable 
 
 ## Progress
 
-- Feature implementation is present locally: `rule_catalog.py`, `managed_content.py`, expanded Engine; native `SessionArchive`, `ControllerInput`, `ControllerManager`; RuntimeManager/MainActivity integration; rules/client UI and docs.
+- Feature implementation is committed and published: `rule_catalog.py`, `managed_content.py`, expanded Engine; native `SessionArchive`, `ControllerInput`, `ControllerManager`; RuntimeManager/MainActivity integration; rules/client UI and docs.
 - APK version 0.2.0 / code 4; application ID/signing unchanged. Runtime 1.1 remains compatible.
 - Local Python: 29 tests passed (including detection of map edits/imports after Apply). Host JVM archive/input tests passed (the local javac launcher is missing, but `java -m jdk.compiler/com.sun.tools.javac.Main` works; script includes fallback).
 - Source parsing found all 1,122 active rules, 47 categories; no definitions missed. Static JS syntax and HTML-ID checks passed.
 - Expanded ARM64 integration now checks all-rule visibility, escaped values, invalid-batch atomicity, clean snapshot/shutdown and cold physical database migration. The ARM64 job in workflow 34770980656 passed these checks, including the actual full seed import and cold database restore.
-- Workflow 34770980656 passed backend tests, host JVM session/input tests, browser UI checks, ARM64 integration, APK compilation/lint and the pinned signing check. Its feature commit is `0eef6dcef9278d4881071d2681af1dd7fe9c8fd3`. A small follow-up adds explicit detection of maps changed since Apply; its final build/release still needs verification. No new device acceptance claimed.
+- Final workflow **34771227274** passed all gates and published the APK from **bf9c8d718f177c08af6c0bd1036c9e4d249a85c8**. This includes detection of map edits/imports after Apply: revert first, preserving intervening files. No new device acceptance claimed.
 - Browser tests ran successfully in CI with Playwright 1.55.0. They cover 1,105 fixture rules, collapsed/lazy categories, tiny/negative values, bounds errors, changed-only saves, controller binding save and capture release, and mobile horizontal overflow. UI screenshots are in the workflow artifact `management-ui-reports`; downloading its temporary file URL locally returned HTTP 403, so do not claim manual screenshot inspection.
 - Session archive excludes incoming/exports/run; includes rootfs, database, binaries, maps, logs, server data, source, builds, backups, configuration and client. Native restore works without Python and stages/validates before swapping. Previous session stays in work-session-previous/rootfs-session-previous.
 - Physical Android acceptance still pending: in-place update, rule editing, Nektulos apply/revert and complete session migration. Client execution remains unimplemented by design; controller input is a diagnostic/future injection boundary.
 
 ## Verification and release
 
-Update this section with actual commands/results and final commit/workflow/APK details before handoff. Device tests for the new features remain pending until the user reports results.
+Published **0.2.0**, version code **4**, on 2026-09-13.
+
+- Code commit / preview tag: `bf9c8d718f177c08af6c0bd1036c9e4d249a85c8`. This handoff-only update follows it; no APK code changes accompany these notes.
+- Final successful workflow: https://github.com/Russianranger/trasc-server-android/actions/runs/34771227274
+- APK: https://github.com/Russianranger/trasc-server-android/releases/download/preview/trasc-server-android-preview.apk
+- APK size: **221,721 bytes**. GitHub release asset SHA-256: `1627425c11235269cbf629fc1107ddc4d349afe2e2ccb8a1c21480c93d351a98`.
+- Pinned certificate: `ff9c09cdc3e2404d1d7f72d61ce2f8651464f5e03dff340f70bd4df28c70e869`; APK verification passed in CI before publication.
+- `python3 -m unittest discover -s tests -v`: **29 passed**.
+- `bash scripts/check-management.sh`: passed JVM archive/input checks.
+- `node tests/ui_management.cjs`: passed browser management-flow checks in CI.
+- ARM64 database job: reproduced original hostname failure, imported the full pinned seed offline, then passed rule inheritance/editor validation, SQL/backup/restore and cold physical database migration.
+- `gradle --no-daemon :app:assembleDebug :app:lintDebug`: passed; stable-signature verification and preview publication passed.
+- Preview tag and final APK release asset were read back from GitHub to verify the published commit and checksum.
+
+## Next user/device pass
+
+1. Shut down the runtime in Preview 0.1.2; install 0.2.0 over it and reopen the runtime. No server rebuild/database reimport is needed.
+2. Test categorized rules, field validation and value persistence.
+3. Stop the server; test Nektulos Apply/Revert (then Apply again if desired).
+4. Create and externally save a complete session ZIP, then test restoration while retaining the working installation/external backup. Review login IP and check the character/world through the existing Winlator client.
+5. Investigate any returned support bundle against `docs/device-tests.md`.
+6. Client import/input groundwork is delivered; user explicitly deferred client tests. Actual Windows client execution, rendering and dinput8 loading remain the next development phase.
+
+Do not claim the new features have passed physical-device acceptance until the user reports results.
