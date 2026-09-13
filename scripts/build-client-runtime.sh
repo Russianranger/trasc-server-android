@@ -2,7 +2,12 @@
 set -euo pipefail
 cd "$(dirname "$0")/.."
 mkdir -p dist runtime-work/client-sources
-docker build --platform linux/arm64 -t trasc-client:1 client-runtime
+if [ -f runtime-work/client-image.tar ]; then
+    docker load -i runtime-work/client-image.tar
+else
+    docker build --platform linux/arm64 -t trasc-client:1 client-runtime
+    docker save trasc-client:1 -o runtime-work/client-image.tar
+fi
 client_container=$(docker create --platform linux/arm64 trasc-client:1)
 trap 'docker rm -f "$client_container" >/dev/null 2>&1 || true' EXIT
 docker export "$client_container" -o runtime-work/client-rootfs.tar

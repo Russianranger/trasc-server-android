@@ -72,6 +72,8 @@ class Supervisor:
         self.status.update(fields)
         p = SESSION / 'status.json'; tmp = p.with_suffix('.new')
         tmp.write_text(json.dumps(self.status, indent=2)); os.replace(tmp, p)
+        report = LOGS / 'client-state.json'; tmp = report.with_suffix('.new')
+        tmp.write_text(json.dumps(self.status, indent=2)); os.replace(tmp, report)
 
     def stopping(self):
         return stop_requested or (SESSION / 'stop').exists()
@@ -153,6 +155,7 @@ class Supervisor:
                 except ProcessLookupError: pass
                 child.wait()
         (SESSION / 'display.sock').unlink(missing_ok=True)
+        self.update(display_ready=False)
 
 
 def main():

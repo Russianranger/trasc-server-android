@@ -6,7 +6,26 @@ on:
   workflow_dispatch:
 permissions:
   contents: read
+  actions: read
 jobs:
+  previous-diagnostics:
+    if: github.ref == 'refs/heads/codex/client-bootstrap'
+    runs-on: ubuntu-latest
+    steps:
+      - name: Read previous failed client test diagnostics
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          previous_run=$(gh api "repos/$GITHUB_REPOSITORY/actions/workflows/client-runtime.yml/runs?status=failure&per_page=1" --jq '.workflow_runs[0].id // empty')
+          if [ -n "$previous_run" ]; then
+            gh run download "$previous_run" -R "$GITHUB_REPOSITORY" -n client-runtime-verification -D previous-logs
+            python3 - <<'PY'
+          from pathlib import Path
+          for p in Path('previous-logs').rglob('*.log'):
+              print(p.name)
+              print(p.read_text(errors='replace')[-18000:])
+          PY
+          fi
   client-runtime:
     runs-on: ubuntu-24.04-arm
     timeout-minutes: 60
@@ -14,6 +33,10 @@ jobs:
       contents: write
     steps:
       - uses: actions/checkout@v4
+      - uses: actions/cache@v4
+        with:
+          path: runtime-work/client-image.tar
+          key: client-image-arm64-${{ hashFiles('client-runtime/Dockerfile') }}
       - name: Build isolated ARM64 Wine and display runtime
         run: bash scripts/build-client-runtime.sh
       - name: Compile our own Windows 32-bit test program and DLL
@@ -38,6 +61,15 @@ jobs:
             runtime-work/client-test/logs/
             runtime-work/client-test/client/probe-*.json
             runtime-work/client-test/client/probe-*.txt
+      - name: Show client diagnostics on failure
+        if: failure()
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path
+          for p in Path('runtime-work/client-test/logs').glob('*'):
+              print(p.name)
+              print(p.read_text(errors='replace')[-18000:])
+          PY
       - uses: actions/upload-artifact@v4
         with:
           name: client-runtime
