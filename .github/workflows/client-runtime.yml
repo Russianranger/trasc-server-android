@@ -66,6 +66,12 @@ jobs:
         with:
           name: client-runtime
           path: dist/client-runtime*
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+      - name: Verify client runtime installer and complete session roundtrip
+        run: bash scripts/check-management.sh dist/client-runtime-arm64.tar.gz
       - name: Publish separate online and offline client runtime
         if: github.ref == 'refs/heads/main'
         env:

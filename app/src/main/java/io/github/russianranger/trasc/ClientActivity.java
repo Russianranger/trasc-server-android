@@ -108,6 +108,7 @@ public final class ClientActivity extends Activity {
         void connect(){new Thread(()->{
             try {
                 LocalSocket local=new LocalSocket();socket=local;
+                if(closed)return;
                 local.connect(new LocalSocketAddress(runtime.displaySocket().getPath(),LocalSocketAddress.Namespace.FILESYSTEM));
                 local.setSoTimeout(15000);
                 RfbConnection r=new RfbConnection(local.getInputStream(),local.getOutputStream(),this);r.handshake();

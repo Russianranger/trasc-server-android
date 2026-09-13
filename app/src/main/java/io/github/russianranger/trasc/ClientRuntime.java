@@ -65,6 +65,8 @@ final class ClientRuntime {
     }
     private void activate(File archive)throws Exception {
         File staging=new File(server.home,"client-runtime-install"),previous=new File(server.work,"client/runtime-previous");
+        // Recover an interrupted swap before removing any prior installation.
+        if(!root.exists()&&previous.exists()&&!previous.renameTo(root))throw new IOException("Could not recover the previous client runtime");
         TarExtractor.remove(staging);staging.mkdirs();
         try {
             TarExtractor.extract(archive,staging,n->status="Unpacking client runtime · "+n+" files");

@@ -32,4 +32,4 @@ Backups contain accounts, credentials and client files and are not encrypted. Sa
 
 **Older 0.1.0/0.1.1 installations:** their signing key was lost before 0.1.2, so this Preview application installs alongside them. Their data is not transferred automatically. Export the database, source/maps archives and edited files, stop the old runtime, and import into Preview. Do not uninstall the old app until migration is verified. Only run one runtime at a time because the ports are shared.
 
-`preview-build.json` identifies the exact commit, APK checksum, application ID and signing certificate. Publication requires backend/JVM tests, ARM64 database integration, APK compilation and lint. New Android management workflows still require the user's device acceptance tests.
+`preview-build.json` identifies the exact commit, APK checksum, application ID and signing certificate. Publication requires backend/JVM tests, ARM64 database integration, the Windows/DLL/Direct3D/input probe, full client-runtime archive roundtrip, APK compilation and lint. New Android management workflows still require the user's device acceptance tests.
