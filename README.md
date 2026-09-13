@@ -6,6 +6,8 @@ A standalone Android control app for [Russianranger/Triptych-Triumvirate](https:
 
 ## Downloads and first setup
 
+**Runtime 1.1 update:** fixes the missing `uuid/uuid.h` compilation error by including `uuid-dev`. Existing users can select **Setup → Shut down runtime → Download runtime**, then retry **Build imported source**. This preserves imported files and the build cache; no APK reinstall is needed. [Runtime update details](docs/runtime-release-notes.md).
+
 - [Android preview release](https://github.com/Russianranger/trasc-server-android/releases/tag/preview): install the APK once the Android workflow succeeds.
 - [ARM64 runtime release](https://github.com/Russianranger/trasc-server-android/releases/tag/runtime-v1): the app downloads this automatically, or you can transfer `runtime-arm64.tar.gz` for offline installation.
 - [Build status](https://github.com/Russianranger/trasc-server-android/actions).

@@ -23,6 +23,6 @@ with tarfile.open(a.input,'r|') as source, tarfile.open(out,'w:gz',format=tarfil
 digest=hashlib.sha256()
 with out.open('rb') as f:
     for b in iter(lambda:f.read(1024*1024),b''):digest.update(b)
-manifest={'format':1,'architecture':'arm64','file':out.name,'sha256':digest.hexdigest(),'bytes':out.stat().st_size,'runtime':'1','source_commit':os.environ.get('GITHUB_SHA','local')}
+manifest={'format':1,'architecture':'arm64','file':out.name,'sha256':digest.hexdigest(),'bytes':out.stat().st_size,'runtime':'1.1','source_commit':os.environ.get('GITHUB_SHA','local')}
 out.with_name('runtime-manifest.json').write_text(json.dumps(manifest,indent=2)+'\n')
 print(json.dumps(manifest))

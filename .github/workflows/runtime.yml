@@ -2,14 +2,14 @@ name: Build ARM64 runtime
 on:
   push:
     branches: [main]
-    paths: ['runtime/**', 'scripts/build-runtime.sh', 'scripts/pack-runtime.py', '.github/workflows/runtime.yml']
+    paths: ['runtime/**', 'scripts/build-runtime.sh', 'scripts/pack-runtime.py', 'tests/verify_server_build.py', '.github/workflows/runtime.yml']
   workflow_dispatch:
 permissions:
   contents: read
 jobs:
   runtime:
     runs-on: ubuntu-24.04-arm
-    timeout-minutes: 60
+    timeout-minutes: 120
     permissions:
       contents: write
     steps:
@@ -24,15 +24,25 @@ jobs:
         run: bash scripts/check-runtime-installer.sh "$PWD/dist/runtime-arm64.tar.gz"
       - name: Exercise MariaDB import, rules, SQL and backups
         run: docker run --rm -v "$PWD/backend:/opt/trasc:ro" -v "$PWD/tests:/tests:ro" trasc-runtime:1 python3 /tests/integration_runtime.py
-      - name: Verify fork build dependencies and quest modules
+      - name: Compile and verify every managed server binary
         run: |
-          git clone --depth 1 --filter=blob:none --sparse https://github.com/Russianranger/Triptych-Triumvirate.git runtime-work/server-source
-          git -C runtime-work/server-source sparse-checkout set Release-NMS-Server
-          # This fork's bundled zlib runs a CMake probe inside its source directory.
-          docker run --rm -v "$PWD/runtime-work/server-source:/source" trasc-runtime:1 bash -ec '
-            perl -MJSON -MDBI -MDBD::mysql -e "print qq(Quest modules available\n)"
-            cmake -S /source/Release-NMS-Server -B /tmp/server-build -G Ninja -DCMAKE_BUILD_TYPE=Release -DEQEMU_BUILD_LOGIN=ON -DEQEMU_BUILD_SERVER=ON -DEQEMU_BUILD_CLIENT_FILES=ON -DEQEMU_PREFER_LUA=ON -DLUA_INCLUDE_DIR=/usr/include/lua5.1 -DLUA_LIBRARY=/usr/lib/aarch64-linux-gnu/liblua5.1.so
-          '
+          mkdir -p runtime-work/server-verification
+          docker run --rm \
+            -v "$PWD/backend:/opt/trasc:ro" \
+            -v "$PWD/tests:/tests:ro" \
+            -v "$PWD/runtime-work/server-verification:/work" \
+            trasc-runtime:1 python3 /tests/verify_server_build.py \
+              --repository Russianranger/Triptych-Triumvirate \
+              --revision 18141ae0c9a11813733f08fa77db986951b853d6
+          cp runtime-work/server-verification/server-build-verification.json dist/
+      - name: Preserve server build diagnostics
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: arm64-server-build-verification
+          path: |
+            runtime-work/server-verification/logs/
+            runtime-work/server-verification/server-build-verification.json
       - name: Publish online and offline runtime
         env:
           GH_TOKEN: ${{ github.token }}
@@ -41,4 +51,5 @@ jobs:
             gh release create runtime-v1 --prerelease --title 'ARM64 runtime v1' --notes 'App-private Debian ARM64 runtime with database and compiler. Import runtime-arm64.tar.gz in the APK for offline setup. Package list and license notices are included inside the archive.'
           fi
           gh api --method PATCH "repos/$GITHUB_REPOSITORY/git/refs/tags/runtime-v1" -f sha="$GITHUB_SHA" -F force=true
-          gh release upload runtime-v1 dist/runtime-arm64.tar.gz dist/runtime-manifest.json --clobber
+          gh release upload runtime-v1 dist/runtime-arm64.tar.gz dist/runtime-manifest.json dist/server-build-verification.json --clobber
+          gh release edit runtime-v1 --title 'ARM64 runtime 1.1 — UUID build fix' --notes-file docs/runtime-release-notes.md
