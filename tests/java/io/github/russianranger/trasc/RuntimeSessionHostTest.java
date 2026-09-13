@@ -18,6 +18,8 @@ public final class RuntimeSessionHostTest {
             if(client) {
                 original=work.resolve("client/runtime");Files.createDirectories(original.getParent());Files.move(root,original);Files.createDirectories(root);
                 restoredPath="work/client/runtime";
+                // The full server archive has its own gate; supply its required marker in this client-focused fixture.
+                Files.createDirectories(root.resolve("etc"));Files.writeString(root.resolve("etc/trasc-runtime.json"),"{\"format\":1,\"architecture\":\"arm64\"}");
                 for(String executable:new String[]{"usr/bin/Xtigervnc","usr/local/bin/box64","opt/wine/bin/wine","opt/wine/bin/wineserver"})
                     if(!Files.isRegularFile(original.resolve(executable))||SessionArchive.mode(original.resolve(executable))!=0755)throw new AssertionError("Client runtime executable missing: "+executable);
             }

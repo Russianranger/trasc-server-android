@@ -2,7 +2,7 @@ name: Build embedded client runtime
 on:
   push:
     branches: [codex/client-bootstrap]
-    paths: ['client-runtime/**', 'scripts/build-client-runtime.sh', 'backend/client_runner.py', 'tests/*client*', '.github/workflows/client-runtime.yml']
+    paths: ['client-runtime/**', 'scripts/build-client-runtime.sh', 'backend/client_runner.py', 'tests/*client*', 'tests/java/**', 'scripts/check-management.sh', 'app/src/main/java/**/TarExtractor.java', 'app/src/main/java/**/SessionArchive.java', '.github/workflows/client-runtime.yml']
   workflow_dispatch:
   workflow_call:
 concurrency:
