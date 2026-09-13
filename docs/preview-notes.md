@@ -1,34 +1,18 @@
-TRASC Server Android **0.1.2** fixes database initialization on the AYN Thor and establishes a preserved preview signing key.
+TRASC Server Android **0.2.0** adds the management features requested after successful Thor compilation and login.
 
-The reported import stopped before reading SQL because MariaDB could not resolve `localhost`. The app now repairs the runtime's local hosts file on startup and initializes MariaDB without requiring DNS. Database credentials and local-only networking are retained.
+Install this APK over **TRASC Server Preview 0.1.2**. It uses the same application ID and pinned signing certificate. Shut down the runtime before updating. Your existing runtime 1.1, source, maps, database and binaries are retained; this APK update needs no server recompile.
 
-Gameplay controls also resolve the default ruleset by name, including this seed's ID 1, and apply inherited values before overrides. This fixes the post-import `Unknown ruleset` error without changing the imported database's rule IDs.
+- **Gameplay:** all database/source rules in searchable, collapsible categories; types and established bounds checked with field names in errors; save only modified rules.
+- **Setup:** apply the legacy Nektulos map/nav pair with original-file backups, and revert it.
+- **Server:** create and export a complete session ZIP. It stops the session cleanly and includes runtime, database, SQL snapshot, binaries, maps, logs, sources/builds, configuration, backups and imported client.
+- **Setup:** restore that ZIP into a fresh app without downloading a runtime or recompiling. Checksums, modes and symlinks are verified/restored before activation. Existing sessions have a recovery generation.
+- **Client:** ZIP import, private temporary-ZIP cleanup, DLL inventory, saved controller-to-keyboard/mouse bindings and a focused input diagnostic. Client launch/rendering/DLL loading remain a later phase.
+- **Continuity:** implementation decisions, validation and remaining work are recorded in `docs/HANDOFF.md`.
 
-**Moving from 0.1.0 or 0.1.1:**
+For this device pass, test rules, Nektulos Apply/Revert and complete session export/restore first. Client testing is optional and explicitly deferred by the user. See `docs/device-tests.md` for the sequence.
 
-The early workflow tried to cache a keystore path that did not exist, so the original signing key was lost. Android cannot accept an in-place update signed by a different key. Version 0.1.2 uses a new application ID and the label **TRASC Server Preview** to install alongside the old app without deleting its files. Earlier instructions to update 0.1.0 in place were incorrect.
+Backups contain accounts, credentials and client files and are not encrypted. Save them privately outside the app. Only the private temporary copy of an imported session/client ZIP is removed; the selected source document remains intact.
 
-1. In the old app, open **Files**, enter `incoming`, and select **Open folder**. Select and **Export file** for `source-download.zip` and `maps-download.zip`, saving them to Android Downloads. Export any edited server/map files separately. If a database has been imported successfully, export it using **Database → Back up & export** too.
-2. Select **Setup → Shut down runtime** in the old app. Keep it installed.
-3. Install the new APK and open **TRASC Server Preview**. Download runtime 1.1 or choose an existing offline runtime archive.
-4. Import the exported source and maps ZIPs through Setup. GitHub download remains available as an alternative.
-5. Select `Release-NMS-Server/database/release-peq.zip!release-peq.sql` and **Import selected database**. If migrating an existing world, import its database backup instead of the seed. Reapply any customized settings and edited files, then build and deploy in the new app.
+**Older 0.1.0/0.1.1 installations:** their signing key was lost before 0.1.2, so this Preview application installs alongside them. Their data is not transferred automatically. Export the database, source/maps archives and edited files, stop the old runtime, and import into Preview. Do not uninstall the old app until migration is verified. Only run one runtime at a time because the ports are shared.
 
-The new app has separate storage. Source, maps, settings and build cache are not transferred automatically. Only run one app's runtime at a time because both use the same local ports. The old app remains intact while you verify the new one.
-
-Updates within the new preview application ID will use the explicitly selected, preserved signing key. Publication verifies the APK certificate; a missing or changed key stops the build once its public certificate is pinned. No private signing key is committed or attached to releases.
-
-Publication now requires reproducing the original hostname failure and successfully importing the complete database from server commit `18141ae0c9a11813733f08fa77db986951b853d6` with networking disabled and an empty hosts file. The checks also cover database restart, gameplay reads, authentication, SQL and backup/restore.
-
-**New installations:**
-
-1. Install `trasc-server-android-preview.apk`.
-2. In Setup, download the runtime or import `runtime-arm64.tar.gz` from the **ARM64 runtime 1.1** release.
-3. Import your server from GitHub or ZIP, import maps separately, and select the full database seed from the discovered files.
-4. Build on-device, deploy the successful build, then start the server.
-
-The APK is a development build. Physical Android runtime, compilation, zone persistence and Winlator connectivity still need device acceptance testing. Automated build checks are not a claim that these have passed on the Thor.
-
-`preview-build.json` identifies the source commit, APK checksum, application ID and signing certificate. **Export your database and edited files before uninstalling any installation.** Do not clear app storage to update the runtime.
-
-See the repository README and `docs/device-tests.md` for setup, scope and the test sequence. Client integration remains a later phase; the app exports the four database-generated client files for your current Winlator client.
+`preview-build.json` identifies the exact commit, APK checksum, application ID and signing certificate. Publication requires backend/JVM tests, ARM64 database integration, APK compilation and lint. New Android management workflows still require the user's device acceptance tests.

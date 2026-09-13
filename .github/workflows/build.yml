@@ -89,6 +89,21 @@ jobs:
           key: trasc-preview-signing-v2
       - name: Test control backend
         run: python3 -m unittest discover -s tests -v
+      - name: Verify session archive and controller state on the host JVM
+        run: bash scripts/check-management.sh
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Verify management screens and validation flows
+        run: |
+          npm install --no-save --package-lock=false playwright@1.55.0
+          npx playwright install --with-deps chromium
+          node tests/ui_management.cjs
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: management-ui-reports
+          path: ui-reports/
       - name: Build packaged Android launcher
         run: bash scripts/build-proot.sh
       - name: Package corresponding launcher sources

@@ -2,11 +2,11 @@
 
 A standalone Android control app for [Russianranger/Triptych-Triumvirate](https://github.com/Russianranger/Triptych-Triumvirate), initially targeting the AYN Thor's ARM64 Android environment. The app owns its runtime, database, source, builds and server files. It does **not** require installing Termux, root, a PC-hosted server or a web service.
 
-**Status: first implementation / device testing preview.** The code includes the management flows below. Physical Thor execution and full server/client gameplay have not yet been validated. Android restrictions, PRoot compatibility, server dependencies and thermal limits must be checked with the device test plan before calling it a working replacement for your current setup.
+**Status: device testing preview.** On the AYN Thor, the user has confirmed compilation, database import and connection from the existing client. Version 0.2.0 adds management and client-preparation features; their device acceptance tests are still pending. Zone-state shutdown survival and embedded client execution are not claimed as verified.
 
 ## Downloads and first setup
 
-**App 0.1.2:** fixes MariaDB initialization failing to resolve `localhost` and the seed's nonzero default ruleset. The original preview signing key was not preserved. This build installs alongside it as **TRASC Server Preview**, keeping the old app and data intact. Export the original source/maps ZIPs, shut down the old runtime, and import them into the new preview after its runtime setup. [Migration and update details](docs/preview-notes.md).
+**App 0.2.0:** adds the complete rule editor, reversible Nektulos fix, complete session ZIP migration, and client import/controller groundwork. Install over **TRASC Server Preview 0.1.2** using the same application ID and pinned signing certificate. Existing runtime 1.1, source, maps, database and binaries are retained. Shut down the runtime before installing the APK. [Update and test details](docs/preview-notes.md).
 
 **Runtime 1.1 update:** fixes the missing `uuid/uuid.h` compilation error by including `uuid-dev`. Existing users can select **Setup → Shut down runtime → Download runtime**, then retry **Build imported source**. This preserves imported files and the build cache; no APK reinstall is needed. [Runtime update details](docs/runtime-release-notes.md).
 
@@ -30,14 +30,16 @@ Reserve at least **12 GB free**, with additional space for large map sets, SQL d
 | --- | --- |
 | Runtime | Online download or offline archive install, open, graceful shutdown, runtime log |
 | Source | GitHub link + branch/tag/commit; offline ZIP; exact commit recorded; preserve previous source |
-| Maps | GitHub/direct archive or offline ZIP; wrapper detection; backup replaced maps |
+| Maps | GitHub/direct archive or offline ZIP; wrapper detection; backup replaced maps; reversible legacy Nektulos pair |
 | Database | Select discovered seed; compressed import; SQL editor; consistent snapshot backup; export/restore |
-| Gameplay | Rule-set selection; XP, AA, group and raid multipliers; zone state persistence; dynamic worker count |
+| Gameplay | All rules in collapsible, searchable categories; source types/descriptions/defaults; field-specific validation; changed-values-only saves; dynamic worker count |
 | Server | Start, stop, restart; process status; advertised login/world/UCS IPv4 address |
 | Builds | Local CMake/Ninja compilation; staged deployment; previous binary rollback |
 | Files | Browse, import, copy, move/rename and export, including individual Nektulos map corrections |
 | Client data | Generate/export `spells_us.txt`, `dbstr_us.txt`, `SkillCaps.txt`, `BaseData.txt` as a ZIP |
 | Diagnostics | Live command/process logs; export log bundle and sanitized management status |
+| Complete sessions | Segmented ZIP with runtime, cold database + SQL snapshot, binaries, maps, logs, source, builds, settings, backups and client; restore before runtime installation |
+| Client preparation | ZIP extraction with temporary-copy cleanup; DLL presence/hash; saved gamepad keyboard/mouse bindings and focused input diagnostic |
 
 The gameplay GUI changes SQL rule values. Save settings, then restart so every process reads the same rules. Zone-specific rule overrides still apply. `Zone:StateSavingOnShutdown` gates both saving and loading in this fork; disabling it does not erase saved rows. `Character:RaidExpMultiplier` is a penalty fraction, and the final raid multiplier is separate. The UI preserves tiny values such as the fork's `1e-13` final raid multiplier.
 
@@ -103,6 +105,34 @@ Build the runtime on an ARM64 Docker host with `bash scripts/build-runtime.sh`. 
 
 See [device test sequence](docs/device-tests.md). Automated tests cover hostile archive paths, symlink rejection, size limits, nested database discovery, map replacement backups, preservation of runtime edits, rule validation, SQL restrictions and process cancellation. They do not replace physical Android testing.
 
-The modified ROF2 client, `dinput8.dll`, Wine/Winlator integration and AYN controller mapping are deliberately deferred to the client phase. The first acceptance target is the standalone server and management GUI, connected to your current client. No EverQuest client assets or maps are distributed in this repository.
+The Client tab imports an owned ROF2 client and reports whether `dinput8.dll` is present. Configurable AYN gamepad mappings deliver keyboard/mouse events to an input diagnostic surface. Actual ROF2 execution, Wine/x86 integration, rendering and DLL loading remain deferred to the client phase. The first acceptance target is the standalone server and management GUI, connected to your current client. No EverQuest client assets or maps are distributed in this repository.
 
 See [third-party notices](THIRD_PARTY_NOTICES.md) for runtime component sources and licenses.
+
+## Complete session backup and restore
+
+Use **Server → Create & export complete session**. The manager stops the game processes, makes a SQL snapshot, stops MariaDB cleanly, closes the runtime and streams a ZIP64 archive. Choose an Android document destination to save it outside the app. The local ZIP remains in `exports/`; the server stays stopped until you open the runtime and start it again.
+
+The ZIP has separate `runtime`, `database`, `binaries`, `maps`, `logs`, `server`, `sources`, `builds`, `backups`, `configuration` and `client` sections. It includes the active runtime and current/previous/staged binaries, live quests, physical database files, the SQL snapshot, source/build caches, Nektulos recovery files and controller profile. It excludes transient `incoming/`, `exports/`, `run/`, host temporary files and the previous session recovery directories. A manifest records the format/architecture and a per-file index records SHA-256 hashes, permissions and symlinks. No client assets are distributed by the project.
+
+On a new compatible ARM64 installation, choose **Setup → Choose complete session ZIP**. Runtime installation is unnecessary. To replace an existing session, enable the replacement checkbox. All files are extracted into a staging directory and verified before activation. The previous work/runtime directories remain as one recovery generation; the next successful restore replaces that generation. Interrupted activation rolls back at the next app launch. The original selected ZIP is untouched; its temporary app copy is deleted after the attempt.
+
+Keep enough space for the imported ZIP, the full extracted session and the existing session. Archives support up to 256 GB unpacked and 200,000 entries. Large map/client/build trees take time. The backup is not encrypted and contains database accounts, credentials and client files: keep it private. Review the advertised login IP after moving devices. Only one TRASC runtime can occupy the local ports.
+
+## Full rule editor
+
+**Gameplay → Load database settings** loads the selected ruleset, inherited default rules and the imported source definitions. Categories are collapsed and fields are created when opened. Search matches names and descriptions. The current pinned server source defines 1,122 rules in 47 categories, including Custom. Definitions from a newly imported revision may differ from still-deployed binaries; build/deploy the matching source when testing newly introduced rules.
+
+The editor enforces boolean/integer/real types, SQL field length, server numeric representation, the XP penalty fraction, documented constraints such as the 2.5 tradeskill minimum, and the source-documented death-loss table index. It does not invent a universal range for every percentage, level or setting containing Min/Max. Source-unknown database rules remain editable text, with their notes shown. Negative disable sentinels and the tiny final raid multiplier are retained. Only modified values are written to the selected ruleset; inherited values are not silently materialized as overrides. Invalid batches list field names and save nothing. A SQL snapshot precedes valid rule writes.
+
+## Reversible Nektulos repair
+
+After importing the complete maps, stop the server and select **Setup → Apply legacy Nektulos maps**. Both `maps/legacy/base/nektulos.map` and `maps/legacy/nav/nektulos.nav` must exist and be nonempty. Original active files are preserved under `backups/nektulos/<timestamp>/`, then the legacy pair replaces `maps/base/nektulos.map` and `maps/nav/nektulos.nav`. Applying twice retains the original backup. **Revert Nektulos** restores the pair (or removes a destination that was originally absent), preserving intervening edits in another backup. Restart the server after either action. Water files and database spawn elevations are unchanged.
+
+## Client groundwork
+
+Open the runtime, then use **Client → Choose client ZIP**. The archive must contain one Windows `eqgame.exe`; wrapper folders and case variations are recognized. `dinput8.dll` presence/hash is recorded without claiming that it loads. The imported client lives in `client/current`, with one previous client retained. The app deletes only its temporary incoming ZIP after the import attempt; Android's source document is never deleted.
+
+Bindings work without a running Linux runtime. Each gamepad button, trigger, D-pad and stick direction can target a keyboard key, mouse button, pointer direction or wheel step. Profiles include stick deadzone and pointer speed. Two physical inputs sharing a key keep it held until both release. Capture is limited to the client input area; focus loss, leaving Client, disconnection or changing profiles releases held inputs. These events currently reach the diagnostic canvas through a reusable input sink. Future Wine/client hosting must attach an actual injection sink; no gameplay execution is implemented in this release.
+
+Development continuation: [handoff](docs/HANDOFF.md).

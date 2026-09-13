@@ -1,14 +1,15 @@
 plugins { id 'com.android.application' }
 android {
     namespace 'io.github.russianranger.trasc'
+    buildFeatures { buildConfig true }
     compileSdk 35
     defaultConfig {
         // Preserve early installations whose automatically generated signing key was lost.
         applicationId 'io.github.russianranger.trasc.preview'
         minSdk 26
         targetSdk 35
-        versionCode 3
-        versionName '0.1.2'
+        versionCode 4
+        versionName '0.2.0'
         ndk { abiFilters 'arm64-v8a' }
     }
     buildTypes { release { minifyEnabled false } }
@@ -24,5 +25,5 @@ android {
     packaging { jniLibs { useLegacyPackaging true; keepDebugSymbols += ['**/libproot.so', '**/libproot-loader.so'] } }
     sourceSets { main { assets.srcDir '../backend-assets' } }
 }
-tasks.register('prepareBackend', Copy) { from '../backend'; include 'engine.py'; into '../backend-assets' }
+tasks.register('prepareBackend', Copy) { from '../backend'; include '*.py'; into '../backend-assets' }
 tasks.named('preBuild').configure { dependsOn 'prepareBackend' }

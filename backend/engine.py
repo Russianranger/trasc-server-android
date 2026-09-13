@@ -28,20 +28,13 @@ import urllib.parse
 import urllib.request
 import zipfile
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
+from rule_catalog import KNOWN, metadata, parse_source, validate_value
+from managed_content import ManagedContent
 
-VERSION = '0.1.2'
+VERSION = '0.2.0'
 DEFAULT_REPO = 'https://github.com/Russianranger/Triptych-Triumvirate'
 BINARIES = ('world', 'zone', 'loginserver', 'shared_memory', 'ucs', 'eqlaunch', 'queryserv', 'export_client_files')
 CLIENT_FILES = ('spells_us.txt', 'dbstr_us.txt', 'SkillCaps.txt', 'BaseData.txt')
-RULES = {
-    'Zone:StateSavingOnShutdown': ('bool', None, None),
-    'Character:ExpMultiplier': ('float', 0, 100),
-    'Character:FinalExpMultiplier': ('float', 0, 100),
-    'Character:AAExpMultiplier': ('float', 0, 100),
-    'Character:GroupExpMultiplier': ('float', 0, 100),
-    'Character:RaidExpMultiplier': ('float', 0, 1),
-    'Character:FinalRaidExpMultiplier': ('float', 0, 100),
-}
 MAX_EXTRACT_BYTES = 40 * 1024**3
 MAX_FILES = 400000
 
@@ -150,23 +143,15 @@ def sql_string(value):
 
 
 def validate_rule(name, value):
-    if name not in RULES:
+    if name not in KNOWN:
         raise ValueError('Unsupported gameplay rule')
-    kind, low, high = RULES[name]
-    if kind == 'bool':
-        if str(value).lower() not in ('true', 'false', '1', '0'):
-            raise ValueError('Expected true or false')
-        return 'true' if str(value).lower() in ('true', '1') else 'false'
-    number = float(value)
-    if not low <= number <= high:
-        raise ValueError(f'{name} must be between {low} and {high}')
-    return str(number)
+    return validate_value(name, value, metadata(name, KNOWN[name]['type']))
 
 
-class Engine:
+class Engine(ManagedContent):
     def __init__(self, work):
         self.work = Path(work).resolve()
-        for name in ('incoming', 'sources', 'server', 'maps', 'database', 'backups', 'exports', 'logs', 'run', 'builds'):
+        for name in ('incoming', 'sources', 'server', 'maps', 'database', 'backups', 'exports', 'logs', 'run', 'builds', 'client'):
             (self.work / name).mkdir(parents=True, exist_ok=True)
         self.config_path = self.work / 'settings.json'
         self.config = json.loads(self.config_path.read_text()) if self.config_path.exists() else {
@@ -191,6 +176,8 @@ class Engine:
         self.ensure_mysql_options()
         threading.Thread(target=self.worker, daemon=True).start()
         self.log('Control service ready. Server remains stopped until Start is selected.')
+        try: self.recover_nektulos()
+        except (ValueError, OSError) as e: self.log('Nektulos recovery needs attention: ' + str(e))
 
     def save(self):
         atomic_json(self.config_path, self.config)
@@ -209,6 +196,8 @@ class Engine:
                 raise ValueError('Another operation is running. Wait for it or cancel it first.')
             job = {'id': secrets.token_hex(6), 'operation': op, 'status': 'queued', 'started': time.time()}
             self.jobs.append(job)
+            for old in self.jobs[:-1]:
+                if old['operation'] == 'gameplay': old.pop('result', None)
             self.jobs = self.jobs[-20:]
             self.queue.put((job, args))
             return job
@@ -641,6 +630,7 @@ class Engine:
         return p
 
     def start(self, args):
+        self.recover_nektulos()
         if self.server_running(): raise ValueError('Server processes are already running')
         if not self.config['database_imported']: raise ValueError('Import the full database seed first')
         if not all((self.work / 'server/bin' / x).exists() for x in BINARIES): raise ValueError('Build and deploy the server first')
@@ -678,6 +668,7 @@ class Engine:
 
     def stop(self, args):
         self.stopping = True
+        incomplete = []
         try:
             # This fork's eqlaunch kills remaining zones almost immediately on exit.
             # Pause its restart loop and give its children time to save before exiting it.
@@ -704,7 +695,9 @@ class Engine:
                             except OSError: pass
                         children = alive
                         if children: time.sleep(0.25)
-                    if children: self.log('Zone shutdown timed out for PIDs ' + str(children) + '; saved state may be incomplete')
+                    if children:
+                        self.log('Zone shutdown timed out for PIDs ' + str(children) + '; saved state may be incomplete')
+                        incomplete.append('zone shutdown timed out')
                     launcher.send_signal(signal.SIGTERM)
                 finally:
                     with contextlib.suppress(ProcessLookupError): launcher.send_signal(signal.SIGCONT)
@@ -715,10 +708,11 @@ class Engine:
                     try: p.wait(timeout=90 if name == 'eqlaunch' else 30)
                     except subprocess.TimeoutExpired:
                         self.log(name + ' did not stop gracefully; terminating its process group')
+                        incomplete.append(name + ' required forced termination')
                         os.killpg(p.pid, signal.SIGKILL)
                         p.wait()
             self.processes.clear()
-            return {'message': 'Server stopped. Database remains available for editing and backup.'}
+            return {'message': 'Server stopped. Database remains available for editing and backup.', 'clean_shutdown': not incomplete, 'shutdown_errors': incomplete}
         finally: self.stopping = False
 
     def shutdown(self):
@@ -750,28 +744,73 @@ class Engine:
         selected = int(selected)
         if selected not in [int(r[0]) for r in rows]: raise ValueError('Unknown ruleset')
         # Apply default values first, then selected overrides, regardless of ID order.
-        rules = self.mysql('SELECT ruleset_id,rule_name,rule_value FROM rule_values WHERE ruleset_id IN (%d,%d) ORDER BY (ruleset_id=%d),rule_name;' % (default_id, selected, selected))
+        rules = self.mysql('SELECT ruleset_id,HEX(CONVERT(rule_name USING utf8mb4)),HEX(CONVERT(COALESCE(rule_value,\'\') USING utf8mb4)),HEX(CONVERT(COALESCE(notes,\'\') USING utf8mb4)) FROM rule_values ORDER BY (ruleset_id=%d),rule_name;' % selected)
+        length_rows = self.mysql("SELECT CHARACTER_MAXIMUM_LENGTH FROM information_schema.COLUMNS WHERE TABLE_SCHEMA=DATABASE() AND TABLE_NAME='rule_values' AND COLUMN_NAME='rule_value';").splitlines()[1:]
+        max_length = int(length_rows[0]) if length_rows else 128
+        catalog = {}
+        try:
+            root = self.source_root()
+            header = root / 'Release-NMS-Server/common/ruletypes.h'
+            if not header.exists(): header = root / 'common/ruletypes.h'
+            if header.is_file() and header.stat().st_size < 4 * 1024**2:
+                catalog = parse_source(header.read_text(errors='replace'))
+        except ValueError: pass
         values = {}
         for line in rules.splitlines()[1:]:
-            cols = line.split('\t',2)
-            if len(cols)==3 and cols[1] in RULES: values[cols[1]] = {'value': cols[2], 'ruleset': int(cols[0])}
+            cols = line.split('\t')
+            if len(cols) != 4: continue
+            set_id = int(cols[0])
+            name, value, notes = [bytes.fromhex(c).decode('utf-8') for c in cols[1:]]
+            if name not in catalog:
+                kind = KNOWN.get(name, {}).get('type', 'string')
+                catalog[name] = metadata(name, kind, notes)
+            if set_id in (default_id, selected):
+                values[name] = {'value': value, 'ruleset': set_id}
+        for name, spec in catalog.items():
+            spec['max_length'] = max_length
+            if name not in values:
+                values[name] = {'value': spec.get('default'), 'ruleset': None}
         launchers = self.mysql('SELECT name,dynamics FROM launcher;')
-        return {'rulesets': [{'id':int(r[0]),'name':r[1]} for r in rows], 'selected': selected, 'active_name': active_name, 'values': values, 'launchers': launchers}
+        return {'rulesets': [{'id':int(r[0]),'name':r[1]} for r in rows], 'selected': selected, 'active_name': active_name, 'values': values, 'metadata': catalog, 'launchers': launchers}
 
     def save_gameplay(self, args):
         self.ensure_db()
         ruleset = int(args['ruleset'])
-        if str(ruleset) not in [line.split('\t')[0] for line in self.mysql('SELECT ruleset_id FROM rule_sets;').splitlines()[1:]]: raise ValueError('Unknown ruleset')
+        current = self.gameplay({'ruleset': ruleset})
         queries = []
+        errors = []
         for name, value in args.get('values', {}).items():
-            value = validate_rule(name,value)
+            if name not in current['metadata']:
+                errors.append(name + ': this rule is no longer in the database or source'); continue
+            try: value = validate_value(name, value, current['metadata'][name], current['metadata'][name]['max_length'])
+            except ValueError as e: errors.append(str(e)); continue
             queries.append(f'INSERT INTO rule_values (ruleset_id,rule_name,rule_value,notes) VALUES ({ruleset},{sql_string(name)},{sql_string(value)},\'TRASC GUI\') ON DUPLICATE KEY UPDATE rule_value=VALUES(rule_value);')
-        workers = int(args.get('workers', self.config['workers']))
-        if not 1 <= workers <= 20: raise ValueError('Choose 1–20 zone workers; start low on Android')
+        raw_workers = str(args.get('workers', self.config['workers']))
+        if not re.fullmatch(r'\d+', raw_workers): raise ValueError('Dynamic zone workers: enter a whole number from 1 to 20')
+        workers = int(raw_workers)
+        if not 1 <= workers <= 20: errors.append('Dynamic zone workers: choose 1–20 workers')
+        if errors: raise ValueError('\n'.join(errors))
+        if queries: self.backup_database({})
         self.mysql('START TRANSACTION;' + ''.join(queries) + 'COMMIT;')
         self.config.update(workers=workers, rules_pending_restart=True)
         self.save()
         return {'message': 'Saved. Restart the server to apply consistently to all processes. Existing saved zone state is retained.'}
+
+    def prepare_session_backup(self, args):
+        """Quiesce everything before Android reads the runtime and database files."""
+        stopped = self.stop({})
+        if not stopped['clean_shutdown']:
+            raise ValueError('Complete backup preparation stopped: ' + ', '.join(stopped['shutdown_errors']) + '. Inspect the shutdown logs before retrying.')
+        snapshot = self.backup_database({}) if self.config['database_imported'] else None
+        if self.db and self.db.poll() is None:
+            self.db.send_signal(signal.SIGTERM)
+            try: self.db.wait(90)
+            except subprocess.TimeoutExpired:
+                raise ValueError('MariaDB did not shut down cleanly; session backup was not created') from None
+            if self.db.returncode != 0:
+                raise ValueError('MariaDB shutdown failed; inspect mariadb.log before creating a session backup')
+        self.db = None
+        return {'snapshot': snapshot, 'message': 'Server and database are stopped and ready for complete backup.'}
 
     def network(self, args):
         if self.server_running(): raise ValueError('Stop the server before changing network addresses')
@@ -869,13 +908,17 @@ class Engine:
             'maps_ready':(self.work/'maps/base').is_dir(),'binaries_ready':all((self.work/'server/bin'/x).exists() for x in BINARIES),
             'build_ready':(self.work/'server/bin.staged/build-info.json').exists(), 'rollback_ready':(self.work/'server/bin.previous').exists(),
             'processes':{name:{'pid':p.pid,'running':p.poll() is None,'exit':p.poll()} for name,p in self.processes.items()},
-            'jobs':self.jobs,'free_bytes':shutil.disk_usage(self.work).free,'running':self.server_running()}
+            'jobs':self.jobs,'free_bytes':shutil.disk_usage(self.work).free,'running':self.server_running(),
+            'nektulos':self.nektulos_status(), 'client':self.client_status()}
 
     def dispatch(self,op,args):
         methods={'import_source':self.import_source,'import_maps':self.import_maps,'import_database':self.import_database,
             'build':self.build,'deploy':self.deploy,'rollback':self.rollback,'start':self.start,'stop':self.stop,
             'backup_database':self.backup_database,'restore_database':self.restore_database,'export_client':self.export_client,
             'gameplay':self.gameplay,'save_gameplay':self.save_gameplay,'network':self.network,'sql':self.sql,
+            'prepare_session_backup':self.prepare_session_backup,
+            'fix_nektulos':self.fix_nektulos,'revert_nektulos':self.revert_nektulos,
+            'import_client_zip':self.import_client_zip,
             'files':self.files,'edit_file':self.edit_file,'export_logs':self.export_logs,'logs':self.logs,
             'databases':lambda a:{'candidates':self.database_candidates()},'state':lambda a:self.state()}
         if op not in methods: raise ValueError('Unknown operation')

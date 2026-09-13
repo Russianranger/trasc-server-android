@@ -7,6 +7,8 @@ import android.database.Cursor;
 import android.net.Uri;
 import android.os.Bundle;
 import android.provider.OpenableColumns;
+import android.view.KeyEvent;
+import android.view.MotionEvent;
 import android.webkit.*;
 import org.json.JSONObject;
 import java.io.*;
@@ -15,13 +17,18 @@ import java.util.concurrent.*;
 public final class MainActivity extends Activity {
     private WebView web;
     private RuntimeManager runtime;
+    private ControllerManager controller;
     private final ExecutorService tasks=Executors.newFixedThreadPool(3);
     private String pickerId,pickerKind,exportPath;
+    private boolean pickerReplace;
     private static final int IMPORT=10,EXPORT=11;
     @Override public void onCreate(Bundle saved){
         super.onCreate(saved);runtime=RuntimeManager.get(this);
         getWindow().setStatusBarColor(0xff10191c); getWindow().setNavigationBarColor(0xff10191c);
         web=new WebView(this);setContentView(web);
+        controller=new ControllerManager(this,runtime.work,event->runOnUiThread(()->{
+            if(!isDestroyed())web.evaluateJavascript("window.clientInputEvent && window.clientInputEvent("+event+")",null);
+        }));
         WebSettings s=web.getSettings();s.setJavaScriptEnabled(true);s.setDomStorageEnabled(true);
         s.setAllowFileAccess(false);s.setAllowContentAccess(false);s.setAllowFileAccessFromFileURLs(false);s.setAllowUniversalAccessFromFileURLs(false);
         s.setMixedContentMode(WebSettings.MIXED_CONTENT_NEVER_ALLOW);
@@ -61,6 +68,7 @@ public final class MainActivity extends Activity {
             tasks.execute(()->{
                 try {
                     JSONObject args=new JSONObject(input);Object result;
+                    if(runtime.sessionBusy&&!operation.equals("native_state")&&!operation.equals("runtime_log"))throw new IOException("A complete session transfer is in progress");
                     switch(operation){
                         case "native_state": result=runtime.nativeState();break;
                         case "runtime_install": service();runtime.installOnline();result=runtime.nativeState();break;
@@ -71,7 +79,11 @@ public final class MainActivity extends Activity {
                             if(log.exists())try(RandomAccessFile f=new RandomAccessFile(log,"r")){f.seek(Math.max(0,f.length()-64000));byte[] b=new byte[(int)(f.length()-f.getFilePointer())];f.readFully(b);text=new String(b,java.nio.charset.StandardCharsets.UTF_8);}
                             result=new JSONObject().put("text",text);break;
                         }
-                        case "pick": runOnUiThread(()->pick(id,args.optString("kind","file")));return;
+                        case "session_backup": service();runOnUiThread(()->controller.capture(false));result=runtime.backupSession();break;
+                        case "controller_state": runOnUiThread(()->{try{reply(id,controller.state(),null);}catch(Exception e){reply(id,null,e);}});return;
+                        case "controller_save": runOnUiThread(()->{try{controller.configure(args,true);reply(id,controller.state(),null);}catch(Exception e){reply(id,null,e);}});return;
+                        case "controller_capture": runOnUiThread(()->{try{controller.capture(args.optBoolean("active")&&hasWindowFocus());reply(id,controller.state(),null);}catch(Exception e){reply(id,null,e);}});return;
+                        case "pick": runOnUiThread(()->pick(id,args.optString("kind","file"),args.optBoolean("replace")));return;
                         case "export": runOnUiThread(()->export(id,args.optString("path")));return;
                         default:
                             JSONObject response=runtime.request(operation,args);
@@ -83,9 +95,9 @@ public final class MainActivity extends Activity {
             });
         }
     }
-    private void pick(String id,String kind){
+    private void pick(String id,String kind,boolean replace){
         if(pickerId!=null){reply(id,null,new IOException("Finish the open file picker first"));return;}
-        pickerId=id;pickerKind=kind;
+        pickerId=id;pickerKind=kind;pickerReplace=replace;
         Intent intent=new Intent(Intent.ACTION_OPEN_DOCUMENT).addCategory(Intent.CATEGORY_OPENABLE).setType("*/*");
         try{startActivityForResult(intent,IMPORT);}catch(Exception e){pickerId=null;reply(id,null,e);}
     }
@@ -106,7 +118,7 @@ public final class MainActivity extends Activity {
     @Override protected void onActivityResult(int request,int code,Intent data){
         super.onActivityResult(request,code,data);
         if(request!=IMPORT&&request!=EXPORT)return;
-        String id=pickerId,kind=pickerKind,path=exportPath;pickerId=null;
+        String id=pickerId,kind=pickerKind,path=exportPath;boolean replace=pickerReplace;pickerId=null;
         if(id==null)return;
         if(code!=RESULT_OK||data==null||data.getData()==null){reply(id,null,new IOException("File selection cancelled"));return;}
         Uri uri=data.getData();service();
@@ -125,16 +137,26 @@ public final class MainActivity extends Activity {
                 }
                 name=name.replaceAll("[^a-zA-Z0-9._-]","_");if(name.length()>160)name=name.substring(name.length()-160);
                 String unique=System.currentTimeMillis()+"-"+name;
-                temp=new File(runtime.work,"incoming/"+unique);
+                temp="session".equals(kind)?new File(getCacheDir(),unique):new File(runtime.work,"incoming/"+unique);
                 runtime.status="Copying "+name+"…";
                 try(InputStream in=getContentResolver().openInputStream(uri)){if(in==null)throw new IOException("Cannot read file");RuntimeManager.copy(in,temp);}
-                if("runtime".equals(kind)){
+                if("session".equals(kind)){
+                    try {
+                        JSONObject result=runtime.restoreSession(temp,replace);
+                        runOnUiThread(()->controller.reload());
+                        reply(id,result,null);
+                    } finally {temp.delete();}
+                }else if("runtime".equals(kind)){
                     runtime.beginInstall();try{runtime.installArchive(temp);}finally{runtime.installing=false;temp.delete();}
                     reply(id,runtime.nativeState(),null);
                 }else {runtime.status="File imported: "+name;reply(id,new JSONObject().put("file",unique).put("path","incoming/"+unique).put("name",name),null);}
             }catch(Exception e){if(temp!=null)temp.delete();runtime.status=e.getMessage();reply(id,null,e);}
         });
     }
-    @Override public void onBackPressed(){web.evaluateJavascript("window.appBack && window.appBack()",null);}
-    @Override protected void onDestroy(){web.removeJavascriptInterface("Trasc");web.destroy();tasks.shutdown();super.onDestroy();}
+    @Override public boolean dispatchKeyEvent(KeyEvent event){return controller!=null&&controller.key(event)||super.dispatchKeyEvent(event);}
+    @Override public boolean dispatchGenericMotionEvent(MotionEvent event){return controller!=null&&controller.motion(event)||super.dispatchGenericMotionEvent(event);}
+    @Override public void onWindowFocusChanged(boolean focus){super.onWindowFocusChanged(focus);if(!focus&&controller!=null)controller.capture(false);}
+    @Override protected void onPause(){if(controller!=null)controller.capture(false);super.onPause();}
+    @Override public void onBackPressed(){if(controller.active()){controller.capture(false);return;}web.evaluateJavascript("window.appBack && window.appBack()",null);}
+    @Override protected void onDestroy(){controller.close();web.removeJavascriptInterface("Trasc");web.destroy();tasks.shutdown();super.onDestroy();}
 }

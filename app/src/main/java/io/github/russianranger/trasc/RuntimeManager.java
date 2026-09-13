@@ -21,17 +21,21 @@ public final class RuntimeManager {
     final File home, work, rootfs;
     volatile String status = "Install the runtime to begin.";
     volatile boolean installing;
+    volatile boolean sessionBusy;
     private volatile Process process;
     private String token;
+    private String recoveryError;
     static final String RELEASE = "https://github.com/Russianranger/trasc-server-android/releases/download/runtime-v1/";
 
     private RuntimeManager(Context c) {
         context=c; home=c.getFilesDir(); work=new File(home,"work"); rootfs=new File(home,"rootfs");
+        try {recoverSessionSwap();} catch(IOException e){recoveryError="Session recovery failed: "+e.getMessage();status=recoveryError;}
         new File(work,"incoming").mkdirs(); new File(work,"logs").mkdirs(); new File(work,"run").mkdirs();
     }
     boolean installed() { return new File(rootfs,"etc/trasc-runtime.json").isFile(); }
     boolean alive() { return process!=null && process.isAlive(); }
     synchronized void start() throws Exception {
+        if(recoveryError!=null)throw new IOException(recoveryError);
         if (alive()) return;
         if (installing) throw new IOException("Runtime installation is in progress");
         if (!installed()) {status="Install the runtime to begin."; return;}
@@ -39,7 +43,8 @@ public final class RuntimeManager {
         File proot=new File(nativeDir,"libproot.so"), loader=new File(nativeDir,"libproot-loader.so");
         if (!proot.canExecute() || !loader.exists()) throw new IOException("This APK is missing its ARM64 runtime launcher");
         File backend=new File(home,"backend"); backend.mkdirs();
-        try(InputStream in=context.getAssets().open("engine.py")) { copy(in,new File(backend,"engine.py")); }
+        for(String name:new String[]{"engine.py","rule_catalog.py","managed_content.py"})
+            try(InputStream in=context.getAssets().open(name)) { copy(in,new File(backend,name)); }
         byte[] secret=new byte[32]; new SecureRandom().nextBytes(secret); token=hex(secret);
         write(new File(work,"run/api-token"),token);
         File tmp=new File(home,"tmp"); tmp.mkdirs();
@@ -86,11 +91,13 @@ public final class RuntimeManager {
         Process p=process;
         if(!p.waitFor(180,java.util.concurrent.TimeUnit.SECONDS)) {
             p.destroy(); status="Runtime forced to stop after shutdown timeout. Check logs before restarting.";
+            throw new IOException(status);
         } else status="Runtime stopped";
         process=null;
     }
     JSONObject nativeState() throws Exception {
         return new JSONObject().put("installed",installed()).put("alive",alive()).put("installing",installing)
+            .put("session_busy",sessionBusy)
             .put("status",status).put("free_bytes",home.getUsableSpace()).put("abi",android.os.Build.SUPPORTED_ABIS[0]);
     }
     void installOnline() throws Exception {
@@ -110,10 +117,105 @@ public final class RuntimeManager {
     }
     void beginInstall() throws IOException {
         synchronized(this) {
-            if(alive() || installing) throw new IOException("Stop the runtime before installing it");
+            if(alive() || installing || sessionBusy) throw new IOException("Stop the runtime and finish any session transfer before installing it");
             if(!Arrays.asList(android.os.Build.SUPPORTED_ABIS).contains("arm64-v8a")) throw new IOException("An ARM64 Android device is required");
             installing=true;
         }
+    }
+    private void awaitJob(String operation) throws Exception {
+        JSONObject response=request(operation,new JSONObject());
+        if(!response.getBoolean("ok"))throw new IOException(response.optString("error"));
+        String id=response.getJSONObject("result").getString("id");
+        for(;;) {
+            if(!alive())throw new IOException("Runtime stopped while preparing the session backup");
+            JSONObject state=request("state",new JSONObject());
+            if(!state.getBoolean("ok"))throw new IOException(state.optString("error"));
+            org.json.JSONArray jobs=state.getJSONObject("result").getJSONArray("jobs");
+            for(int i=0;i<jobs.length();i++) {
+                JSONObject job=jobs.getJSONObject(i);
+                if(!id.equals(job.getString("id")))continue;
+                if("done".equals(job.getString("status")))return;
+                if("error".equals(job.getString("status")))throw new IOException(job.optString("error"));
+            }
+            Thread.sleep(500);
+        }
+    }
+    private synchronized void beginSession()throws IOException {
+        if(recoveryError!=null)throw new IOException(recoveryError);
+        if(sessionBusy||installing)throw new IOException("Wait for the current runtime or session operation");
+        sessionBusy=true;
+    }
+    JSONObject backupSession()throws Exception {
+        beginSession();
+        File target=new File(work,"exports/session-"+System.currentTimeMillis()+".zip");
+        try {
+            start();
+            status="Stopping the server and making a database snapshot…";
+            awaitJob("prepare_session_backup");
+            stop();
+            if(alive())throw new IOException("Runtime must be stopped before copying session files");
+            target.getParentFile().mkdirs();
+            SessionArchive.create(rootfs,work,target,BuildConfig.VERSION_NAME,text->status=text);
+            return new JSONObject().put("file","exports/"+target.getName()).put("message","Complete session created. Save it outside the app. The runtime is stopped.");
+        } finally {sessionBusy=false;}
+    }
+    private File sessionJournal(){return new File(home,"session-swap.properties");}
+    private void recoverSessionSwap()throws IOException {
+        File journal=sessionJournal();if(!journal.isFile())return;
+        Properties info=new Properties();try(InputStream in=new FileInputStream(journal)){info.load(in);}
+        for(String name:new String[]{"rootfs","work"}) {
+            File live=new File(home,name),previous=new File(home,name+"-session-previous");
+            if(previous.exists()) {
+                TarExtractor.remove(live);
+                if(!previous.renameTo(live))throw new IOException("Could not recover previous "+name);
+            } else if(!Boolean.parseBoolean(info.getProperty(name)))TarExtractor.remove(live);
+        }
+        if(!journal.delete())throw new IOException("Could not finish session recovery");
+        status="Recovered the previous session after an interrupted restore.";
+    }
+    JSONObject restoreSession(File archive,boolean replace)throws Exception {
+        beginSession();
+        File staging=new File(home,"session-stage");
+        try {
+            if((installed()||new File(work,"settings.json").isFile())&&!replace)
+                throw new IOException("Select Replace this app's current session before restoring");
+            if(alive()) {
+                JSONObject s=request("state",new JSONObject()).getJSONObject("result");
+                org.json.JSONArray jobs=s.getJSONArray("jobs");
+                for(int i=0;i<jobs.length();i++)if(Arrays.asList("running","queued").contains(jobs.getJSONObject(i).getString("status")))
+                    throw new IOException("Finish the active operation before restoring a session");
+                status="Stopping the current session cleanly…";
+                awaitJob("prepare_session_backup");
+                stop();
+            }
+            TarExtractor.remove(staging);staging.mkdirs();
+            status="Checking complete session ZIP…";
+            Properties manifest=SessionArchive.restore(archive,staging,text->status=text);
+            for(String path:new String[]{"rootfs/etc/trasc-runtime.json","work/settings.json"})
+                if(new File(staging,path).length()>131072)throw new IOException("Session configuration exceeds supported size");
+            JSONObject marker=new JSONObject(new String(Files.readAllBytes(new File(staging,"rootfs/etc/trasc-runtime.json").toPath()),StandardCharsets.UTF_8));
+            if(marker.getInt("format")!=1||!marker.getString("architecture").equals("arm64"))throw new IOException("Unsupported runtime inside session");
+            JSONObject settings=new JSONObject(new String(Files.readAllBytes(new File(staging,"work/settings.json").toPath()),StandardCharsets.UTF_8));
+            if(!settings.getString("database").matches("[A-Za-z0-9_]+"))throw new IOException("Invalid database name in session");
+            for(String key:new String[]{"db_password","root_password"})if(!settings.getString(key).matches("[0-9a-f]{40}"))throw new IOException("Invalid database credentials in session");
+            Properties journal=new Properties();
+            for(String name:new String[]{"rootfs","work"}) {
+                journal.setProperty(name,String.valueOf(new File(home,name).exists()));
+                TarExtractor.remove(new File(home,name+"-session-previous"));
+            }
+            try(FileOutputStream out=new FileOutputStream(sessionJournal())){journal.store(out,"Rollback an interrupted session activation");out.getFD().sync();}
+            try {
+                for(String name:new String[]{"rootfs","work"}) {
+                    File live=new File(home,name),previous=new File(home,name+"-session-previous"),next=new File(staging,name);
+                    if(live.exists()&&!live.renameTo(previous))throw new IOException("Cannot preserve previous "+name);
+                    if(!next.renameTo(live))throw new IOException("Cannot activate restored "+name);
+                }
+                if(!sessionJournal().delete())throw new IOException("Cannot finish session activation");
+            } catch(Exception e){recoverSessionSwap();throw e;}
+            token=null;
+            status="Complete session restored. Open runtime, review the login IP, then start the server.";
+            return new JSONObject().put("message",status).put("source_version",manifest.getProperty("app_version"));
+        } finally {try{TarExtractor.remove(staging);}finally{sessionBusy=false;}}
     }
     void installArchive(File archive) throws Exception {
         File staging=new File(home,"rootfs-install"), previous=new File(home,"rootfs-previous");

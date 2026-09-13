@@ -24,3 +24,17 @@ Use a copy of your world/database initially. Record the APK commit from GitHub A
 | 18 | Offline source, maps and database imports | All three complete with network disabled after runtime installation |
 
 If a step fails, export Logs and include the step number and visible error. If the runtime cannot open, select **Logs → runtime.log** and **Save runtime log**; both remain accessible without the Python backend. Do not uninstall or clear storage as a troubleshooting step before exporting backups.
+
+## Version 0.2.0 acceptance pass
+
+The user has already confirmed compilation, database import and connection with the existing external client. Do not rebuild or reimport the server just to test this APK update. Keep the existing world until the backup roundtrip is verified.
+
+1. Stop the runtime, update Preview in place and reopen it. Confirm the existing source, map readiness, binaries and database.
+2. Open Gameplay and load rules. Expand Character/Zone/Custom; search XP and StateSavingOnShutdown. Confirm the tiny FinalRaidExpMultiplier is retained. Set RaidExpMultiplier to 1.1: Save must identify this field and persist nothing. Restore its original value, change a harmless rule, save and reload to verify it. Check the selected ruleset and inherited rule markers.
+3. Stop the server. Apply legacy Nektulos maps, apply a second time, then Revert. Verify the original pair survives, and water files stay unchanged. Apply again if that is the geometry you want. Start to inspect NPC elevation/pathing.
+4. Create a complete session backup and save the ZIP through Android's document picker. Confirm runtime/server/database stop, the external ZIP exists, and separate components plus the manifest/index are visible. A SQL snapshot should be inside backups/.
+5. Restore into a fresh compatible test app/device where available; runtime download and server build should be unnecessary. Alternatively, after securing the external backup, restore into the existing Preview instance with replacement selected. Its former session is retained as one recovery generation. Do not uninstall/clear the only working app to create a test instance.
+6. Open the restored runtime; review login IP; check database character/rules, maps, source, deployed binaries, logs and controller profile. Connect using the existing Winlator client. Confirm the world/character persists across stop/start.
+7. Supply a corrupt/truncated session ZIP: restoration must fail before replacing the current directories. Check an interrupted/low-storage import similarly only in a disposable test instance.
+
+Client tests are deferred in this pass. When ready: import a complete client ZIP, verify the source ZIP remains while incoming's temporary copy is removed, verify DLL presence reporting, rebind buttons and both sticks, check mouse/keyboard holds in the input canvas and ensure capture/held keys release on tab changes, app backgrounding and controller disconnect. No game launch is expected yet.
