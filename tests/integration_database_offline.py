@@ -43,6 +43,7 @@ def verify(seed, work):
             assert counts[table] > 0, table + ' is empty'
         rules = engine.gameplay({})
         assert rules['values'], 'Gameplay controls must read the imported rules'
+        assert rules['selected'] == 1, 'This pinned seed uses default ruleset ID 1'
         unauth = subprocess.run([
             'mariadb', '--no-defaults', '--host=127.0.0.1', '--port=13306',
             '--user=root', '-e', 'SELECT 1;',

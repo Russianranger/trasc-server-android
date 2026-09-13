@@ -2,6 +2,8 @@ TRASC Server Android **0.1.1** fixes database initialization on the AYN Thor.
 
 The reported import stopped before reading SQL because MariaDB could not resolve `localhost`. The app now repairs the runtime's local hosts file on startup and initializes MariaDB without requiring DNS. Database credentials and local-only networking are retained.
 
+Gameplay controls also resolve the default ruleset by name, including this seed's ID 1, and apply inherited values before overrides. This fixes the post-import `Unknown ruleset` error without changing the imported database's rule IDs.
+
 **Updating an existing installation:**
 
 1. In Setup, select **Shut down runtime**, then close the app.

@@ -37,8 +37,17 @@ INSERT INTO rule_values VALUES (0,'Character:ExpMultiplier','0.5','seed'),(0,'Zo
         engine.sql({'query':"UPDATE account SET name='changed';",'write':True})
         engine.restore_database({'file':backup['file']})
         assert 'test-player' in engine.sql({'query':'SELECT name FROM account;'})['output']
+        # Real PEQ seeds can omit variables.RuleSet and put default at a nonzero ID.
+        # A numerically smaller override must still win over default values.
+        engine.mysql("UPDATE rule_sets SET ruleset_id=7 WHERE ruleset_id=0; UPDATE rule_values SET ruleset_id=7 WHERE ruleset_id=0; DELETE FROM variables WHERE varname='RuleSet'; INSERT INTO rule_sets VALUES (3,'custom'); INSERT INTO rule_values VALUES (3,'Character:ExpMultiplier','3','override');")
+        assert engine.gameplay({})['selected']==7
+        custom=engine.gameplay({'ruleset':3})
+        assert custom['values']['Character:ExpMultiplier']=={'value':'3','ruleset':3}
+        assert custom['values']['Zone:StateSavingOnShutdown']=={'value':'false','ruleset':7}
+        engine.mysql("INSERT INTO variables VALUES ('RuleSet','custom');")
+        assert engine.gameplay({})['selected']==3
         unauth=subprocess.run(['mariadb','--no-defaults','--host=127.0.0.1','--port=13306','--user=root','-e','SELECT 1;'],capture_output=True)
         assert unauth.returncode!=0,'Database root must not accept empty TCP credentials'
         engine.network({'ip':'192.168.1.34'})
-        print('PASS: real MariaDB seed import, nested ZIP selection, rules, SQL, backup/restore, root authentication and network settings',flush=True)
+        print('PASS: real MariaDB seed import, nested ZIP selection, nonzero default ruleset and override inheritance, SQL, backup/restore, root authentication and network settings',flush=True)
     finally:engine.shutdown()

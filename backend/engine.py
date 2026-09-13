@@ -738,19 +738,25 @@ class Engine:
         self.ensure_db()
         sets = self.mysql('SELECT ruleset_id,name FROM rule_sets ORDER BY ruleset_id;')
         selected = args.get('ruleset')
-        active_name = self.mysql("SELECT value FROM variables WHERE varname='RuleSet' LIMIT 1;").splitlines()[1:]
+        active_rows = self.mysql("SELECT value FROM variables WHERE varname='RuleSet' LIMIT 1;").splitlines()[1:]
+        active_name = active_rows[0] if active_rows else 'default'
         rows = [line.split('\t', 1) for line in sets.splitlines()[1:]]
+        # The server resolves the set named 'default'; PEQ does not require ID 0.
+        default_id = next((int(row[0]) for row in rows if row[1] == 'default'), None)
+        if default_id is None: raise ValueError('The database has no ruleset named default')
         if selected is None:
-            selected = next((int(row[0]) for row in rows if active_name and row[1] == active_name[0]), 0)
+            selected = next((int(row[0]) for row in rows if row[1] == active_name), None)
+            if selected is None: raise ValueError('Unknown active ruleset: ' + active_name)
         selected = int(selected)
         if selected not in [int(r[0]) for r in rows]: raise ValueError('Unknown ruleset')
-        rules = self.mysql('SELECT ruleset_id,rule_name,rule_value FROM rule_values WHERE ruleset_id IN (0,%d) ORDER BY ruleset_id;' % selected)
+        # Apply default values first, then selected overrides, regardless of ID order.
+        rules = self.mysql('SELECT ruleset_id,rule_name,rule_value FROM rule_values WHERE ruleset_id IN (%d,%d) ORDER BY (ruleset_id=%d),rule_name;' % (default_id, selected, selected))
         values = {}
         for line in rules.splitlines()[1:]:
             cols = line.split('\t',2)
             if len(cols)==3 and cols[1] in RULES: values[cols[1]] = {'value': cols[2], 'ruleset': int(cols[0])}
         launchers = self.mysql('SELECT name,dynamics FROM launcher;')
-        return {'rulesets': [{'id':int(r[0]),'name':r[1]} for r in rows], 'selected': selected, 'active_name': active_name[0] if active_name else 'default', 'values': values, 'launchers': launchers}
+        return {'rulesets': [{'id':int(r[0]),'name':r[1]} for r in rows], 'selected': selected, 'active_name': active_name, 'values': values, 'launchers': launchers}
 
     def save_gameplay(self, args):
         self.ensure_db()
