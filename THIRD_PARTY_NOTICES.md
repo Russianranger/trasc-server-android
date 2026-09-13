@@ -8,4 +8,4 @@ The app release bundles PRoot and links talloc statically. Source is pinned and 
 
 The runtime is built separately from imported server source. Server and quest licenses remain those supplied by the selected repository. No proprietary EverQuest client files, maps, Winlator binaries or modified `dinput8.dll` are included.
 
-This preview is source-available here; retain these notices and the corresponding component sources when redistributing binaries. Before a wider release, archive the exact dependency sources alongside release artifacts and complete a distribution/license review.
+The APK release includes `launcher-sources.tar.gz` with the pinned PRoot/talloc source archives, build recipe and patches. The recipe recreates the generated loader helper. Retain these notices and corresponding component sources when redistributing binaries. Debian package notices and the exact package list remain inside the runtime archive.

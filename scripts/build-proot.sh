@@ -17,6 +17,18 @@ from pathlib import Path
 p=Path('proot/src/extension/ashmem_memfd/ashmem_memfd.c')
 s=p.read_text()
 if '#include <string.h>' not in s:p.write_text('#include <string.h>\n'+s)
+# Preserve the loader offset calculation without depending on GNU awk.
+m=Path('proot/src/GNUmakefile')
+s=m.read_text().replace('readelf -s $< | awk -f loader/loader-info.awk > $@', 'python3 loader/loader-info.py $< > $@')
+m.write_text(s)
+Path('proot/src/loader/loader-info.py').write_text('''import subprocess,sys
+symbols={}
+for line in subprocess.check_output(['readelf','-s',sys.argv[1]],text=True).splitlines():
+    cols=line.split()
+    if len(cols)>=8 and cols[-1] in ('_start','pokedata_workaround'): symbols[cols[-1]]=int(cols[1],16)
+print('#include <unistd.h>')
+print('const ssize_t offset_to_pokedata_workaround=%d;' % (symbols['pokedata_workaround']-symbols['_start']))
+''')
 PY
 export CC="$llvm_bin/aarch64-linux-android26-clang"
 export AR="$llvm_bin/llvm-ar"
@@ -24,6 +36,7 @@ export RANLIB="$llvm_bin/llvm-ranlib"
 export CFLAGS='-O2 -fPIC'
 export LDFLAGS='-Wl,-z,max-page-size=16384'
 cd talloc-2.4.3
+if [ ! -f "$build_dir/prefix/lib/libtalloc.a" ]; then
 cat > cross-answers.txt <<'ANSWERS'
 Checking uname sysname type: "Linux"
 Checking uname machine type: "aarch64"
@@ -56,6 +69,7 @@ make -j2
 mkdir -p "$build_dir/prefix/include" "$build_dir/prefix/lib"
 cp talloc.h "$build_dir/prefix/include/"
 "$AR" rcs "$build_dir/prefix/lib/libtalloc.a" bin/default/talloc*.o
+fi
 cd "$build_dir/proot"
 make -C src -j2 CC="$CC" LD="$CC" STRIP="$llvm_bin/llvm-strip" OBJCOPY="$llvm_bin/llvm-objcopy" OBJDUMP="$llvm_bin/llvm-objdump" \
     CPPFLAGS="-D_FILE_OFFSET_BITS=64 -D_GNU_SOURCE -I. -I$build_dir/proot/src -I$build_dir/prefix/include" \

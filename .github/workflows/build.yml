@@ -28,12 +28,16 @@ jobs:
         run: python3 -m unittest discover -s tests -v
       - name: Build packaged Android launcher
         run: bash scripts/build-proot.sh
+      - name: Package corresponding launcher sources
+        run: bash scripts/pack-launcher-sources.sh
       - name: Compile APK and check Android lint
         run: gradle --no-daemon :app:assembleDebug :app:lintDebug
       - uses: actions/upload-artifact@v4
         with:
           name: trasc-server-android-debug
-          path: app/build/outputs/apk/debug/app-debug.apk
+          path: |
+            app/build/outputs/apk/debug/app-debug.apk
+            dist/launcher-sources.tar.gz
       - uses: actions/upload-artifact@v4
         if: always()
         with:
@@ -55,9 +59,10 @@ jobs:
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
-          mv dist/app-debug.apk dist/trasc-server-android-preview.apk
+          mv dist/app/build/outputs/apk/debug/app-debug.apk dist/trasc-server-android-preview.apk
           if ! gh release view preview >/dev/null 2>&1; then
             gh release create preview --prerelease --title 'TRASC Android preview' --notes-file docs/preview-notes.md
           fi
           gh release upload preview dist/trasc-server-android-preview.apk --clobber
+          gh release upload preview dist/dist/launcher-sources.tar.gz --clobber
           gh release edit preview --notes-file docs/preview-notes.md

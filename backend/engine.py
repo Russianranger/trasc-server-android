@@ -838,14 +838,17 @@ class Engine:
         return {'file':str(path.relative_to(self.work))}
 
     def logs(self,args):
-        root=self.work/'logs'
         name=args.get('name','control.log')
-        p=safe_path(root,name)
+        root=self.work/'server/logs' if name.startswith('server/') else self.work/'logs'
+        p=safe_path(root,name.removeprefix('server/'))
+        names=[p.name for p in (self.work/'logs').glob('*.log')]
+        server_logs=self.work/'server/logs'
+        if server_logs.exists(): names += ['server/'+str(p.relative_to(server_logs)) for p in server_logs.rglob('*.log') if not p.is_symlink()]
         if not p.exists(): return {'text':'No log output yet.'}
         with p.open('rb') as f:
             f.seek(max(0,p.stat().st_size-64000))
             text=f.read().decode(errors='replace')
-        return {'text':text,'names':[p.name for p in root.glob('*.log')]}
+        return {'text':text,'names':sorted(names)}
 
     def state(self):
         source=self.work/'sources/current/trasc-source.json'

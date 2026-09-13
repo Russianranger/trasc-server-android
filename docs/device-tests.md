@@ -23,4 +23,4 @@ Use a copy of your world/database initially. Record the APK commit from GitHub A
 | 17 | Shutdown runtime, reopen app | Clean MariaDB shutdown; existing data available; server starts only when requested |
 | 18 | Offline source, maps and database imports | All three complete with network disabled after runtime installation |
 
-If a step fails, export Logs and include the step number and visible error. If the runtime cannot open, select **Logs → runtime.log**; it remains accessible without the Python backend. Use the file export button if the backend cannot make a log bundle. Do not uninstall or clear storage as a troubleshooting step before exporting backups.
+If a step fails, export Logs and include the step number and visible error. If the runtime cannot open, select **Logs → runtime.log** and **Save runtime log**; both remain accessible without the Python backend. Do not uninstall or clear storage as a troubleshooting step before exporting backups.

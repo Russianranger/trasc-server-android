@@ -14,10 +14,24 @@ jobs:
       contents: write
     steps:
       - uses: actions/checkout@v4
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
       - name: Build standalone runtime
         run: bash scripts/build-runtime.sh
+      - name: Verify archive with the APK installer
+        run: bash scripts/check-runtime-installer.sh "$PWD/dist/runtime-arm64.tar.gz"
       - name: Exercise MariaDB import, rules, SQL and backups
         run: docker run --rm -v "$PWD/backend:/opt/trasc:ro" -v "$PWD/tests:/tests:ro" trasc-runtime:1 python3 /tests/integration_runtime.py
+      - name: Verify fork build dependencies and quest modules
+        run: |
+          git clone --depth 1 --filter=blob:none --sparse https://github.com/Russianranger/Triptych-Triumvirate.git runtime-work/server-source
+          git -C runtime-work/server-source sparse-checkout set Release-NMS-Server
+          docker run --rm -v "$PWD/runtime-work/server-source:/source:ro" trasc-runtime:1 bash -ec '
+            perl -MJSON -MDBI -MDBD::mysql -e "print qq(Quest modules available\n)"
+            cmake -S /source/Release-NMS-Server -B /tmp/server-build -G Ninja -DCMAKE_BUILD_TYPE=Release -DEQEMU_BUILD_LOGIN=ON -DEQEMU_BUILD_SERVER=ON -DEQEMU_BUILD_CLIENT_FILES=ON -DEQEMU_PREFER_LUA=ON -DLUA_INCLUDE_DIR=/usr/include/lua5.1 -DLUA_LIBRARY=/usr/lib/aarch64-linux-gnu/liblua5.1.so
+          '
       - name: Publish online and offline runtime
         env:
           GH_TOKEN: ${{ github.token }}
