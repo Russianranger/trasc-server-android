@@ -4,7 +4,7 @@
 
 Latest device report: Preview 0.2.0 session export fails with `Unsafe session path: runtime/var/lib/dpkg/info/binutils-common:arm64.conffiles`. Log export then fails with `Failed to connect to /127.0.0.1:18775`, because backup preparation closed the runtime. Fix both and publish an in-place APK update; preserve the existing world and signing key.
 
-### 0.2.1 fix in progress
+### 0.2.1 fixes published
 
 - Base: `fe84687345bcb4328ec6ab85a71c453829bd2073` (handoff after the published 0.2.0 code).
 - `SessionArchive.confined` accepts ordinary Linux colons and still rejects drive prefixes, traversal, absolute paths, backslashes and NULs. Both export and restore share the fix.
@@ -12,7 +12,12 @@ Latest device report: Preview 0.2.0 session export fails with `Unsafe session pa
 - MainActivity routes logs/export_logs directly to Android. Both UI log export buttons now consume the direct result instead of polling Python jobs. Backup failure persists to app.log and explicitly reports stopped-runtime recovery. The game server is not automatically restarted.
 - Version 0.2.1 / code 5, same application ID and pinned certificate. No new runtime or server rebuild required.
 - Local checks: 29 Python tests passed; native host-JVM roundtrip/log regressions passed; JavaScript syntax and whitespace checks passed. CI now also backs up/restores the complete published Debian ARM64 runtime, verifying every file hash; UI regression simulates backup failure with backend unavailable and tests both log buttons and readers.
-- Publication and CI outcome will be recorded below after the build. Physical Thor acceptance is pending.
+- Published code commit / preview tag: `e61761bd0ea725061ffcd2305ff82edd158b1cdc`. This handoff-only follow-up changes no APK code.
+- Successful workflow: https://github.com/Russianranger/trasc-server-android/actions/runs/34780884423 — database, APK and preview jobs all passed.
+- Actual runtime roundtrip passed using the production TarExtractor/SessionArchive classes: more than 28,000 regular files restored with SHA-256 verification, plus inventory counts and executable-mode checks. The exact `binutils-common:arm64.conffiles` path roundtripped.
+- ARM64 full seed import, rules/SQL checks and cold database migration passed. Browser tests passed both native log export buttons and nested log reading after a simulated session failure with the backend unavailable. APK compilation, Android lint and the pinned-certificate check passed.
+- APK: https://github.com/Russianranger/trasc-server-android/releases/download/preview/trasc-server-android-preview.apk — **225,637 bytes**, SHA-256 `5667d5fc697cc48f347b2952b5065c8405083c3ad0aeae652a7fffa66136a2aa`. Release asset and preview tag were read back from GitHub after publication.
+- Runtime 1.1 and the pinned signing certificate remain unchanged. Physical Thor acceptance is pending; ask the user to start with log export while closed, then complete session export/restore. No reset, recompile or database reimport is required for this APK update.
 
 ## Previous feature request (retained context)
 
@@ -43,7 +48,7 @@ The user explicitly declined any faction/deity change. Yukovis was a disposable 
 - Native Android session archive is needed because a new installation has no Python/runtime yet. Stop server/database cleanly; stage and verify all files before swapping app data. No source ZIP deletion outside the app's private staging copy.
 - Input mappings belong only to a focused client surface. Release held inputs on focus loss/tab change, disconnection or profile change. The initial surface is an input diagnostic; no game launch is advertised.
 
-## Progress
+## Previous feature implementation: 0.2.0
 
 - Feature implementation is committed and published: `rule_catalog.py`, `managed_content.py`, expanded Engine; native `SessionArchive`, `ControllerInput`, `ControllerManager`; RuntimeManager/MainActivity integration; rules/client UI and docs.
 - APK version 0.2.0 / code 4; application ID/signing unchanged. Runtime 1.1 remains compatible.
