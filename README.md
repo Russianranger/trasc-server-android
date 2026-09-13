@@ -6,6 +6,8 @@ A standalone Android control app for [Russianranger/Triptych-Triumvirate](https:
 
 ## Downloads and first setup
 
+**App 0.1.1 update:** fixes MariaDB initialization failing to resolve `localhost` during database import. Shut down the runtime, install the new APK over the existing app, open the runtime and retry the full database seed. Source, maps and settings are retained; runtime 1.1 needs no further download. [App update details](docs/preview-notes.md).
+
 **Runtime 1.1 update:** fixes the missing `uuid/uuid.h` compilation error by including `uuid-dev`. Existing users can select **Setup → Shut down runtime → Download runtime**, then retry **Build imported source**. This preserves imported files and the build cache; no APK reinstall is needed. [Runtime update details](docs/runtime-release-notes.md).
 
 - [Android preview release](https://github.com/Russianranger/trasc-server-android/releases/tag/preview): install the APK once the Android workflow succeeds.

@@ -29,7 +29,7 @@ import urllib.request
 import zipfile
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 
-VERSION = '0.1.0'
+VERSION = '0.1.1'
 DEFAULT_REPO = 'https://github.com/Russianranger/Triptych-Triumvirate'
 BINARIES = ('world', 'zone', 'loginserver', 'shared_memory', 'ucs', 'eqlaunch', 'queryserv', 'export_client_files')
 CLIENT_FILES = ('spells_us.txt', 'dbstr_us.txt', 'SkillCaps.txt', 'BaseData.txt')
@@ -415,7 +415,12 @@ class Engine:
             if self.db and self.db.poll() is None: return
             datadir = self.work / 'database'
             if not (datadir / 'mysql').exists():
-                self.run(['mariadb-install-db', '--datadir=' + str(datadir), '--auth-root-authentication-method=normal', '--skip-test-db'], timeout=240)
+                # Android's hostname need not resolve, including during offline setup.
+                # --force skips the installer's DNS prerequisite; it does not ignore SQL errors.
+                self.run(['mariadb-install-db', '--no-defaults', '--user=root',
+                    '--datadir=' + str(datadir), '--auth-root-authentication-method=normal',
+                    '--skip-test-db', '--force', '--skip-name-resolve',
+                    '--innodb-use-native-aio=0', '--innodb-flush-method=fsync'], timeout=240)
             if not re.fullmatch(r'[0-9a-f]{40}', self.config['root_password']):
                 raise ValueError('Invalid managed root credential')
             init = self.work / 'run/mysql-init.sql'

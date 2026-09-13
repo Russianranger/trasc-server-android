@@ -10,6 +10,51 @@ concurrency:
   group: android-${{ github.ref }}
   cancel-in-progress: true
 jobs:
+  database:
+    runs-on: ubuntu-24.04-arm
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+      - name: Download the published runtime and pinned server database
+        run: |
+          mkdir -p database-test/work database-test/fixtures
+          curl --fail --location --retry 3 -o database-test/runtime-manifest.json https://github.com/Russianranger/trasc-server-android/releases/download/runtime-v1/runtime-manifest.json
+          curl --fail --location --retry 3 -o database-test/runtime.tar.gz https://github.com/Russianranger/trasc-server-android/releases/download/runtime-v1/runtime-arm64.tar.gz
+          python3 - <<'PY'
+          import hashlib,json,pathlib
+          p=pathlib.Path('database-test')
+          m=json.loads((p/'runtime-manifest.json').read_text())
+          assert m['format']==1 and m['architecture']=='arm64'
+          assert hashlib.file_digest((p/'runtime.tar.gz').open('rb'),'sha256').hexdigest()==m['sha256']
+          PY
+          docker import database-test/runtime.tar.gz trasc-database-test:1
+          curl --fail --location --retry 3 -o database-test/fixtures/release-peq.zip https://raw.githubusercontent.com/Russianranger/Triptych-Triumvirate/18141ae0c9a11813733f08fa77db986951b853d6/Release-NMS-Server/database/release-peq.zip
+          touch database-test/fixtures/hosts
+          printf 'nameserver 192.0.2.1\noptions timeout:1 attempts:1\n' > database-test/fixtures/resolv.conf
+      - name: Reproduce Thor hostname failure and import the full seed offline
+        run: |
+          docker run --rm --network none --hostname localhost \
+            -v "$PWD/database-test/fixtures/hosts:/etc/hosts:ro" \
+            -v "$PWD/database-test/fixtures/resolv.conf:/etc/resolv.conf:ro" \
+            -v "$PWD/database-test/fixtures:/fixtures:ro" \
+            -v "$PWD/database-test/work:/work" \
+            -v "$PWD/backend:/opt/trasc:ro" -v "$PWD/tests:/tests:ro" \
+            trasc-database-test:1 python3 /tests/integration_database_offline.py --seed /fixtures/release-peq.zip
+      - name: Verify rules, SQL, backup and restore offline
+        run: |
+          docker run --rm --network none --hostname localhost \
+            -v "$PWD/database-test/fixtures/hosts:/etc/hosts:ro" \
+            -v "$PWD/database-test/fixtures/resolv.conf:/etc/resolv.conf:ro" \
+            -v "$PWD/backend:/opt/trasc:ro" -v "$PWD/tests:/tests:ro" \
+            trasc-database-test:1 python3 /tests/integration_runtime.py
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: database-import-verification
+          path: |
+            database-test/work/logs/
+            database-test/work/database-verification.json
+            database-test/runtime-manifest.json
   apk:
     runs-on: ubuntu-latest
     steps:
@@ -51,7 +96,7 @@ jobs:
           path: app/build/reports/
   preview:
     if: github.ref == 'refs/heads/main' && github.event_name != 'pull_request'
-    needs: apk
+    needs: [apk, database]
     runs-on: ubuntu-latest
     permissions:
       contents: write
@@ -73,7 +118,9 @@ jobs:
           python3 - <<'PY'
           import hashlib,json,os,pathlib
           p=pathlib.Path('dist/trasc-server-android-preview.apk')
-          pathlib.Path('dist/preview-build.json').write_text(json.dumps({'commit':os.environ['GITHUB_SHA'],'sha256':hashlib.sha256(p.read_bytes()).hexdigest(),'file':p.name,'version':'0.1.0'},indent=2))
+          import re
+          version=re.search(r"versionName '([^']+)'",pathlib.Path('app/build.gradle').read_text()).group(1)
+          pathlib.Path('dist/preview-build.json').write_text(json.dumps({'commit':os.environ['GITHUB_SHA'],'sha256':hashlib.sha256(p.read_bytes()).hexdigest(),'file':p.name,'version':version},indent=2))
           PY
           gh release upload preview dist/trasc-server-android-preview.apk --clobber
           gh release upload preview dist/dist/launcher-sources.tar.gz --clobber

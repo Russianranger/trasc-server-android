@@ -44,6 +44,9 @@ public final class RuntimeManager {
         write(new File(work,"run/api-token"),token);
         File tmp=new File(home,"tmp"); tmp.mkdirs();
         new File(rootfs,"tmp").mkdirs(); new File(rootfs,"work").mkdirs(); new File(rootfs,"opt/trasc").mkdirs();
+        // Docker's generated hosts file is absent from exported runtime archives.
+        // Repair existing installations too, before any Linux process starts.
+        write(new File(rootfs,"etc/hosts"),"127.0.0.1 localhost\n::1 localhost ip6-localhost ip6-loopback\n");
         write(new File(rootfs,"etc/resolv.conf"),"nameserver 1.1.1.1\nnameserver 8.8.8.8\n");
         List<String> command=new ArrayList<>(Arrays.asList(proot.getPath(),"--kill-on-exit","-0","-r",rootfs.getPath(),
             "-b","/dev","-b","/proc","-b",work.getPath()+":/work","-b",backend.getPath()+":/opt/trasc",
