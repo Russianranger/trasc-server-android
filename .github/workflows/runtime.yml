@@ -1,0 +1,28 @@
+name: Build ARM64 runtime
+on:
+  push:
+    branches: [main]
+    paths: ['runtime/**', 'scripts/build-runtime.sh', 'scripts/pack-runtime.py', '.github/workflows/runtime.yml']
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  runtime:
+    runs-on: ubuntu-24.04-arm
+    timeout-minutes: 60
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v4
+      - name: Build standalone runtime
+        run: bash scripts/build-runtime.sh
+      - name: Exercise MariaDB import, rules, SQL and backups
+        run: docker run --rm -v "$PWD/backend:/opt/trasc:ro" -v "$PWD/tests:/tests:ro" trasc-runtime:1 python3 /tests/integration_runtime.py
+      - name: Publish online and offline runtime
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          if ! gh release view runtime-v1 >/dev/null 2>&1; then
+            gh release create runtime-v1 --prerelease --title 'ARM64 runtime v1' --notes 'App-private Debian ARM64 runtime with database and compiler. Import runtime-arm64.tar.gz in the APK for offline setup. Package list and license notices are included inside the archive.'
+          fi
+          gh release upload runtime-v1 dist/runtime-arm64.tar.gz dist/runtime-manifest.json --clobber

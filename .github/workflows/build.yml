@@ -1,0 +1,63 @@
+name: Build Android preview
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+permissions:
+  contents: read
+concurrency:
+  group: android-${{ github.ref }}
+  cancel-in-progress: true
+jobs:
+  apk:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+      - uses: android-actions/setup-android@v3
+      - name: Install pinned Android packages
+        run: sdkmanager 'platforms;android-35' 'build-tools;35.0.0' 'ndk;27.2.12479018'
+      - uses: gradle/actions/setup-gradle@v4
+        with:
+          gradle-version: '8.11.1'
+      - name: Test control backend
+        run: python3 -m unittest discover -s tests -v
+      - name: Build packaged Android launcher
+        run: bash scripts/build-proot.sh
+      - name: Compile APK and check Android lint
+        run: gradle --no-daemon :app:assembleDebug :app:lintDebug
+      - uses: actions/upload-artifact@v4
+        with:
+          name: trasc-server-android-debug
+          path: app/build/outputs/apk/debug/app-debug.apk
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: android-reports
+          path: app/build/reports/
+  preview:
+    if: github.ref == 'refs/heads/main' && github.event_name != 'pull_request'
+    needs: apk
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/download-artifact@v4
+        with:
+          name: trasc-server-android-debug
+          path: dist
+      - name: Publish installable preview
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          mv dist/app-debug.apk dist/trasc-server-android-preview.apk
+          if ! gh release view preview >/dev/null 2>&1; then
+            gh release create preview --prerelease --title 'TRASC Android preview' --notes-file docs/preview-notes.md
+          fi
+          gh release upload preview dist/trasc-server-android-preview.apk --clobber
+          gh release edit preview --notes-file docs/preview-notes.md

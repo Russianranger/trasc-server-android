@@ -1,0 +1,13 @@
+.gradle/
+build/
+**/build/
+local.properties
+*.jks
+*.keystore
+__pycache__/
+backend-assets/
+*.pyc
+dist/
+runtime-work/
+app/src/main/jniLibs/
+app/src/main/assets/runtime.tar.gz
