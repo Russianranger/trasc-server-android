@@ -70,7 +70,6 @@ public final class MainActivity extends Activity {
                 try {
                     JSONObject args=new JSONObject(input);Object result;
                     if(runtime.sessionBusy&&!operation.equals("native_state")&&!operation.equals("runtime_log")&&!operation.equals("logs")&&!operation.equals("client_native_state"))throw new IOException("A complete session transfer is in progress");
-                    if((operation.equals("import_client_zip")||operation.equals("prepare_client"))&&(clientRuntime.alive()||clientRuntime.busy))throw new IOException("Stop the embedded client before changing its files");
                     switch(operation){
                         case "native_state": result=runtime.nativeState();break;
                         case "client_native_state": result=clientRuntime.state();break;
@@ -82,7 +81,7 @@ public final class MainActivity extends Activity {
                             runOnUiThread(()->startActivity(new Intent(MainActivity.this,ClientActivity.class)));result=new JSONObject();break;
                         case "runtime_install": service();runtime.installOnline();result=runtime.nativeState();break;
                         case "runtime_start": service();runtime.start();result=runtime.nativeState();break;
-                        case "runtime_stop": runtime.stop();stopService(new Intent(MainActivity.this,ServerService.class));result=runtime.nativeState();break;
+                        case "runtime_stop": runtime.stop();if(!clientRuntime.alive()&&!clientRuntime.busy)stopService(new Intent(MainActivity.this,ServerService.class));result=runtime.nativeState();break;
                         case "runtime_log": result=runtime.logs("runtime.log");break;
                         case "logs": result=runtime.logs(args.optString("name","control.log"));break;
                         case "export_logs": service();result=runtime.exportLogs();break;
@@ -92,6 +91,15 @@ public final class MainActivity extends Activity {
                         case "controller_capture": runOnUiThread(()->{try{controller.capture(args.optBoolean("active")&&hasWindowFocus());reply(id,controller.state(),null);}catch(Exception e){reply(id,null,e);}});return;
                         case "pick": runOnUiThread(()->pick(id,args.optString("kind","file"),args.optBoolean("replace")));return;
                         case "export": runOnUiThread(()->export(id,args.optString("path")));return;
+                        case "import_client_zip": case "prepare_client":
+                            // Serialize submission with native launch; start also checks queued/running jobs.
+                            synchronized(clientRuntime) {
+                                if(clientRuntime.alive()||clientRuntime.busy)throw new IOException("Stop the embedded client before changing its files");
+                                JSONObject response=runtime.request(operation,args);
+                                if(!response.getBoolean("ok"))throw new IOException(response.optString("error"));
+                                result=response.get("result");
+                            }
+                            break;
                         default:
                             JSONObject response=runtime.request(operation,args);
                             if(!response.getBoolean("ok"))throw new IOException(response.optString("error"));

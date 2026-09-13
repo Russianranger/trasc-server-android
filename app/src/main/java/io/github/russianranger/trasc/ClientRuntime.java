@@ -81,10 +81,20 @@ final class ClientRuntime {
         } finally {TarExtractor.remove(staging);}
     }
     synchronized JSONObject start(JSONObject options)throws Exception {
-        begin();
+        begin();boolean started=false;
         try {
             if(alive())throw new IOException("Client is already open. View it or stop it before another launch.");
             if(!installed())throw new IOException("Install the separate client runtime first");
+            if(server.alive()) {
+                JSONObject response=server.request("state",new JSONObject());
+                if(!response.getBoolean("ok"))throw new IOException(response.optString("error"));
+                org.json.JSONArray jobs=response.getJSONObject("result").getJSONArray("jobs");
+                for(int i=0;i<jobs.length();i++) {
+                    JSONObject job=jobs.getJSONObject(i);
+                    if(Arrays.asList("import_client_zip","prepare_client").contains(job.optString("operation"))&&Arrays.asList("queued","running").contains(job.optString("status")))
+                        throw new IOException("Wait for client import or preparation to finish before launching");
+                }
+            }
             String mode=options.optString("mode","client"),resolution=options.optString("resolution","800x600");
             if(!Arrays.asList("desktop","client").contains(mode)||!Arrays.asList("640x480","800x600","960x540","1024x768").contains(resolution))throw new IOException("Unsupported client launch option");
             if(mode.equals("client")&&!new File(client,"trasc-client.json").isFile())throw new IOException("Import your ROF2 client ZIP first");
@@ -106,7 +116,7 @@ final class ClientRuntime {
             ProcessBuilder builder=new ProcessBuilder(command);builder.environment().put("PROOT_LOADER",new File(nativeDir,"libproot-loader.so").getPath());
             builder.environment().put("PROOT_TMP_DIR",tmp.getPath());builder.environment().put("PROOT_NO_SECCOMP","1");
             builder.redirectErrorStream(true);builder.redirectOutput(ProcessBuilder.Redirect.appendTo(new File(server.work,"logs/client-runtime.log")));
-            process=builder.start();status="Starting client display and Wine…";
+            process=builder.start();started=true;status="Starting client display and Wine…";
             for(int i=0;i<200;i++) {
                 File report=new File(run,"status.json");
                 if(report.isFile()){JSONObject info=json(report);if(info.optString("phase").equals("error"))throw new IOException(info.optString("error"));}
@@ -115,7 +125,7 @@ final class ClientRuntime {
                 Thread.sleep(100);
             }
             throw new IOException("Client display startup timed out; export Logs");
-        } catch(Exception e){server.recordFailure("client_start",e);if(alive())stop();status=e.getMessage();throw e;}
+        } catch(Exception e){server.recordFailure("client_start",e);if(started&&alive())stop();status=e.getMessage();throw e;}
         finally {busy=false;}
     }
     synchronized void stop()throws Exception {
