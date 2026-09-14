@@ -26,7 +26,9 @@ with Path('/logs/shader-regression.log').open('wb') as log:
         result=subprocess.run(wine+[r'Z:\client\textures.exe','--shader-only'],cwd='/client',env=env,stdout=log,stderr=log,timeout=60)
         assert result.returncode==expected,(result.returncode,expected)
         log.flush();trace=Path('/logs/shader-regression.log').read_text(errors='replace')
-        assert ("'ffp_varying_specular' undeclared" in trace)==bool(expected),trace[-5000:]
+        # Mesa versions use either an apostrophe or backtick to open names.
+        diagnostic = "'ffp_varying_specular' undeclared" in trace.replace(chr(96), "'")
+        assert diagnostic==bool(expected),trace[-5000:]
         print('PASS: '+('unpatched Wine reproduces the exact undeclared specular error' if expected else 'patched Wine renders both legacy shader versions'))
     finally:
         subprocess.run(['/usr/local/bin/box64','/opt/wine/bin/wineserver','-k'],env=env,stdout=log,stderr=log,timeout=15)
