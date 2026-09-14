@@ -49,10 +49,9 @@ static int specular_shader(const char *version) {
     typedef HRESULT (WINAPI *Assemble)(LPCSTR,UINT,const D3DXMACRO*,ID3DXInclude*,DWORD,ID3DXBuffer**,ID3DXBuffer**);
     HMODULE dll=LoadLibraryA("d3dx9_35.dll");Assemble assemble=dll?(void*)GetProcAddress(dll,"D3DXAssembleShader"):NULL;
     if(!assemble)return 40;
-    /* SM1 uses the fixed D3D9 semantic register map: diffuse=v5,
-     * specular=v6. SM2 uses the explicitly declared v1/v2 below. */
-    int sm2=!strcmp(version,"vs_2_0");
-    char source[256];snprintf(source,sizeof(source),"%s\n%s mov oPos, v0\n mov oD0, v%u\n mov oD1, v%u\n",version,sm2?"dcl_position v0\ndcl_color0 v1\ndcl_color1 v2\n":"",sm2?1:5,sm2?2:6);
+    /* D3D9 requires explicit input declarations even for SM1 bytecode.
+     * Without them the shader has no position input and draws no geometry. */
+    char source[256];snprintf(source,sizeof(source),"%s\ndcl_position v0\ndcl_color0 v1\ndcl_color1 v2\nmov oPos, v0\nmov oD0, v1\nmov oD1, v2\n",version);
     ID3DXBuffer *code=NULL,*errors=NULL;HR(assemble(source,(UINT)strlen(source),NULL,NULL,0,&code,&errors));
     IDirect3DVertexShader9 *shader=NULL;IDirect3DVertexDeclaration9 *decl=NULL;
     HR(IDirect3DDevice9_CreateVertexShader(dev,code->lpVtbl->GetBufferPointer(code),&shader));
