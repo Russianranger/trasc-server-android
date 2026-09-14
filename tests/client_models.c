@@ -32,15 +32,15 @@ static int load_model(const char *name,IDirect3DDevice9 *device) {
     D3DXKEY_QUATERNION rotation[2]={{0,{0,0,0,1}},{1,{0,0,0,1}}};
     D3DXKEY_VECTOR3 translation[2]={{0,{-0.3f,0,0}},{1,{0.3f,0,0}}};
     DWORD index=99;
-    hr=ID3DXKeyframedAnimationSet_RegisterAnimationSRTKeys(set,"root",2,2,2,scale,rotation,translation,&index);
+    hr=set->lpVtbl->RegisterAnimationSRTKeys(set,"root",2,2,2,scale,rotation,translation,&index);
     if(FAILED(hr))return failed("RegisterAnimationSRTKeys",hr);
     D3DXVECTOR3 s,t;D3DXQUATERNION q;
-    hr=ID3DXKeyframedAnimationSet_GetSRT(set,0.5,0,&s,&q,&t);
+    hr=set->lpVtbl->GetSRT(set,0.5,0,&s,&q,&t);
     if(FAILED(hr)||index!=0||t.x<-.01f||t.x>.01f)return failed("GetSRT",FAILED(hr)?hr:E_FAIL);
     ID3DXBuffer *compressed=NULL;
-    hr=ID3DXKeyframedAnimationSet_Compress(set,0,0.1f,NULL,&compressed);
+    hr=set->lpVtbl->Compress(set,0,0.1f,NULL,&compressed);
     if(FAILED(hr)||!compressed)return failed("Compress",FAILED(hr)?hr:E_FAIL);
-    ID3DXBuffer_Release(compressed);
+    compressed->lpVtbl->Release(compressed);
     ID3DXMesh *mesh=NULL,*blended=NULL;
     DWORD fvf=D3DFVF_XYZ|D3DFVF_NORMAL|D3DFVF_DIFFUSE;
     hr=create_mesh(1,3,D3DXMESH_MANAGED,fvf,device,&mesh);
@@ -48,25 +48,25 @@ static int load_model(const char *name,IDirect3DDevice9 *device) {
     struct Vertex {float x,y,z,nx,ny,nz;DWORD color;};
     struct Vertex vertices[3]={{-.5f,-.5f,.5f,0,0,-1,0xffe08020},{0,.5f,.5f,0,0,-1,0xffe08020},{.5f,-.5f,.5f,0,0,-1,0xffe08020}};
     void *data=NULL;WORD indices[3]={0,1,2};DWORD *attributes=NULL;
-    if(FAILED(ID3DXMesh_LockVertexBuffer(mesh,0,&data)))return 32;
-    memcpy(data,vertices,sizeof(vertices));ID3DXMesh_UnlockVertexBuffer(mesh);
-    if(FAILED(ID3DXMesh_LockIndexBuffer(mesh,0,&data)))return 32;
-    memcpy(data,indices,sizeof(indices));ID3DXMesh_UnlockIndexBuffer(mesh);
-    if(FAILED(ID3DXMesh_LockAttributeBuffer(mesh,0,&attributes)))return 32;
-    attributes[0]=0;ID3DXMesh_UnlockAttributeBuffer(mesh);
+    if(FAILED(mesh->lpVtbl->LockVertexBuffer(mesh,0,&data)))return 32;
+    memcpy(data,vertices,sizeof(vertices));mesh->lpVtbl->UnlockVertexBuffer(mesh);
+    if(FAILED(mesh->lpVtbl->LockIndexBuffer(mesh,0,&data)))return 32;
+    memcpy(data,indices,sizeof(indices));mesh->lpVtbl->UnlockIndexBuffer(mesh);
+    if(FAILED(mesh->lpVtbl->LockAttributeBuffer(mesh,0,&attributes)))return 32;
+    attributes[0]=0;mesh->lpVtbl->UnlockAttributeBuffer(mesh);
     ID3DXSkinInfo *skin=NULL;hr=create_skin(3,fvf,1,&skin);
     if(FAILED(hr))return failed("CreateSkin",hr);
     DWORD ids[3]={0,1,2};float weights[3]={1,1,1};D3DXMATRIX offset;identity(&offset);
-    ID3DXSkinInfo_SetBoneName(skin,0,"root");ID3DXSkinInfo_SetBoneOffsetMatrix(skin,0,&offset);
-    hr=ID3DXSkinInfo_SetBoneInfluence(skin,0,3,ids,weights);
+    skin->lpVtbl->SetBoneName(skin,0,"root");skin->lpVtbl->SetBoneOffsetMatrix(skin,0,&offset);
+    hr=skin->lpVtbl->SetBoneInfluence(skin,0,3,ids,weights);
     if(FAILED(hr))return failed("SetBoneInfluence",hr);
     DWORD adjacency[3]={0xffffffff,0xffffffff,0xffffffff},influences=0,combinations=0;
     ID3DXBuffer *table=NULL;
-    hr=ID3DXSkinInfo_ConvertToIndexedBlendedMesh(skin,mesh,D3DXMESH_MANAGED,1,adjacency,NULL,NULL,NULL,&influences,&combinations,&table,&blended);
+    hr=skin->lpVtbl->ConvertToIndexedBlendedMesh(skin,mesh,D3DXMESH_MANAGED,1,adjacency,NULL,NULL,NULL,&influences,&combinations,&table,&blended);
     if(FAILED(hr)||!blended||!combinations)return failed("ConvertToIndexedBlendedMesh",FAILED(hr)?hr:E_FAIL);
-    if(table)ID3DXBuffer_Release(table);ID3DXSkinInfo_Release(skin);ID3DXMesh_Release(mesh);
-    if(model)ID3DXMesh_Release(model);
-    if(animation)ID3DXKeyframedAnimationSet_Release(animation);
+    if(table)table->lpVtbl->Release(table);skin->lpVtbl->Release(skin);mesh->lpVtbl->Release(mesh);
+    if(model)model->lpVtbl->Release(model);
+    if(animation)animation->lpVtbl->Release(animation);
     model=blended;animation=set;
     printf("PASS: %s animation registration, sampling, compression and skinned mesh conversion\n",name);fflush(stdout);
     return 0;
@@ -95,17 +95,17 @@ int WINAPI WinMain(HINSTANCE instance,HINSTANCE previous,LPSTR command,int show)
     while(GetTickCount()-start<30000 && GetFileAttributesA("D:\\model-stop.txt")==INVALID_FILE_ATTRIBUTES) {
         MSG msg;while(PeekMessage(&msg,NULL,0,0,PM_REMOVE)){if(msg.message==WM_QUIT)goto done;TranslateMessage(&msg);DispatchMessage(&msg);}
         D3DXVECTOR3 scale,translation;D3DXQUATERNION rotation;
-        if(FAILED(ID3DXKeyframedAnimationSet_GetSRT(animation,(GetTickCount()-start)%1000/1000.0,0,&scale,&rotation,&translation)))return 32;
+        if(FAILED(animation->lpVtbl->GetSRT(animation,(GetTickCount()-start)%1000/1000.0,0,&scale,&rotation,&translation)))return 32;
         identity(&matrix);matrix._41=translation.x;
         IDirect3DDevice9_SetTransform(device,D3DTS_WORLD,(D3DMATRIX*)&matrix);
         IDirect3DDevice9_Clear(device,0,NULL,D3DCLEAR_TARGET,0xff184860,1,0);
-        IDirect3DDevice9_BeginScene(device);IDirect3DDevice9_SetFVF(device,ID3DXMesh_GetFVF(model));
-        HRESULT drawn=ID3DXMesh_DrawSubset(model,0);IDirect3DDevice9_EndScene(device);
+        IDirect3DDevice9_BeginScene(device);IDirect3DDevice9_SetFVF(device,model->lpVtbl->GetFVF(model));
+        HRESULT drawn=model->lpVtbl->DrawSubset(model,0);IDirect3DDevice9_EndScene(device);
         HRESULT presented=IDirect3DDevice9_Present(device,NULL,NULL,NULL,NULL);
         if(!ready&&SUCCEEDED(drawn)&&SUCCEEDED(presented)){marker("D:\\model-ready.json","{\"model_functions\":true,\"drawn\":true}");ready=TRUE;}
         Sleep(30);
     }
 done:
-    ID3DXMesh_Release(model);ID3DXKeyframedAnimationSet_Release(animation);IDirect3DDevice9_Release(device);IDirect3D9_Release(d3d);
+    model->lpVtbl->Release(model);animation->lpVtbl->Release(animation);IDirect3DDevice9_Release(device);IDirect3D9_Release(d3d);
     return 0;
 }
