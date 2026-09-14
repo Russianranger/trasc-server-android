@@ -5,7 +5,7 @@
 #include <sys/prctl.h>
 #include <sys/stat.h>
 #include <unistd.h>
-#include "vtest.h"
+#include "vtest_server.h"
 
 /* Query the real host driver before accepting any guest rendering commands. */
 static int probe_driver(void) {
