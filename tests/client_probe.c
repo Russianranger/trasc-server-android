@@ -8,7 +8,12 @@
 static volatile unsigned char legacy_image[20*1024*1024];
 
 static void marker(const char *name,const char *value) {
-    FILE *out=fopen(name,"w");if(out){fputs(value,out);fclose(out);}
+    // Readers use existence as readiness; never expose an empty/partial result.
+    char temporary[MAX_PATH];
+    if(snprintf(temporary,sizeof(temporary),"%s.tmp",name)>=(int)sizeof(temporary))ExitProcess(90);
+    FILE *out=fopen(temporary,"w");
+    if(!out||fputs(value,out)==EOF||fclose(out)!=0)ExitProcess(90);
+    if(!MoveFileExA(temporary,name,MOVEFILE_REPLACE_EXISTING|MOVEFILE_WRITE_THROUGH))ExitProcess(91);
 }
 static LRESULT CALLBACK window_proc(HWND window,UINT message,WPARAM key,LPARAM data) {
     if(message==WM_KEYDOWN&&key=='T')marker("D:\\probe-key.txt","T");

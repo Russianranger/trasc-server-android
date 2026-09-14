@@ -12,7 +12,12 @@ static ID3DXMesh *model;
 static ID3DXKeyframedAnimationSet *animation;
 
 static void marker(const char *name,const char *value) {
-    FILE *out=fopen(name,"w");if(out){fputs(value,out);fclose(out);}
+    // Readers use existence as readiness; never expose an empty/partial result.
+    char temporary[MAX_PATH];
+    if(snprintf(temporary,sizeof(temporary),"%s.tmp",name)>=(int)sizeof(temporary))ExitProcess(90);
+    FILE *out=fopen(temporary,"w");
+    if(!out||fputs(value,out)==EOF||fclose(out)!=0)ExitProcess(90);
+    if(!MoveFileExA(temporary,name,MOVEFILE_REPLACE_EXISTING|MOVEFILE_WRITE_THROUGH))ExitProcess(91);
 }
 static void identity(D3DXMATRIX *m){memset(m,0,sizeof(*m));m->_11=m->_22=m->_33=m->_44=1;}
 static int failed(const char *step,HRESULT hr) {
