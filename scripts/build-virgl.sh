@@ -15,8 +15,18 @@ build="$native/virgl-$target"
 mkdir -p "$build/source" "$build/epoxy"
 tar --no-same-owner -xzf "$native/virglrenderer-1.3.0.tar.gz" --strip-components=1 -C "$build/source"
 tar --no-same-owner -xzf "$native/libepoxy-1.5.10.tar.gz" --strip-components=1 -C "$build/epoxy"
-for patch in "$repo_root"/native/virgl-patches/*.patch; do patch -d "$build/source" -p1 --forward < "$patch"; done
+for patch in "$repo_root"/native/virgl-patches/*.patch; do
+    # Linux has timespec_get; this compatibility patch is only for older Android.
+    if [ "$target" != android ] && [[ "$patch" == *0010-* ]]; then continue; fi
+    patch -d "$build/source" -p1 --forward < "$patch"
+done
 cp "$repo_root/native/virgl_main.c" "$build/source/vtest/vtest_main.c"
+python3 - "$build/source/vtest/meson.build" <<'PY'
+import pathlib,sys
+p=pathlib.Path(sys.argv[1]);s=p.read_text()
+s=s.replace('dependencies : [libvirglrenderer_dep, gallium_dep],','dependencies : [libvirglrenderer_dep, gallium_dep, epoxy_dep],')
+p.write_text(s)
+PY
 common=(-Dplatforms=egl -Dvenus=false -Dvideo=false -Dtests=false -Ddefault_library=static -Dbuildtype=release)
 if [ "$target" = android ]; then
     llvm="${ANDROID_HOME:?Set ANDROID_HOME}/ndk/27.2.12479018/toolchains/llvm/prebuilt/linux-x86_64/bin"
