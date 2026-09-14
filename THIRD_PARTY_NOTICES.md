@@ -25,3 +25,18 @@ The Android RFB client is implemented in this repository from the public protoco
 The APK packages [cabextract 1.11](https://www.cabextract.org.uk/) with its bundled libmspack cabinet decoder. The exact source archive (SHA-256 `b5546db1155e4c718ff3d4b278573604f30dd64c3c5bfd4657cd089b823a3ac6`) and `scripts/build-cabextract.sh` accompany the APK in `launcher-sources.tar.gz`. See that archive's COPYING and source notices for the GPL/libmspack terms.
 
 The optional installation action downloads the [Microsoft DirectX End-User Runtimes (June 2010)](https://www.microsoft.com/en-us/download/details.aspx?id=8109) directly from Microsoft, or reads the user's matching offline EXE. It verifies the entire package SHA-256 before extracting only x86 d3dx9_30.dll and d3dx9_35.dll. Microsoft libraries retain Microsoft's license terms; none are included in this repository, APK, Linux runtime archive or published test artifacts. CI obtains the same official package temporarily to verify installation and model APIs.
+
+## Native graphics bridge
+
+The APK builds VirGL renderer 1.3.0 (MIT) and statically links libepoxy 1.5.10
+(MIT). It calls Android's public EGL/GLES libraries; no proprietary graphics
+driver, ANGLE binary, Termux application or EverQuest asset is distributed.
+Source archives, the build script, launcher, Android patches and license files
+are included in the published launcher-sources archive.
+
+Selected Android portability, EGL and DXT decompression patches come from
+[Termux packages](https://github.com/termux/termux-packages/tree/4f48a30edadeff906a3cad7adfaa17e5f8d10605/packages/virglrenderer-android).
+The DXT conversion includes gl4es code under its MIT license, reproduced in
+native/virgl-patches/COPYING-gl4es. The additional pointer-arithmetic patch
+makes that conversion compile with GCC as well as Clang. The older-Android
+timespec compatibility patch applies only to Android builds.

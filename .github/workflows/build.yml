@@ -1,7 +1,7 @@
 name: Build Android preview
 on:
   push:
-    branches: [main, codex/client-bootstrap, codex/client-loader-fix]
+    branches: [main, codex/client-bootstrap, codex/client-loader-fix, codex/client-performance]
   pull_request:
   workflow_dispatch:
 permissions:
@@ -120,8 +120,11 @@ jobs:
           path: ui-reports/
       - name: Build packaged Android launcher
         run: |
+          sudo apt-get update
+          sudo apt-get install -y meson ninja-build pkg-config
           bash scripts/build-proot.sh
           bash scripts/build-cabextract.sh android
+          bash scripts/build-virgl.sh android
       - name: Package corresponding launcher sources
         run: bash scripts/pack-launcher-sources.sh
       - name: Compile APK and check Android lint

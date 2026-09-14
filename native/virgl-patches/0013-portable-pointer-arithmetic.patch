@@ -1,0 +1,5 @@
+--- a/src/vrend/vrend_renderer.c
++++ b/src/vrend/vrend_renderer.c
+@@ -9560,1 +9560,1 @@
+-                        memcpy(decompressed_data + y_tmp * info->box->width * 4, tmp + y_tmp * nw * 4,
++                        memcpy((unsigned char *)decompressed_data + y_tmp * info->box->width * 4, (unsigned char *)tmp + y_tmp * nw * 4,

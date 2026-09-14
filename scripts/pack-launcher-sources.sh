@@ -10,5 +10,8 @@ cp "$native_dir/talloc.tar.gz" "$out/talloc-2.4.3.tar.gz"
 cp "$repo_root/scripts/build-proot.sh" "$out/"
 cp "$native_dir/cabextract-1.11.tar.gz" "$out/"
 cp "$repo_root/scripts/build-cabextract.sh" "$out/"
+cp "$native_dir/virglrenderer-1.3.0.tar.gz" "$native_dir/libepoxy-1.5.10.tar.gz" "$out/"
+cp "$repo_root/scripts/build-virgl.sh" "$out/"
+cp -r "$repo_root/native" "$out/"
 cp "$repo_root/THIRD_PARTY_NOTICES.md" "$out/"
 tar -czf "$repo_root/dist/launcher-sources.tar.gz" -C "$repo_root/dist" launcher-source

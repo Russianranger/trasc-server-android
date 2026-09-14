@@ -19,6 +19,7 @@ final class ClientRuntime {
     volatile boolean busy;
     volatile String status="Install the client runtime to try Wine and ROF2.";
     private volatile Process process;
+    private volatile GraphicsBridge graphics;
     ClientRuntime(Context context) {
         this.context=context;server=RuntimeManager.get(context);
         root=new File(server.work,"client/runtime");client=new File(server.work,"client/current");prefix=new File(server.work,"client/prefix");
@@ -26,7 +27,7 @@ final class ClientRuntime {
         run=new File(server.home,"tmp/client/session");tmp=new File(server.home,"tmp/client/tmp");
     }
     boolean installed(){return new File(root,"etc/trasc-client-runtime.json").isFile();}
-    boolean alive(){return process!=null&&process.isAlive();}
+    boolean alive(){return (process!=null&&process.isAlive())||(graphics!=null&&graphics.alive());}
     File displaySocket(){return new File(run,"display.sock");}
     static JSONObject json(File file)throws Exception {
         if(file.length()>131072)throw new IOException("Client metadata exceeds limits");
@@ -99,6 +100,7 @@ final class ClientRuntime {
         begin();boolean started=false;
         try {
             if(alive())throw new IOException("Client is already open. View it or stop it before another launch.");
+            if(graphics!=null){graphics.stop();graphics=null;}
             if(!installed())throw new IOException("Install the separate client runtime first");
             DirectXInstaller.recover(directx);
             if(server.alive()) {
@@ -111,7 +113,8 @@ final class ClientRuntime {
                         throw new IOException("Wait for client import or preparation to finish before launching");
                 }
             }
-            String mode=options.optString("mode","client"),resolution=options.optString("resolution","800x600");
+            String mode=options.optString("mode","client"),resolution=options.optString("resolution","800x600"),renderer=options.optString("renderer","software");
+            if(!Arrays.asList("software","virgl").contains(renderer))throw new IOException("Unsupported graphics option");
             if(!Arrays.asList("desktop","client").contains(mode)||!Arrays.asList("640x480","800x600","960x540","1024x768").contains(resolution))throw new IOException("Unsupported client launch option");
             if(mode.equals("client")&&options.optBoolean("native_d3dx",true)&&!DirectXInstaller.installed(directx))throw new IOException("Install DirectX model helpers in the Client tab first, or disable model helpers for a Wine comparison");
             if(mode.equals("client")&&!new File(client,"trasc-client.json").isFile())throw new IOException("Import your ROF2 client ZIP first");
@@ -124,7 +127,7 @@ final class ClientRuntime {
             }
             TarExtractor.remove(run);TarExtractor.remove(tmp);run.mkdirs();tmp.mkdirs();prefix.mkdirs();client.mkdirs();
             JSONObject request=new JSONObject().put("mode",mode).put("resolution",resolution).put("executable",executable).put("native_dinput8",options.optBoolean("native_dinput8",true))
-                .put("diagnostic_logging",options.optBoolean("diagnostic_logging",false)).put("native_d3dx",mode.equals("client")&&options.optBoolean("native_d3dx",true));
+                .put("diagnostic_logging",options.optBoolean("diagnostic_logging",false)).put("native_d3dx",mode.equals("client")&&options.optBoolean("native_d3dx",true)).put("renderer",renderer);
             RuntimeManager.write(new File(run,"request.json"),request.toString());
             File backend=new File(server.home,"client-backend");backend.mkdirs();
             try(InputStream in=context.getAssets().open("client_runner.py")){RuntimeManager.copy(in,new File(backend,"client_runner.py"));}
@@ -132,6 +135,10 @@ final class ClientRuntime {
             RuntimeManager.write(new File(root,"etc/resolv.conf"),"nameserver 1.1.1.1\nnameserver 8.8.8.8\n");
             directx.mkdirs();new File(root,"directx").mkdirs();
             File nativeDir=new File(context.getApplicationInfo().nativeLibraryDir);
+            if(renderer.equals("virgl")) {
+                status="Opening Android GPU driver…";
+                graphics=GraphicsBridge.start(new File(nativeDir,"libvirgl-server.so"),new File(tmp,".virgl_test"),new File(server.work,"logs/client-gpu.log"));
+            }
             List<String> command=new ArrayList<>(Arrays.asList(new File(nativeDir,"libproot.so").getPath(),"--kill-on-exit","-0","-r",root.getPath(),
                 "-b","/dev","-b","/proc","-b","/sys","-b",directx.getPath()+":/directx","-b",client.getPath()+":/client","-b",prefix.getPath()+":/prefix","-b",run.getPath()+":/session",
                 "-b",new File(server.work,"logs").getPath()+":/logs","-b",backend.getPath()+":/opt/trasc-client","-b",tmp.getPath()+":/tmp",
@@ -141,15 +148,30 @@ final class ClientRuntime {
             builder.environment().put("PROOT_TMP_DIR",tmp.getPath());builder.environment().put("PROOT_NO_SECCOMP","1");
             builder.redirectErrorStream(true);builder.redirectOutput(ProcessBuilder.Redirect.appendTo(new File(server.work,"logs/client-runtime.log")));
             process=builder.start();started=true;status="Starting client display and Wine…";
+            final Process active=process;final GraphicsBridge bridge=graphics;
+            Thread monitor=new Thread(()->{
+                try {
+                    while(active.isAlive()) {
+                        if(bridge!=null&&!bridge.alive()) {
+                            RuntimeManager.write(new File(run,"gpu-failed"),"GPU bridge exited\n");
+                            server.recordFailure("client_gpu",new IOException("GPU bridge exited; see client-gpu.log. Choose Software graphics to compare."));
+                            break;
+                        }
+                        if(active.waitFor(1,TimeUnit.SECONDS))break;
+                    }
+                    active.waitFor();
+                    synchronized(ClientRuntime.this){if(bridge!=null&&graphics==bridge){bridge.stop();graphics=null;}}
+                } catch(Exception e){server.recordFailure("client_gpu_cleanup",e);}
+            },"client-graphics-lifecycle");monitor.setDaemon(true);monitor.start();
             for(int i=0;i<200;i++) {
                 File report=new File(run,"status.json");
                 if(report.isFile()){JSONObject info=json(report);if(info.optString("phase").equals("error"))throw new IOException(info.optString("error"));}
-                if(!alive())throw new IOException("Client runtime exited. See client-runtime.log and client-wine.log.");
+                if(!process.isAlive())throw new IOException("Client runtime exited. See client-runtime.log and client-wine.log.");
                 if(displaySocket().exists()){status="Client display open. Wine may take a minute to prepare its first prefix.";return state();}
                 Thread.sleep(100);
             }
             throw new IOException("Client display startup timed out; export Logs");
-        } catch(Exception e){server.recordFailure("client_start",e);if(started&&alive())stop();status=e.getMessage();throw e;}
+        } catch(Exception e){server.recordFailure("client_start",e);if(started&&alive())stop();else if(graphics!=null){graphics.stop();graphics=null;}status=e.getMessage();throw e;}
         finally {busy=false;}
     }
     synchronized void stop()throws Exception {
@@ -158,6 +180,7 @@ final class ClientRuntime {
             status="Stopping Wine and the client display…";run.mkdirs();RuntimeManager.write(new File(run,"stop"),"stop\n");
             if(!active.waitFor(25,TimeUnit.SECONDS)){active.destroy();if(!active.waitFor(5,TimeUnit.SECONDS)){active.destroyForcibly();if(!active.waitFor(5,TimeUnit.SECONDS))throw new IOException("Client runtime did not stop; wait before backing up");}}
         }
+        if(graphics!=null){graphics.stop();graphics=null;}
         process=null;status="Client stopped. Server runtime is managed separately.";
     }
 }

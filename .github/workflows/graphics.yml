@@ -2,7 +2,7 @@ name: Verify Android graphics bridge
 on:
   push:
     branches: [codex/client-performance]
-    paths: ['native/**', 'scripts/build-virgl.sh', '.github/workflows/graphics.yml']
+    paths: ['native/**', 'scripts/build-virgl.sh', '.github/workflows/graphics.yml', 'app/src/main/java/**/GraphicsBridge.java', 'tests/java/**/GraphicsHostTest.java']
   workflow_dispatch:
 permissions:
   contents: read
@@ -30,10 +30,25 @@ jobs:
       - uses: actions/checkout@v4
       - run: sudo apt-get update && sudo apt-get install -y meson ninja-build pkg-config libepoxy-dev libegl1-mesa-dev libgbm-dev libdrm-dev
       - run: bash scripts/build-virgl.sh host
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+      - name: Verify native graphics process ownership and failure recovery
+        run: |
+          mkdir -p runtime-work/graphics-classes
+          javac -d runtime-work/graphics-classes app/src/main/java/io/github/russianranger/trasc/GraphicsBridge.java tests/java/io/github/russianranger/trasc/GraphicsHostTest.java
+          java -cp runtime-work/graphics-classes io.github.russianranger.trasc.GraphicsHostTest "$PWD/runtime-work/native/virgl-host/out/vtest/virgl_test_server"
       - name: Test the published guest Mesa through the native GLES bridge
         run: |
           mkdir -p runtime-work/gpu-test/tmp runtime-work/gpu-test/logs
           curl -fL --retry 3 https://github.com/Russianranger/trasc-server-android/releases/download/client-runtime-v1/client-runtime-arm64.tar.gz -o runtime-work/gpu-test/runtime.tar.gz
+          curl -fL --retry 3 https://github.com/Russianranger/trasc-server-android/releases/download/client-runtime-v1/client-runtime-manifest.json -o runtime-work/gpu-test/manifest.json
+          python3 - <<'PY'
+          import pathlib,json,hashlib
+          p=pathlib.Path('runtime-work/gpu-test');m=json.loads((p/'manifest.json').read_text())
+          assert hashlib.file_digest((p/'runtime.tar.gz').open('rb'),'sha256').hexdigest()==m['sha256']
+          PY
           docker import runtime-work/gpu-test/runtime.tar.gz trasc-gpu-test:1
           LIBGL_ALWAYS_SOFTWARE=1 GALLIUM_DRIVER=llvmpipe runtime-work/native/virgl-host/out/vtest/virgl_test_server --use-egl-surfaceless --use-gles --multi-clients --socket-path "$PWD/runtime-work/gpu-test/tmp/.virgl_test" > runtime-work/gpu-test/logs/host.log 2>&1 &
           renderer=$!

@@ -131,6 +131,7 @@ def pe_machine(path):
 def validate_request(request):
     if request.get('mode') not in ('desktop', 'client'): raise ValueError('Choose Wine desktop or ROF2 client')
     if request.get('resolution') not in ('640x480', '800x600', '960x540', '1024x768'): raise ValueError('Unsupported client resolution')
+    if request.get('renderer', 'software') not in ('software', 'virgl'): raise ValueError('Unsupported graphics option')
     if not isinstance(request.get('native_d3dx', False), bool): raise ValueError('Invalid model-library option')
     if not isinstance(request.get('diagnostic_logging', False), bool): raise ValueError('Invalid Wine diagnostic option')
     if request['mode'] == 'client':
@@ -251,6 +252,21 @@ def model_dll_status(log):
     return loaded, evidence[-8:]
 
 
+def graphics_status(requested, guest, host=''):
+    """Report measured driver identity, never equate a requested bridge with a GPU."""
+    match = re.search(r'^OpenGL renderer string:\s*(.+)$', guest, re.M)
+    if not match: raise RuntimeError('OpenGL driver check failed; see client-graphics.log and try Software graphics')
+    renderer = match[1].strip()
+    if requested == 'virgl' and not renderer.lower().startswith('virgl'):
+        raise RuntimeError('GPU bridge was requested but Mesa did not load VirGL. See client-gpu.log and client-graphics.log; choose Software graphics to recover')
+    native = re.search(r'^TRASC GPU renderer:\s*(.+)$', host, re.M)
+    native = native[1].strip() if native and requested == 'virgl' else ''
+    software = any(word in (renderer+' '+native).lower() for word in ('llvmpipe','softpipe','swiftshader','lavapipe','software'))
+    return {'renderer': 'WineD3D / '+renderer, 'graphics_backend': requested,
+            'host_gl_renderer': native,
+            'graphics_acceleration': 'software' if software else 'host_gpu' if native else 'unknown'}
+
+
 class Supervisor:
     def __init__(self, request):
         self.request = request
@@ -262,7 +278,8 @@ class Supervisor:
                        'system_dinput8_loaded': False,
                        'diagnostic_logging': request.get('diagnostic_logging', False),
                        'native_d3dx_requested': request['mode']=='client' and request.get('native_d3dx', False),
-                       'renderer': 'WineD3D / llvmpipe (software)', 'started_at': time.time()}
+                       'renderer': 'Checking graphics driver', 'graphics_backend': request.get('renderer','software'),
+                       'graphics_acceleration': 'unknown', 'started_at': time.time()}
         self.env = dict(os.environ, DISPLAY=':7', XAUTHORITY=str(SESSION / 'Xauthority'),
                         WINEPREFIX=str(PREFIX), WINEARCH='win64', WINEDEBUG=wine_debug(),
                         WINEDLLOVERRIDES='winemenubuilder,mscoree,mshtml,winegstreamer=',
@@ -270,6 +287,11 @@ class Supervisor:
                         BOX64_LOG='1', BOX64_NOBANNER='0', BOX64_PATH='/opt/wine/bin',
                         BOX64_LD_LIBRARY_PATH='/usr/lib/x86_64-linux-gnu:/lib/x86_64-linux-gnu:/opt/wine/lib/wine/x86_64-unix',
                         LIBGL_ALWAYS_SOFTWARE='1', GALLIUM_DRIVER='llvmpipe', LP_NUM_THREADS='4')
+        if request.get('renderer','software') == 'virgl':
+            # swrast's virpipe transport forwards rendering to the native GLES
+            # server. LIBGL_ALWAYS_SOFTWARE selects that headless DRI loader;
+            # it does not select llvmpipe when GALLIUM_DRIVER is virpipe.
+            self.env.update(GALLIUM_DRIVER='virpipe', VTEST_SOCKET_NAME='/tmp/.virgl_test')
 
     def update(self, phase=None, **fields):
         if phase: self.status['phase'] = phase
@@ -280,6 +302,8 @@ class Supervisor:
         tmp.write_text(json.dumps(self.status, indent=2)); os.replace(tmp, report)
 
     def stopping(self):
+        if (SESSION / 'gpu-failed').exists():
+            raise RuntimeError('Android GPU bridge exited unexpectedly; see client-gpu.log. Choose Software graphics to compare')
         if stop_requested or (SESSION / 'stop').exists():
             self.status['stop_reason'] = stop_reason or 'stop_request'
             return True
@@ -323,6 +347,20 @@ class Supervisor:
                  timeout=60, label='32-bit Wine check')
         self.update(wine32_ready=True)
 
+    def check_graphics(self):
+        self.update('checking_graphics')
+        process = self.spawn(['glxinfo', '-B'], 'client-graphics.log')
+        deadline = time.monotonic()+30
+        while process.poll() is None:
+            if self.stopping(): raise StopRequested()
+            if time.monotonic()>deadline: raise RuntimeError('OpenGL driver check timed out; choose Software graphics and export Logs')
+            time.sleep(.1)
+        if process.returncode: raise RuntimeError('OpenGL driver setup failed; see client-graphics.log and client-gpu.log. Choose Software graphics to compare')
+        host = LOGS / 'client-gpu.log'
+        host_text = host.read_text(errors='replace')[-65536:] if host.is_file() else ''
+        report = graphics_status(self.request.get('renderer','software'), (LOGS/'client-graphics.log').read_text(errors='replace'), host_text)
+        self.update(**report)
+
     def start(self):
         validate_request(self.request)
         print(f"Client session started at {self.status['started_at']}: {self.request['mode']}", flush=True)
@@ -344,8 +382,9 @@ class Supervisor:
             if (SESSION / 'display.sock').exists(): break
             time.sleep(.1)
         else: raise RuntimeError('Client display did not become ready')
-        self.update('preparing_prefix', display_ready=True)
-        self.spawn(['glxinfo', '-B'], 'client-graphics.log')
+        self.update(display_ready=True)
+        self.check_graphics()
+        self.update('preparing_prefix')
         self.run(['/usr/local/bin/box64', '/opt/wine/bin/wine', 'wineboot', '-u'])
         self.check_prefix()
         devices = PREFIX / 'dosdevices'; devices.mkdir(exist_ok=True)

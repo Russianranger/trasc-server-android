@@ -26,6 +26,33 @@ class ClientTests(unittest.TestCase):
 
     def tearDown(self): self.temp.cleanup()
 
+    def test_graphics_identity_requires_actual_virgl_and_host_driver(self):
+        guest='OpenGL renderer string: virgl (Adreno (TM) 740)\n'
+        status=client_runner.graphics_status('virgl',guest,'TRASC GPU renderer: Adreno (TM) 740\n')
+        self.assertEqual(status['graphics_acceleration'],'host_gpu')
+        self.assertEqual(status['host_gl_renderer'],'Adreno (TM) 740')
+        self.assertEqual(client_runner.graphics_status('virgl',guest)['graphics_acceleration'],'unknown')
+        status=client_runner.graphics_status('virgl','OpenGL renderer string: virgl (llvmpipe)\n','TRASC GPU renderer: llvmpipe\n')
+        self.assertEqual(status['graphics_acceleration'],'software')
+        with self.assertRaisesRegex(RuntimeError,'did not load VirGL'):
+            client_runner.graphics_status('virgl','OpenGL renderer string: llvmpipe\n')
+        with self.assertRaisesRegex(RuntimeError,'driver check failed'):client_runner.graphics_status('virgl','')
+        # A prior GPU log cannot label a subsequent software launch accelerated.
+        status=client_runner.graphics_status('software','OpenGL renderer string: llvmpipe\n','TRASC GPU renderer: Adreno (TM) 740\n')
+        self.assertEqual(status['graphics_acceleration'],'software');self.assertEqual(status['host_gl_renderer'],'')
+
+    def test_graphics_options_and_native_process_failure(self):
+        request={'mode':'desktop','resolution':'800x600','renderer':'virgl'}
+        client_runner.validate_request(request)
+        with self.assertRaisesRegex(ValueError,'graphics option'):client_runner.validate_request(dict(request,renderer='invalid'))
+        gpu=client_runner.Supervisor(request)
+        self.assertEqual(gpu.env['GALLIUM_DRIVER'],'virpipe')
+        self.assertEqual(gpu.env['VTEST_SOCKET_NAME'],'/tmp/.virgl_test')
+        self.assertEqual(client_runner.Supervisor(dict(request,renderer='software')).env['GALLIUM_DRIVER'],'llvmpipe')
+        with patch.object(client_runner,'SESSION',self.root):
+            (self.root/'gpu-failed').touch()
+            with self.assertRaisesRegex(RuntimeError,'GPU bridge exited'):gpu.stopping()
+
     def test_normal_launch_disables_hot_traces_but_keeps_errors_and_dll_proof(self):
         normal=client_runner.Supervisor({'mode':'client','resolution':'800x600'}).env['WINEDEBUG']
         self.assertEqual(normal,'-all,+timestamp,+pid,err+all,trace+loaddll')

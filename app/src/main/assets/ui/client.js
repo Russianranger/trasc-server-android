@@ -52,11 +52,11 @@ async function clientRuntimeState(){
  const dllState=launch?.native_loaded?'Native dinput8.dll load confirmed. '+(launch.system_dinput8_loaded?'Wine system DirectInput loaded.':'System DirectInput load not yet confirmed.'):
   launch?.native_dinput8_requested?'Native dinput8.dll requested; load not yet confirmed.':'Built-in dinput8 comparison mode.';
  $('client-launch-status').textContent=launch?.error?launch.error:s.alive?
-  (launch?.phase||'Starting').replaceAll('_',' ')+' · '+(launch?.mode==='desktop'?'Wine desktop test.':dllState)+' '+(launch?.diagnostic_logging?'Verbose diagnostics enabled; launch may be much slower.':'Normal logging.')+' '+(launch?.native_d3dx_requested?'Native model libraries loaded: '+Object.values(launch.model_libraries_loaded||{}).filter(v=>v==='native').length+'/2.':''):
+  (launch?.phase||'Starting').replaceAll('_',' ')+' · '+(launch?.renderer||'Checking graphics')+' · '+(launch?.mode==='desktop'?'Wine desktop test.':dllState)+' '+(launch?.diagnostic_logging?'Verbose diagnostics enabled; launch may be much slower.':'Normal logging.')+' '+(launch?.native_d3dx_requested?'Native model libraries loaded: '+Object.values(launch.model_libraries_loaded||{}).filter(v=>v==='native').length+'/2.':''):
   'Client stopped. '+(launch?.native_loaded?'Last session confirmed native dinput8.dll loading.':'');
  return s;
 }
-const launchOptions=mode=>({mode,resolution:$('client-resolution').value,native_dinput8:$('client-native-dll').checked,diagnostic_logging:$('client-diagnostics').checked,native_d3dx:mode==='client'&&$('client-native-models').checked});
+const launchOptions=mode=>({mode,renderer:$('client-renderer').value,resolution:$('client-resolution').value,native_dinput8:$('client-native-dll').checked,diagnostic_logging:$('client-diagnostics').checked,native_d3dx:mode==='client'&&$('client-native-models').checked});
 action('client-runtime-online',async()=>{notice('Downloading the client runtime…');await api('client_runtime_online');await clientRuntimeState();notice('Client runtime installed. Try Wine desktop first.');});
 action('client-runtime-offline',async()=>{await api('pick',{kind:'client-runtime'});await clientRuntimeState();notice('Client runtime installed.');});
 action('client-directx-online',async()=>{notice('Downloading Microsoft DirectX model helpers…');await api('client_directx_online');await clientRuntimeState();notice('DirectX model helpers installed. Launch ROF2.');});
@@ -68,7 +68,7 @@ for(const [id,mode] of [['client-desktop','desktop'],['client-launch','client']]
 });
 action('client-prefix-repair',async()=>{
  await api('controller_capture',{active:false});notice('Preserving the previous Wine prefix and preparing a fresh Windows environment…');
- await api('client_start',{...launchOptions('desktop'),repair_prefix:true});await clientRuntimeState();await api('client_view');
+ await api('client_start',{...launchOptions('desktop'),repair_prefix:true,renderer:'software'});await clientRuntimeState();await api('client_view');
 });
 action('client-view',()=>api('client_view'));
 action('client-stop',async()=>{await api('client_stop');await clientRuntimeState();notice('Client stopped. Manage the server separately in Server.');});
