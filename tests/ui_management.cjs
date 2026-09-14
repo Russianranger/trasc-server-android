@@ -27,7 +27,7 @@ for(const [name,type,value,min,max]of [['Character:RaidExpMultiplier','real','0.
     if(op==='native_state')result={installed:true,alive:window.__alive,status:window.__alive?'Runtime ready':'Runtime stopped. Logs are still available.',free_bytes:50e9};
     else if(op==='client_native_state')result=clientRuntime;
     else if(op==='client_runtime_online'){clientRuntime.installed=true;result=clientRuntime;}
-    else if(op==='client_start'){window.__clientStarts.push(args);clientRuntime={...clientRuntime,alive:true,display_ready:true,launch:{phase:'launch_requested',native_dinput8_requested:args.native_dinput8,native_loaded:false}};result=clientRuntime;}
+    else if(op==='client_start'){window.__clientStarts.push(args);clientRuntime={...clientRuntime,alive:true,display_ready:true,launch:{phase:'launch_requested',native_dinput8_requested:args.native_dinput8,native_loaded:false,diagnostic_logging:args.diagnostic_logging}};result=clientRuntime;}
     else if(op==='client_view'){window.__clientViews++;result={};}
     else if(op==='client_stop'){clientRuntime.alive=false;result=clientRuntime;}
     else if(op==='state'){
@@ -75,7 +75,7 @@ for(const [name,type,value,min,max]of [['Character:RaidExpMultiplier','real','0.
   await page.locator('#client-resolution').selectOption('960x540');await page.locator('#client-desktop').click();
   await page.waitForFunction(()=>window.__clientViews===1);
   assert(await page.locator('#client-launch').isDisabled(),'A running desktop must be stopped before another launch');
-  assert.deepEqual(await page.evaluate(()=>window.__clientStarts[0]),{mode:'desktop',resolution:'960x540',native_dinput8:true});
+  assert.deepEqual(await page.evaluate(()=>window.__clientStarts[0]),{mode:'desktop',resolution:'960x540',native_dinput8:true,diagnostic_logging:false});
   assert(!(await page.locator('#client-launch-status').textContent()).includes('load confirmed'),'File presence/request must not claim DLL loaded');
   await page.locator('#client-stop').click();await page.waitForFunction(()=>document.getElementById('client-launch-status').textContent.startsWith('Client stopped.'));
   await page.locator('#client-launch').click();await page.waitForFunction(()=>window.__clientViews===2);
@@ -86,8 +86,9 @@ for(const [name,type,value,min,max]of [['Character:RaidExpMultiplier','real','0.
   assert((await page.locator('#client-launch-status').textContent()).includes('Wine system DirectInput loaded.'));
   await page.locator('#client-view').click();await page.waitForFunction(()=>window.__clientViews===3);
   await page.locator('#client-stop').click();await page.waitForFunction(()=>document.getElementById('client-launch-status').textContent.startsWith('Client stopped.'));
-  await page.locator('#client-prefix-repair').click();await page.waitForFunction(()=>window.__clientViews===4);
-  assert.deepEqual(await page.evaluate(()=>window.__clientStarts[2]),{mode:'desktop',resolution:'960x540',native_dinput8:true,repair_prefix:true});
+  await page.locator('#client-diagnostics').check();await page.locator('#client-prefix-repair').click();await page.waitForFunction(()=>window.__clientViews===4);
+  assert.deepEqual(await page.evaluate(()=>window.__clientStarts[2]),{mode:'desktop',resolution:'960x540',native_dinput8:true,diagnostic_logging:true,repair_prefix:true});
+  assert((await page.locator('#client-launch-status').textContent()).includes('Verbose diagnostics enabled'));
   await page.locator('#client-stop').click();
   await page.locator('nav [data-tab=setup]').click();await page.waitForFunction(()=>document.getElementById('controller-focus').textContent==='Controller capture is off.');
   assert(!(await page.locator('#client-input-status').textContent()).includes('KeyT'),'Leaving tab releases input');

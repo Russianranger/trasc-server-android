@@ -1,3 +1,14 @@
+TRASC Server Android **0.3.3** removes the diagnostic logging flood found in the first successful embedded ROF2 launch.
+
+- Normal launches retain Wine errors and DLL-load confirmation while disabling verbose exception/module traces and repetitive fixme messages. The reported session wrote 1,059,025,481 bytes / 9,258,244 lines; global asset initialization took 53 minutes 11 seconds.
+- **Verbose Wine diagnostics (slower)** is off by default. Enable it only for a requested diagnostic comparison. The launch status and exported state record the selected mode.
+- Wine output is drained independently and rotated into two segments of at most 8 MiB each. One previous session is kept, capped at 8 MiB with startup/final excerpts; this also trims old 0.3.2 traces on the next launch. Load evidence and fatal errors are captured before rotation.
+- Keep `eqgame.exe patchme`, native-first/system-fallback DirectInput, the existing prefix and conservative CPU translation settings.
+
+**Stop both runtimes, install this APK over Preview 0.3.2, start the server, and Launch ROF2 at the same 800x600 with native dinput8 on and verbose diagnostics off.** No runtime download, prefix repair, Prepare, server rebuild or client/database reimport is required. Export Logs and report time to character selection and responsiveness there. The previous run reached character selection; playable frame rates and world entry are still unverified. Graphics still use CPU llvmpipe: this update does not enable the Thor GPU.
+
+Previous updates follow for reference.
+
 TRASC Server Android **0.3.2** fixes the system DirectInput load behind the imported native client DLL.
 
 - Use native-first, built-in fallback (`dinput8=n,b`): load your imported DLL, then allow its absolute system DLL request to reach Wine's implementation.
@@ -50,7 +61,7 @@ All 0.2.0 management features remain included:
 - **Client:** ZIP import, private temporary-ZIP cleanup, DLL inventory, saved controller-to-keyboard/mouse bindings and a focused input diagnostic. The separate client runtime adds an experimental launch/display/DLL-loading path.
 - **Continuity:** implementation decisions, validation and remaining work are recorded in `docs/HANDOFF.md`.
 
-For the current device pass, use the 0.3.2 sequence at the top of these notes. Export Logs after the attempt.
+For the current device pass, use the 0.3.3 sequence at the top of these notes. Export Logs after the attempt.
 
 Backups contain accounts, credentials and client files and are not encrypted. Save them privately outside the app. Only the private temporary copy of an imported session/client ZIP is removed; the selected source document remains intact.
 

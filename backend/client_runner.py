@@ -8,6 +8,7 @@ import signal
 import socket
 import struct
 import subprocess
+import threading
 import time
 
 SESSION = Path('/session')
@@ -16,6 +17,90 @@ PREFIX = Path('/prefix')
 LOGS = Path('/logs')
 stop_requested = False
 stop_reason = None
+WINE_LOG_LIMIT = 8 * 1024 * 1024
+
+
+def wine_debug(verbose=False):
+    # +seh expands each routine OutputDebugString exception into dozens of
+    # lines. ROF2 generated 1.06 GB of this in one session through PRoot.
+    normal = '-all,+timestamp,+pid,err+all,trace+loaddll'
+    return normal + (',warn+all,fixme+all,trace+module,trace+seh' if verbose else '')
+
+
+def archive_log(path, limit=WINE_LOG_LIMIT):
+    """Keep a bounded previous session, including old unbounded 0.3.2 logs."""
+    if not path.exists(): return
+    previous = path.with_suffix('.previous.log')
+    size = path.stat().st_size
+    if size <= limit:
+        os.replace(path, previous)
+        return
+    marker = f'\n[TRASC: previous log shortened from {size} bytes; startup and final output retained]\n'.encode()
+    head = limit // 2
+    temporary = previous.with_suffix('.new')
+    with path.open('rb') as source, temporary.open('wb') as out:
+        out.write(source.read(head)); out.write(marker)
+        source.seek(-(limit-head-len(marker)), os.SEEK_END); out.write(source.read())
+    os.replace(temporary, previous); path.unlink()
+
+
+class WineLog:
+    """Drain Wine independently of status polling; retain two bounded segments.
+
+    Parse before rotation so an early DLL load or fatal error cannot disappear
+    between polls. A pipe reader owns rotation: renaming a direct subprocess
+    output file would leave Wine writing to the old file descriptor.
+    """
+    def __init__(self, path, limit=WINE_LOG_LIMIT):
+        self.path, self.limit = path, limit
+        self.lock = threading.Lock()
+        self.fields = {'wine_log_bytes': 0, 'wine_log_rotations': 0,
+                       'native_loaded': False, 'system_dinput8_loaded': False, 'dll_evidence': []}
+        self.error = None
+        self.pending = b''
+        self.trace = ''
+
+    def observe(self, chunk):
+        self.pending += chunk
+        end = self.pending.rfind(b'\n') + 1
+        text = self.pending[:end].decode(errors='replace')
+        self.pending = self.pending[end:][-128*1024:]
+        self.trace = (self.trace + text)[-128*1024:]
+        observed = dll_status(text)
+        with self.lock:
+            self.fields['wine_log_bytes'] += len(chunk)
+            for key in ('native_loaded', 'system_dinput8_loaded'):
+                self.fields[key] |= observed[key]
+            # Keep actual load evidence, not repeating MODULE thread events.
+            if observed['native_loaded'] or observed['system_dinput8_loaded']:
+                self.fields['dll_evidence'] = list(dict.fromkeys(self.fields['dll_evidence'] + observed['evidence']))[-8:]
+            self.error = self.error or fatal_launch_error(self.trace)
+
+    def snapshot(self):
+        with self.lock: return dict(self.fields), self.error
+
+    def pump(self, stream):
+        output = None
+        try:
+            output = self.path.open('wb'); written = 0
+            while chunk := stream.read1(min(64*1024, self.limit)):
+                self.observe(chunk)
+                if written + len(chunk) > self.limit:
+                    output.close()
+                    os.replace(self.path, self.path.with_suffix('.overflow.log'))
+                    output = self.path.open('wb'); written = 0
+                    with self.lock: self.fields['wine_log_rotations'] += 1
+                output.write(chunk); output.flush(); written += len(chunk)
+            if self.pending:
+                # Check a final non-newline-terminated diagnostic, without
+                # counting the synthetic delimiter as output from Wine.
+                self.observe(b'\n')
+                with self.lock: self.fields['wine_log_bytes'] -= 1
+        except OSError as error:
+            with self.lock: self.error = 'Could not capture Wine output: ' + str(error)
+        finally:
+            if output: output.close()
+            stream.close()
 
 
 class StopRequested(Exception):
@@ -39,6 +124,7 @@ def pe_machine(path):
 def validate_request(request):
     if request.get('mode') not in ('desktop', 'client'): raise ValueError('Choose Wine desktop or ROF2 client')
     if request.get('resolution') not in ('640x480', '800x600', '960x540', '1024x768'): raise ValueError('Unsupported client resolution')
+    if not isinstance(request.get('diagnostic_logging', False), bool): raise ValueError('Invalid Wine diagnostic option')
     if request['mode'] == 'client':
         name = request.get('executable', '')
         if not name or '/' in name or '\\' in name or name in ('.', '..'): raise ValueError('Invalid client executable name')
@@ -96,12 +182,15 @@ class Supervisor:
     def __init__(self, request):
         self.request = request
         self.children = []
+        self.wine_log = None
+        self.log_thread = None
         self.status = {'phase': 'starting', 'mode': request['mode'], 'resolution': request['resolution'],
                        'native_dinput8_requested': request['mode']=='client' and request.get('native_dinput8', True), 'native_loaded': False,
                        'system_dinput8_loaded': False,
+                       'diagnostic_logging': request.get('diagnostic_logging', False),
                        'renderer': 'WineD3D / llvmpipe (software)', 'started_at': time.time()}
         self.env = dict(os.environ, DISPLAY=':7', XAUTHORITY=str(SESSION / 'Xauthority'),
-                        WINEPREFIX=str(PREFIX), WINEARCH='win64', WINEDEBUG='+timestamp,+pid,+loaddll',
+                        WINEPREFIX=str(PREFIX), WINEARCH='win64', WINEDEBUG=wine_debug(),
                         WINEDLLOVERRIDES='winemenubuilder,mscoree,mshtml,winegstreamer=',
                         BOX64_DYNAREC_STRONGMEM='1', BOX64_DYNAREC_BIGBLOCK='0', BOX64_DYNAREC_SAFEFLAGS='2',
                         BOX64_LOG='1', BOX64_NOBANNER='0', BOX64_PATH='/opt/wine/bin',
@@ -123,6 +212,14 @@ class Supervisor:
         return False
 
     def spawn(self, args, log, env=None):
+        if log == 'client-wine.log':
+            self.wine_log = WineLog(LOGS / log)
+            process = subprocess.Popen(args, env=env or self.env, stdin=subprocess.DEVNULL,
+                                       stdout=subprocess.PIPE, stderr=subprocess.STDOUT, start_new_session=True, cwd=CLIENT)
+            self.log_thread = threading.Thread(target=self.wine_log.pump, args=(process.stdout,), daemon=True)
+            self.log_thread.start()
+            self.children.append(process)
+            return process
         with (LOGS / log).open('ab') as out:
             process = subprocess.Popen(args, env=env or self.env, stdin=subprocess.DEVNULL,
                                        stdout=out, stderr=out, start_new_session=True, cwd=CLIENT)
@@ -148,9 +245,8 @@ class Supervisor:
         if not report['prefix_ready']:
             raise RuntimeError('The 32-bit Wine prefix is incomplete. Stop the client and use Repair Wine prefix; it preserves the previous prefix and your imported game.')
         self.update('checking_32bit_wine', prefix_files_ready=True)
-        diagnostic_env = dict(self.env, WINEDEBUG=self.env['WINEDEBUG']+',+module')
         self.run(['/usr/local/bin/box64', '/opt/wine/bin/wine', r'C:\windows\syswow64\cmd.exe', '/d', '/c', 'exit', '0'],
-                 timeout=60, env=diagnostic_env, label='32-bit Wine check')
+                 timeout=60, label='32-bit Wine check')
         self.update(wine32_ready=True)
 
     def start(self):
@@ -158,8 +254,8 @@ class Supervisor:
         print(f"Client session started at {self.status['started_at']}: {self.request['mode']}", flush=True)
         for p in (SESSION, PREFIX, LOGS): p.mkdir(parents=True, exist_ok=True)
         for name in ('client-wine.log', 'client-prefix.log', 'client-display.log', 'client-graphics.log'):
-            path = LOGS / name
-            if path.exists(): os.replace(path, path.with_suffix('.previous.log'))
+            archive_log(LOGS / name)
+        (LOGS / 'client-wine.overflow.log').unlink(missing_ok=True)
         # The RFB display has no TCP listener. X11 requires an unpredictable cookie.
         cookie = secrets.token_hex(16)
         (SESSION / 'Xauthority').touch(mode=0o600)
@@ -185,28 +281,21 @@ class Supervisor:
         drive.symlink_to(CLIENT)
         args = ['/usr/local/bin/box64', '/opt/wine/bin/wine', 'explorer', '/desktop=TRASC,' + self.request['resolution']]
         env = dict(self.env)
+        env['WINEDEBUG'] = wine_debug(self.request.get('diagnostic_logging', False))
         if self.request['mode'] == 'client':
             args += ['D:\\' + self.request['executable'], 'patchme']
             # The imported DLL forwards DirectInput8Create to an absolute system
             # dinput8 path. Native-only blocks Wine's system DLL and breaks input.
             override = 'n,b' if self.request.get('native_dinput8', True) else 'b'
             env['WINEDLLOVERRIDES'] += ';dinput8=' + override
-            env['WINEDEBUG'] += ',+module,+seh'
             self.status['dinput8_override'] = override
         launcher = self.spawn(args, 'client-wine.log', env)
         self.update('launch_requested', display_ready=True, launcher_pid=launcher.pid)
         while not self.stopping():
             if xserver.poll() is not None: raise RuntimeError('Display exited; see client-display.log')
-            log = LOGS / 'client-wine.log'
-            with log.open('rb') as f:
-                f.seek(max(0, log.stat().st_size - 512 * 1024)); trace = f.read().decode(errors='replace')
-            observed = dll_status(trace)
-            if observed['native_loaded']: self.status['native_loaded'] = True
-            if observed['system_dinput8_loaded']: self.status['system_dinput8_loaded'] = True
-            fatal = fatal_launch_error(trace)
+            observed, fatal = self.wine_log.snapshot()
             if fatal: raise RuntimeError(fatal)
-            evidence = list(dict.fromkeys(self.status.get('dll_evidence', []) + observed['evidence']))[-8:]
-            self.update(launcher_exit=launcher.poll(), dll_evidence=evidence)
+            self.update(launcher_exit=launcher.poll(), **observed)
             time.sleep(1)
 
     def stop(self):
@@ -225,6 +314,9 @@ class Supervisor:
                 try: os.killpg(child.pid, signal.SIGKILL)
                 except ProcessLookupError: pass
                 child.wait()
+        if self.log_thread:
+            self.log_thread.join(timeout=2)
+            self.status.update(self.wine_log.snapshot()[0])
         (SESSION / 'display.sock').unlink(missing_ok=True)
         self.update(display_ready=False)
 

@@ -92,6 +92,24 @@ def main():
                                       stdin=subprocess.DEVNULL,stdout=output,stderr=output,timeout=60)
                 assert result.returncode==expected,(override,result.returncode,expected)
                 print(f'PASS: system DirectInput forwarding with override {override}: exit {result.returncode}')
+        timings={}
+        for verbose in (False,True):
+            label='verbose' if verbose else 'normal'
+            path=Path('/logs/client-debug-'+label+'.log')
+            started=time.monotonic()
+            with path.open('wb') as output:
+                result=subprocess.run(command[:-1]+['--check-debug-output'],cwd='/client',
+                    env=dict(env,WINEDLLOVERRIDES=env['WINEDLLOVERRIDES']+';dinput8=n,b',WINEDEBUG=client_runner.wine_debug(verbose)),
+                    stdin=subprocess.DEVNULL,stdout=output,stderr=output,timeout=60)
+            assert result.returncode==0,(label,result.returncode)
+            trace=path.read_text(errors='replace')
+            assert client_runner.dll_status(trace)['native_loaded'],label
+            assert client_runner.dll_status(trace)['system_dinput8_loaded'],label
+            assert ('trace:seh:dispatch_exception' in trace)==verbose,label
+            timings[label]={'seconds':round(time.monotonic()-started,3),'bytes':path.stat().st_size}
+        assert timings['normal']['bytes'] < timings['verbose']['bytes']/5,timings
+        Path('/logs/client-debug-comparison.json').write_text(json.dumps({'debug_strings':512,'results':timings},indent=2))
+        print('PASS: 512 debug-string calls with normal vs verbose logging (timing informational): '+json.dumps(timings))
         print('PASS: ARM64 PE32 native proxy forwards to system DirectInput8, creates keyboard/mouse devices, renders Direct3D9 and receives private-display input')
     finally:
         Path('/session/stop').touch()

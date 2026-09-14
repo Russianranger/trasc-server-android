@@ -23,6 +23,12 @@ int WINAPI WinMain(HINSTANCE instance,HINSTANCE previous,LPSTR command,int show)
     BOOL input_ready=probe&&probe()==0x54524153;
     if(strstr(command,"--check-directinput"))return input_ready?0:23;
     if(!input_ready){marker("D:\\probe-error.txt","Native proxy could not create keyboard/mouse through system DirectInput8");return 1;}
+    // Match the routine debug-string exceptions dominating the Thor's trace.
+    // This is an open workload, not a ROF2 frame-rate benchmark.
+    if(strstr(command,"--check-debug-output")) {
+        for(int i=0;i<512;i++)OutputDebugStringA("[TRASC probe] routine asset-loading diagnostic");
+        return 0;
+    }
     WNDCLASSA cls={0};cls.lpfnWndProc=window_proc;cls.hInstance=instance;cls.lpszClassName="TrascProbe";
     RegisterClassA(&cls);
     HWND window=CreateWindowA(cls.lpszClassName,"TRASC 32-bit Direct3D/input probe",WS_OVERLAPPEDWINDOW|WS_VISIBLE,

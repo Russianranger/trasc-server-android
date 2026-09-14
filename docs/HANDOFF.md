@@ -1,6 +1,17 @@
 # Development handoff — 2026-09-14
 
-## Current release: 0.3.2 system DirectInput fix published
+## Current work: 0.3.3 client logging performance fix
+
+- Latest device evidence: `logs-547215203498946041.zip`, Android 13 / AYN Thor, app 0.3.2, native and system dinput8 loaded, 800x600 llvmpipe. User confirms client boots but is abysmally slow. `patchme` is present. No prefix repair needed.
+- Full new bundle read from scratch. Wine trace: 1,059,025,481 bytes / 9,258,244 lines. Most output is routine DBG_PRINTEXCEPTION_C / unwind tracing plus 240,177 D3DX RegisterAnimationSRTKeys fixme lines. Do not misdiagnose debug-print exceptions as crashes. Game dbg.txt: initialization starts 17:38:02 UTC, global data 17:42:54–18:36:05 (53m11s), character selection 18:36:11. Session stopped explicitly at 18:51:59.
+- Graphics reports llvmpipe LLVM15 / Mesa22.3.6, Accelerated:no. Software GPU emulation is a remaining limit. Xvnc's 3,230 updates across the long session include idle time; not an FPS benchmark. Box64's Cortex-A510 banner does not establish forced CPU affinity. No unsupported CPU/GPU tuning in this pass.
+- Implemented normal WINEDEBUG `-all,+timestamp,+pid,err+all,trace+loaddll`; removed always-on module/seh/fixme output. Explicit verbose checkbox defaults off and records mode in state. Kept patchme, dinput8=n,b, conservative dynarec flags and current images. Source reference: Wine 10 dlls/kernelbase/debug.c (OutputDebugString still raises a debug exception even with tracing off).
+- Wine output uses a dedicated pipe drain/rotation thread, captures DLL/fatal evidence before rotation, retains two 8MiB segments plus one capped previous session. Old huge logs are shortened to start/final excerpts on next launch, avoiding another gigabyte export. State includes emitted byte/rotation counts, not inferred FPS. Module events cannot evict actual DLL-load proof.
+- App version 0.3.3/code9; application ID, pinned certificate, server runtime1.1 and client runtime1.0 unchanged. User only needs APK update; no runtime download, prefix repair, Prepare or data import.
+- Local 41 Python tests passed, including rotation, early-load evidence, fragmented fatal messages and oversized previous-log migration. Host JVM/native input/archive checks run. ARM64 CI adds a 512-call OutputDebugString comparison with output-volume assertions and informational timings; DirectInput negative/positive controls, D3D pixels and controller input remain required.
+- Publication pending. Next: branch CI, main gated publication, read back tags/manifests/signature/hash, append verified IDs and measurements here. Device retest at same 800x600 with verbose diagnostics off, native DLL on; report time to character select/responsiveness, then attempt world entry if practical and export Logs. No device speedup/playable FPS is claimed before retest.
+
+## Previous release: 0.3.2 system DirectInput fix published
 
 - Workspace access recovered. Full `logs-5544659252330987853.zip`, client-runtime.log, client-state.json and client-wine.log have now been read. Earlier text-only notes below are historical.
 - Device is Preview 0.3.1, Android 13 / AYN Thor, 800x600 software graphics. Prefix repair completed at 12:13:54 UTC; subsequent 32-bit preflight passes and native DINPUT8 loads.

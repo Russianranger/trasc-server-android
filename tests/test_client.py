@@ -1,4 +1,5 @@
 import json
+import io
 from pathlib import Path
 import struct
 import sys
@@ -23,6 +24,41 @@ class ClientTests(unittest.TestCase):
         (self.client/'trasc-client.json').write_text(json.dumps({'executable':'eqgame.exe','imported':True}))
 
     def tearDown(self): self.temp.cleanup()
+
+    def test_normal_launch_disables_hot_traces_but_keeps_errors_and_dll_proof(self):
+        normal=client_runner.Supervisor({'mode':'client','resolution':'800x600'}).env['WINEDEBUG']
+        self.assertEqual(normal,'-all,+timestamp,+pid,err+all,trace+loaddll')
+        self.assertNotIn('trace+seh',normal)
+        self.assertIn('trace+seh',client_runner.wine_debug(True))
+
+    def test_stream_rotation_keeps_load_evidence_and_split_fatal_error(self):
+        path=self.root/'client-wine.log'
+        proxy=b'trace:loaddll:build_module Loaded L"D:\\dinput8.dll" at 00100000: native\n'
+        system=b'trace:loaddll:build_module Loaded L"C:\\windows\\syswow64\\dinput8.dll" at 70000000: builtin\n'
+        payload=proxy+system+b'ordinary output\n'*900+b'wine: could not load kernel32.dll, status c0000135'
+        capture=client_runner.WineLog(path,1024)
+        capture.pump(io.BufferedReader(io.BytesIO(payload),buffer_size=37))
+        fields,error=capture.snapshot()
+        self.assertEqual(fields['wine_log_bytes'],len(payload))
+        self.assertTrue(fields['native_loaded']);self.assertTrue(fields['system_dinput8_loaded'])
+        self.assertIn('c0000135',error)
+        self.assertGreater(fields['wine_log_rotations'],1)
+        self.assertLessEqual(path.stat().st_size,1024)
+        self.assertLessEqual(path.with_suffix('.overflow.log').stat().st_size,1024)
+        self.assertEqual(len(fields['dll_evidence']),2)
+        self.assertIn(b'c0000135',path.read_bytes())
+
+    def test_upgrade_archives_large_old_trace_without_copying_a_gigabyte(self):
+        path=self.root/'client-wine.log';previous=path.with_suffix('.previous.log')
+        path.write_bytes(b'FIRST\n'+b'a'*10000+b'\nLAST\n')
+        client_runner.archive_log(path,1024)
+        data=previous.read_bytes()
+        self.assertFalse(path.exists());self.assertEqual(len(data),1024)
+        self.assertTrue(data.startswith(b'FIRST'));self.assertTrue(data.endswith(b'LAST\n'))
+        self.assertIn(b'previous log shortened',data)
+        path.write_bytes(b'next small session')
+        client_runner.archive_log(path,1024)
+        self.assertEqual(previous.read_bytes(),b'next small session')
 
     def test_pe32_and_native_dll_architecture_validation(self):
         request={'mode':'client','resolution':'800x600','executable':'eqgame.exe','native_dinput8':True}
