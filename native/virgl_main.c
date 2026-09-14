@@ -2,8 +2,10 @@
 #include <epoxy/gl.h>
 #include <stdio.h>
 #include <signal.h>
+#include <errno.h>
 #include <sys/prctl.h>
 #include <sys/stat.h>
+#include <sys/wait.h>
 #include <unistd.h>
 #include "vtest_server.h"
 
@@ -39,6 +41,15 @@ int main(int argc,char **argv) {
     umask(0077);setvbuf(stdout,NULL,_IOLBF,0);setvbuf(stderr,NULL,_IOLBF,0);
     pid_t parent=getppid();
     if(prctl(PR_SET_PDEATHSIG,SIGTERM)!=0||getppid()!=parent)return 1;
-    if(probe_driver())return 1;
+    /* Keep Android driver threads out of the parent that forks vtest workers. */
+    pid_t launcher=getpid(),probe=fork();
+    if(probe<0)return 1;
+    if(probe==0) {
+        if(prctl(PR_SET_PDEATHSIG,SIGKILL)!=0||getppid()!=launcher)_exit(1);
+        _exit(probe_driver());
+    }
+    int status;
+    while(waitpid(probe,&status,0)<0){if(errno!=EINTR)return 1;}
+    if(!WIFEXITED(status)||WEXITSTATUS(status)!=0)return 1;
     return vtest_main(argc,argv);
 }

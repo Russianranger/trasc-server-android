@@ -40,3 +40,5 @@ The DXT conversion includes gl4es code under its MIT license, reproduced in
 native/virgl-patches/COPYING-gl4es. The additional pointer-arithmetic patch
 makes that conversion compile with GCC as well as Clang. The older-Android
 timespec compatibility patch applies only to Android builds.
+
+TRASC additionally patches the vtest worker lifecycle to terminate workers when their owning renderer exits. The native launcher probes Android EGL in an isolated child before serving client connections. These project modifications are included with the corresponding sources.

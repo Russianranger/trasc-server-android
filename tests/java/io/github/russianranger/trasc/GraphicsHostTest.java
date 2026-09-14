@@ -20,15 +20,20 @@ public final class GraphicsHostTest {
                 Thread.sleep(50);
             }while(System.nanoTime()<deadline);
             if(!text.contains("TRASC GPU renderer:")||!text.contains("TRASC GPU version:"))throw new AssertionError("Missing real driver identity");
-            // Upstream forks on accept unless --no-fork is explicit. A fork
-            // would escape Java Process ownership and the parent's death signal.
+            // The installed Mesa protocol needs per-connection workers. Keep a
+            // connection open while stopping to prove parent-death cleanup.
             try(java.nio.channels.SocketChannel client=java.nio.channels.SocketChannel.open(java.net.StandardProtocolFamily.UNIX)) {
                 client.connect(java.net.UnixDomainSocketAddress.of(socket.toPath()));
                 Thread.sleep(300);
+                java.util.List<ProcessHandle> renderers;
                 try(java.util.stream.Stream<ProcessHandle> descendants=ProcessHandle.current().descendants()) {
-                    long renderers=descendants.filter(p->p.info().command().orElse("").equals(executable.getAbsolutePath())).count();
-                    if(renderers!=1)throw new AssertionError("Renderer forked outside Java ownership: "+renderers);
+                    renderers=descendants.filter(p->p.info().command().orElse("").equals(executable.getAbsolutePath())).toList();
                 }
+                if(renderers.size()<2)throw new AssertionError("Worker cleanup test did not create a worker");
+                bridge.stop();
+                long stoppedBy=System.nanoTime()+java.util.concurrent.TimeUnit.SECONDS.toNanos(3);
+                while(renderers.stream().anyMatch(ProcessHandle::isAlive)&&System.nanoTime()<stoppedBy)Thread.sleep(50);
+                if(renderers.stream().anyMatch(ProcessHandle::isAlive))throw new AssertionError("Renderer worker leaked after parent stop");
             }
         } finally{bridge.stop();}
         if(bridge.alive()||socket.exists())throw new AssertionError("GPU process/socket leaked after stop");

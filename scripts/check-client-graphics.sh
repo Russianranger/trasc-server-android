@@ -6,7 +6,7 @@ task_dir="$PWD/runtime-work/client-virgl"
 mkdir -p "$task_dir/tmp" "$task_dir/logs" "$task_dir/client"
 cp runtime-work/client-test/client/eqgame.exe runtime-work/client-test/client/dinput8.dll runtime-work/client-test/client/models.exe "$task_dir/client/"
 LIBGL_ALWAYS_SOFTWARE=1 GALLIUM_DRIVER=llvmpipe runtime-work/native/virgl-host/out/vtest/virgl_test_server \
-    --use-egl-surfaceless --use-gles --no-fork --multi-clients --socket-path "$task_dir/tmp/.virgl_test" > "$task_dir/logs/client-gpu.log" 2>&1 &
+    --use-egl-surfaceless --use-gles --multi-clients --socket-path "$task_dir/tmp/.virgl_test" > "$task_dir/logs/client-gpu.log" 2>&1 &
 graphics_pid=$!
 trap 'kill "$graphics_pid" 2>/dev/null || true; wait "$graphics_pid" 2>/dev/null || true' EXIT
 for i in $(seq 1 100); do test -S "$task_dir/tmp/.virgl_test" && break; sleep .1; done
