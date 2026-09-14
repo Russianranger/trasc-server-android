@@ -1,5 +1,11 @@
 # Development handoff — 2026-09-14
 
+## In progress: device-confirmed models, next graphics performance milestone
+
+- New bundle `logs-7569883861190000028.zip`: app 0.3.4. User confirms visible models, animations and movement. Both Microsoft D3DX helpers and native/system DirectInput load. HMD failures are now zero. Global asset initialization 20:59:42–21:01:40 UTC (1m58s, previously 9m14s). Character UI begins 21:01:46; Greater Faydark main loop ready 21:05:09; normal camp 21:08:37 and quit 21:09:42. Quiet Wine log 31,524 bytes. Renderer remains llvmpipe/Accelerated:no. A shader-effect failure, two unknown authentication messages and a few texture/backbuffer diagnostics remain; no proven new fatal launch error. VNC update counts are not a game FPS measurement.
+- Workspace returned; clean local repo fast-forwarded to main ef78ce0. Work is on `codex/client-performance`. No subagents. Current prototype builds a standalone Android VirGL 1.3.0 GLES renderer with static libepoxy 1.5.10, host-driver reporting, private socket permissions and parent-death cleanup. It uses selected Android patches from Termux package commit 4f48a30edadeff906a3cad7adfaa17e5f8d10605 (MIT plus gl4es license), without Termux paths, ANGLE or Vulkan dependencies. Upstream archive checksums pinned. No graphics selector is shipped yet.
+- First gate: `.github/workflows/graphics.yml` compiles Android executable and tests the unchanged published Debian Mesa guest over a host GLES VirGL bridge. CI host uses llvmpipe, so it validates protocol/graphics compatibility, not physical Adreno acceleration. Once this works, wire into app launch/lifecycle with explicit software fallback, bounded preflight and actual driver evidence; add native model/input tests through VirGL, APK build/lint, source packaging and release gates. Do not publish an unverified GPU selector or claim playable FPS.
+
 ## Published: 0.3.4 model helper compatibility fix
 
 - Device bundle `logs-3194322454755682154.zip`: app 0.3.3 on Android 13 / AYN Thor, 800x600, native and system DirectInput loaded, quiet Wine logging. User reached character selection and Greater Faydark with invisible models, limited movement and responsive UI.
