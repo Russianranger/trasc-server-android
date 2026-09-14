@@ -73,6 +73,7 @@ public final class MainActivity extends Activity {
                     switch(operation){
                         case "native_state": result=runtime.nativeState();break;
                         case "client_native_state": result=clientRuntime.state();break;
+                        case "client_directx_online": service();result=clientRuntime.installDirectX(null);break;
                         case "client_runtime_online": service();result=clientRuntime.installOnline();break;
                         case "client_start": service();runOnUiThread(()->controller.capture(false));result=clientRuntime.start(args);break;
                         case "client_stop": clientRuntime.stop();if(!runtime.alive()&&!runtime.installing)stopService(new Intent(MainActivity.this,ServerService.class));result=clientRuntime.state();break;
@@ -165,6 +166,8 @@ public final class MainActivity extends Activity {
                         runOnUiThread(()->controller.reload());
                         reply(id,result,null);
                     } finally {temp.delete();}
+                }else if("client-directx".equals(kind)){
+                    try{reply(id,clientRuntime.installDirectX(temp),null);}finally{temp.delete();}
                 }else if("client-runtime".equals(kind)){
                     try{reply(id,clientRuntime.installOffline(temp),null);}finally{temp.delete();}
                 }else if("runtime".equals(kind)){

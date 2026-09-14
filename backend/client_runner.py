@@ -9,6 +9,9 @@ import socket
 import struct
 import subprocess
 import threading
+import hashlib
+import shutil
+import tempfile
 import time
 
 SESSION = Path('/session')
@@ -55,7 +58,8 @@ class WineLog:
         self.path, self.limit = path, limit
         self.lock = threading.Lock()
         self.fields = {'wine_log_bytes': 0, 'wine_log_rotations': 0,
-                       'native_loaded': False, 'system_dinput8_loaded': False, 'dll_evidence': []}
+                       'native_loaded': False, 'system_dinput8_loaded': False, 'dll_evidence': [],
+                       'model_libraries_loaded': {}, 'model_dll_evidence': []}
         self.error = None
         self.pending = b''
         self.trace = ''
@@ -67,8 +71,11 @@ class WineLog:
         self.pending = self.pending[end:][-128*1024:]
         self.trace = (self.trace + text)[-128*1024:]
         observed = dll_status(text)
+        models, model_evidence = model_dll_status(text)
         with self.lock:
             self.fields['wine_log_bytes'] += len(chunk)
+            self.fields['model_libraries_loaded'] = {**self.fields['model_libraries_loaded'], **models}
+            self.fields['model_dll_evidence'] = list(dict.fromkeys(self.fields['model_dll_evidence'] + model_evidence))[-8:]
             for key in ('native_loaded', 'system_dinput8_loaded'):
                 self.fields[key] |= observed[key]
             # Keep actual load evidence, not repeating MODULE thread events.
@@ -124,6 +131,7 @@ def pe_machine(path):
 def validate_request(request):
     if request.get('mode') not in ('desktop', 'client'): raise ValueError('Choose Wine desktop or ROF2 client')
     if request.get('resolution') not in ('640x480', '800x600', '960x540', '1024x768'): raise ValueError('Unsupported client resolution')
+    if not isinstance(request.get('native_d3dx', False), bool): raise ValueError('Invalid model-library option')
     if not isinstance(request.get('diagnostic_logging', False), bool): raise ValueError('Invalid Wine diagnostic option')
     if request['mode'] == 'client':
         name = request.get('executable', '')
@@ -178,6 +186,71 @@ def prefix_diagnostics(prefix=PREFIX, wine=Path('/opt/wine')):
     return report
 
 
+MODEL_DLLS = ('d3dx9_30.dll', 'd3dx9_35.dll')
+DIRECTX_SOURCE_SHA256 = '053f76dcbb28802e23341b6a787e3b0791c0fa5c8d4d011b1044172dbf89c73b'
+
+
+def prepare_model_libraries(source=Path('/directx'), prefix=PREFIX):
+    """Validate the complete pair before changing Wine's 32-bit system folder."""
+    manifest_path = source / 'directx.json'
+    if not manifest_path.is_file() or manifest_path.is_symlink() or manifest_path.stat().st_size > 16384:
+        raise ValueError('Install DirectX model helpers in the Client tab first')
+    manifest = json.loads(manifest_path.read_text())
+    if manifest.get('format') != 1 or manifest.get('source_sha256') != DIRECTX_SOURCE_SHA256:
+        raise ValueError('Unsupported DirectX helper manifest; install the matching Microsoft package again')
+    verified = {}
+    for name in MODEL_DLLS:
+        path = source / name
+        meta = manifest.get('files', {}).get(name, {})
+        if not path.is_file() or path.is_symlink() or not 128 <= path.stat().st_size <= 16*1024*1024:
+            raise ValueError('Missing or invalid DirectX helper: ' + name)
+        digest = hashlib.sha256(path.read_bytes()).hexdigest()
+        if path.stat().st_size != meta.get('bytes') or digest != meta.get('sha256') or pe_machine(path) != 0x14c:
+            raise ValueError('DirectX helper verification failed: ' + name)
+        verified[name] = digest
+    destination = prefix / 'drive_c/windows/syswow64'
+    if not destination.is_dir() or destination.is_symlink():
+        raise ValueError('Initialize the Wine prefix before installing model helpers')
+    backup = prefix / 'trasc-directx-originals'
+    backup.mkdir(exist_ok=True)
+    changed = []
+    with tempfile.TemporaryDirectory(prefix='directx-', dir=prefix) as temporary:
+        temporary = Path(temporary)
+        try:
+            for name in MODEL_DLLS:
+                target = destination / name
+                if target.is_file() and hashlib.sha256(target.read_bytes()).hexdigest() == verified[name]:
+                    continue
+                # Backups are regular snapshots even if Wine originally used a link.
+                old = temporary / (name + '.old')
+                if target.exists():
+                    shutil.copy2(target, old)
+                    if not (backup / name).exists(): shutil.copy2(target, backup / name)
+                elif target.is_symlink():
+                    raise ValueError('Broken Wine system-library link: ' + name)
+                fresh = temporary / name
+                shutil.copy2(source / name, fresh)
+                os.replace(fresh, target)
+                changed.append((target, old if old.exists() else None))
+        except Exception:
+            for target, old in reversed(changed):
+                if old: os.replace(old, target)
+                else: target.unlink(missing_ok=True)
+            raise
+    return verified
+
+
+def model_dll_status(log):
+    loaded, evidence = {}, []
+    for line in log.splitlines():
+        if 'loaddll' not in line.lower(): continue
+        match = re.search(r'Loaded L".*\\+(d3dx9_(?:30|35)\.dll)".*: (native|builtin)\s*$', line, re.I)
+        if match:
+            loaded[match[1].lower()] = match[2].lower()
+            evidence.append(line)
+    return loaded, evidence[-8:]
+
+
 class Supervisor:
     def __init__(self, request):
         self.request = request
@@ -188,6 +261,7 @@ class Supervisor:
                        'native_dinput8_requested': request['mode']=='client' and request.get('native_dinput8', True), 'native_loaded': False,
                        'system_dinput8_loaded': False,
                        'diagnostic_logging': request.get('diagnostic_logging', False),
+                       'native_d3dx_requested': request['mode']=='client' and request.get('native_d3dx', False),
                        'renderer': 'WineD3D / llvmpipe (software)', 'started_at': time.time()}
         self.env = dict(os.environ, DISPLAY=':7', XAUTHORITY=str(SESSION / 'Xauthority'),
                         WINEPREFIX=str(PREFIX), WINEARCH='win64', WINEDEBUG=wine_debug(),
@@ -288,6 +362,11 @@ class Supervisor:
             # dinput8 path. Native-only blocks Wine's system DLL and breaks input.
             override = 'n,b' if self.request.get('native_dinput8', True) else 'b'
             env['WINEDLLOVERRIDES'] += ';dinput8=' + override
+            native_models = self.request.get('native_d3dx', False)
+            if native_models:
+                self.update('preparing_models', model_library_sha256=prepare_model_libraries())
+            for name in MODEL_DLLS:
+                env['WINEDLLOVERRIDES'] += ';' + name[:-4] + ('=n,b' if native_models else '=b')
             self.status['dinput8_override'] = override
         launcher = self.spawn(args, 'client-wine.log', env)
         self.update('launch_requested', display_ready=True, launcher_pid=launcher.pid)

@@ -44,20 +44,23 @@ drawClientInput();
 
 async function clientRuntimeState(){
  const s=await api('client_native_state');
- for(const id of ['client-desktop','client-launch','client-prefix-repair','client-runtime-online','client-runtime-offline','client-prepare','client-import'])$(id).disabled=!!(s.alive||s.busy);
+ for(const id of ['client-desktop','client-launch','client-prefix-repair','client-runtime-online','client-runtime-offline','client-prepare','client-import','client-directx-online','client-directx-offline'])$(id).disabled=!!(s.alive||s.busy);
  $('client-view').disabled=!(s.alive&&s.display_ready);
  $('client-runtime-status').textContent=(s.installed?'Installed · ':'Not installed · ')+s.status;
+ $('client-directx-status').textContent=s.directx_installed?'DirectX model helpers installed.':'Install the DirectX helpers to enable the legacy character animation and model functions.';
  const launch=s.launch;
  const dllState=launch?.native_loaded?'Native dinput8.dll load confirmed. '+(launch.system_dinput8_loaded?'Wine system DirectInput loaded.':'System DirectInput load not yet confirmed.'):
   launch?.native_dinput8_requested?'Native dinput8.dll requested; load not yet confirmed.':'Built-in dinput8 comparison mode.';
  $('client-launch-status').textContent=launch?.error?launch.error:s.alive?
-  (launch?.phase||'Starting').replaceAll('_',' ')+' · '+(launch?.mode==='desktop'?'Wine desktop test.':dllState)+' '+(launch?.diagnostic_logging?'Verbose diagnostics enabled; launch may be much slower.':'Normal logging.'):
+  (launch?.phase||'Starting').replaceAll('_',' ')+' · '+(launch?.mode==='desktop'?'Wine desktop test.':dllState)+' '+(launch?.diagnostic_logging?'Verbose diagnostics enabled; launch may be much slower.':'Normal logging.')+' '+(launch?.native_d3dx_requested?'Native model libraries loaded: '+Object.values(launch.model_libraries_loaded||{}).filter(v=>v==='native').length+'/2.':''):
   'Client stopped. '+(launch?.native_loaded?'Last session confirmed native dinput8.dll loading.':'');
  return s;
 }
-const launchOptions=mode=>({mode,resolution:$('client-resolution').value,native_dinput8:$('client-native-dll').checked,diagnostic_logging:$('client-diagnostics').checked});
+const launchOptions=mode=>({mode,resolution:$('client-resolution').value,native_dinput8:$('client-native-dll').checked,diagnostic_logging:$('client-diagnostics').checked,native_d3dx:mode==='client'&&$('client-native-models').checked});
 action('client-runtime-online',async()=>{notice('Downloading the client runtime…');await api('client_runtime_online');await clientRuntimeState();notice('Client runtime installed. Try Wine desktop first.');});
 action('client-runtime-offline',async()=>{await api('pick',{kind:'client-runtime'});await clientRuntimeState();notice('Client runtime installed.');});
+action('client-directx-online',async()=>{notice('Downloading Microsoft DirectX model helpers…');await api('client_directx_online');await clientRuntimeState();notice('DirectX model helpers installed. Launch ROF2.');});
+action('client-directx-offline',async()=>{await api('pick',{kind:'client-directx'});await clientRuntimeState();notice('DirectX model helpers installed.');});
 action('client-prepare',async()=>{await job('prepare_client',{resolution:$('client-resolution').value});});
 for(const [id,mode] of [['client-desktop','desktop'],['client-launch','client']])action(id,async()=>{
  await api('controller_capture',{active:false});notice('Opening the client display. First-time Wine setup can take a minute…');

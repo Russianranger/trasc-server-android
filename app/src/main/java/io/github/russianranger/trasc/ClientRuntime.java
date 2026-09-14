@@ -15,13 +15,14 @@ final class ClientRuntime {
     static final String RELEASE="https://github.com/Russianranger/trasc-server-android/releases/download/client-runtime-v1/";
     final Context context;
     final RuntimeManager server;
-    final File root,client,prefix,run,tmp;
+    final File root,client,prefix,run,tmp,directx;
     volatile boolean busy;
     volatile String status="Install the client runtime to try Wine and ROF2.";
     private volatile Process process;
     ClientRuntime(Context context) {
         this.context=context;server=RuntimeManager.get(context);
         root=new File(server.work,"client/runtime");client=new File(server.work,"client/current");prefix=new File(server.work,"client/prefix");
+        directx=new File(server.work,"client/directx");
         run=new File(server.home,"tmp/client/session");tmp=new File(server.home,"tmp/client/tmp");
     }
     boolean installed(){return new File(root,"etc/trasc-client-runtime.json").isFile();}
@@ -35,6 +36,7 @@ final class ClientRuntime {
         JSONObject result=new JSONObject().put("installed",installed()).put("alive",alive()).put("busy",busy).put("status",status);
         File report=new File(run,"status.json");
         if(report.isFile())try{result.put("launch",json(report));}catch(Exception ignored){}
+        result.put("directx_installed",DirectXInstaller.installed(directx));
         result.put("display_ready",alive()&&displaySocket().exists());
         return result;
     }
@@ -80,11 +82,25 @@ final class ClientRuntime {
             TarExtractor.remove(previous);status="Client runtime installed. Try Wine desktop, then Launch ROF2.";
         } finally {TarExtractor.remove(staging);}
     }
+    synchronized JSONObject installDirectX(File offline)throws Exception {
+        begin();File archive=offline==null?new File(context.getCacheDir(),"directx_Jun2010_redist.exe"):offline;
+        try {
+            if(alive())throw new IOException("Stop the client before installing DirectX model helpers");
+            if(offline==null)server.download(DirectXInstaller.URL,archive,text->status="DirectX helpers: "+text);
+            status="Verifying and extracting DirectX model helpers…";
+            File extractor=new File(context.getApplicationInfo().nativeLibraryDir,"libcabextract.so");
+            DirectXInstaller.install(archive,directx,extractor,new File(server.work,"logs/client-directx.log"));
+            status="DirectX model helpers installed. Launch ROF2 with model helpers enabled.";
+            return state();
+        } catch(Exception e){status=e.getMessage();server.recordFailure("client_directx_install",e);throw e;}
+        finally {busy=false;if(offline==null)archive.delete();}
+    }
     synchronized JSONObject start(JSONObject options)throws Exception {
         begin();boolean started=false;
         try {
             if(alive())throw new IOException("Client is already open. View it or stop it before another launch.");
             if(!installed())throw new IOException("Install the separate client runtime first");
+            DirectXInstaller.recover(directx);
             if(server.alive()) {
                 JSONObject response=server.request("state",new JSONObject());
                 if(!response.getBoolean("ok"))throw new IOException(response.optString("error"));
@@ -97,6 +113,7 @@ final class ClientRuntime {
             }
             String mode=options.optString("mode","client"),resolution=options.optString("resolution","800x600");
             if(!Arrays.asList("desktop","client").contains(mode)||!Arrays.asList("640x480","800x600","960x540","1024x768").contains(resolution))throw new IOException("Unsupported client launch option");
+            if(mode.equals("client")&&options.optBoolean("native_d3dx",true)&&!DirectXInstaller.installed(directx))throw new IOException("Install DirectX model helpers in the Client tab first, or disable model helpers for a Wine comparison");
             if(mode.equals("client")&&!new File(client,"trasc-client.json").isFile())throw new IOException("Import your ROF2 client ZIP first");
             String executable=mode.equals("client")?json(new File(client,"trasc-client.json")).getString("executable"):"";
             if(executable.contains("/")||executable.contains("\\"))throw new IOException("Invalid client executable path");
@@ -107,15 +124,16 @@ final class ClientRuntime {
             }
             TarExtractor.remove(run);TarExtractor.remove(tmp);run.mkdirs();tmp.mkdirs();prefix.mkdirs();client.mkdirs();
             JSONObject request=new JSONObject().put("mode",mode).put("resolution",resolution).put("executable",executable).put("native_dinput8",options.optBoolean("native_dinput8",true))
-                .put("diagnostic_logging",options.optBoolean("diagnostic_logging",false));
+                .put("diagnostic_logging",options.optBoolean("diagnostic_logging",false)).put("native_d3dx",mode.equals("client")&&options.optBoolean("native_d3dx",true));
             RuntimeManager.write(new File(run,"request.json"),request.toString());
             File backend=new File(server.home,"client-backend");backend.mkdirs();
             try(InputStream in=context.getAssets().open("client_runner.py")){RuntimeManager.copy(in,new File(backend,"client_runner.py"));}
             RuntimeManager.write(new File(root,"etc/hosts"),"127.0.0.1 localhost\n::1 localhost\n");
             RuntimeManager.write(new File(root,"etc/resolv.conf"),"nameserver 1.1.1.1\nnameserver 8.8.8.8\n");
+            directx.mkdirs();new File(root,"directx").mkdirs();
             File nativeDir=new File(context.getApplicationInfo().nativeLibraryDir);
             List<String> command=new ArrayList<>(Arrays.asList(new File(nativeDir,"libproot.so").getPath(),"--kill-on-exit","-0","-r",root.getPath(),
-                "-b","/dev","-b","/proc","-b","/sys","-b",client.getPath()+":/client","-b",prefix.getPath()+":/prefix","-b",run.getPath()+":/session",
+                "-b","/dev","-b","/proc","-b","/sys","-b",directx.getPath()+":/directx","-b",client.getPath()+":/client","-b",prefix.getPath()+":/prefix","-b",run.getPath()+":/session",
                 "-b",new File(server.work,"logs").getPath()+":/logs","-b",backend.getPath()+":/opt/trasc-client","-b",tmp.getPath()+":/tmp",
                 "-w","/client","/usr/bin/env","-i","HOME=/root","USER=root","PATH=/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin",
                 "LANG=C.UTF-8","TMPDIR=/tmp","PYTHONUNBUFFERED=1","/usr/bin/python3","/opt/trasc-client/client_runner.py"));
