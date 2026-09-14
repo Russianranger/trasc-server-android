@@ -44,6 +44,8 @@ drawClientInput();
 
 async function clientRuntimeState(){
  const s=await api('client_native_state');
+ for(const id of ['client-desktop','client-launch','client-prefix-repair','client-runtime-online','client-runtime-offline','client-prepare','client-import'])$(id).disabled=!!(s.alive||s.busy);
+ $('client-view').disabled=!(s.alive&&s.display_ready);
  $('client-runtime-status').textContent=(s.installed?'Installed · ':'Not installed · ')+s.status;
  const launch=s.launch;
  $('client-launch-status').textContent=launch?.error?launch.error:s.alive?

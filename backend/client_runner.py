@@ -62,10 +62,12 @@ def fatal_launch_error(log):
     match = re.search(r'wine: could not load kernel32\.dll, status ([0-9a-f]+)', log, re.I)
     if match:
         return 'Wine could not start its Windows loader (kernel32.dll, ' + match[1] + '). See client-prefix.log and client-wine.log; ROF2 did not reach game initialization.'
-    missing = re.findall(r'err:module:import_dll Library ([^\r\n]+)', log)
-    if missing:
-        return 'A required Windows library could not load: ' + missing[-1][:350] + '. Export Logs for the dependency details.'
-    if re.search(r'err:module:loader_init .*failed, status', log):
+    # An optional LoadLibrary can report a missing dependency and recover. Require
+    # the loader's process-termination message before stopping the whole display.
+    if re.search(r'err:module:\w+ (?:Importing|Initializing).*failed, status', log):
+        missing = re.findall(r'err:module:import_dll Library ([^\r\n]+)', log)
+        if missing:
+            return 'A required Windows library could not load: ' + missing[-1][:350] + '. Export Logs for the dependency details.'
         return 'Windows program initialization failed. Export client-wine.log for the failing module and status.'
     return None
 

@@ -73,6 +73,7 @@ for(const [name,type,value,min,max]of [['Character:RaidExpMultiplier','real','0.
   await page.screenshot({path:'ui-reports/client-mobile.png',fullPage:true});
   await page.locator('#client-resolution').selectOption('960x540');await page.locator('#client-desktop').click();
   await page.waitForFunction(()=>window.__clientViews===1);
+  assert(await page.locator('#client-launch').isDisabled(),'A running desktop must be stopped before another launch');
   assert.deepEqual(await page.evaluate(()=>window.__clientStarts[0]),{mode:'desktop',resolution:'960x540',native_dinput8:true});
   assert(!(await page.locator('#client-launch-status').textContent()).includes('load confirmed'),'File presence/request must not claim DLL loaded');
   await page.locator('#client-stop').click();await page.waitForFunction(()=>document.getElementById('client-launch-status').textContent.startsWith('Client stopped.'));

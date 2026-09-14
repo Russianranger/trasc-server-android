@@ -44,7 +44,9 @@ class ClientTests(unittest.TestCase):
         self.assertIn('c0000135',error)
         self.assertIn('kernel32.dll',error)
         self.assertIsNone(client_runner.fatal_launch_error('err:ntoskrnl:ZwLoadDriver winebth failed\nError loading needed lib libXcomposite.so.1'))
-        self.assertIn('VCRUNTIME140.dll',client_runner.fatal_launch_error('err:module:import_dll Library VCRUNTIME140.dll (which is needed by L"D:\\dinput8.dll") not found'))
+        dependency='err:module:import_dll Library VCRUNTIME140.dll (which is needed by L"D:\\dinput8.dll") not found'
+        self.assertIsNone(client_runner.fatal_launch_error(dependency))
+        self.assertIn('VCRUNTIME140.dll',client_runner.fatal_launch_error(dependency+'\nerr:module:loader_init Importing dlls for L"D:\\eqgame.exe" failed, status c0000135'))
 
     def test_prefix_check_distinguishes_incomplete_prefix_from_missing_runtime(self):
         prefix=self.root/'prefix';wine=self.root/'wine'
