@@ -1,6 +1,6 @@
 # Development handoff — 2026-09-14
 
-## Active 0.3.2 fix: native proxy cannot load system DirectInput
+## Current release: 0.3.2 system DirectInput fix published
 
 - Workspace access recovered. Full `logs-5544659252330987853.zip`, client-runtime.log, client-state.json and client-wine.log have now been read. Earlier text-only notes below are historical.
 - Device is Preview 0.3.1, Android 13 / AYN Thor, 800x600 software graphics. Prefix repair completed at 12:13:54 UTC; subsequent 32-bit preflight passes and native DINPUT8 loads.
@@ -9,8 +9,13 @@
 - Fix: `dinput8=n,b`, separate native-imported and built-in-system load evidence, sticky evidence across log tail windows, +seh exception traces, timestamped session boundaries and stop_request/signal reasons. Do not equate two load traces with successful plugin functionality.
 - Native log inventory/export now includes selected root client and Logs/logs startup diagnostics, with case-insensitive names and symlink/traversal checks. Settings, game binaries and character chat are excluded. This addresses the missing dbg.txt / dinput8.log evidence in the old bundle.
 - Expanded open fixture matches the add-on's GetSystemDirectory + LoadLibrary pattern and creates DirectInput keyboard/mouse devices. ARM64 tests must pass native forwarding plus D3D/display input, with negative control native-only exit 23 and fixed n,b exit 0, directly and through production archive extraction + pinned PRoot. No proprietary client files in CI.
-- Local verification: 38 Python tests and JVM archive/log/input/prefix tests pass. Final browser/Android/ARM64 CI pending. Target APK 0.3.2 / version code 8, same app ID and signing certificate. Both runtime images remain unchanged; no runtime download or prefix repair required.
-- Next device pass: update in place, keep current prefix, start server, launch native ROF2, export logs. Preserve server/client data. Record final code/run/artifact hashes after publication.
+- Verified code commit: `52d3a1b6d0187eb9e47517f180ea79e12c0e44d1`. Branch APK/UI/database checks passed: https://github.com/Russianranger/trasc-server-android/actions/runs/34868688109 . ARM64 runtime/PRoot checks passed: https://github.com/Russianranger/trasc-server-android/actions/runs/34868687404 . Both environments reproduced native-only exit 23 and corrected n,b exit 0; keyboard/mouse device creation, D3D rendering and display input passed. 38 Python tests and JVM archive/log/input/prefix checks passed. APK 0.3.2 / version code 8 keeps the application ID and signing certificate. Runtime images are unchanged; no runtime download or prefix repair required.
+- Main release workflow: https://github.com/Russianranger/trasc-server-android/actions/runs/34869328238 — all jobs passed, including both DirectInput controls in PRoot, preserved certificate verification, database/session tests, browser flows and APK compilation/lint. Both release tags point to `52d3a1b6d0187eb9e47517f180ea79e12c0e44d1`. This handoff follow-up changes no packaged code.
+- Published APK: https://github.com/Russianranger/trasc-server-android/releases/download/preview/trasc-server-android-preview.apk — 254,894 bytes, SHA-256 `7ea59d659b483f999772772548db73f9372468b9db3175628801b0e129745d66`.
+- Repacked client-1.0 archive: 353,710,716 bytes, SHA-256 `3d9a423f750c00fcdb72545690cb07f6b5850ff6b580b58465ab0924a9f1a2cb`. Both runtime images remain unchanged; existing users only need the APK.
+- Publication verified: release tags and asset digests read back; downloaded APK matches the published SHA-256 and size. Preview manifest confirms 0.3.2, the expected commit/application ID and pinned certificate; client manifest matches the same commit and published archive hash.
+- Next device pass: stop runtimes, update in place, keep current prefix, start server, launch native ROF2, export logs. Preserve server/client data. No new physical ROF2 acceptance is claimed.
+- Primary diagnosis references: https://github.com/Russianranger/Triptych-Triumvirate/blob/main/Release-NMS-Client/eqgame_dll/dllmain.cpp and https://github.com/wine-mirror/wine/blob/wine-10.0/dlls/wined3d/swapchain.c .
 
 ## Previous text-only device follow-up: 32-bit Wine and native dinput8 confirmed
 
@@ -21,7 +26,7 @@
 - Next evidence needed: client-runtime.log and the earlier client-wine.log section immediately preceding the first shutdown/detach sequence, including any errors/exceptions. Clarify whether the user pressed Stop after the window disappeared to distinguish later supervisor cleanup from the original game exit. Preserve the working prefix; no further repair/reimport is indicated by the pasted state.
 - No new APK or runtime change has been made for this follow-up. Keep 0.3.1 and the existing published artifact hashes below.
 
-## Current milestone: ROF2 black-screen recovery, Preview 0.3.1 published
+## Previous milestone: ROF2 black-screen recovery, Preview 0.3.1 published
 
 - Published code commit: `01138918df6d9a68a45af8f36a3860be3b4771b5`. Both `preview` and `client-runtime-v1` tags point to this commit. This handoff-only follow-up changes no APK/runtime code.
 - Main release workflow: https://github.com/Russianranger/trasc-server-android/actions/runs/34800190134 — database, APK, client runtime and publication jobs all passed. Includes 36 Python tests, JVM archive/input/prefix preservation, browser management flows, Android compile/lint, preserved signing certificate, full server database/runtime integration, client archive roundtrip and PE32/DLL/Direct3D/input probes both directly and through pinned PRoot.
