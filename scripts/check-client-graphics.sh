@@ -13,6 +13,8 @@ for i in $(seq 1 100); do test -S "$task_dir/tmp/.virgl_test" && break; sleep .1
 test -S "$task_dir/tmp/.virgl_test"
 docker run --rm --network none \
     -e TRASC_TEST_RENDERER=virgl \
+    -e MESA_GL_VERSION_OVERRIDE=2.1 -e MESA_GLSL_VERSION_OVERRIDE=120 \
+    -v "$PWD/backend-assets/wined3d.dll:/opt/wine/lib/wine/i386-windows/wined3d.dll:ro" \
     -v "$PWD/backend:/opt/trasc-client:ro" -v "$PWD/tests:/tests:ro" \
     -v "$task_dir/client:/client" -v "$task_dir/logs:/logs" -v "$task_dir/tmp:/tmp" \
     -v "$PWD/runtime-work/directx-test/output/directx:/directx:ro" \

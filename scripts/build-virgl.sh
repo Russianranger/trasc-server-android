@@ -20,6 +20,7 @@ for patch in "$repo_root"/native/virgl-patches/*.patch; do
     if [ "$target" != android ] && [[ "$patch" == *0010-* ]]; then continue; fi
     patch -d "$build/source" -p1 --forward < "$patch"
 done
+cp "$repo_root/native/trasc_dxt.h" "$build/source/src/vrend/trasc_dxt.h"
 cp "$repo_root/native/virgl_main.c" "$build/source/vtest/vtest_main.c"
 python3 - "$build/source/vtest/meson.build" <<'PY'
 import pathlib,sys

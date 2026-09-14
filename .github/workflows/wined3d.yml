@@ -1,0 +1,20 @@
+name: Build WineD3D compatibility fix
+on:
+  workflow_call:
+permissions:
+  contents: read
+jobs:
+  wined3d:
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    steps:
+      - uses: actions/checkout@v4
+      - run: sudo apt-get update && sudo apt-get install -y gcc-mingw-w64-i686 gcc-mingw-w64-x86-64 bison flex
+      - run: bash scripts/build-wined3d.sh
+      - uses: actions/upload-artifact@v4
+        with:
+          name: client-wined3d
+          path: |
+            backend-assets/wined3d.dll
+            backend-assets/wined3d-patch.json
+            dist/wined3d-sources.tar.gz

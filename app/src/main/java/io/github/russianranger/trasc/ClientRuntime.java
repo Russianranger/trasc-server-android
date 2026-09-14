@@ -130,7 +130,7 @@ final class ClientRuntime {
                 .put("diagnostic_logging",options.optBoolean("diagnostic_logging",false)).put("native_d3dx",mode.equals("client")&&options.optBoolean("native_d3dx",true)).put("renderer",renderer);
             RuntimeManager.write(new File(run,"request.json"),request.toString());
             File backend=new File(server.home,"client-backend");backend.mkdirs();
-            for(String name:new String[]{"client_runner.py","graphics_probe.py"})
+            for(String name:new String[]{"client_runner.py","graphics_probe.py","wined3d.dll","wined3d-patch.json"})
                 try(InputStream in=context.getAssets().open(name)){RuntimeManager.copy(in,new File(backend,name));}
             RuntimeManager.write(new File(root,"etc/hosts"),"127.0.0.1 localhost\n::1 localhost\n");
             RuntimeManager.write(new File(root,"etc/resolv.conf"),"nameserver 1.1.1.1\nnameserver 8.8.8.8\n");
@@ -141,7 +141,7 @@ final class ClientRuntime {
                 graphics=GraphicsBridge.start(new File(nativeDir,"libvirgl-server.so"),new File(tmp,".virgl_test"),new File(server.work,"logs/client-gpu.log"));
             }
             List<String> command=new ArrayList<>(Arrays.asList(new File(nativeDir,"libproot.so").getPath(),"--kill-on-exit","-0","-r",root.getPath(),
-                "-b","/dev","-b","/proc","-b","/sys","-b",directx.getPath()+":/directx","-b",client.getPath()+":/client","-b",prefix.getPath()+":/prefix","-b",run.getPath()+":/session",
+                "-b",new File(backend,"wined3d.dll").getPath()+":/opt/wine/lib/wine/i386-windows/wined3d.dll","-b","/dev","-b","/proc","-b","/sys","-b",directx.getPath()+":/directx","-b",client.getPath()+":/client","-b",prefix.getPath()+":/prefix","-b",run.getPath()+":/session",
                 "-b",new File(server.work,"logs").getPath()+":/logs","-b",backend.getPath()+":/opt/trasc-client","-b",tmp.getPath()+":/tmp",
                 "-w","/client","/usr/bin/env","-i","HOME=/root","USER=root","PATH=/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin",
                 "LANG=C.UTF-8","TMPDIR=/tmp","PYTHONUNBUFFERED=1","/usr/bin/python3","/opt/trasc-client/client_runner.py"));

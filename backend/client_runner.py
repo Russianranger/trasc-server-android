@@ -385,6 +385,12 @@ class Supervisor:
         else: raise RuntimeError('Client display did not become ready')
         self.update(display_ready=True)
         self.check_graphics()
+        patch = Path(__file__).with_name('wined3d-patch.json')
+        if patch.is_file():
+            expected = json.loads(patch.read_text())
+            actual = hashlib.sha256(Path('/opt/wine/lib/wine/i386-windows/wined3d.dll').read_bytes()).hexdigest()
+            if actual != expected['sha256']: raise RuntimeError('WineD3D compatibility fix failed verification')
+            self.update(wined3d_patch=expected['patch'], wined3d_sha256=actual)
         self.update('preparing_prefix')
         self.run(['/usr/local/bin/box64', '/opt/wine/bin/wine', 'wineboot', '-u'])
         self.check_prefix()

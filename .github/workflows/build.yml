@@ -1,7 +1,7 @@
 name: Build Android preview
 on:
   push:
-    branches: [main, codex/client-bootstrap, codex/client-loader-fix, codex/client-performance]
+    branches: [main, codex/client-bootstrap, codex/client-loader-fix, codex/client-performance, codex/client-texture-fix]
   pull_request:
   workflow_dispatch:
 permissions:
@@ -10,8 +10,10 @@ concurrency:
   group: android-${{ github.ref }}
   cancel-in-progress: true
 jobs:
+  wined3d:
+    uses: ./.github/workflows/wined3d.yml
   client-runtime:
-    if: github.ref == 'refs/heads/main'
+    needs: wined3d
     uses: ./.github/workflows/client-runtime.yml
     permissions:
       contents: write
@@ -68,11 +70,15 @@ jobs:
             database-test/work/database-verification.json
             database-test/runtime-manifest.json
   apk:
+    needs: wined3d
     runs-on: ubuntu-latest
     env:
       TRASC_PREVIEW_KEYSTORE: ${{ github.ref == 'refs/heads/main' && format('{0}/runtime-work/signing/preview.keystore', github.workspace) || '' }}
     steps:
       - uses: actions/checkout@v4
+      - uses: actions/download-artifact@v4
+        with:
+          name: client-wined3d
       - uses: actions/setup-java@v4
         with:
           distribution: temurin
