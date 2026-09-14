@@ -1,7 +1,7 @@
 name: Build Android preview
 on:
   push:
-    branches: [main, codex/client-bootstrap]
+    branches: [main, codex/client-bootstrap, codex/client-loader-fix]
   pull_request:
   workflow_dispatch:
 permissions:

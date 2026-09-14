@@ -1,8 +1,8 @@
 name: Build embedded client runtime
 on:
   push:
-    branches: [codex/client-bootstrap]
-    paths: ['client-runtime/**', 'scripts/build-client-runtime.sh', 'backend/client_runner.py', 'tests/*client*', 'tests/java/**', 'scripts/check-management.sh', 'app/src/main/java/**/TarExtractor.java', 'app/src/main/java/**/SessionArchive.java', '.github/workflows/client-runtime.yml']
+    branches: [codex/client-bootstrap, codex/client-loader-fix]
+    paths: ['client-runtime/**', 'scripts/build-client-runtime.sh', 'scripts/check-client-proot.sh', 'backend/client_runner.py', 'tests/*client*', 'tests/java/**', 'scripts/check-management.sh', 'app/src/main/java/**/TarExtractor.java', 'app/src/main/java/**/SessionArchive.java', '.github/workflows/client-runtime.yml']
   workflow_dispatch:
   workflow_call:
 concurrency:
@@ -72,6 +72,29 @@ jobs:
           java-version: '17'
       - name: Verify client runtime installer and complete session roundtrip
         run: bash scripts/check-management.sh dist/client-runtime-arm64.tar.gz
+      - name: Verify the installed runtime through pinned PRoot
+        run: bash scripts/check-client-proot.sh
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: client-proot-verification
+          path: |
+            runtime-work/client-proot/logs/
+            runtime-work/client-proot/client/probe-*.json
+            runtime-work/client-proot/client/probe-*.txt
+      - name: Show PRoot client diagnostics on failure
+        if: failure()
+        run: |
+          python3 - <<'PYLOG'
+          from pathlib import Path
+          for p in Path('runtime-work/client-proot/logs').glob('*'):
+              print(p.name)
+              print(p.read_text(errors='replace')[-20000:])
+          for parent in ('runtime-work/client-proot/root/opt/wine/lib/wine/i386-windows', 'runtime-work/client-proot/prefix/drive_c/windows/syswow64'):
+              for name in ('ntdll.dll', 'kernel32.dll', 'kernelbase.dll', 'cmd.exe'):
+                  p=Path(parent)/name
+                  print(str(p), p.exists(), p.stat().st_size if p.exists() else 0)
+          PYLOG
       - name: Publish separate online and offline client runtime
         if: github.ref == 'refs/heads/main'
         env:
