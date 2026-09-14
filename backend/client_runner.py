@@ -349,7 +349,8 @@ class Supervisor:
 
     def check_graphics(self):
         self.update('checking_graphics')
-        process = self.spawn(['glxinfo', '-B'], 'client-graphics.log')
+        command = ['python3', str(Path(__file__).with_name('graphics_probe.py'))] if self.request.get('renderer')=='virgl' else ['glxinfo', '-B']
+        process = self.spawn(command, 'client-graphics.log')
         deadline = time.monotonic()+30
         while process.poll() is None:
             if self.stopping(): raise StopRequested()

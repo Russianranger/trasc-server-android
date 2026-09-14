@@ -130,7 +130,8 @@ final class ClientRuntime {
                 .put("diagnostic_logging",options.optBoolean("diagnostic_logging",false)).put("native_d3dx",mode.equals("client")&&options.optBoolean("native_d3dx",true)).put("renderer",renderer);
             RuntimeManager.write(new File(run,"request.json"),request.toString());
             File backend=new File(server.home,"client-backend");backend.mkdirs();
-            try(InputStream in=context.getAssets().open("client_runner.py")){RuntimeManager.copy(in,new File(backend,"client_runner.py"));}
+            for(String name:new String[]{"client_runner.py","graphics_probe.py"})
+                try(InputStream in=context.getAssets().open(name)){RuntimeManager.copy(in,new File(backend,name));}
             RuntimeManager.write(new File(root,"etc/hosts"),"127.0.0.1 localhost\n::1 localhost\n");
             RuntimeManager.write(new File(root,"etc/resolv.conf"),"nameserver 1.1.1.1\nnameserver 8.8.8.8\n");
             directx.mkdirs();new File(root,"directx").mkdirs();
