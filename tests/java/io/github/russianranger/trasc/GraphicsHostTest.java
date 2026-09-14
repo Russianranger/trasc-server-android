@@ -20,6 +20,16 @@ public final class GraphicsHostTest {
                 Thread.sleep(50);
             }while(System.nanoTime()<deadline);
             if(!text.contains("TRASC GPU renderer:")||!text.contains("TRASC GPU version:"))throw new AssertionError("Missing real driver identity");
+            // Upstream forks on accept unless --no-fork is explicit. A fork
+            // would escape Java Process ownership and the parent's death signal.
+            try(java.nio.channels.SocketChannel client=java.nio.channels.SocketChannel.open(java.net.StandardProtocolFamily.UNIX)) {
+                client.connect(java.net.UnixDomainSocketAddress.of(socket.toPath()));
+                Thread.sleep(300);
+                try(java.util.stream.Stream<ProcessHandle> descendants=ProcessHandle.current().descendants()) {
+                    long renderers=descendants.filter(p->p.info().command().orElse("").equals(executable.getAbsolutePath())).count();
+                    if(renderers!=1)throw new AssertionError("Renderer forked outside Java ownership: "+renderers);
+                }
+            }
         } finally{bridge.stop();}
         if(bridge.alive()||socket.exists())throw new AssertionError("GPU process/socket leaked after stop");
         try{GraphicsBridge.start(new File("/bin/false"),socket,log);throw new AssertionError("Failed process accepted");}

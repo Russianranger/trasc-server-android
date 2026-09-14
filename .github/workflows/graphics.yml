@@ -50,7 +50,7 @@ jobs:
           assert hashlib.file_digest((p/'runtime.tar.gz').open('rb'),'sha256').hexdigest()==m['sha256']
           PY
           docker import runtime-work/gpu-test/runtime.tar.gz trasc-gpu-test:1
-          LIBGL_ALWAYS_SOFTWARE=1 GALLIUM_DRIVER=llvmpipe runtime-work/native/virgl-host/out/vtest/virgl_test_server --use-egl-surfaceless --use-gles --multi-clients --socket-path "$PWD/runtime-work/gpu-test/tmp/.virgl_test" > runtime-work/gpu-test/logs/host.log 2>&1 &
+          LIBGL_ALWAYS_SOFTWARE=1 GALLIUM_DRIVER=llvmpipe runtime-work/native/virgl-host/out/vtest/virgl_test_server --use-egl-surfaceless --use-gles --no-fork --multi-clients --socket-path "$PWD/runtime-work/gpu-test/tmp/.virgl_test" > runtime-work/gpu-test/logs/host.log 2>&1 &
           renderer=$!
           trap 'kill "$renderer" || true' EXIT
           for i in $(seq 1 100); do test -S runtime-work/gpu-test/tmp/.virgl_test && break; sleep .1; done

@@ -34,7 +34,7 @@ final class GraphicsBridge {
         socket.getParentFile().mkdirs();log.getParentFile().mkdirs();Files.deleteIfExists(socket.toPath());
         if(log.exists())Files.move(log.toPath(),new File(log.getParentFile(),"client-gpu.previous.log").toPath(),java.nio.file.StandardCopyOption.REPLACE_EXISTING);
         Files.deleteIfExists(new File(log.getParentFile(),"client-gpu.overflow.log").toPath());
-        ProcessBuilder builder=new ProcessBuilder(executable.getAbsolutePath(),"--use-egl-surfaceless","--use-gles","--multi-clients","--socket-path",socket.getAbsolutePath());
+        ProcessBuilder builder=new ProcessBuilder(executable.getAbsolutePath(),"--use-egl-surfaceless","--use-gles","--no-fork","--multi-clients","--socket-path",socket.getAbsolutePath());
         builder.directory(socket.getParentFile());builder.redirectErrorStream(true);
         // Android's native EGL loader must use its own graphics driver.
         for(String key:new String[]{"GALLIUM_DRIVER","LIBGL_ALWAYS_SOFTWARE","LD_PRELOAD"})builder.environment().remove(key);
