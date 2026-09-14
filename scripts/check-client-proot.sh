@@ -12,9 +12,11 @@ make -C "$task_dir/proot/src" -j2 PROOT_UNBUNDLE_LOADER=/unused HAS_LOADER_32BIT
 mkdir -p "$task_dir/classes" "$task_dir/root" "$task_dir/client" "$task_dir/prefix" "$task_dir/session" "$task_dir/tmp" "$task_dir/logs"
 javac -d "$task_dir/classes" tests/java/android/system/Os.java app/src/main/java/io/github/russianranger/trasc/TarExtractor.java tests/java/io/github/russianranger/trasc/ExtractRuntimeHost.java
 java -cp "$task_dir/classes" io.github.russianranger.trasc.ExtractRuntimeHost dist/client-runtime-arm64.tar.gz "$task_dir/root"
-cp runtime-work/client-test/client/eqgame.exe runtime-work/client-test/client/dinput8.dll "$task_dir/client/"
+mkdir -p "$task_dir/root/directx"
+cp runtime-work/client-test/client/eqgame.exe runtime-work/client-test/client/dinput8.dll runtime-work/client-test/client/models.exe "$task_dir/client/"
 PROOT_LOADER="$task_dir/proot/src/loader/loader" PROOT_NO_SECCOMP=1 PROOT_TMP_DIR="$task_dir/tmp" \
 timeout 300 "$task_dir/proot/src/proot" --kill-on-exit -0 -r "$task_dir/root" \
+    -b "$PWD/runtime-work/directx-test/output/directx:/directx" \
     -b /dev -b /proc -b /sys -b "$PWD/backend:/opt/trasc-client" -b "$PWD/tests:/tests" \
     -b "$task_dir/client:/client" -b "$task_dir/prefix:/prefix" -b "$task_dir/session:/session" \
     -b "$task_dir/tmp:/tmp" -b "$task_dir/logs:/logs" -w /client \

@@ -117,7 +117,9 @@ jobs:
           name: management-ui-reports
           path: ui-reports/
       - name: Build packaged Android launcher
-        run: bash scripts/build-proot.sh
+        run: |
+          bash scripts/build-proot.sh
+          bash scripts/build-cabextract.sh android
       - name: Package corresponding launcher sources
         run: bash scripts/pack-launcher-sources.sh
       - name: Compile APK and check Android lint

@@ -19,3 +19,9 @@ The APK release includes `launcher-sources.tar.gz` with the pinned PRoot/talloc 
 - Debian's TigerVNC/X server, Mesa llvmpipe, fonts and support libraries. `/etc/trasc-client-packages.txt` records exact package versions and `/usr/share/doc/*/copyright` retains the package license notices. Corresponding versioned source packages are available from Debian. TigerVNC is GPL-2.0-or-later; Mesa and X components retain their respective upstream licenses.
 
 The Android RFB client is implemented in this repository from the public protocol specification. The Windows integration-test EXE/DLL are built from `tests/client_probe*.c`; they contain no proprietary client code. No EverQuest executables, modified client DLLs, copyrighted game assets or Winlator binaries are redistributed.
+
+## DirectX model helper installer
+
+The APK packages [cabextract 1.11](https://www.cabextract.org.uk/) with its bundled libmspack cabinet decoder. The exact source archive (SHA-256 `b5546db1155e4c718ff3d4b278573604f30dd64c3c5bfd4657cd089b823a3ac6`) and `scripts/build-cabextract.sh` accompany the APK in `launcher-sources.tar.gz`. See that archive's COPYING and source notices for the GPL/libmspack terms.
+
+The optional installation action downloads the [Microsoft DirectX End-User Runtimes (June 2010)](https://www.microsoft.com/en-us/download/details.aspx?id=8109) directly from Microsoft, or reads the user's matching offline EXE. It verifies the entire package SHA-256 before extracting only x86 d3dx9_30.dll and d3dx9_35.dll. Microsoft libraries retain Microsoft's license terms; none are included in this repository, APK, Linux runtime archive or published test artifacts. CI obtains the same official package temporarily to verify installation and model APIs.

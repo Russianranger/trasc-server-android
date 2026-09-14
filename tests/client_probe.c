@@ -29,6 +29,9 @@ int WINAPI WinMain(HINSTANCE instance,HINSTANCE previous,LPSTR command,int show)
         for(int i=0;i<512;i++)OutputDebugStringA("[TRASC probe] routine asset-loading diagnostic");
         return 0;
     }
+    LoadLibraryA("d3dx9_30.dll");LoadLibraryA("d3dx9_35.dll");
+    int (*held_key)(HWND,int)=(void*)GetProcAddress(dll,"TrascHeldKey");
+    BOOL saw_hold=FALSE;
     WNDCLASSA cls={0};cls.lpfnWndProc=window_proc;cls.hInstance=instance;cls.lpszClassName="TrascProbe";
     RegisterClassA(&cls);
     HWND window=CreateWindowA(cls.lpszClassName,"TRASC 32-bit Direct3D/input probe",WS_OVERLAPPEDWINDOW|WS_VISIBLE,
@@ -50,6 +53,11 @@ int WINAPI WinMain(HINSTANCE instance,HINSTANCE previous,LPSTR command,int show)
         if(!ready&&SUCCEEDED(cleared)&&SUCCEEDED(presented)) {
             marker("D:\\probe-result.json","{\"pe32\":true,\"native_dinput8\":true,\"system_directinput\":true,\"direct3d9\":true}");
             ready=TRUE;
+        }
+        if(held_key) {
+            int held=held_key(window,0x11); // DIK_W, polled like game movement.
+            if(held==1){saw_hold=TRUE;marker("D:\\probe-held-key.txt","W held");}
+            if(saw_hold&&held==0)marker("D:\\probe-released-key.txt","W released");
         }
         Sleep(30);
     }

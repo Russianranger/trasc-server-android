@@ -19,15 +19,16 @@ for(const [name,type,value,min,max]of [['Character:RaidExpMultiplier','real','0.
    let seq=0,jobs=[];const actions=['None','MouseLeft','MouseRight','PointerUp','PointerDown','PointerLeft','PointerRight','KeyW','KeyT','Space','Escape'];
    let profile={sources:['A','B','RightUp','RightDown','RightLeft','RightRight'],actions,bindings:{A:'Space',B:'Escape',RightUp:'PointerUp',RightDown:'PointerDown',RightLeft:'PointerLeft',RightRight:'PointerRight'},deadzone:.2,sensitivity:700};
    window.__saves=[];window.__alive=true;window.__calls=[];window.__exports=[];window.__clientStarts=[];window.__clientViews=0;
-   let clientRuntime={installed:true,alive:false,busy:false,status:'Client runtime installed'};
+   let clientRuntime={installed:true,alive:false,busy:false,status:'Client runtime installed',directx_installed:false};
    window.__clientEvidence=value=>Object.assign(clientRuntime.launch,value);
    const state=()=>({version:'0.2.1',running:false,settings:{ip:'127.0.0.1',login_port:5999,repo:'https://github.com/Russianranger/Triptych-Triumvirate',ref:'main',workers:3,jobs:2},source:{commit:'test'},maps_ready:true,database_imported:true,binaries_ready:true,processes:{},jobs,free_bytes:50e9,nektulos:{legacy_ready:true},client:{imported:false}});
    window.Trasc={call(id,op,input){setTimeout(()=>{
     const args=JSON.parse(input);let result;window.__calls.push(op);
     if(op==='native_state')result={installed:true,alive:window.__alive,status:window.__alive?'Runtime ready':'Runtime stopped. Logs are still available.',free_bytes:50e9};
     else if(op==='client_native_state')result=clientRuntime;
+    else if(op==='client_directx_online'||(op==='pick'&&args.kind==='client-directx')){clientRuntime.directx_installed=true;result=clientRuntime;}
     else if(op==='client_runtime_online'){clientRuntime.installed=true;result=clientRuntime;}
-    else if(op==='client_start'){window.__clientStarts.push(args);clientRuntime={...clientRuntime,alive:true,display_ready:true,launch:{phase:'launch_requested',native_dinput8_requested:args.native_dinput8,native_loaded:false,diagnostic_logging:args.diagnostic_logging}};result=clientRuntime;}
+    else if(op==='client_start'){window.__clientStarts.push(args);clientRuntime={...clientRuntime,alive:true,display_ready:true,launch:{phase:'launch_requested',native_dinput8_requested:args.native_dinput8,native_loaded:false,native_d3dx_requested:args.native_d3dx,diagnostic_logging:args.diagnostic_logging}};result=clientRuntime;}
     else if(op==='client_view'){window.__clientViews++;result={};}
     else if(op==='client_stop'){clientRuntime.alive=false;result=clientRuntime;}
     else if(op==='state'){
@@ -72,14 +73,17 @@ for(const [name,type,value,min,max]of [['Character:RaidExpMultiplier','real','0.
   await page.evaluate(()=>{window.clientInputEvent({type:'button',action:'KeyT',down:true});window.clientInputEvent({type:'pointer',x:90,y:20});});
   assert((await page.locator('#client-input-status').textContent()).includes('KeyT'));
   await page.screenshot({path:'ui-reports/client-mobile.png',fullPage:true});
+  await page.locator('#client-directx-online').click();await page.waitForFunction(()=>document.getElementById('client-directx-status').textContent.includes('installed'));
+  await page.locator('#client-directx-offline').click();await page.waitForFunction(()=>document.getElementById('notice').textContent==='DirectX model helpers installed.');
   await page.locator('#client-resolution').selectOption('960x540');await page.locator('#client-desktop').click();
   await page.waitForFunction(()=>window.__clientViews===1);
   assert(await page.locator('#client-launch').isDisabled(),'A running desktop must be stopped before another launch');
-  assert.deepEqual(await page.evaluate(()=>window.__clientStarts[0]),{mode:'desktop',resolution:'960x540',native_dinput8:true,diagnostic_logging:false});
+  assert.deepEqual(await page.evaluate(()=>window.__clientStarts[0]),{mode:'desktop',resolution:'960x540',native_dinput8:true,diagnostic_logging:false,native_d3dx:false});
   assert(!(await page.locator('#client-launch-status').textContent()).includes('load confirmed'),'File presence/request must not claim DLL loaded');
   await page.locator('#client-stop').click();await page.waitForFunction(()=>document.getElementById('client-launch-status').textContent.startsWith('Client stopped.'));
   await page.locator('#client-launch').click();await page.waitForFunction(()=>window.__clientViews===2);
   assert.equal(await page.evaluate(()=>window.__clientStarts[1].mode),'client');
+  assert.equal(await page.evaluate(()=>window.__clientStarts[1].native_d3dx),true);
   await page.evaluate(async()=>{window.__clientEvidence({native_loaded:true,system_dinput8_loaded:false});await clientRuntimeState();});
   assert((await page.locator('#client-launch-status').textContent()).includes('System DirectInput load not yet confirmed.'));
   await page.evaluate(async()=>{window.__clientEvidence({system_dinput8_loaded:true});await clientRuntimeState();});
@@ -87,7 +91,7 @@ for(const [name,type,value,min,max]of [['Character:RaidExpMultiplier','real','0.
   await page.locator('#client-view').click();await page.waitForFunction(()=>window.__clientViews===3);
   await page.locator('#client-stop').click();await page.waitForFunction(()=>document.getElementById('client-launch-status').textContent.startsWith('Client stopped.'));
   await page.locator('#client-diagnostics').check();await page.locator('#client-prefix-repair').click();await page.waitForFunction(()=>window.__clientViews===4);
-  assert.deepEqual(await page.evaluate(()=>window.__clientStarts[2]),{mode:'desktop',resolution:'960x540',native_dinput8:true,diagnostic_logging:true,repair_prefix:true});
+  assert.deepEqual(await page.evaluate(()=>window.__clientStarts[2]),{mode:'desktop',resolution:'960x540',native_dinput8:true,diagnostic_logging:true,native_d3dx:false,repair_prefix:true});
   assert((await page.locator('#client-launch-status').textContent()).includes('Verbose diagnostics enabled'));
   await page.locator('#client-stop').click();
   await page.locator('nav [data-tab=setup]').click();await page.waitForFunction(()=>document.getElementById('controller-focus').textContent==='Controller capture is off.');

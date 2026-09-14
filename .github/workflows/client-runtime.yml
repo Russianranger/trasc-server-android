@@ -2,7 +2,7 @@ name: Build embedded client runtime
 on:
   push:
     branches: [codex/client-bootstrap, codex/client-loader-fix]
-    paths: ['client-runtime/**', 'scripts/build-client-runtime.sh', 'scripts/check-client-proot.sh', 'backend/client_runner.py', 'tests/*client*', 'tests/java/**', 'scripts/check-management.sh', 'app/src/main/java/**/TarExtractor.java', 'app/src/main/java/**/SessionArchive.java', '.github/workflows/client-runtime.yml']
+    paths: ['client-runtime/**', 'scripts/build-client-runtime.sh', 'scripts/check-client-proot.sh', 'backend/client_runner.py', 'tests/*client*', 'tests/java/**', 'scripts/check-management.sh', 'scripts/check-directx.sh', 'scripts/build-cabextract.sh', 'app/src/main/java/**/DirectXInstaller.java', 'app/src/main/java/**/TarExtractor.java', 'app/src/main/java/**/SessionArchive.java', '.github/workflows/client-runtime.yml']
   workflow_dispatch:
   workflow_call:
 concurrency:
@@ -31,12 +31,19 @@ jobs:
         with:
           path: runtime-work/client-image.tar
           key: client-image-arm64-${{ hashFiles('client-runtime/Dockerfile') }}
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+      - name: Verify Microsoft DirectX helper installation
+        run: bash scripts/check-directx.sh
       - name: Compile our own Windows 32-bit test program and DLL
         run: |
           sudo apt-get update
           sudo apt-get install -y gcc-mingw-w64-i686
           mkdir -p runtime-work/client-test/client runtime-work/client-test/logs
           i686-w64-mingw32-gcc tests/client_probe.c -o runtime-work/client-test/client/eqgame.exe -mwindows -ld3d9
+          i686-w64-mingw32-gcc tests/client_models.c -o runtime-work/client-test/client/models.exe -mwindows -ld3d9
           i686-w64-mingw32-gcc tests/client_probe_dll.c -shared -o runtime-work/client-test/client/dinput8.dll -ldxguid
           python3 - <<'PYPE'
           import pathlib,struct
@@ -53,6 +60,7 @@ jobs:
             -v "$PWD/backend:/opt/trasc-client:ro" -v "$PWD/tests:/tests:ro" \
             -v "$PWD/runtime-work/client-test/client:/client" \
             -v "$PWD/runtime-work/client-test/logs:/logs" \
+            -v "$PWD/runtime-work/directx-test/output/directx:/directx:ro" \
             trasc-client:1 python3 /tests/integration_client.py
       - uses: actions/upload-artifact@v4
         if: always()
@@ -62,6 +70,7 @@ jobs:
             runtime-work/client-test/logs/
             runtime-work/client-test/client/probe-*.json
             runtime-work/client-test/client/probe-*.txt
+            runtime-work/client-test/client/model-*.json
       - name: Show client diagnostics on failure
         if: failure()
         run: |
@@ -91,6 +100,7 @@ jobs:
             runtime-work/client-proot/logs/
             runtime-work/client-proot/client/probe-*.json
             runtime-work/client-proot/client/probe-*.txt
+            runtime-work/client-proot/client/model-*.json
       - name: Show PRoot client diagnostics on failure
         if: failure()
         run: |

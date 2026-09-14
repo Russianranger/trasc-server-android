@@ -1,8 +1,22 @@
 # Embedded client milestone
 
-Preview 0.3.0 introduces an experimental in-app Wine display and ROF2 launch path. The user confirmed 0.2.1 session backup/restore, controller bindings and the input diagnostic on the Thor before authorizing this phase. The 0.3.2 Thor logs now confirm startup through character selection. Playable performance, full plugin behavior and world entry require device verification.
+Preview 0.3.0 introduces an experimental in-app Wine display and ROF2 launch path. The user confirmed 0.2.1 session backup/restore, controller bindings and the input diagnostic on the Thor before authorizing this phase. The 0.3.3 Thor logs now confirm world entry and normal camping. Character models, playable performance and full plugin behavior remain under verification.
 
-## Current 0.3.3 device pass: remove the tracing bottleneck
+## Current 0.3.4 device pass: native model helpers
+
+The 0.3.3 device run confirms much faster loading and successful entry into Greater Faydark. Global asset initialization took 9m14s versus the prior 53m11s; Wine output fell to 31,746 bytes. The game completed initialization, then camped and quit normally. It also logged 573 HMD/model setup failures while loading built-in d3dx9_30.dll and d3dx9_35.dll.
+
+Wine10's [animation functions](https://github.com/wine-mirror/wine/blob/wine-10.0/dlls/d3dx9_36/animation.c) and [skinned-mesh conversion](https://github.com/wine-mirror/wine/blob/wine-10.0/dlls/d3dx9_36/skin.c) return E_NOTIMPL for operations present in the earlier verbose game trace. Native Microsoft D3DX30/35 is the targeted compatibility fix; loading or extracting files alone does not prove models render.
+
+Update the APK in place, then select **Client → Install DirectX model helpers** while the client is stopped. This downloads Microsoft's 95.6 MiB [June2010 redistributable](https://www.microsoft.com/en-us/download/details.aspx?id=8109), checks SHA-256, and extracts only the two x86 DLLs into `client/directx`. **Choose offline DirectX installer** accepts the same original EXE; its source document is retained. Existing runtime images work; no runtime redownload, client reimport or prefix repair is needed.
+
+At client launch, both helper hashes and PE32 architecture are verified before replacing Wine's syswow64 pair; original files are backed up in `client/prefix/trasc-directx-originals`. Partial copy failure rolls back changed files. Helper data is included in complete session backups and can be applied again after a future prefix repair. Disabling **Use installed DirectX model helpers** explicitly uses Wine's built-in pair for comparison.
+
+Test at the same 800×600, native dinput8 enabled, model helpers enabled, verbose logging off. Check character models, enter the world and try movement. State records `model_libraries_loaded` and actual DLL evidence, while native `client-directx.log` covers installation. UI input does not by itself prove held movement keys reach DirectInput: CI now checks key holds and releases through polled keyboard state as well as window messages. Saved bindings remain unchanged; the game must also bind those keys to movement.
+
+Software rendering remains a performance limit. The log's few invalid texture/framebuffer messages remain an additional item to reassess after native-model testing. This APK does not enable GPU acceleration.
+
+## Previous 0.3.3 device pass: remove the tracing bottleneck
 
 The 0.3.2 log bundle confirms both native and system DirectInput loading, then game asset initialization from 17:42:54 to 18:36:05 UTC and character selection at 18:36:11. Its Wine log contains 9,258,244 lines (1,059,025,481 bytes), dominated by routine debug-string exception dispatch/unwind traces and D3DX fixme messages. These diagnostic exceptions are not evidence of millions of game crashes. Wine 10's [OutputDebugString implementation](https://github.com/wine-mirror/wine/blob/wine-10.0/dlls/kernelbase/debug.c) raises a debug-print exception for each message; tracing expands that work into repeated output. Disabling tracing does not remove the underlying debug-string calls.
 
@@ -56,3 +70,5 @@ The repository supplies its own 32-bit Windows test EXE and a test DLL named din
 Host JVM checks exercise the production RFB parser, malformed/truncated frames, event wire format, overlapping gamepad/physical/touch holds, shifted key release and text plus Enter. Python checks cover PE32 matching, truthful DLL evidence, client file preparation/rollback and preservation of INI values. Browser tests cover desktop/game launch options, return/stop flows and native-DLL status wording. The actual client runtime archive is extracted and roundtripped through the production Android archive classes, checking executable permissions and every restored file hash. Android compilation/lint and the existing server/session tests remain release gates.
 
 Upstream references: [Box64's WoW64 support](https://github.com/ptitSeb/box64), [Wine build architecture/dependencies](https://github.com/Kron4ek/Wine-Builds), [TigerVNC socket options](https://tigervnc.org/doc/Xvnc.html), [RFB protocol](https://www.rfc-editor.org/rfc/rfc6143.html).
+
+Model regression tests dynamically obtain the same official Microsoft package through the production Java extractor. An open PE32 fixture reproduces E_NOTIMPL with Wine built-ins, then tests native D3DX animation registration/sampling/compression and skinned mesh conversion. It draws the animated mesh through the private RFB display. The D3D9 core, native DirectInput forwarding and controller/keyboard baseline remain required release gates.

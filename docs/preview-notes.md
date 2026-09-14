@@ -1,3 +1,16 @@
+TRASC Server Android **0.3.4** adds DirectX model helper installation for the invisible-character problem after the first successful world entry.
+
+- Install the two Microsoft x86 D3DX libraries used by ROF2 from the official June 2010 redistributable. Choose **Install DirectX model helpers**, or select the matching offline `directx_Jun2010_redist.exe`.
+- Verify the entire download before extraction, stage and verify both Windows DLLs, preserve the previous helper installation, and remove only the app's temporary installer copy. Existing client, Wine prefix and server data are retained.
+- **Use installed DirectX model helpers** enables native-first loading for d3dx9_30/35. Wine's original prefix files are retained in `client/prefix/trasc-directx-originals`. Disable the option for a built-in Wine comparison. Actual native model-library loading appears separately from DirectInput.
+- Keep normal logging, `eqgame.exe patchme` and native/system DirectInput forwarding. The Linux runtime images are unchanged.
+
+**Device test:** stop both runtimes, install this APK in place, then open **Client → Install DirectX model helpers**. Keep the existing client runtime and prefix. Start the server and launch at **800×600**, with native dinput8 and model helpers enabled, verbose diagnostics off. Check models at character selection, enter Greater Faydark, try movement, then export Logs. No client reimport, server rebuild or prefix repair is needed.
+
+The last session reached the game world and camped normally. It still reported 573 model initialization failures while using Wine's built-in D3DX functions; the relevant animation/skinning APIs return E_NOTIMPL in Wine10. This change targets that compatibility gap. Rendering still uses CPU llvmpipe; it does not enable the Thor GPU or promise playable FPS. Successful device model rendering remains to be confirmed.
+
+Previous updates follow for reference.
+
 TRASC Server Android **0.3.3** removes the diagnostic logging flood found in the first successful embedded ROF2 launch.
 
 - Normal launches retain Wine errors and DLL-load confirmation while disabling verbose exception/module traces and repetitive fixme messages. The reported session wrote 1,059,025,481 bytes / 9,258,244 lines; global asset initialization took 53 minutes 11 seconds.
@@ -61,7 +74,7 @@ All 0.2.0 management features remain included:
 - **Client:** ZIP import, private temporary-ZIP cleanup, DLL inventory, saved controller-to-keyboard/mouse bindings and a focused input diagnostic. The separate client runtime adds an experimental launch/display/DLL-loading path.
 - **Continuity:** implementation decisions, validation and remaining work are recorded in `docs/HANDOFF.md`.
 
-For the current device pass, use the 0.3.3 sequence at the top of these notes. Export Logs after the attempt.
+For the current device pass, use the 0.3.4 sequence at the top of these notes. Export Logs after the attempt.
 
 Backups contain accounts, credentials and client files and are not encrypted. Save them privately outside the app. Only the private temporary copy of an imported session/client ZIP is removed; the selected source document remains intact.
 

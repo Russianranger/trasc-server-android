@@ -27,3 +27,22 @@ __declspec(dllexport) int TrascProbe(void) {
     IDirectInput8_Release(input);
     return SUCCEEDED(keys)&&SUCCEEDED(pointer)?0x54524153:0;
 }
+
+static IDirectInput8A *held_input;
+static IDirectInputDevice8A *held_keyboard;
+__declspec(dllexport) int TrascHeldKey(HWND window,int scan) {
+    if(!held_keyboard) {
+        typedef HRESULT (WINAPI *CreateInput)(HINSTANCE,DWORD,REFIID,LPVOID*,LPUNKNOWN);
+        CreateInput create=system_dinput?(void*)GetProcAddress(system_dinput,"DirectInput8Create"):NULL;
+        if(!create||FAILED(create(GetModuleHandle(NULL),DIRECTINPUT_VERSION,&IID_IDirectInput8A,(void**)&held_input,NULL)))return -1;
+        if(FAILED(IDirectInput8_CreateDevice(held_input,&GUID_SysKeyboard,&held_keyboard,NULL)))return -2;
+        DIOBJECTDATAFORMAT objects[256];
+        for(int i=0;i<256;i++){objects[i].pguid=&GUID_Key;objects[i].dwOfs=i;objects[i].dwType=DIDFT_BUTTON|DIDFT_MAKEINSTANCE(i);objects[i].dwFlags=0;}
+        DIDATAFORMAT format={sizeof(DIDATAFORMAT),sizeof(DIOBJECTDATAFORMAT),DIDF_RELAXIS,256,256,objects};
+        if(FAILED(IDirectInputDevice8_SetDataFormat(held_keyboard,&format)))return -3;
+        if(FAILED(IDirectInputDevice8_SetCooperativeLevel(held_keyboard,window,DISCL_BACKGROUND|DISCL_NONEXCLUSIVE)))return -4;
+    }
+    BYTE keys[256]={0};IDirectInputDevice8_Acquire(held_keyboard);
+    if(FAILED(IDirectInputDevice8_GetDeviceState(held_keyboard,sizeof(keys),keys)))return -5;
+    return !!(keys[scan]&0x80);
+}

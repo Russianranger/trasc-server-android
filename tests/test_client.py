@@ -1,4 +1,5 @@
 import json
+import hashlib
 import io
 from pathlib import Path
 import struct
@@ -115,6 +116,50 @@ class ClientTests(unittest.TestCase):
         self.assertFalse(report['prefix_ready']);self.assertTrue(report['runtime_ready'])
         pe(wine/'lib/wine/i386-windows/kernel32.dll',0x8664)
         self.assertFalse(client_runner.prefix_diagnostics(prefix,wine)['runtime_ready'])
+
+
+    def model_fixture(self):
+        source=self.root/'directx';source.mkdir()
+        destination=self.root/'prefix/drive_c/windows/syswow64';destination.mkdir(parents=True)
+        manifest={'format':1,'source_sha256':client_runner.DIRECTX_SOURCE_SHA256,'files':{}}
+        for name in client_runner.MODEL_DLLS:
+            pe(source/name)
+            manifest['files'][name]={'bytes':(source/name).stat().st_size,'sha256':hashlib.sha256((source/name).read_bytes()).hexdigest()}
+            (destination/name).write_bytes(b'original builtin '+name.encode())
+        (source/'directx.json').write_text(json.dumps(manifest))
+        return source,destination
+
+    def test_models_validate_complete_pair_and_preserve_original_system_files(self):
+        source,destination=self.model_fixture()
+        original={n:(destination/n).read_bytes() for n in client_runner.MODEL_DLLS}
+        client_runner.prepare_model_libraries(source,self.root/'prefix')
+        for name in client_runner.MODEL_DLLS:
+            self.assertEqual((destination/name).read_bytes(),(source/name).read_bytes())
+            self.assertEqual((self.root/'prefix/trasc-directx-originals'/name).read_bytes(),original[name])
+        client_runner.prepare_model_libraries(source,self.root/'prefix')
+        (source/'d3dx9_35.dll').write_bytes(b'bad'+b'x'*253)
+        with self.assertRaisesRegex(ValueError,'verification'):client_runner.prepare_model_libraries(source,self.root/'prefix')
+        self.assertEqual((destination/'d3dx9_30.dll').read_bytes(),(source/'d3dx9_30.dll').read_bytes())
+
+    def test_bad_model_pair_and_failed_install_do_not_leave_partial_replacement(self):
+        source,destination=self.model_fixture()
+        original={n:(destination/n).read_bytes() for n in client_runner.MODEL_DLLS}
+        real_replace=client_runner.os.replace
+        def fail_second(src,dest):
+            if Path(src).name=='d3dx9_35.dll':raise OSError('simulated install failure')
+            return real_replace(src,dest)
+        with patch.object(client_runner.os,'replace',side_effect=fail_second):
+            with self.assertRaisesRegex(OSError,'simulated'):client_runner.prepare_model_libraries(source,self.root/'prefix')
+        for name in client_runner.MODEL_DLLS:self.assertEqual((destination/name).read_bytes(),original[name])
+        (source/'d3dx9_35.dll').write_bytes(b'bad'+b'x'*253)
+        with self.assertRaisesRegex(ValueError,'verification'):client_runner.prepare_model_libraries(source,self.root/'prefix')
+        for name in client_runner.MODEL_DLLS:self.assertEqual((destination/name).read_bytes(),original[name])
+
+    def test_model_load_evidence_distinguishes_native_and_builtin(self):
+        trace=r'0194:trace:loaddll:build_module Loaded L"C:\\windows\\system32\\D3DX9_35.dll" at 1000: native'
+        self.assertEqual(client_runner.model_dll_status(trace)[0],{'d3dx9_35.dll':'native'})
+        self.assertEqual(client_runner.model_dll_status(trace.replace('native','builtin'))[0],{'d3dx9_35.dll':'builtin'})
+        self.assertEqual(client_runner.model_dll_status('Installed d3dx9_35.dll; d3dx9_35=n,b')[0],{})
 
     def export_fixture(self, _):
         folder=self.root/'server/export';folder.mkdir(parents=True,exist_ok=True)
