@@ -1,5 +1,14 @@
 # Development handoff — 2026-09-14
 
+## Latest device follow-up: 32-bit Wine and native dinput8 confirmed
+
+- Following the 0.3.1 update, the user reports that the ROF2 window appeared for approximately ten seconds before disappearing. Latest bundle is `logs-5544659252330987853.zip`; individual client-runtime.log, client-state.json and client-wine.log were also attached. The analysis workspace failed to initialize, so these attachments have NOT been read. Evidence below comes only from text pasted by the user.
+- Pasted client-state.json reports `prefix_files_ready: true`, `wine32_ready: true`, `native_loaded: true`, mode client, resolution 800x600, launcher_exit 0, final phase stopped, and no error field. Wine's actual native-load trace identifies `D:\\DINPUT8.dll` at 7AE60000 in process 0194. This confirms imported native DLL loading, not successful plugin behavior or game acceptance.
+- The pasted Wine tail contains process-detach/shutdown traces at approximately 146758–146759. It does not include the reason for shutdown. Do not diagnose a missing dependency, graphics failure, plugin failure, or clean game exit from this tail alone.
+- Code review confirms `launcher_exit` is the return code of Wine Explorer, not a captured eqgame.exe exit code. The final supervisor phase stopped can follow a stop request/signal and cleanup; it does not identify why the earlier game window disappeared.
+- Next evidence needed: client-runtime.log and the earlier client-wine.log section immediately preceding the first shutdown/detach sequence, including any errors/exceptions. Clarify whether the user pressed Stop after the window disappeared to distinguish later supervisor cleanup from the original game exit. Preserve the working prefix; no further repair/reimport is indicated by the pasted state.
+- No new APK or runtime change has been made for this follow-up. Keep 0.3.1 and the existing published artifact hashes below.
+
 ## Current milestone: ROF2 black-screen recovery, Preview 0.3.1 published
 
 - Published code commit: `01138918df6d9a68a45af8f36a3860be3b4771b5`. Both `preview` and `client-runtime-v1` tags point to this commit. This handoff-only follow-up changes no APK/runtime code.
@@ -8,7 +17,7 @@
 - Repacked client-1.0 archive: 353,710,662 bytes; SHA-256 `e1f37b8b29f47ded4eb859d6b7cd8add86b113843a3aec06933be309fbf3bece`. The Wine/Box64 image and recipe are unchanged; no client runtime redownload is required. Server runtime remains 1.1.
 - Publication verification: both tags and release asset digests read back from GitHub; downloaded APK hash/size and preview/client manifests match the code commit, version and preserved application identity.
 
-- Latest bundle: `logs-8799882545351199396.zip`, user confirms right-stick mouse input but black display on ROF2 launch.
+- Previous 0.3.0 failure bundle: `logs-8799882545351199396.zip`, user confirms right-stick mouse input but black display on ROF2 launch.
 - Device evidence: VNC frames/input and llvmpipe OpenGL 4.5 initialize. `eqgame.exe patchme` is correctly passed and the PE32 EXE loads. Wine then reports `could not load kernel32.dll, status c0000135`; native dinput8 is not reached. Explorer returns 0 and the old supervisor continues presenting an empty display. First prefix setup was interrupted by Stop. This suggests a prefix or Android loader problem; do not claim the exact underlying cause is established from these logs alone.
 - Existing optional libXcomposite/codec/Bluetooth and CPU-info warnings are separate from the confirmed fatal loader error. No runtime dependency upgrade is required for this APK checkpoint. `/sys` is now bound for CPU discovery.
 - Working branch `codex/client-loader-fix`, base main `662b24f8a2fdbcb4fd73828909fa1e284c22af85`. Baseline commit `80663be45652a436b2c9e37e577ec747e19159c6` added real production archive extraction followed by the same pinned PRoot code compiled for Linux ARM64. Baseline PRoot probe passed: https://github.com/Russianranger/trasc-server-android/actions/runs/34799154722 . This narrows the failure but does not reproduce Android SELinux/kernel behavior.
