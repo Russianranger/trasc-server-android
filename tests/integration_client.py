@@ -32,7 +32,9 @@ def recv(stream, size):
 
 def main():
     for name in ('/session','/prefix','/logs'): Path(name).mkdir(exist_ok=True)
-    Path('/session/request.json').write_text(json.dumps({'mode':'client','resolution':'800x600','executable':'eqgame.exe','native_dinput8':True,'native_d3dx':True}))
+    renderer=os.environ.get('TRASC_TEST_RENDERER','software')
+    request={'mode':'client','resolution':'800x600','executable':'eqgame.exe','native_dinput8':True,'native_d3dx':True,'renderer':renderer}
+    Path('/session/request.json').write_text(json.dumps(request))
     runner = subprocess.Popen(['python3','/opt/trasc-client/client_runner.py'])
     try:
         def ready():
@@ -43,6 +45,12 @@ def main():
         wait_for(ready, '32-bit Wine / DLL / Direct3D probe did not become ready')
         result=json.loads(Path('/client/probe-result.json').read_text())
         assert all(result.values()),result
+        graphics=json.loads(Path('/session/status.json').read_text())
+        assert graphics['graphics_backend']==renderer,graphics
+        if renderer=='virgl':
+            assert 'virgl' in graphics['renderer'].lower(),graphics
+            assert graphics['host_gl_renderer'],graphics
+        Path('/logs/graphics-verification.json').write_text(json.dumps({key:graphics.get(key) for key in ('renderer','graphics_backend','host_gl_renderer','graphics_acceleration')},indent=2))
         with socket.socket(socket.AF_UNIX) as display:
             display.settimeout(30); display.connect('/session/display.sock')
             assert recv(display,12)==b'RFB 003.008\n';display.sendall(b'RFB 003.008\n')
@@ -91,7 +99,7 @@ def main():
         wait_for(lambda:json.loads(Path('/session/status.json').read_text()).get('system_dinput8_loaded'), 'System DirectInput forwarding trace not recognized',15)
         # A negative control must reproduce the old native-only bug. Each check
         # is a separate Windows process while the private X display is alive.
-        env=client_runner.Supervisor({'mode':'client','resolution':'800x600'}).env
+        env=client_runner.Supervisor(request).env
         command=['/usr/local/bin/box64','/opt/wine/bin/wine',r'D:\eqgame.exe','--check-directinput']
         with Path('/logs/client-proxy-regression.log').open('wb') as output:
             for override,expected in [('n',23),('n,b',0)]:

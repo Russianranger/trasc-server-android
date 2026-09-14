@@ -1,8 +1,8 @@
 name: Build embedded client runtime
 on:
   push:
-    branches: [codex/client-bootstrap, codex/client-loader-fix]
-    paths: ['client-runtime/**', 'scripts/build-client-runtime.sh', 'scripts/check-client-proot.sh', 'backend/client_runner.py', 'tests/*client*', 'tests/java/**', 'scripts/check-management.sh', 'scripts/check-directx.sh', 'scripts/build-cabextract.sh', 'app/src/main/java/**/DirectXInstaller.java', 'app/src/main/java/**/TarExtractor.java', 'app/src/main/java/**/SessionArchive.java', '.github/workflows/client-runtime.yml']
+    branches: [codex/client-bootstrap, codex/client-loader-fix, codex/client-performance]
+    paths: ['client-runtime/**', 'native/**', 'scripts/build-client-runtime.sh', 'scripts/check-client-*.sh', 'scripts/build-virgl.sh', 'backend/client_runner.py', 'tests/*client*', 'tests/java/**', 'scripts/check-management.sh', 'scripts/check-directx.sh', 'scripts/build-cabextract.sh', 'app/src/main/java/**/DirectXInstaller.java', 'app/src/main/java/**/TarExtractor.java', 'app/src/main/java/**/SessionArchive.java', 'app/src/main/java/**/GraphicsBridge.java', '.github/workflows/client-runtime.yml']
   workflow_dispatch:
   workflow_call:
 concurrency:
@@ -114,6 +114,39 @@ jobs:
                   p=Path(parent)/name
                   print(str(p), p.exists(), p.stat().st_size if p.exists() else 0)
           PYLOG
+      - name: Build and verify the native GLES bridge lifecycle
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y meson ninja-build pkg-config libepoxy-dev libegl1-mesa-dev libgbm-dev libdrm-dev
+          bash scripts/build-virgl.sh host
+          mkdir -p runtime-work/graphics-classes
+          javac -d runtime-work/graphics-classes app/src/main/java/io/github/russianranger/trasc/GraphicsBridge.java tests/java/io/github/russianranger/trasc/GraphicsHostTest.java
+          java -cp runtime-work/graphics-classes io.github.russianranger.trasc.GraphicsHostTest "$PWD/runtime-work/native/virgl-host/out/vtest/virgl_test_server"
+      - name: Verify PE32 models, animation and movement through VirGL GLES
+        run: bash scripts/check-client-graphics.sh
+      - name: Verify VirGL GLES through the installed PRoot runtime
+        run: bash scripts/check-client-proot.sh virgl
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: client-graphics-verification
+          path: |
+            runtime-work/client-virgl/logs/
+            runtime-work/client-virgl/client/probe-*.json
+            runtime-work/client-virgl/client/model-*.json
+            runtime-work/client-proot-virgl/logs/
+            runtime-work/client-proot-virgl/client/probe-*.json
+            runtime-work/client-proot-virgl/client/model-*.json
+      - name: Show GLES diagnostics on failure
+        if: failure()
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path
+          for parent in ('runtime-work/client-virgl/logs','runtime-work/client-proot-virgl/logs'):
+              for p in Path(parent).glob('*'):
+                  print(p.name)
+                  print(p.read_text(errors='replace')[-18000:])
+          PY
       - name: Publish separate online and offline client runtime
         if: github.ref == 'refs/heads/main'
         env:
