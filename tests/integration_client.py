@@ -47,6 +47,7 @@ def main():
         assert all(result.values()),result
         graphics=json.loads(Path('/session/status.json').read_text())
         assert graphics['graphics_backend']==renderer,graphics
+        assert graphics['wined3d_patch']=='legacy-specular-fog-v1',graphics
         if renderer=='virgl':
             assert 'virgl' in graphics['renderer'].lower(),graphics
             assert graphics['host_gl_renderer'],graphics

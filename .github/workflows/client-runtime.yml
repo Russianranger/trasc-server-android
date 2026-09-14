@@ -18,6 +18,7 @@ jobs:
       - uses: actions/download-artifact@v4
         with:
           name: client-wined3d
+      - run: cp backend-assets/wined3d-patch.json backend/
       - uses: actions/cache/restore@v4
         id: client-image
         with:
@@ -144,7 +145,8 @@ jobs:
           python3 - <<'PY'
           from pathlib import Path
           for parent in ('runtime-work/client-virgl/logs','runtime-work/gpu-proot/logs'):
-              for p in Path(parent).glob('*'):
+              for p in Path(parent).rglob('*'):
+                  if not p.is_file(): continue
                   print(p.name)
                   print(p.read_text(errors='replace')[-18000:])
           PY

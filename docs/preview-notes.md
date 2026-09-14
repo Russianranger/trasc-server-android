@@ -1,3 +1,11 @@
+TRASC Server Android **0.3.6** corrects texture storage and legacy Wine shaders in the experimental Android GPU path.
+
+- DXT1/3/5 artwork now uses consistent RGBA host storage. Uploads preserve texture subregions, mip levels, alpha and sRGB; other compressed formats keep their own paths.
+- The APK includes a matching Wine 10 graphics module with the GLSL 1.20 specular/fog variable correction. It applies at launch to the installed runtime; no client/runtime reimport or prefix repair is needed.
+- GPU startup now samples compressed texture pixels instead of accepting a plain color clear alone. CI additionally exercises OpenGL 2.1 and compares unpatched/patched Wine with our own shader fixture.
+
+**Device test:** stop both runtimes, install this APK over the existing preview, and reopen the app. Start the server, choose **Client → Graphics → Android GPU / VirGL (experimental)** at **800×600**, retain native dinput8/model helpers and leave verbose logging off. Check menu backgrounds, loading artwork, character/model textures, then enter the same zone and check movement. Export Logs afterward. Software remains the recovery option. Actual Adreno rendering and performance still require your device test.
+
 TRASC Server Android **0.3.5** adds an experimental Android GPU path for the next performance test.
 
 The 0.3.4 device pass confirms working models, animations and movement. Its logs show zero HMD/model failures and global asset initialization in 1m58s. Rendering still uses CPU llvmpipe, which remains a major performance limit.
@@ -89,7 +97,7 @@ All 0.2.0 management features remain included:
 - **Client:** ZIP import, private temporary-ZIP cleanup, DLL inventory, saved controller-to-keyboard/mouse bindings and a focused input diagnostic. The separate client runtime adds an experimental launch/display/DLL-loading path.
 - **Continuity:** implementation decisions, validation and remaining work are recorded in `docs/HANDOFF.md`.
 
-For the current device pass, use the 0.3.5 sequence at the top of these notes. Export Logs after the attempt.
+For the current device pass, use the 0.3.6 sequence at the top of these notes. Export Logs after the attempt.
 
 Backups contain accounts, credentials and client files and are not encrypted. Save them privately outside the app. Only the private temporary copy of an imported session/client ZIP is removed; the selected source document remains intact.
 

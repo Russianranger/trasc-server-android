@@ -34,11 +34,16 @@ driver, ANGLE binary, Termux application or EverQuest asset is distributed.
 Source archives, the build script, launcher, Android patches and license files
 are included in the published launcher-sources archive.
 
-Selected Android portability, EGL and DXT decompression patches come from
+Selected Android portability and EGL patches come from
 [Termux packages](https://github.com/termux/termux-packages/tree/4f48a30edadeff906a3cad7adfaa17e5f8d10605/packages/virglrenderer-android).
-The DXT conversion includes gl4es code under its MIT license, reproduced in
-native/virgl-patches/COPYING-gl4es. The additional pointer-arithmetic patch
-makes that conversion compile with GCC as well as Clang. The older-Android
-timespec compatibility patch applies only to Android builds.
+The former gl4es DXT upload patch is replaced with the MIT-licensed TRASC
+block decoder in native/trasc_dxt.h and a host-storage correction. The original
+patch provenance remains in git history.
+
+The APK also carries Wine 10.0's LGPL-2.1-or-later PE32 wined3d.dll with a small
+legacy GLSL specular-output correction. Its checksum-pinned source archive,
+patch and build recipe are included in wined3d-sources.tar.gz inside the
+published launcher-sources.tar.gz. It is mounted over the app-private runtime
+module at launch; no EverQuest binary is modified or distributed.
 
 TRASC additionally patches the vtest worker lifecycle to terminate workers when their owning renderer exits. The native launcher probes Android EGL in an isolated child before serving client connections. These project modifications are included with the corresponding sources.
