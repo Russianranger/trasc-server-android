@@ -1,14 +1,28 @@
-## Active: 0.3.6 texture and legacy GLSL correction (2026-09-14)
-
-Latest device bundle: `logs-5414003610187626190.zip`. VirGL genuinely reached Adreno 740 but guest GL was 2.1; host logged invalid texture redefinition/uploads and Wine emitted three `ffp_varying_specular` undeclared shader errors. Striped EULA and black character/trees match these failures. This was not another DirectInput/D3DX failure.
-
-Work branch `codex/client-texture-fix`; **not released yet**. Replaced the imported always-on gl4es DXT patch with explicit DXT1/3/5-to-RGBA host storage and subimage uploads (preserving guest block transport, sRGB, mip levels, offsets/layers). Native decoder bounds/interpolation tests pass locally. A new mapped GLX texture probe checks all eight S3TC formats, partial updates, small mips, sRGB and blended alpha.
-
-Wine 10 vertex shader epilogue mistakenly reads `ffp_varying_specular.w` under GLSL 1.20, where its output is actually `gl_FrontSecondaryColor`. Matching PE32 WineD3D is rebuilt from checksum-pinned Wine 10 sources with a one-expression correction. APK supplies it via a PRoot file bind over the runtime DLL, and wineboot refreshes the prefix as usual. No runtime/client reimport. CI must verify old-GL shader rendering, positive/negative controls, software/VirGL, real PRoot, native helper lifetime, APK lint and existing server/backup gates before publishing. Preserve preview signing key. Do not claim on-device visual correctness from Mesa CI.
-
-Branch CI https://github.com/Russianranger/trasc-server-android/actions/runs/34906667908 passed APK/lint, database, software+PRoot textures/shaders/models/input, complete runtime backup/restore, native helper lifecycle and VirGL GL2.1 texture/shader/model/input pixels. All eight S3TC formats passed. Its final unpatched/patched comparison stopped before launch because its test request lacked resolution; that test setup is corrected. Main run 34907420102 also passed APK signing, software+PRoot and VirGL GL2.1 positive checks. The original Wine comparison reproduced the exact error and incorrect pixel (exit 42); its assertion mismatched Mesa’s opening backtick versus apostrophe. The test normalizes that punctuation now; the shader failure requirement is retained. Final release gates remain pending. Continue through an APK and record final hashes/test results. Physical Thor test remains required after release. Never remove `patchme`, native DInput n,b, native D3DX30/35, or user data.
-
 # Development handoff — 2026-09-14
+
+## Published: 0.3.6 texture and legacy GLSL corrections
+
+- Release/code commit **3bf09d7437d0c59151c7014a5157ab6c2c4f2075**. All gates passed: https://github.com/Russianranger/trasc-server-android/actions/runs/34908354131 . The handoff-only commit that follows uses `[skip ci]` and does not rebuild the APK.
+- APK: https://github.com/Russianranger/trasc-server-android/releases/download/preview/trasc-server-android-preview.apk . Version **0.3.6 / code 12**, application ID `io.github.russianranger.trasc.preview`, **2,089,669 bytes**, SHA256 **2321f9efe7fe8c224cedc2f1c39b56bcac142268fe7cd7d31a92e1a2b8894d34**. Downloaded the published file and checked its hash, packaged backend scripts, PE32 Wine fix and release metadata.
+- Preserved signing certificate SHA256: **ff9c09cdc3e2404d1d7f72d61ce2f8651464f5e03dff340f70bd4df28c70e869**. Install over the existing preview after stopping server/client; no uninstall, server rebuild, runtime/client reimport, prefix repair or DirectX reinstall is needed.
+- Corresponding launcher sources: **35,114,918 bytes**, SHA256 **4ce79de44df017fc4b2d2e370674c1d3de8f987f6286052030b5eb834e6bf1f2**. Includes checksum-pinned Wine 10 source, patch and complete build recipe in `wined3d-sources.tar.gz`, alongside VirGL/epoxy/PRoot/cabextract sources.
+
+### Device evidence and changes
+
+Latest user bundle `logs-5414003610187626190.zip` confirmed actual **Adreno 740** forwarding, guest **OpenGL 2.1 / Mesa 22.3.6**, and correctly loaded native dinput8/system DirectInput/D3DX30+35. Screenshots showed cyan-striped EULA artwork and untextured black character/trees. Host emitted repeated invalid texture uploads/redefinitions; Wine emitted three undeclared `ffp_varying_specular` shader errors. Latest session stopped explicitly; do not call this another loader/DLL crash.
+
+Replaced the imported always-on gl4es upload patch with `native/virgl-patches/0008-correct-s3tc-storage.patch` plus the bounded MIT decoder `native/trasc_dxt.h`. GLES allocates RGBA8/SRGB8_ALPHA8 host storage for DXT1/3/5 once; packed guest BC transfers are decoded and uploaded with SubImage, preserving mipmaps, partial-update offsets, cube/array layers, alpha and sRGB. Other compressed formats retain their own path; desktop GL retains native compressed storage. The original patch incorrectly redefined immutable compressed storage on every upload, and mishandled subrectangles and sRGB pixel types.
+
+Wine 10's legacy GLSL vertex epilogue read `ffp_varying_specular.w` even though GLSL 1.20 outputs were mapped to `gl_FrontSecondaryColor`. `native/wine-patches/0001-legacy-specular-fog.patch` corrects that expression. `scripts/build-wined3d.sh` builds the matching PE32 module from pinned Wine 10 sources. APK carries it plus a manifest; `ClientRuntime` binds it over `/opt/wine/lib/wine/i386-windows/wined3d.dll` before Wine starts. The underlying runtime is preserved. Runner verifies its SHA256 and records `wined3d_patch` / `wined3d_sha256` in client-state. Published module SHA256: **d29107ee4344a27514a1a9416dd47089a400c9deab30c87e44c19dc7e95a75f1**, patch ID `legacy-specular-fog-v1`.
+
+### Verification and next device pass
+
+- Passed 46 backend tests, Android build/lint/signing, UI/JVM management checks, full offline database import, complete server/client runtime backup/restore, and native GPU parent/worker cleanup.
+- Passed Software and VirGL through both direct ARM64 Wine and real PRoot: native proxy forwarding, held-key release, model libraries/animation, D3D compressed artwork, SM1/2 shader pixels and bounded logging. GLES CI uses host Mesa, not a physical Adreno.
+- `graphics_probe.py` now samples all eight S3TC formats, partial updates, 4/2/1-pixel mip levels, sRGB and blended alpha before GPU launch. Local decoder tests also passed address/undefined-behavior sanitizers (leak detection unavailable in this workspace).
+- Direct VirGL tests explicitly restrict guest GL to **2.1 / GLSL 120** to exercise the Thor capability path. The original unmodified Wine module reproduces the named undeclared-specular compiler error plus wrong pixels (exit 42); patched Wine renders both shader versions correctly (exit 0). Keep both controls. D3D9 SM1 fixtures need explicit input declarations too, and Mesa may open diagnostic identifiers with a backtick rather than an apostrophe. The test normalizes only that punctuation.
+- **Next:** on the Thor, stop both runtimes, update in place, start the server, select **Android GPU / VirGL (experimental), 800×600**, retain native dinput8/model helpers, leave verbose diagnostics off. Check EULA/menu backgrounds, loading artwork, character textures, then enter the same zone and test animation/movement/performance. Export Logs. Confirm `wined3d_patch=legacy-specular-fog-v1` and all texture checks pass. Actual game visuals and playable FPS remain pending this device test; Software stays available for recovery.
+- Preserve `eqgame.exe patchme`, `dinput8=n,b`, native D3DX30/35, quiet default Wine logging and all server/client/prefix data. Never ship a higher GL version override as a substitute for actual driver capability. Test-only GL downgrades live in scripts, not Android launch settings.
 
 ## Published: 0.3.5 experimental Android GPU path
 
