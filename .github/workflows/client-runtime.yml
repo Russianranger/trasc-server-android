@@ -38,6 +38,15 @@ jobs:
           mkdir -p runtime-work/client-test/client runtime-work/client-test/logs
           i686-w64-mingw32-gcc tests/client_probe.c -o runtime-work/client-test/client/eqgame.exe -mwindows -ld3d9
           i686-w64-mingw32-gcc tests/client_probe_dll.c -shared -o runtime-work/client-test/client/dinput8.dll
+          python3 - <<'PYPE'
+          import pathlib,struct
+          p=pathlib.Path('runtime-work/client-test/client/eqgame.exe');data=bytearray(p.read_bytes())
+          offset=struct.unpack_from('<I',data,0x3c)[0]
+          flags=struct.unpack_from('<H',data,offset+22)[0]
+          struct.pack_into('<H',data,offset+22,flags&~0x20) # Legacy non-large-address-aware PE32.
+          p.write_bytes(data)
+          print('Legacy PE32 image bytes:',struct.unpack_from('<I',data,offset+24+56)[0], 'large_address_aware:',False)
+          PYPE
       - name: Verify real PE32 launch, native DLL, Direct3D9 and display input on ARM64
         run: |
           docker run --rm --network none \

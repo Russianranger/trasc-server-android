@@ -59,6 +59,10 @@ for(const [id,mode] of [['client-desktop','desktop'],['client-launch','client']]
  await api('controller_capture',{active:false});notice('Opening the client display. First-time Wine setup can take a minute…');
  await api('client_start',launchOptions(mode));await clientRuntimeState();await api('client_view');
 });
+action('client-prefix-repair',async()=>{
+ await api('controller_capture',{active:false});notice('Preserving the previous Wine prefix and preparing a fresh Windows environment…');
+ await api('client_start',{...launchOptions('desktop'),repair_prefix:true});await clientRuntimeState();await api('client_view');
+});
 action('client-view',()=>api('client_view'));
 action('client-stop',async()=>{await api('client_stop');await clientRuntimeState();notice('Client stopped. Manage the server separately in Server.');});
 setInterval(()=>{if(currentTab==='client')clientRuntimeState().catch(e=>{$('client-runtime-status').textContent=e.message;});},1500);

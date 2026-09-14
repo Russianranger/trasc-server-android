@@ -2,6 +2,14 @@
 
 Preview 0.3.0 introduces an experimental in-app Wine display and ROF2 launch path. The user confirmed 0.2.1 session backup/restore, controller bindings and the input diagnostic on the Thor before authorizing this phase. Actual ROF2 startup, login, plugin behavior and world entry require the next device pass.
 
+## Recovery from the 0.3.0 black screen
+
+Preview 0.3.1 checks the 32-bit Windows system files and executes `C:\windows\syswow64\cmd.exe` before launching the game. The device log confirmed `eqgame.exe patchme` was passed correctly, followed by Wine's fatal kernel32.dll loader error; it did not reach native dinput8 loading.
+
+After updating, stop the client and select **Repair Wine prefix**. The existing prefix is moved to `client/prefix-backups/` before a fresh Windows environment is created. Wait for Wine desktop, then stop the client, start your server and Launch ROF2. This preserves imported client files, controller mappings and server data. Keep the current client runtime; no redownload is needed for 0.3.1.
+
+If it fails, the display shows a failure dialog and Logs includes `client-prefix.log`, `client-prefix.json`, `client-prefix-repair.json` and `client-wine.log`. The prefix inventory distinguishes missing runtime files from an incomplete prefix. Native DLL confirmation still requires an actual Wine load trace.
+
 ## Device sequence
 
 1. Keep the working Preview and external session backup. Stop the runtimes and update the APK in place.

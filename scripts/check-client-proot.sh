@@ -15,7 +15,7 @@ java -cp "$task_dir/classes" io.github.russianranger.trasc.ExtractRuntimeHost di
 cp runtime-work/client-test/client/eqgame.exe runtime-work/client-test/client/dinput8.dll "$task_dir/client/"
 PROOT_LOADER="$task_dir/proot/src/loader/loader" PROOT_NO_SECCOMP=1 PROOT_TMP_DIR="$task_dir/tmp" \
 timeout 300 "$task_dir/proot/src/proot" --kill-on-exit -0 -r "$task_dir/root" \
-    -b /dev -b /proc -b "$PWD/backend:/opt/trasc-client" -b "$PWD/tests:/tests" \
+    -b /dev -b /proc -b /sys -b "$PWD/backend:/opt/trasc-client" -b "$PWD/tests:/tests" \
     -b "$task_dir/client:/client" -b "$task_dir/prefix:/prefix" -b "$task_dir/session:/session" \
     -b "$task_dir/tmp:/tmp" -b "$task_dir/logs:/logs" -w /client \
     /usr/bin/env -i HOME=/root USER=root PATH=/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin \

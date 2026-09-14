@@ -3,6 +3,9 @@
 #include <d3d9.h>
 #include <stdio.h>
 
+// ROF2 is a sizeable legacy PE32 image; exercise its low-address allocation class.
+static volatile unsigned char legacy_image[20*1024*1024];
+
 static void marker(const char *name,const char *value) {
     FILE *out=fopen(name,"w");if(out){fputs(value,out);fclose(out);}
 }
@@ -13,6 +16,7 @@ static LRESULT CALLBACK window_proc(HWND window,UINT message,WPARAM key,LPARAM d
     return DefWindowProc(window,message,key,data);
 }
 int WINAPI WinMain(HINSTANCE instance,HINSTANCE previous,LPSTR command,int show) {
+    legacy_image[sizeof(legacy_image)-1]=1;
     HMODULE dll=LoadLibraryA("dinput8.dll");
     int (*probe)(void)=dll?(void*)GetProcAddress(dll,"TrascProbe"):NULL;
     if(!probe||probe()!=0x54524153){marker("D:\\probe-error.txt","Native 32-bit DLL did not load");return 1;}

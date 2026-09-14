@@ -2,6 +2,7 @@ package io.github.russianranger.trasc;
 
 import java.io.*;
 import java.util.*;
+import java.nio.file.*;
 
 public final class ClientHostTest {
     static void check(boolean ok,String message){if(!ok)throw new AssertionError(message);}
@@ -32,6 +33,17 @@ public final class ClientHostTest {
         input.action("KeyT",true);input.releaseAll();check(sent.contains("key:116:false")&&sent.get(sent.size()-1).endsWith(":0"),"Focus loss releases keyboard and mouse");
         sent.clear();input.text("hello",true);check(sent.get(sent.size()-1).equals("key:65293:false"),"Send + Enter actually sends chat");
         for(String action:ControllerInput.ACTIONS)if(!action.equals("None")&&!action.startsWith("Pointer")&&!action.startsWith("Mouse")&&!action.startsWith("Wheel"))check(DisplayInput.symbol(action)!=0,"Every advertised keyboard binding reaches the client: "+action);
+        Path tree=Files.createTempDirectory("trasc-prefix-");
+        try {
+            Path prefix=tree.resolve("prefix"),game=tree.resolve("current");Files.createDirectories(prefix.resolve("dosdevices"));Files.createDirectories(game);
+            Files.writeString(prefix.resolve("user.reg"),"existing Wine settings");Files.writeString(game.resolve("eqgame.exe"),"owned client");
+            Files.createSymbolicLink(prefix.resolve("dosdevices/d:"),Path.of("/client"));
+            File saved=ClientPrefix.preserve(prefix.toFile());
+            check(Files.readString(saved.toPath().resolve("user.reg")).equals("existing Wine settings"),"Repair preserves Wine settings");
+            check(Files.readSymbolicLink(saved.toPath().resolve("dosdevices/d:")).toString().equals("/client"),"Repair preserves guest drive links");
+            check(Files.isDirectory(prefix)&&!Files.exists(prefix.resolve("user.reg")),"Fresh prefix ready without deleting backup");
+            check(Files.readString(game.resolve("eqgame.exe")).equals("owned client"),"Repair never touches imported game files");
+        } finally {TarExtractor.remove(tree.toFile());}
         System.out.println("PASS: native RFB pixels/events, malformed frames, combined controller/physical/touch holds, focus releases and typed Enter");
     }
 }

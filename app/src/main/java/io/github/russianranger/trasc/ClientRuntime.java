@@ -100,6 +100,11 @@ final class ClientRuntime {
             if(mode.equals("client")&&!new File(client,"trasc-client.json").isFile())throw new IOException("Import your ROF2 client ZIP first");
             String executable=mode.equals("client")?json(new File(client,"trasc-client.json")).getString("executable"):"";
             if(executable.contains("/")||executable.contains("\\"))throw new IOException("Invalid client executable path");
+            if(options.optBoolean("repair_prefix",false)) {
+                if(!mode.equals("desktop"))throw new IOException("Repair the Wine prefix in desktop mode first");
+                File saved=ClientPrefix.preserve(prefix);
+                RuntimeManager.write(new File(server.work,"logs/client-prefix-repair.json"),new JSONObject().put("created_utc",java.time.Instant.now().toString()).put("previous_prefix",saved==null?"none":server.work.toPath().relativize(saved.toPath()).toString()).toString(2));
+            }
             TarExtractor.remove(run);TarExtractor.remove(tmp);run.mkdirs();tmp.mkdirs();prefix.mkdirs();client.mkdirs();
             JSONObject request=new JSONObject().put("mode",mode).put("resolution",resolution).put("executable",executable).put("native_dinput8",options.optBoolean("native_dinput8",true));
             RuntimeManager.write(new File(run,"request.json"),request.toString());
@@ -109,7 +114,7 @@ final class ClientRuntime {
             RuntimeManager.write(new File(root,"etc/resolv.conf"),"nameserver 1.1.1.1\nnameserver 8.8.8.8\n");
             File nativeDir=new File(context.getApplicationInfo().nativeLibraryDir);
             List<String> command=new ArrayList<>(Arrays.asList(new File(nativeDir,"libproot.so").getPath(),"--kill-on-exit","-0","-r",root.getPath(),
-                "-b","/dev","-b","/proc","-b",client.getPath()+":/client","-b",prefix.getPath()+":/prefix","-b",run.getPath()+":/session",
+                "-b","/dev","-b","/proc","-b","/sys","-b",client.getPath()+":/client","-b",prefix.getPath()+":/prefix","-b",run.getPath()+":/session",
                 "-b",new File(server.work,"logs").getPath()+":/logs","-b",backend.getPath()+":/opt/trasc-client","-b",tmp.getPath()+":/tmp",
                 "-w","/client","/usr/bin/env","-i","HOME=/root","USER=root","PATH=/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin",
                 "LANG=C.UTF-8","TMPDIR=/tmp","PYTHONUNBUFFERED=1","/usr/bin/python3","/opt/trasc-client/client_runner.py"));

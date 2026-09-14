@@ -39,6 +39,25 @@ class ClientTests(unittest.TestCase):
         self.assertFalse(client_runner.dll_status('trace:loaddll:build_module Loaded L"C:\\windows\\system32\\dinput8.dll": builtin')['native_loaded'])
         self.assertTrue(client_runner.dll_status('trace:loaddll:build_module Loaded L"D:\\dinput8.dll" at 00100000: native')['native_loaded'])
 
+    def test_reported_loader_failure_is_fatal_but_optional_driver_warnings_are_not(self):
+        error=client_runner.fatal_launch_error('wine: could not load kernel32.dll, status c0000135')
+        self.assertIn('c0000135',error)
+        self.assertIn('kernel32.dll',error)
+        self.assertIsNone(client_runner.fatal_launch_error('err:ntoskrnl:ZwLoadDriver winebth failed\nError loading needed lib libXcomposite.so.1'))
+        self.assertIn('VCRUNTIME140.dll',client_runner.fatal_launch_error('err:module:import_dll Library VCRUNTIME140.dll (which is needed by L"D:\\dinput8.dll") not found'))
+
+    def test_prefix_check_distinguishes_incomplete_prefix_from_missing_runtime(self):
+        prefix=self.root/'prefix';wine=self.root/'wine'
+        for parent in (prefix/'drive_c/windows/syswow64',wine/'lib/wine/i386-windows'):
+            parent.mkdir(parents=True)
+            for name in ('ntdll.dll','kernel32.dll','kernelbase.dll','cmd.exe'):pe(parent/name)
+        self.assertTrue(client_runner.prefix_diagnostics(prefix,wine)['prefix_ready'])
+        (prefix/'drive_c/windows/syswow64/kernel32.dll').unlink()
+        report=client_runner.prefix_diagnostics(prefix,wine)
+        self.assertFalse(report['prefix_ready']);self.assertTrue(report['runtime_ready'])
+        pe(wine/'lib/wine/i386-windows/kernel32.dll',0x8664)
+        self.assertFalse(client_runner.prefix_diagnostics(prefix,wine)['runtime_ready'])
+
     def export_fixture(self, _):
         folder=self.root/'server/export';folder.mkdir(parents=True,exist_ok=True)
         for name in CLIENT_FILES:(folder/name).write_text('generated '+name)

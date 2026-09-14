@@ -1,4 +1,17 @@
-# Development handoff — 2026-09-13
+# Development handoff — 2026-09-14
+
+## Active fix: ROF2 black screen on Thor, Preview 0.3.1 in progress
+
+- Latest bundle: `logs-8799882545351199396.zip`, user confirms right-stick mouse input but black display on ROF2 launch.
+- Device evidence: VNC frames/input and llvmpipe OpenGL 4.5 initialize. `eqgame.exe patchme` is correctly passed and the PE32 EXE loads. Wine then reports `could not load kernel32.dll, status c0000135`; native dinput8 is not reached. Explorer returns 0 and the old supervisor continues presenting an empty display. First prefix setup was interrupted by Stop. This suggests a prefix or Android loader problem; do not claim the exact underlying cause is established from these logs alone.
+- Existing optional libXcomposite/codec/Bluetooth and CPU-info warnings are separate from the confirmed fatal loader error. No runtime dependency upgrade is required for this APK checkpoint. `/sys` is now bound for CPU discovery.
+- Working branch `codex/client-loader-fix`, base main `662b24f8a2fdbcb4fd73828909fa1e284c22af85`. Baseline commit `80663be45652a436b2c9e37e577ec747e19159c6` added real production archive extraction followed by the same pinned PRoot code compiled for Linux ARM64. Baseline PRoot probe passed: https://github.com/Russianranger/trasc-server-android/actions/runs/34799154722 . This narrows the failure but does not reproduce Android SELinux/kernel behavior.
+- Changes being validated: 32-bit runtime/prefix core-file inventory (`client-prefix.json`), actual SysWOW64 cmd.exe bootstrap before launching ROF2, separate prefix logs, fatal-loader/dependency detection and visible failure dialog, normal Stop handled without a spurious failure traceback, backed-up Repair Wine prefix action, and launch `patchme` retained.
+- Repair moves only `client/prefix` to a unique `client/prefix-backups/` directory and starts a fresh prefix/Wine desktop. Game files, controller profile and server data remain intact. Host JVM regression verifies settings/drive symlinks preserved and game untouched.
+- Next ARM64 test uses a non-large-address-aware PE32 fixture with a 20 MiB image to cover legacy client allocation behavior; both Docker and PRoot tests must pass with 32-bit preflight enabled. This remains an infrastructure test, not actual ROF2 acceptance.
+- Local checks: 36 Python tests, JVM archive/input/prefix-preservation checks, JS syntax and whitespace passed. Full updated APK/UI/ARM64 gates pending. Target APK 0.3.1 / version code 7, preserved signing certificate. Do not publish until checks pass; record the final commit/run/checksums here.
+- Next device sequence: update in place, stop the client, Repair Wine prefix, wait for desktop and 32-bit check, stop, start server and Launch ROF2. No reimport/recompile/runtime redownload is needed. Export logs after the attempt, including client-prefix.log/json and client-wine.log.
+
 
 ## Current milestone: embedded client 0.3.0
 

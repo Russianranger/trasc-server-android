@@ -1,3 +1,15 @@
+TRASC Server Android **0.3.1** adds recovery and diagnostics for the reported ROF2 black screen.
+
+- Verify Wine's 32-bit core files and run its 32-bit command interpreter before ROF2.
+- Report fatal Windows loader/dependency errors visibly, with separate prefix logs.
+- **Repair Wine prefix** preserves the previous prefix in `client/prefix-backups/`, then initializes a fresh Windows environment. Game files, controller bindings and server data are retained.
+- Keep the required `eqgame.exe patchme` launch command and native dinput8 override.
+- Verify the installed runtime through pinned PRoot, including a large legacy PE32 test program.
+
+Stop runtimes and install over Preview 0.3.0. No server rebuild, database/client import or runtime redownload is needed. For this device pass: **Stop client → Repair Wine prefix → wait for the Wine desktop → Stop client → start server → Launch ROF2**. Export Logs afterwards.
+
+The fatal error in the device bundle is `could not load kernel32.dll, status c0000135`. Fresh-prefix infrastructure tests cannot establish the exact cause on Android; this pass provides a preserved-prefix recovery path and verifies 32-bit Wine before attempting the modified client. Actual ROF2 login/world entry remain unverified. Software graphics only; sound and hardware acceleration remain later work.
+
 TRASC Server Android **0.3.0** starts the embedded ROF2 client milestone. The user confirmed session backup/restore and input on 0.2.1.
 
 - Download the separate client runtime in Client, with an offline archive option.

@@ -3,6 +3,7 @@ import json
 import os
 from pathlib import Path
 import secrets
+import re
 import signal
 import socket
 import struct
@@ -14,6 +15,10 @@ CLIENT = Path('/client')
 PREFIX = Path('/prefix')
 LOGS = Path('/logs')
 stop_requested = False
+
+
+class StopRequested(Exception):
+    pass
 
 
 def pe_machine(path):
@@ -53,6 +58,34 @@ def dll_status(log):
     return {'native_loaded': bool(loaded), 'evidence': (loaded or matches)[-8:]}
 
 
+def fatal_launch_error(log):
+    match = re.search(r'wine: could not load kernel32\.dll, status ([0-9a-f]+)', log, re.I)
+    if match:
+        return 'Wine could not start its Windows loader (kernel32.dll, ' + match[1] + '). See client-prefix.log and client-wine.log; ROF2 did not reach game initialization.'
+    missing = re.findall(r'err:module:import_dll Library ([^\r\n]+)', log)
+    if missing:
+        return 'A required Windows library could not load: ' + missing[-1][:350] + '. Export Logs for the dependency details.'
+    if re.search(r'err:module:loader_init .*failed, status', log):
+        return 'Windows program initialization failed. Export client-wine.log for the failing module and status.'
+    return None
+
+
+def prefix_diagnostics(prefix=PREFIX, wine=Path('/opt/wine')):
+    report = {'files': {}, 'runtime_ready': True, 'prefix_ready': True}
+    for scope, parent in (('runtime', wine / 'lib/wine/i386-windows'), ('prefix', prefix / 'drive_c/windows/syswow64')):
+        for name in ('ntdll.dll', 'kernel32.dll', 'kernelbase.dll', 'cmd.exe'):
+            path = parent / name
+            entry = {'path': str(path), 'present': path.is_file()}
+            if path.is_file():
+                entry['bytes'] = path.stat().st_size
+                try: entry['machine'] = hex(pe_machine(path))
+                except (OSError, ValueError) as error: entry['error'] = str(error)
+            if path.is_symlink(): entry['link'] = os.readlink(path)
+            report['files'][scope + '/' + name] = entry
+            report[scope + '_ready'] &= entry.get('machine') == '0x14c'
+    return report
+
+
 class Supervisor:
     def __init__(self, request):
         self.request = request
@@ -86,30 +119,46 @@ class Supervisor:
         self.children.append(process)
         return process
 
-    def run(self, args, timeout=180):
-        process = self.spawn(args, 'client-wine.log')
+    def run(self, args, timeout=180, env=None, label='Wine setup'):
+        process = self.spawn(args, 'client-prefix.log', env)
         deadline = time.monotonic() + timeout
         while process.poll() is None:
-            if self.stopping(): raise RuntimeError('Client startup stopped')
-            if time.monotonic() > deadline: raise RuntimeError('Wine setup timed out; export client-wine.log')
+            if self.stopping(): raise StopRequested()
+            if time.monotonic() > deadline: raise RuntimeError(label + ' timed out; export client-prefix.log')
             time.sleep(.2)
-        if process.returncode: raise RuntimeError(f'Wine setup exited with code {process.returncode}; see client-wine.log')
+        if process.returncode:
+            trace = (LOGS / 'client-prefix.log').read_text(errors='replace')[-128*1024:]
+            raise RuntimeError(f'{label} exited with code {process.returncode}. ' + (fatal_launch_error(trace) or 'See client-prefix.log.'))
+
+    def check_prefix(self):
+        report = prefix_diagnostics()
+        (LOGS / 'client-prefix.json').write_text(json.dumps(report, indent=2))
+        if not report['runtime_ready']:
+            raise RuntimeError('The client runtime is missing valid 32-bit Windows system files. Download the client runtime again; the game and server are retained.')
+        if not report['prefix_ready']:
+            raise RuntimeError('The 32-bit Wine prefix is incomplete. Stop the client and use Repair Wine prefix; it preserves the previous prefix and your imported game.')
+        self.update('checking_32bit_wine', prefix_files_ready=True)
+        diagnostic_env = dict(self.env, WINEDEBUG=self.env['WINEDEBUG']+',+module')
+        self.run(['/usr/local/bin/box64', '/opt/wine/bin/wine', r'C:\windows\syswow64\cmd.exe', '/d', '/c', 'exit', '0'],
+                 timeout=60, env=diagnostic_env, label='32-bit Wine check')
+        self.update(wine32_ready=True)
 
     def start(self):
         validate_request(self.request)
         for p in (SESSION, PREFIX, LOGS): p.mkdir(parents=True, exist_ok=True)
-        for name in ('client-wine.log', 'client-display.log', 'client-graphics.log'):
+        for name in ('client-wine.log', 'client-prefix.log', 'client-display.log', 'client-graphics.log'):
             path = LOGS / name
             if path.exists(): os.replace(path, path.with_suffix('.previous.log'))
         # The RFB display has no TCP listener. X11 requires an unpredictable cookie.
         cookie = secrets.token_hex(16)
+        (SESSION / 'Xauthority').touch(mode=0o600)
         subprocess.run(['xauth', '-f', self.env['XAUTHORITY'], 'add', ':7', '.', cookie], check=True, stdout=subprocess.DEVNULL)
         xserver = self.spawn(['Xtigervnc', ':7', '-geometry', self.request['resolution'], '-depth', '24',
                              '-rfbport', '-1', '-rfbunixpath', str(SESSION / 'display.sock'), '-rfbunixmode', '0600',
                              '-SecurityTypes', 'None', '-nolisten', 'tcp', '-auth', self.env['XAUTHORITY'],
                              '-AlwaysShared', '-FrameRate', '30', '-desktop', 'TRASC client'], 'client-display.log')
         for _ in range(150):
-            if self.stopping(): raise RuntimeError('Client startup stopped')
+            if self.stopping(): raise StopRequested()
             if xserver.poll() is not None: raise RuntimeError('Client display failed; see client-display.log')
             if (SESSION / 'display.sock').exists(): break
             time.sleep(.1)
@@ -117,6 +166,7 @@ class Supervisor:
         self.update('preparing_prefix', display_ready=True)
         self.spawn(['glxinfo', '-B'], 'client-graphics.log')
         self.run(['/usr/local/bin/box64', '/opt/wine/bin/wine', 'wineboot', '-u'])
+        self.check_prefix()
         devices = PREFIX / 'dosdevices'; devices.mkdir(exist_ok=True)
         drive = devices / 'd:'
         if drive.is_symlink(): drive.unlink()
@@ -127,6 +177,7 @@ class Supervisor:
         if self.request['mode'] == 'client':
             args += ['D:\\' + self.request['executable'], 'patchme']
             env['WINEDLLOVERRIDES'] += ';dinput8=' + ('n' if self.request.get('native_dinput8', True) else 'b')
+            env['WINEDEBUG'] += ',+module'
         launcher = self.spawn(args, 'client-wine.log', env)
         self.update('launch_requested', display_ready=True, launcher_pid=launcher.pid)
         while not self.stopping():
@@ -136,6 +187,8 @@ class Supervisor:
                 f.seek(max(0, log.stat().st_size - 512 * 1024)); trace = f.read().decode(errors='replace')
             observed = dll_status(trace)
             if observed['native_loaded']: self.status['native_loaded'] = True
+            fatal = fatal_launch_error(trace)
+            if fatal: raise RuntimeError(fatal)
             self.update(launcher_exit=launcher.poll(), dll_evidence=observed['evidence'])
             time.sleep(1)
 
@@ -169,6 +222,8 @@ def main():
     try:
         request = json.loads((SESSION / 'request.json').read_text())
         supervisor = Supervisor(request); supervisor.start()
+    except StopRequested:
+        if supervisor: supervisor.update('stopped')
     except Exception as error:
         if supervisor: supervisor.update('error', error=str(error))
         print(f'Client runtime failed: {error}', flush=True)

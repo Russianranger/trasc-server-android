@@ -6,7 +6,7 @@ A standalone Android control app for [Russianranger/Triptych-Triumvirate](https:
 
 ## Downloads and first setup
 
-**App 0.3.0:** adds a separate Wine/Box64 client runtime, native in-app display, controller/touch/keyboard input, client data preparation and native DLL loading diagnostics. Install over **TRASC Server Preview 0.1.2–0.2.1** using the same application ID and pinned signing certificate. Existing runtime 1.1, source, maps, database and binaries are retained. Shut down the runtime before installing the APK. [Update and test details](docs/preview-notes.md).
+**App 0.3.1:** adds a backed-up Wine prefix repair action, verifies 32-bit Wine before ROF2, and shows fatal startup errors with separate prefix diagnostics. The client milestone adds a separate Wine/Box64 client runtime, native in-app display, controller/touch/keyboard input, client data preparation and native DLL loading diagnostics. Install over **TRASC Server Preview 0.1.2–0.3.0** using the same application ID and pinned signing certificate. Existing runtime 1.1, source, maps, database and binaries are retained. Shut down the runtime before installing the APK. [Update and test details](docs/preview-notes.md).
 
 **Runtime 1.1 update:** fixes the missing `uuid/uuid.h` compilation error by including `uuid-dev`. Existing users can select **Setup → Shut down runtime → Download runtime**, then retry **Build imported source**. This preserves imported files and the build cache; no APK reinstall is needed. [Runtime update details](docs/runtime-release-notes.md).
 

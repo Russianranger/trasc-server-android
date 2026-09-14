@@ -80,6 +80,9 @@ for(const [name,type,value,min,max]of [['Character:RaidExpMultiplier','real','0.
   assert.equal(await page.evaluate(()=>window.__clientStarts[1].mode),'client');
   await page.locator('#client-view').click();await page.waitForFunction(()=>window.__clientViews===3);
   await page.locator('#client-stop').click();await page.waitForFunction(()=>document.getElementById('client-launch-status').textContent.startsWith('Client stopped.'));
+  await page.locator('#client-prefix-repair').click();await page.waitForFunction(()=>window.__clientViews===4);
+  assert.deepEqual(await page.evaluate(()=>window.__clientStarts[2]),{mode:'desktop',resolution:'960x540',native_dinput8:true,repair_prefix:true});
+  await page.locator('#client-stop').click();
   await page.locator('nav [data-tab=setup]').click();await page.waitForFunction(()=>document.getElementById('controller-focus').textContent==='Controller capture is off.');
   assert(!(await page.locator('#client-input-status').textContent()).includes('KeyT'),'Leaving tab releases input');
   assert(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth+1),'No horizontal page overflow on mobile');

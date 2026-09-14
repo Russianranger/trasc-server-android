@@ -17,6 +17,7 @@ public final class ClientActivity extends Activity {
     private ClientView display;
     private TextView status;
     private String displayError;
+    private boolean failureShown;
     private final Handler handler=new Handler(Looper.getMainLooper());
     private final Runnable refresh=new Runnable(){@Override public void run(){
         try {
@@ -26,6 +27,11 @@ public final class ClientActivity extends Activity {
             if(launch!=null&&launch.has("error"))phase=launch.optString("error");
             if(displayError!=null&&(launch==null||!launch.has("error")))phase=displayError;
             status.setText(phase+(launch!=null&&launch.optBoolean("native_loaded")?" · native dinput8 loaded":""));
+            if(launch!=null&&launch.has("error")&&!failureShown&&hasWindowFocus()&&!isFinishing()) {
+                failureShown=true;controller.capture(false);display.input.releaseAll();
+                new AlertDialog.Builder(ClientActivity.this).setTitle("Client startup failed").setMessage(launch.optString("error"))
+                    .setPositiveButton("Back to Client",(dialog,which)->finish()).setCancelable(false).show();
+            }
         }catch(Exception e){status.setText(e.getMessage());}
         handler.postDelayed(this,1000);
     }};
