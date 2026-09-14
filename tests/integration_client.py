@@ -81,7 +81,18 @@ def main():
             display.sendall(struct.pack('>BBHI',4,1,0,ord('t'))+struct.pack('>BBHI',4,0,0,ord('t')))
             wait_for(lambda:Path('/client/probe-key.txt').exists() and Path('/client/probe-mouse.txt').exists(),'Display input did not reach the 32-bit Windows program',15)
         wait_for(lambda:json.loads(Path('/session/status.json').read_text()).get('native_loaded'), 'Native DLL trace not recognized',15)
-        print('PASS: ARM64 Box64 + Wine WoW64 executes PE32, loads our native dinput8 DLL, renders Direct3D9 and receives mouse/keyboard through the private display socket')
+        wait_for(lambda:json.loads(Path('/session/status.json').read_text()).get('system_dinput8_loaded'), 'System DirectInput forwarding trace not recognized',15)
+        # A negative control must reproduce the old native-only bug. Each check
+        # is a separate Windows process while the private X display is alive.
+        env=client_runner.Supervisor({'mode':'client','resolution':'800x600'}).env
+        command=['/usr/local/bin/box64','/opt/wine/bin/wine',r'D:\eqgame.exe','--check-directinput']
+        with Path('/logs/client-proxy-regression.log').open('wb') as output:
+            for override,expected in [('n',23),('n,b',0)]:
+                result=subprocess.run(command,cwd='/client',env=dict(env,WINEDLLOVERRIDES=env['WINEDLLOVERRIDES']+';dinput8='+override),
+                                      stdin=subprocess.DEVNULL,stdout=output,stderr=output,timeout=60)
+                assert result.returncode==expected,(override,result.returncode,expected)
+                print(f'PASS: system DirectInput forwarding with override {override}: exit {result.returncode}')
+        print('PASS: ARM64 PE32 native proxy forwards to system DirectInput8, creates keyboard/mouse devices, renders Direct3D9 and receives private-display input')
     finally:
         Path('/session/stop').touch()
         try: runner.wait(timeout=25)

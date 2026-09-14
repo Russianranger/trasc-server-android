@@ -2,6 +2,7 @@
 #include <windows.h>
 #include <d3d9.h>
 #include <stdio.h>
+#include <string.h>
 
 // ROF2 is a sizeable legacy PE32 image; exercise its low-address allocation class.
 static volatile unsigned char legacy_image[20*1024*1024];
@@ -19,7 +20,9 @@ int WINAPI WinMain(HINSTANCE instance,HINSTANCE previous,LPSTR command,int show)
     legacy_image[sizeof(legacy_image)-1]=1;
     HMODULE dll=LoadLibraryA("dinput8.dll");
     int (*probe)(void)=dll?(void*)GetProcAddress(dll,"TrascProbe"):NULL;
-    if(!probe||probe()!=0x54524153){marker("D:\\probe-error.txt","Native 32-bit DLL did not load");return 1;}
+    BOOL input_ready=probe&&probe()==0x54524153;
+    if(strstr(command,"--check-directinput"))return input_ready?0:23;
+    if(!input_ready){marker("D:\\probe-error.txt","Native proxy could not create keyboard/mouse through system DirectInput8");return 1;}
     WNDCLASSA cls={0};cls.lpfnWndProc=window_proc;cls.hInstance=instance;cls.lpszClassName="TrascProbe";
     RegisterClassA(&cls);
     HWND window=CreateWindowA(cls.lpszClassName,"TRASC 32-bit Direct3D/input probe",WS_OVERLAPPEDWINDOW|WS_VISIBLE,
@@ -39,7 +42,7 @@ int WINAPI WinMain(HINSTANCE instance,HINSTANCE previous,LPSTR command,int show)
         HRESULT cleared=IDirect3DDevice9_Clear(device,0,NULL,D3DCLEAR_TARGET,D3DCOLOR_XRGB(24,72,96),1,0);
         HRESULT presented=IDirect3DDevice9_Present(device,NULL,NULL,NULL,NULL);
         if(!ready&&SUCCEEDED(cleared)&&SUCCEEDED(presented)) {
-            marker("D:\\probe-result.json","{\"pe32\":true,\"native_dinput8\":true,\"direct3d9\":true}");
+            marker("D:\\probe-result.json","{\"pe32\":true,\"native_dinput8\":true,\"system_directinput\":true,\"direct3d9\":true}");
             ready=TRUE;
         }
         Sleep(30);

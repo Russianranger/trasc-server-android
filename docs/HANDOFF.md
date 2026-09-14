@@ -1,6 +1,18 @@
 # Development handoff — 2026-09-14
 
-## Latest device follow-up: 32-bit Wine and native dinput8 confirmed
+## Active 0.3.2 fix: native proxy cannot load system DirectInput
+
+- Workspace access recovered. Full `logs-5544659252330987853.zip`, client-runtime.log, client-state.json and client-wine.log have now been read. Earlier text-only notes below are historical.
+- Device is Preview 0.3.1, Android 13 / AYN Thor, 800x600 software graphics. Prefix repair completed at 12:13:54 UTC; subsequent 32-bit preflight passes and native DINPUT8 loads.
+- Confirmed configuration defect: during native DLL process attach, `C:\windows\system32\dinput8.dll` resolves to syswow64 and Wine reports environment override `n`, then status c0000135. The add-on's `Release-NMS-Client/eqgame_dll/dllmain.cpp` loads that absolute system path and returns E_FAIL from DirectInput8Create if its function pointer is missing. This is an input initialization blocker, not another missing kernel32 failure.
+- The later `wined3d_swapchain_resize_buffers` back-buffer diagnostic occurs before teardown. Wine 10 source logs that error and continues to return WINED3D_OK in that path; it does not alone establish the game's exit cause. No unsupported renderer/DXVK changes in this pass. Original game exit code remains uncaptured: launcher_exit is Explorer's result.
+- Fix: `dinput8=n,b`, separate native-imported and built-in-system load evidence, sticky evidence across log tail windows, +seh exception traces, timestamped session boundaries and stop_request/signal reasons. Do not equate two load traces with successful plugin functionality.
+- Native log inventory/export now includes selected root client and Logs/logs startup diagnostics, with case-insensitive names and symlink/traversal checks. Settings, game binaries and character chat are excluded. This addresses the missing dbg.txt / dinput8.log evidence in the old bundle.
+- Expanded open fixture matches the add-on's GetSystemDirectory + LoadLibrary pattern and creates DirectInput keyboard/mouse devices. ARM64 tests must pass native forwarding plus D3D/display input, with negative control native-only exit 23 and fixed n,b exit 0, directly and through production archive extraction + pinned PRoot. No proprietary client files in CI.
+- Local verification: 38 Python tests and JVM archive/log/input/prefix tests pass. Final browser/Android/ARM64 CI pending. Target APK 0.3.2 / version code 8, same app ID and signing certificate. Both runtime images remain unchanged; no runtime download or prefix repair required.
+- Next device pass: update in place, keep current prefix, start server, launch native ROF2, export logs. Preserve server/client data. Record final code/run/artifact hashes after publication.
+
+## Previous text-only device follow-up: 32-bit Wine and native dinput8 confirmed
 
 - Following the 0.3.1 update, the user reports that the ROF2 window appeared for approximately ten seconds before disappearing. Latest bundle is `logs-5544659252330987853.zip`; individual client-runtime.log, client-state.json and client-wine.log were also attached. The analysis workspace failed to initialize, so these attachments have NOT been read. Evidence below comes only from text pasted by the user.
 - Pasted client-state.json reports `prefix_files_ready: true`, `wine32_ready: true`, `native_loaded: true`, mode client, resolution 800x600, launcher_exit 0, final phase stopped, and no error field. Wine's actual native-load trace identifies `D:\\DINPUT8.dll` at 7AE60000 in process 0194. This confirms imported native DLL loading, not successful plugin behavior or game acceptance.

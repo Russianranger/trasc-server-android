@@ -14,6 +14,23 @@ final class LocalLogs {
     static final int TAIL_BYTES=64000, MAX_FILES=10000;
     static final long RESERVE=64L*1024*1024;
 
+    // Only startup diagnostics from the imported client, never its INI files,
+    // binaries, saved credentials or potentially very large character chat logs.
+    static boolean clientDiagnostic(String name) {
+        String lower=name.toLowerCase(Locale.ROOT);
+        if(lower.equals("dinput8.log")||lower.equals("dbg.txt"))return true;
+        if(!lower.startsWith("logs/"))return false;
+        return Arrays.asList("dbg.txt","dbg.log","uierrors.txt","crash.log").contains(lower.substring(5));
+    }
+
+    static void addClientLog(Map<String,Path> files,Path root,Path path)throws IOException {
+        String name=root.relativize(path).toString();
+        if(clientDiagnostic(name)&&Files.isRegularFile(path,LinkOption.NOFOLLOW_LINKS)) {
+            files.put("client/"+name,path);
+            if(files.size()>MAX_FILES)throw new IOException("More than 10,000 log files; archive older logs before exporting");
+        }
+    }
+
     // Check every parent as well as the leaf. Never follow server/ or logs/ links.
     static Path checked(Path work,String relative)throws IOException {
         Path path=SessionArchive.confined(work,relative),current=work;
@@ -46,11 +63,28 @@ final class LocalLogs {
                 }
             });
         }
+        Path client;
+        try{client=checked(work.toPath(),"client/current");}catch(IOException unsafe){return files;}
+        if(Files.isDirectory(client,LinkOption.NOFOLLOW_LINKS)) {
+            try(DirectoryStream<Path> children=Files.newDirectoryStream(client)) {
+                for(Path child:children) {
+                    addClientLog(files,client,child);
+                    if(child.getFileName().toString().equalsIgnoreCase("logs")&&Files.isDirectory(child,LinkOption.NOFOLLOW_LINKS))
+                        try(DirectoryStream<Path> logs=Files.newDirectoryStream(child)) {
+                            for(Path log:logs)addClientLog(files,client,log);
+                        }
+                }
+            }
+        }
         return files;
     }
 
     static String tail(File work,String name)throws IOException {
         String relative=name.startsWith("server/")?"server/logs/"+name.substring(7):"logs/"+name;
+        if(name.startsWith("client/")) {
+            if(!clientDiagnostic(name.substring(7)))throw new IOException("Choose a client diagnostic log");
+            relative="client/current/"+name.substring(7);
+        }
         Path path=checked(work.toPath(),relative);
         if(!Files.exists(path,LinkOption.NOFOLLOW_LINKS))return "No log output yet.";
         if(!Files.isRegularFile(path,LinkOption.NOFOLLOW_LINKS))throw new IOException("Choose a regular log file");

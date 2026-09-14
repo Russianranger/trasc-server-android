@@ -48,8 +48,10 @@ async function clientRuntimeState(){
  $('client-view').disabled=!(s.alive&&s.display_ready);
  $('client-runtime-status').textContent=(s.installed?'Installed · ':'Not installed · ')+s.status;
  const launch=s.launch;
+ const dllState=launch?.native_loaded?'Native dinput8.dll load confirmed. '+(launch.system_dinput8_loaded?'Wine system DirectInput loaded.':'System DirectInput load not yet confirmed.'):
+  launch?.native_dinput8_requested?'Native dinput8.dll requested; load not yet confirmed.':'Built-in dinput8 comparison mode.';
  $('client-launch-status').textContent=launch?.error?launch.error:s.alive?
-  (launch?.phase||'Starting').replaceAll('_',' ')+' · '+(launch?.mode==='desktop'?'Wine desktop test.':launch?.native_loaded?'Native dinput8.dll load confirmed.':launch?.native_dinput8_requested?'Native dinput8.dll requested; load not yet confirmed.':'Built-in dinput8 comparison mode.'):
+  (launch?.phase||'Starting').replaceAll('_',' ')+' · '+(launch?.mode==='desktop'?'Wine desktop test.':dllState):
   'Client stopped. '+(launch?.native_loaded?'Last session confirmed native dinput8.dll loading.':'');
  return s;
 }

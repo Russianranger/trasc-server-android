@@ -37,7 +37,7 @@ jobs:
           sudo apt-get install -y gcc-mingw-w64-i686
           mkdir -p runtime-work/client-test/client runtime-work/client-test/logs
           i686-w64-mingw32-gcc tests/client_probe.c -o runtime-work/client-test/client/eqgame.exe -mwindows -ld3d9
-          i686-w64-mingw32-gcc tests/client_probe_dll.c -shared -o runtime-work/client-test/client/dinput8.dll
+          i686-w64-mingw32-gcc tests/client_probe_dll.c -shared -o runtime-work/client-test/client/dinput8.dll -ldxguid
           python3 - <<'PYPE'
           import pathlib,struct
           p=pathlib.Path('runtime-work/client-test/client/eqgame.exe');data=bytearray(p.read_bytes())

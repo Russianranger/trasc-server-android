@@ -15,6 +15,7 @@ CLIENT = Path('/client')
 PREFIX = Path('/prefix')
 LOGS = Path('/logs')
 stop_requested = False
+stop_reason = None
 
 
 class StopRequested(Exception):
@@ -54,8 +55,11 @@ def validate_request(request):
 def dll_status(log):
     """Require Wine's native-load trace, not the requested override or file presence."""
     matches = [line for line in log.splitlines() if 'dinput8.dll' in line.lower()]
-    loaded = [line for line in matches if 'loaddll' in line.lower() and 'native' in line.lower() and 'loaded' in line.lower()]
-    return {'native_loaded': bool(loaded), 'evidence': (loaded or matches)[-8:]}
+    loaded = [line for line in matches if 'loaddll' in line.lower()
+              and re.search(r'Loaded L"D:\\+dinput8\.dll".*: native\s*$', line, re.I)]
+    system = [line for line in matches if 'loaddll' in line.lower()
+              and re.search(r'Loaded L"C:\\+windows\\+(?:system32|syswow64)\\+dinput8\.dll".*: builtin\s*$', line, re.I)]
+    return {'native_loaded': bool(loaded), 'system_dinput8_loaded': bool(system), 'evidence': (loaded + system or matches)[-8:]}
 
 
 def fatal_launch_error(log):
@@ -94,6 +98,7 @@ class Supervisor:
         self.children = []
         self.status = {'phase': 'starting', 'mode': request['mode'], 'resolution': request['resolution'],
                        'native_dinput8_requested': request['mode']=='client' and request.get('native_dinput8', True), 'native_loaded': False,
+                       'system_dinput8_loaded': False,
                        'renderer': 'WineD3D / llvmpipe (software)', 'started_at': time.time()}
         self.env = dict(os.environ, DISPLAY=':7', XAUTHORITY=str(SESSION / 'Xauthority'),
                         WINEPREFIX=str(PREFIX), WINEARCH='win64', WINEDEBUG='+timestamp,+pid,+loaddll',
@@ -112,7 +117,10 @@ class Supervisor:
         tmp.write_text(json.dumps(self.status, indent=2)); os.replace(tmp, report)
 
     def stopping(self):
-        return stop_requested or (SESSION / 'stop').exists()
+        if stop_requested or (SESSION / 'stop').exists():
+            self.status['stop_reason'] = stop_reason or 'stop_request'
+            return True
+        return False
 
     def spawn(self, args, log, env=None):
         with (LOGS / log).open('ab') as out:
@@ -147,6 +155,7 @@ class Supervisor:
 
     def start(self):
         validate_request(self.request)
+        print(f"Client session started at {self.status['started_at']}: {self.request['mode']}", flush=True)
         for p in (SESSION, PREFIX, LOGS): p.mkdir(parents=True, exist_ok=True)
         for name in ('client-wine.log', 'client-prefix.log', 'client-display.log', 'client-graphics.log'):
             path = LOGS / name
@@ -178,8 +187,12 @@ class Supervisor:
         env = dict(self.env)
         if self.request['mode'] == 'client':
             args += ['D:\\' + self.request['executable'], 'patchme']
-            env['WINEDLLOVERRIDES'] += ';dinput8=' + ('n' if self.request.get('native_dinput8', True) else 'b')
-            env['WINEDEBUG'] += ',+module'
+            # The imported DLL forwards DirectInput8Create to an absolute system
+            # dinput8 path. Native-only blocks Wine's system DLL and breaks input.
+            override = 'n,b' if self.request.get('native_dinput8', True) else 'b'
+            env['WINEDLLOVERRIDES'] += ';dinput8=' + override
+            env['WINEDEBUG'] += ',+module,+seh'
+            self.status['dinput8_override'] = override
         launcher = self.spawn(args, 'client-wine.log', env)
         self.update('launch_requested', display_ready=True, launcher_pid=launcher.pid)
         while not self.stopping():
@@ -189,9 +202,11 @@ class Supervisor:
                 f.seek(max(0, log.stat().st_size - 512 * 1024)); trace = f.read().decode(errors='replace')
             observed = dll_status(trace)
             if observed['native_loaded']: self.status['native_loaded'] = True
+            if observed['system_dinput8_loaded']: self.status['system_dinput8_loaded'] = True
             fatal = fatal_launch_error(trace)
             if fatal: raise RuntimeError(fatal)
-            self.update(launcher_exit=launcher.poll(), dll_evidence=observed['evidence'])
+            evidence = list(dict.fromkeys(self.status.get('dll_evidence', []) + observed['evidence']))[-8:]
+            self.update(launcher_exit=launcher.poll(), dll_evidence=evidence)
             time.sleep(1)
 
     def stop(self):
@@ -215,10 +230,11 @@ class Supervisor:
 
 
 def main():
-    global stop_requested
-    def stop(*_):
-        global stop_requested
+    global stop_requested, stop_reason
+    def stop(signum, _frame):
+        global stop_requested, stop_reason
         stop_requested = True
+        stop_reason = signal.Signals(signum).name
     signal.signal(signal.SIGTERM, stop); signal.signal(signal.SIGINT, stop)
     supervisor = None
     try:
@@ -234,6 +250,7 @@ def main():
         if supervisor:
             supervisor.stop()
             if supervisor.status.get('phase') != 'error': supervisor.update('stopped', display_ready=False)
+            print(f"Client session ended at {time.time()}: {supervisor.status.get('error') or supervisor.status.get('stop_reason', 'completed')}", flush=True)
 
 
 if __name__ == '__main__': main()

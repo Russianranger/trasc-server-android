@@ -75,24 +75,35 @@ public final class ManagementHostTest {
             write(work,"logs/operation.log","x".repeat(100000)+"LATEST");
             write(work,"logs/runtime.log","runtime stopped");
             write(work,"server/logs/zones/cabeast.log","nested zone log");
+            write(work,"client/current/DINPUT8.log","system DirectInput load failed");
+            write(work,"client/current/Logs/dbg.txt","game initialization failed");
+            write(work,"client/current/logs/UIErrors.txt","UI diagnostic");
+            write(work,"client/current/eqclient.ini","saved client settings");
+            write(work,"client/current/Logs/eqlog_character.txt","private chat");
             write(tmp,"outside/secret.log","do not export");
             Files.createSymbolicLink(work.resolve("logs/secret.log"),tmp.resolve("outside/secret.log"));
             Files.createSymbolicLink(work.resolve("logs/linked-directory"),tmp.resolve("outside"));
+            Files.createSymbolicLink(work.resolve("client/current/Logs/crash.log"),tmp.resolve("outside/secret.log"));
             check(LocalLogs.tail(work.toFile(),"app.log").contains("simulated archive failure"),"Native backup error is readable after runtime failure");
             String tail=LocalLogs.tail(work.toFile(),"operation.log");
             check(tail.length()==LocalLogs.TAIL_BYTES&&tail.endsWith("LATEST"),"Log viewer returns bounded latest output");
             check(LocalLogs.tail(work.toFile(),"server/zones/cabeast.log").equals("nested zone log"),"Nested server logs readable");
+            check(LocalLogs.tail(work.toFile(),"client/Logs/dbg.txt").equals("game initialization failed"),"Game startup log readable without runtime");
+            check(LocalLogs.tail(work.toFile(),"client/DINPUT8.log").contains("DirectInput"),"Proxy log readable with original filename case");
             check(LocalLogs.tail(work.toFile(),"missing.log").equals("No log output yet."),"Missing log is not a connection failure");
             Map<String,Path> names=LocalLogs.inventory(work.toFile());
             check(names.containsKey("app.log")&&names.containsKey("server/zones/cabeast.log"),"Native inventory includes app and nested server logs");
+            check(names.containsKey("client/DINPUT8.log")&&names.containsKey("client/Logs/dbg.txt")&&names.containsKey("client/logs/UIErrors.txt"),"Native inventory includes client startup logs with either directory case");
+            check(!names.containsKey("client/eqclient.ini")&&!names.containsKey("client/eqgame.exe")&&!names.containsKey("client/Logs/eqlog_character.txt")&&!names.containsKey("client/Logs/crash.log"),"Client inventory excludes settings, binaries, chat and symlinks");
             check(!names.containsKey("secret.log")&&!names.containsKey("linked-directory/secret.log"),"Inventory never follows symlinks");
-            for(String unsafe:new String[]{"../settings.json","server/../../settings.json","secret.log","linked-directory/secret.log"}) {
+            for(String unsafe:new String[]{"../settings.json","server/../../settings.json","secret.log","linked-directory/secret.log","client/../settings.json","client/eqclient.ini","client/Logs/../../settings.json","client/Logs/crash.log","client/Logs/eqlog_character.txt"}) {
                 try{LocalLogs.tail(work.toFile(),unsafe);throw new AssertionError("Unsafe log read accepted: "+unsafe);}catch(IOException expected){}
             }
             File bundle=LocalLogs.export(work.toFile(),"{\"native\":{\"alive\":false}}");
             try(ZipFile z=new ZipFile(bundle)) {
                 check(z.getEntry("logs/operation.log").getSize()==100006,"Log bundle includes full output, not just the viewer tail");
-                for(String needed:new String[]{"logs/app.log","logs/runtime.log","server/logs/zones/cabeast.log","status.json","export-notes.txt"})check(z.getEntry(needed)!=null,"Missing log bundle entry: "+needed);
+                for(String needed:new String[]{"logs/app.log","logs/runtime.log","server/logs/zones/cabeast.log","client/current/DINPUT8.log","client/current/Logs/dbg.txt","status.json","export-notes.txt"})check(z.getEntry(needed)!=null,"Missing log bundle entry: "+needed);
+                check(z.getEntry("client/current/eqclient.ini")==null&&z.getEntry("client/current/Logs/eqlog_character.txt")==null,"Client settings and chat are not diagnostic exports");
                 check(z.stream().noneMatch(e->e.getName().contains("secret")||e.getName().contains("settings")||e.getName().contains("api-token")),"Bundle excludes linked data and credentials");
             }
             Path empty=tmp.resolve("fresh-app");Files.createDirectories(empty);
@@ -102,6 +113,8 @@ public final class ManagementHostTest {
             Files.delete(empty.resolve("logs"));Files.createDirectory(empty.resolve("logs"));
             Files.createSymbolicLink(empty.resolve("server"),tmp.resolve("outside"));
             check(LocalLogs.inventory(empty.toFile()).isEmpty(),"Symlinked server parent is ignored");
+            Files.createSymbolicLink(empty.resolve("client"),work.resolve("client"));
+            check(LocalLogs.inventory(empty.toFile()).isEmpty(),"Symlinked client parent is ignored");
             List<String> emitted=new ArrayList<>();
             ControllerInput input=new ControllerInput(new ControllerInput.Sink(){public void button(String a,boolean d){emitted.add(a+":"+d);}public void pointer(float x,float y){emitted.add("move");}public void wheel(int v){emitted.add("wheel:"+v);}});
             Map<String,String> bindings=ControllerInput.defaults();bindings.put("A","KeyW");bindings.put("B","KeyW");input.configure(bindings,.2f,700);

@@ -1,3 +1,15 @@
+TRASC Server Android **0.3.2** fixes the system DirectInput load behind the imported native client DLL.
+
+- Use native-first, built-in fallback (`dinput8=n,b`): load your imported DLL, then allow its absolute system DLL request to reach Wine's implementation.
+- Report native DLL and system DirectInput loading separately, based on actual Wine traces.
+- Include the game's startup diagnostics and the add-on's `dinput8.log` in native log viewing/export. Client settings, binaries and character chat logs are excluded.
+- Record session start/end times and stop reasons; retain exception traces.
+- Test an open PE32 proxy that forwards to system DirectInput and creates keyboard/mouse devices. A negative control reproduces failure under the old native-only override.
+
+**Update in place, keep your current prefix/runtime/client, start the server, and Launch ROF2 with the native DLL option enabled.** No prefix repair, runtime redownload, server rebuild or reimport is needed. Export Logs after the attempt. The earlier kernel32 failure is cleared in the latest device run; actual ROF2 login/world entry still require device verification.
+
+Previous updates follow for reference.
+
 TRASC Server Android **0.3.1** adds recovery and diagnostics for the reported ROF2 black screen.
 
 - Verify Wine's 32-bit core files and run its 32-bit command interpreter before ROF2.
@@ -38,7 +50,7 @@ All 0.2.0 management features remain included:
 - **Client:** ZIP import, private temporary-ZIP cleanup, DLL inventory, saved controller-to-keyboard/mouse bindings and a focused input diagnostic. The separate client runtime adds an experimental launch/display/DLL-loading path.
 - **Continuity:** implementation decisions, validation and remaining work are recorded in `docs/HANDOFF.md`.
 
-For the current 0.3.1 device pass, use the prefix repair sequence at the top of these notes. Export Logs after the attempt.
+For the current device pass, use the 0.3.2 sequence at the top of these notes. Export Logs after the attempt.
 
 Backups contain accounts, credentials and client files and are not encrypted. Save them privately outside the app. Only the private temporary copy of an imported session/client ZIP is removed; the selected source document remains intact.
 

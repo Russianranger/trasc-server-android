@@ -2,6 +2,14 @@
 
 Preview 0.3.0 introduces an experimental in-app Wine display and ROF2 launch path. The user confirmed 0.2.1 session backup/restore, controller bindings and the input diagnostic on the Thor before authorizing this phase. Actual ROF2 startup, login, plugin behavior and world entry require the next device pass.
 
+## Current 0.3.2 device pass: system DirectInput forwarding
+
+The 0.3.1 device logs confirm 32-bit Wine and native `D:\DINPUT8.dll` loading, followed by a failed absolute system `dinput8.dll` load. The add-on source forwards input calls to that system library. The former `dinput8=n` policy blocked Wine's built-in implementation; 0.3.2 uses `dinput8=n,b` and reports both load traces separately. Loading evidence does not by itself establish successful gameplay.
+
+Stop both runtimes, update the APK in place, keep the existing prefix/client/runtime, start the server, then **Launch ROF2** with native dinput8 enabled. No additional prefix repair is indicated for the reported run. Export Logs afterwards: native exports now include selected client startup files such as `client/current/Logs/dbg.txt` and `client/current/dinput8.log` when present. Logs remain readable with both runtimes closed. Session timestamps/stop reasons separate current attempts from historical runtime errors.
+
+The later WineD3D back-buffer diagnostic in the same run is not sufficient to establish a fatal graphics error. Renderer changes are deferred until input forwarding is retested and the game's own log is available.
+
 ## Recovery from the 0.3.0 black screen
 
 Preview 0.3.1 checks the 32-bit Windows system files and executes `C:\windows\syswow64\cmd.exe` before launching the game. The device log confirmed `eqgame.exe patchme` was passed correctly, followed by Wine's fatal kernel32.dll loader error; it did not reach native dinput8 loading.
@@ -10,7 +18,7 @@ After updating, stop the client and select **Repair Wine prefix**. The existing 
 
 If it fails, the display shows a failure dialog and Logs includes `client-prefix.log`, `client-prefix.json`, `client-prefix-repair.json` and `client-wine.log`. The prefix inventory distinguishes missing runtime files from an incomplete prefix. Native DLL confirmation still requires an actual Wine load trace.
 
-## Device sequence
+## First installation sequence
 
 1. Keep the working Preview and external session backup. Stop the runtimes and update the APK in place.
 2. Open **Client → Download client runtime**, or select the release's `client-runtime-arm64.tar.gz` with **Choose offline runtime archive**. This installs a separate client environment; server runtime 1.1 and the database are retained.

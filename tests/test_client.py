@@ -39,6 +39,26 @@ class ClientTests(unittest.TestCase):
         self.assertFalse(client_runner.dll_status('trace:loaddll:build_module Loaded L"C:\\windows\\system32\\dinput8.dll": builtin')['native_loaded'])
         self.assertTrue(client_runner.dll_status('trace:loaddll:build_module Loaded L"D:\\dinput8.dll" at 00100000: native')['native_loaded'])
 
+    def test_proxy_and_system_directinput_loads_are_distinguished(self):
+        proxy=r'146718.383:0194:0198:trace:loaddll:build_module Loaded L"D:\\DINPUT8.dll" at 7AE60000: native'
+        system=r'146720.142:0194:0198:trace:loaddll:build_module Loaded L"C:\\windows\\system32\\dinput8.dll" at 70000000: builtin'
+        status=client_runner.dll_status(proxy+'\n'+system)
+        self.assertTrue(status['native_loaded']);self.assertTrue(status['system_dinput8_loaded'])
+        self.assertEqual(status['evidence'],[proxy,system])
+        self.assertFalse(client_runner.dll_status(system)['native_loaded'])
+        self.assertFalse(client_runner.dll_status(proxy)['system_dinput8_loaded'])
+        self.assertFalse(client_runner.dll_status(system.replace('builtin','native'))['native_loaded'])
+
+    def test_stop_reason_separates_requested_stop_from_error(self):
+        supervisor=client_runner.Supervisor({'mode':'desktop','resolution':'800x600'})
+        with patch.object(client_runner,'SESSION',self.root),patch.object(client_runner,'stop_requested',False),patch.object(client_runner,'stop_reason',None):
+            self.assertFalse(supervisor.stopping())
+            (self.root/'stop').touch();self.assertTrue(supervisor.stopping())
+            self.assertEqual(supervisor.status['stop_reason'],'stop_request')
+        with patch.object(client_runner,'stop_requested',True),patch.object(client_runner,'stop_reason','SIGTERM'):
+            self.assertTrue(supervisor.stopping())
+            self.assertEqual(supervisor.status['stop_reason'],'SIGTERM')
+
     def test_reported_loader_failure_is_fatal_but_optional_driver_warnings_are_not(self):
         error=client_runner.fatal_launch_error('wine: could not load kernel32.dll, status c0000135')
         self.assertIn('c0000135',error)

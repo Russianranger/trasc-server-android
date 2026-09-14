@@ -20,6 +20,7 @@ for(const [name,type,value,min,max]of [['Character:RaidExpMultiplier','real','0.
    let profile={sources:['A','B','RightUp','RightDown','RightLeft','RightRight'],actions,bindings:{A:'Space',B:'Escape',RightUp:'PointerUp',RightDown:'PointerDown',RightLeft:'PointerLeft',RightRight:'PointerRight'},deadzone:.2,sensitivity:700};
    window.__saves=[];window.__alive=true;window.__calls=[];window.__exports=[];window.__clientStarts=[];window.__clientViews=0;
    let clientRuntime={installed:true,alive:false,busy:false,status:'Client runtime installed'};
+   window.__clientEvidence=value=>Object.assign(clientRuntime.launch,value);
    const state=()=>({version:'0.2.1',running:false,settings:{ip:'127.0.0.1',login_port:5999,repo:'https://github.com/Russianranger/Triptych-Triumvirate',ref:'main',workers:3,jobs:2},source:{commit:'test'},maps_ready:true,database_imported:true,binaries_ready:true,processes:{},jobs,free_bytes:50e9,nektulos:{legacy_ready:true},client:{imported:false}});
    window.Trasc={call(id,op,input){setTimeout(()=>{
     const args=JSON.parse(input);let result;window.__calls.push(op);
@@ -36,7 +37,7 @@ for(const [name,type,value,min,max]of [['Character:RaidExpMultiplier','real','0.
     else if(op==='session_backup'){
      window.__alive=false;window.nativeReply(id,{ok:false,error:'Session backup failed: simulated storage error. Runtime is stopped. Logs are still available; open runtime to continue.'});return;
     }
-    else if(op==='logs')result={text:args.name==='app.log'?'session_backup failed: simulated storage error':'Saved output: '+args.name,names:['app.log','runtime.log','control.log','operation.log','server/zones/cabeast.log']};
+    else if(op==='logs')result={text:args.name==='app.log'?'session_backup failed: simulated storage error':'Saved output: '+args.name,names:['app.log','runtime.log','control.log','operation.log','server/zones/cabeast.log','client/Logs/dbg.txt','client/dinput8.log']};
     else if(op==='export_logs')result={file:'exports/logs-native.zip'};
     else if(op==='export'){window.__exports.push(args.path);result={message:'File exported'};}
     else if(op==='controller_state')result=profile;
@@ -79,6 +80,10 @@ for(const [name,type,value,min,max]of [['Character:RaidExpMultiplier','real','0.
   await page.locator('#client-stop').click();await page.waitForFunction(()=>document.getElementById('client-launch-status').textContent.startsWith('Client stopped.'));
   await page.locator('#client-launch').click();await page.waitForFunction(()=>window.__clientViews===2);
   assert.equal(await page.evaluate(()=>window.__clientStarts[1].mode),'client');
+  await page.evaluate(async()=>{window.__clientEvidence({native_loaded:true,system_dinput8_loaded:false});await clientRuntimeState();});
+  assert((await page.locator('#client-launch-status').textContent()).includes('System DirectInput load not yet confirmed.'));
+  await page.evaluate(async()=>{window.__clientEvidence({system_dinput8_loaded:true});await clientRuntimeState();});
+  assert((await page.locator('#client-launch-status').textContent()).includes('Wine system DirectInput loaded.'));
   await page.locator('#client-view').click();await page.waitForFunction(()=>window.__clientViews===3);
   await page.locator('#client-stop').click();await page.waitForFunction(()=>document.getElementById('client-launch-status').textContent.startsWith('Client stopped.'));
   await page.locator('#client-prefix-repair').click();await page.waitForFunction(()=>window.__clientViews===4);
@@ -96,6 +101,8 @@ for(const [name,type,value,min,max]of [['Character:RaidExpMultiplier','real','0.
   await page.waitForFunction(()=>document.getElementById('log-output').textContent==='Saved output: operation.log');
   await page.locator('#log-name').selectOption('server/zones/cabeast.log');
   await page.waitForFunction(()=>document.getElementById('log-output').textContent.includes('server/zones/cabeast.log'));
+  await page.locator('#log-name').selectOption('client/Logs/dbg.txt');
+  await page.waitForFunction(()=>document.getElementById('log-output').textContent.includes('client/Logs/dbg.txt'));
   await page.locator('#log-name').selectOption('app.log');
   await page.waitForFunction(()=>document.getElementById('log-output').textContent.includes('session_backup failed'));
   await page.locator('#export-logs').click();await page.waitForFunction(()=>window.__exports.length===1);

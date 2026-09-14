@@ -26,7 +26,8 @@ public final class ClientActivity extends Activity {
             if(!runtime.alive())phase="Client stopped · return to Client tab to launch again";
             if(launch!=null&&launch.has("error"))phase=launch.optString("error");
             if(displayError!=null&&(launch==null||!launch.has("error")))phase=displayError;
-            status.setText(phase+(launch!=null&&launch.optBoolean("native_loaded")?" · native dinput8 loaded":""));
+            status.setText(phase+(launch!=null&&launch.optBoolean("native_loaded")?" · native dinput8 loaded":"")+
+                (launch!=null&&launch.optBoolean("system_dinput8_loaded")?" · system DirectInput loaded":""));
             if(launch!=null&&launch.has("error")&&!failureShown&&hasWindowFocus()&&!isFinishing()) {
                 failureShown=true;controller.capture(false);display.input.releaseAll();
                 new AlertDialog.Builder(ClientActivity.this).setTitle("Client startup failed").setMessage(launch.optString("error"))
