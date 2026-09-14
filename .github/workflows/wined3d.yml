@@ -10,6 +10,7 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       - run: sudo apt-get update && sudo apt-get install -y gcc-mingw-w64-i686 gcc-mingw-w64-x86-64 bison flex
+      - run: cc -std=c11 -Wall -Wextra -Werror -Wno-misleading-indentation tests/dxt_decode_test.c -o /tmp/dxt-test && /tmp/dxt-test
       - run: bash scripts/build-wined3d.sh
       - uses: actions/upload-artifact@v4
         with:

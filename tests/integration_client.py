@@ -125,6 +125,11 @@ def main():
         assert timings['normal']['bytes'] < timings['verbose']['bytes']/5,timings
         Path('/logs/client-debug-comparison.json').write_text(json.dumps({'debug_strings':512,'results':timings},indent=2))
         print('PASS: 512 debug-string calls with normal vs verbose logging (timing informational): '+json.dumps(timings))
+        with Path('/logs/texture-shaders.log').open('wb') as out:
+            result=subprocess.run(['/usr/local/bin/box64','/opt/wine/bin/wine',r'D:\textures.exe'],cwd='/client',
+                env=dict(env,WINEDLLOVERRIDES=env['WINEDLLOVERRIDES']+';d3dx9_35=n,b'),stdout=out,stderr=out,timeout=90)
+        assert result.returncode==0,('D3D texture/legacy shader regression', result.returncode,Path('/logs/texture-shaders.log').read_text(errors='replace')[-8000:])
+        print('PASS: D3D compressed artwork and SM1/2 specular-fog shader pixels')
         check_models(env)
         print('PASS: ARM64 PE32 native proxy forwards to system DirectInput8, creates keyboard/mouse devices, renders Direct3D9 and receives private-display input')
     finally:

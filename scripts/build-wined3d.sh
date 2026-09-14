@@ -9,7 +9,7 @@ echo "c5e0b3f5f7efafb30e9cd4d9c624b85c583171d33549d933cd3402f341ac3601  $work/wi
 tar -xJf "$work/wine-10.0.tar.xz" -C "$work"
 patch -d "$work/wine-10.0" -p1 < native/wine-patches/0001-legacy-specular-fog.patch
 mkdir -p "$work/build"
-(cd "$work/build" && ../wine-10.0/configure --enable-win64 --enable-archs=i386,x86_64 --without-x --without-wayland --without-vulkan && make -j2 dlls/wined3d/i386-windows/wined3d.dll)
+(cd "$work/build" && ../wine-10.0/configure --enable-win64 --enable-archs=i386,x86_64 --without-freetype --without-x --without-wayland --without-vulkan && make -j2 dlls/wined3d/i386-windows/wined3d.dll)
 cp "$work/build/dlls/wined3d/i386-windows/wined3d.dll" backend-assets/wined3d.dll
 i686-w64-mingw32-strip backend-assets/wined3d.dll
 python3 - <<'PY'
