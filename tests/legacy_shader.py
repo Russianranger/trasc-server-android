@@ -9,7 +9,7 @@ import client_runner
 
 expected=int(sys.argv[1])
 for name in ('/session','/prefix','/logs'):Path(name).mkdir(exist_ok=True)
-env=client_runner.Supervisor({'mode':'client','renderer':'virgl'}).env
+env=client_runner.Supervisor({'mode':'client','renderer':'virgl','resolution':'800x600'}).env
 env['WINEDLLOVERRIDES']+=';d3dx9_35=n,b'
 x=None
 with Path('/logs/shader-regression.log').open('wb') as log:
