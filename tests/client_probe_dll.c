@@ -37,7 +37,7 @@ __declspec(dllexport) int TrascHeldKey(HWND window,int scan) {
         if(!create||FAILED(create(GetModuleHandle(NULL),DIRECTINPUT_VERSION,&IID_IDirectInput8A,(void**)&held_input,NULL)))return -1;
         if(FAILED(IDirectInput8_CreateDevice(held_input,&GUID_SysKeyboard,&held_keyboard,NULL)))return -2;
         DIOBJECTDATAFORMAT objects[256];
-        for(int i=0;i<256;i++){objects[i].pguid=&GUID_Key;objects[i].dwOfs=i;objects[i].dwType=DIDFT_BUTTON|DIDFT_MAKEINSTANCE(i);objects[i].dwFlags=0;}
+        for(int i=0;i<256;i++){objects[i].pguid=&GUID_Key;objects[i].dwOfs=i;objects[i].dwType=DIDFT_OPTIONAL|DIDFT_BUTTON|DIDFT_MAKEINSTANCE(i);objects[i].dwFlags=0;}
         DIDATAFORMAT format={sizeof(DIDATAFORMAT),sizeof(DIOBJECTDATAFORMAT),DIDF_RELAXIS,256,256,objects};
         if(FAILED(IDirectInputDevice8_SetDataFormat(held_keyboard,&format)))return -3;
         if(FAILED(IDirectInputDevice8_SetCooperativeLevel(held_keyboard,window,DISCL_BACKGROUND|DISCL_NONEXCLUSIVE)))return -4;

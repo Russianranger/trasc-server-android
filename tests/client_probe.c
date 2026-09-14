@@ -31,7 +31,7 @@ int WINAPI WinMain(HINSTANCE instance,HINSTANCE previous,LPSTR command,int show)
     }
     LoadLibraryA("d3dx9_30.dll");LoadLibraryA("d3dx9_35.dll");
     int (*held_key)(HWND,int)=(void*)GetProcAddress(dll,"TrascHeldKey");
-    BOOL saw_hold=FALSE;
+    BOOL saw_hold=FALSE;int previous_held=-99;
     WNDCLASSA cls={0};cls.lpfnWndProc=window_proc;cls.hInstance=instance;cls.lpszClassName="TrascProbe";
     RegisterClassA(&cls);
     HWND window=CreateWindowA(cls.lpszClassName,"TRASC 32-bit Direct3D/input probe",WS_OVERLAPPEDWINDOW|WS_VISIBLE,
@@ -56,6 +56,7 @@ int WINAPI WinMain(HINSTANCE instance,HINSTANCE previous,LPSTR command,int show)
         }
         if(held_key) {
             int held=held_key(window,0x11); // DIK_W, polled like game movement.
+            if(held!=previous_held){printf("DirectInput W state: %d\n",held);fflush(stdout);previous_held=held;}
             if(held==1){saw_hold=TRUE;marker("D:\\probe-held-key.txt","W held");}
             if(saw_hold&&held==0)marker("D:\\probe-released-key.txt","W released");
         }

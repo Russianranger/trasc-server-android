@@ -5,7 +5,7 @@ target="${1:-android}"
 native="$repo_root/runtime-work/native"
 mkdir -p "$native"
 archive="$native/cabextract-1.11.tar.gz"
-if [ ! -f "$archive" ]; then curl --fail --location --retry 3 https://www.cabextract.org.uk/cabextract-1.11.tar.gz -o "$archive"; fi
+if [ ! -f "$archive" ]; then curl --fail --location --retry 3 https://deb.debian.org/debian/pool/main/c/cabextract/cabextract_1.11.orig.tar.gz -o "$archive"; fi
 echo "b5546db1155e4c718ff3d4b278573604f30dd64c3c5bfd4657cd089b823a3ac6  $archive" | sha256sum --check
 build="$native/cabextract-$target"
 mkdir -p "$build"
