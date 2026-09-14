@@ -1,3 +1,18 @@
+TRASC Server Android **0.3.5** adds an experimental Android GPU path for the next performance test.
+
+The 0.3.4 device pass confirms working models, animations and movement. Its logs show zero HMD/model failures and global asset initialization in 1m58s. Rendering still uses CPU llvmpipe, which remains a major performance limit.
+
+- **Client → Graphics → Android GPU / VirGL (experimental)** forwards WineD3D rendering through the packaged native Android GLES helper. Software remains the default and recovery option.
+- Verify a mapped GLX drawable and rendered pixel before Wine starts. Record actual guest and Android driver identity in exported logs/state.
+- Own the GPU helper for the client session, stop it during cleanup and backups, report driver failures, and bound its diagnostic logs.
+- Retain `eqgame.exe patchme`, native/system DirectInput, installed Microsoft model helpers, quiet logging and existing runtime/prefix/controller data.
+
+**Device test:** stop both runtimes and update this APK in place. Keep the existing runtime and prefix; no server build, download, helper reinstall, Prepare or reimport is needed. Start the server, choose **Android GPU / VirGL (experimental)** at **800×600**, keep native dinput8/model helpers enabled and verbose diagnostics off, then launch ROF2. Check models, animation and movement in the same zone. Export Logs after the test. If GPU setup or graphics fails, stop the client and select **Software** for comparison.
+
+ARM64 tests exercise real Windows Direct3D9 output, native animated models and held movement input over the GLES bridge, including PRoot. The CI host uses a software GLES driver; physical Adreno compatibility and playable ROF2 performance require this device test. GPU mode adds no Termux dependency and retains the embedded display. CPU translation and display transfer costs remain.
+
+Previous updates follow for reference.
+
 TRASC Server Android **0.3.4** adds DirectX model helper installation for the invisible-character problem after the first successful world entry.
 
 - Install the two Microsoft x86 D3DX libraries used by ROF2 from the official June 2010 redistributable. Choose **Install DirectX model helpers**, or select the matching offline `directx_Jun2010_redist.exe`.
@@ -74,7 +89,7 @@ All 0.2.0 management features remain included:
 - **Client:** ZIP import, private temporary-ZIP cleanup, DLL inventory, saved controller-to-keyboard/mouse bindings and a focused input diagnostic. The separate client runtime adds an experimental launch/display/DLL-loading path.
 - **Continuity:** implementation decisions, validation and remaining work are recorded in `docs/HANDOFF.md`.
 
-For the current device pass, use the 0.3.4 sequence at the top of these notes. Export Logs after the attempt.
+For the current device pass, use the 0.3.5 sequence at the top of these notes. Export Logs after the attempt.
 
 Backups contain accounts, credentials and client files and are not encrypted. Save them privately outside the app. Only the private temporary copy of an imported session/client ZIP is removed; the selected source document remains intact.
 

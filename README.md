@@ -2,11 +2,11 @@
 
 A standalone Android control app for [Russianranger/Triptych-Triumvirate](https://github.com/Russianranger/Triptych-Triumvirate), initially targeting the AYN Thor's ARM64 Android environment. The app owns its runtime, database, source, builds and server files. It does **not** require installing Termux, root, a PC-hosted server or a web service.
 
-**Status: device testing preview.** On the AYN Thor, the user has confirmed compilation, database import and connection from the existing client. The user has also confirmed complete session backup/restore, controller bindings and client input on 0.2.1. On 0.3.3, embedded ROF2 loads faster and reaches Greater Faydark, but character models are missing and movement remains limited. Version 0.3.4 adds the Microsoft DirectX model helpers for this compatibility gap. Playable performance, device model rendering and zone-state restoration still require verification.
+**Status: device testing preview.** On the AYN Thor, the user has confirmed compilation, database import and connection from the existing client. The user has also confirmed complete session backup/restore, controller bindings and client input on 0.2.1. On 0.3.4, the user confirms visible character models, animations and movement inside embedded ROF2. Performance remains poor with CPU rendering. Version 0.3.5 adds an experimental Android GPU option for the next device test. Playable performance, GPU compatibility and zone-state restoration still require verification.
 
 ## Downloads and first setup
 
-**App 0.3.4:** install DirectX model helpers from Microsoft in the Client tab, with an offline installer option. The APK retains the application ID, signing certificate, server/client runtimes, prefix and imported files. Stop both runtimes, update in place, install the model helpers, then launch with native dinput8 and model helpers enabled. [Update and test details](docs/preview-notes.md).
+**App 0.3.5:** choose **Client → Graphics → Android GPU / VirGL (experimental)** to test Android driver rendering. Software remains the default and recovery option. Stop both runtimes and update in place; retain the existing client runtime, Wine prefix and installed model helpers. Launch at 800×600 with native dinput8 and model helpers enabled, verbose diagnostics off. [Update and test details](docs/preview-notes.md).
 
 **Runtime 1.1 update:** fixes the missing `uuid/uuid.h` compilation error by including `uuid-dev`. Existing users can select **Setup → Shut down runtime → Download runtime**, then retry **Build imported source**. This preserves imported files and the build cache; no APK reinstall is needed. [Runtime update details](docs/runtime-release-notes.md).
 
@@ -105,7 +105,7 @@ Build the runtime on an ARM64 Docker host with `bash scripts/build-runtime.sh`. 
 
 See [device test sequence](docs/device-tests.md). Automated tests cover hostile archive paths, symlink rejection, size limits, nested database discovery, map replacement backups, preservation of runtime edits, rule validation, SQL restrictions and process cancellation. They do not replace physical Android testing.
 
-The Client tab imports an owned ROF2 client and can launch it through the optional client runtime. Configurable AYN gamepad mappings, touch and physical keyboard/mouse reach the embedded display. Native DLL loading is reported only after Wine logs confirm it. The software graphics path is an experimental compatibility milestone; ROF2 has reached the world, while models, playable performance, sound and hardware acceleration remain under development. See [client setup and tests](docs/client-runtime.md). No EverQuest client assets or maps are distributed in this repository.
+The Client tab imports an owned ROF2 client and can launch it through the optional client runtime. Configurable AYN gamepad mappings, touch and physical keyboard/mouse reach the embedded display. Native DLL loading is reported only after Wine logs confirm it. ROF2 has reached the world with working models, animations and movement. The optional VirGL path forwards graphics to Android; device GPU behavior, playable performance and sound remain under development. See [client setup and tests](docs/client-runtime.md). No EverQuest client assets or maps are distributed in this repository.
 
 See [third-party notices](THIRD_PARTY_NOTICES.md) for runtime component sources and licenses.
 

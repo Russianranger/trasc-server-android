@@ -4,7 +4,7 @@ cd "$(dirname "$0")/.."
 renderer="${1:-software}"
 case "$renderer" in
     software) task_dir="$PWD/runtime-work/client-proot" ;;
-    virgl) task_dir="$PWD/runtime-work/client-proot-virgl" ;;
+    virgl) task_dir="$PWD/runtime-work/gpu-proot" ;;
     *) echo 'Expected software or virgl renderer' >&2; exit 2 ;;
 esac
 mkdir -p "$task_dir"

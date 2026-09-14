@@ -2,7 +2,7 @@ name: Build embedded client runtime
 on:
   push:
     branches: [codex/client-bootstrap, codex/client-loader-fix, codex/client-performance]
-    paths: ['client-runtime/**', 'native/**', 'scripts/build-client-runtime.sh', 'scripts/check-client-*.sh', 'scripts/build-virgl.sh', 'backend/client_runner.py', 'tests/*client*', 'tests/java/**', 'scripts/check-management.sh', 'scripts/check-directx.sh', 'scripts/build-cabextract.sh', 'app/src/main/java/**/DirectXInstaller.java', 'app/src/main/java/**/TarExtractor.java', 'app/src/main/java/**/SessionArchive.java', 'app/src/main/java/**/GraphicsBridge.java', '.github/workflows/client-runtime.yml']
+    paths: ['client-runtime/**', 'native/**', 'scripts/build-client-runtime.sh', 'scripts/check-client-*.sh', 'scripts/build-virgl.sh', 'backend/client_runner.py', 'backend/graphics_probe.py', 'tests/*client*', 'tests/java/**', 'scripts/check-management.sh', 'scripts/check-directx.sh', 'scripts/build-cabextract.sh', 'app/src/main/java/**/DirectXInstaller.java', 'app/src/main/java/**/TarExtractor.java', 'app/src/main/java/**/SessionArchive.java', 'app/src/main/java/**/GraphicsBridge.java', '.github/workflows/client-runtime.yml']
   workflow_dispatch:
   workflow_call:
 concurrency:
@@ -134,15 +134,15 @@ jobs:
             runtime-work/client-virgl/logs/
             runtime-work/client-virgl/client/probe-*.json
             runtime-work/client-virgl/client/model-*.json
-            runtime-work/client-proot-virgl/logs/
-            runtime-work/client-proot-virgl/client/probe-*.json
-            runtime-work/client-proot-virgl/client/model-*.json
+            runtime-work/gpu-proot/logs/
+            runtime-work/gpu-proot/client/probe-*.json
+            runtime-work/gpu-proot/client/model-*.json
       - name: Show GLES diagnostics on failure
         if: failure()
         run: |
           python3 - <<'PY'
           from pathlib import Path
-          for parent in ('runtime-work/client-virgl/logs','runtime-work/client-proot-virgl/logs'):
+          for parent in ('runtime-work/client-virgl/logs','runtime-work/gpu-proot/logs'):
               for p in Path(parent).glob('*'):
                   print(p.name)
                   print(p.read_text(errors='replace')[-18000:])

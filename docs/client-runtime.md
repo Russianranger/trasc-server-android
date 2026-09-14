@@ -1,8 +1,23 @@
 # Embedded client milestone
 
-Preview 0.3.0 introduces an experimental in-app Wine display and ROF2 launch path. The user confirmed 0.2.1 session backup/restore, controller bindings and the input diagnostic on the Thor before authorizing this phase. The 0.3.3 Thor logs now confirm world entry and normal camping. Character models, playable performance and full plugin behavior remain under verification.
+Preview 0.3.0 introduces an experimental in-app Wine display and ROF2 launch path. The user confirmed 0.2.1 session backup/restore, controller bindings and the input diagnostic on the Thor before authorizing this phase. The 0.3.4 Thor pass confirms world entry, visible models, animations, movement and normal camping. Playable performance, GPU compatibility and full plugin behavior remain under verification.
 
-## Current 0.3.4 device pass: native model helpers
+## Current 0.3.5 device pass: Android GPU through VirGL
+
+The latest 0.3.4 bundle has zero HMD/model initialization failures and loads both native Microsoft model helpers. Global asset initialization took 1m58s, down from 9m14s. The game entered Greater Faydark, then camped and quit normally. Its actual graphics driver is still llvmpipe, with `Accelerated: no`. This is evidence of CPU rendering; the emulated Nvidia adapter name in the game log is not the Thor GPU. Display update counts are not game FPS.
+
+1. Stop both runtimes and install 0.3.5 in place. Keep the current client runtime, prefix, imported client, model helpers and controller mappings.
+2. Start the server. In **Client → Graphics**, explicitly choose **Android GPU / VirGL (experimental)**. Use the same **800×600**, native dinput8 enabled, model helpers enabled and verbose diagnostics off.
+3. Launch ROF2, check character models/animation, enter the same zone and try held movement. Report time to character selection and responsiveness in the world. Export Logs afterwards.
+4. If GPU setup fails or rendering regresses, **Stop client → Graphics → Software → Launch ROF2**. Switching graphics does not require repair, Prepare, reimport or a runtime download. Prefix repair always starts in Software mode.
+
+The APK packages a native ARM64 VirGL 1.3.0 GLES helper, launched outside PRoot. Guest Mesa's `virpipe` driver forwards commands over an owner-only Unix socket to Android's EGL/GLES driver. The existing WineD3D and private TigerVNC display/input paths are retained. No Termux installation, external X server, ANGLE or Vulkan driver download is required. This is an experimental acceleration path; CPU translation, shader conversion and display readback still add overhead, so playable FPS is not guaranteed.
+
+Launch preflight opens a mapped GLX drawable, verifies a rendered pixel and reports the actual guest renderer. This avoids the `X_GetImage BadMatch` reproduced with glxinfo's unmapped window. The native helper reports the real host vendor/renderer/version to `client-gpu.log`; `client-graphics.log` records the guest driver and pixel check. `client-state.json` records `graphics_backend`, `host_gl_renderer` and `graphics_acceleration`. A requested GPU option alone is never reported as verified acceleration. The native helper has bounded logs, parent-death cleanup and explicit stop/startup-failure handling; its process is included in session-stop ownership.
+
+CI exercises this GLES bridge on Linux ARM64 with a software host driver. It tests protocol and rendering compatibility, native model animation and keyboard/mouse delivery directly and through PRoot; it cannot validate Android vendor-driver behavior or measure Thor performance. The software path retains its existing regression gates. The unchanged guest runtime supplies virpipe; this update only requires the APK.
+
+## Previous 0.3.4 device pass: native model helpers
 
 The 0.3.3 device run confirms much faster loading and successful entry into Greater Faydark. Global asset initialization took 9m14s versus the prior 53m11s; Wine output fell to 31,746 bytes. The game completed initialization, then camped and quit normally. It also logged 573 HMD/model setup failures while loading built-in d3dx9_30.dll and d3dx9_35.dll.
 
@@ -57,7 +72,7 @@ If it fails, the display shows a failure dialog and Logs includes `client-prefix
 
 - The existing Android-packaged PRoot loader starts a second Debian Bookworm ARM64 rootfs under `work/client/runtime`.
 - Wine **10.0 WoW64** runs the 32-bit Windows client through **Box64 0.4.4**. Native ARM64 libraries handle wrapped platform calls; x86 libgcc/libstdc++/libunwind are also included for Wine's Unix loader.
-- Mesa **llvmpipe** and WineD3D provide software Direct3D/OpenGL for this compatibility milestone. Hardware Turnip/DXVK acceleration, sound output and further performance tuning remain later work. This is not yet a production gaming build.
+- WineD3D uses Mesa **llvmpipe** by default. The experimental **VirGL** option forwards guest GL through a native Android GLES helper. Turnip/DXVK, sound output and further performance tuning remain later work. This is not yet a production gaming build.
 - TigerVNC provides the X display. RFB listens only on an app-private Unix socket with mode 0600; TCP RFB and X11 listeners are disabled. X11 connections use a random authorization cookie.
 - A native Android display implements bounded RFB raw/copy/resize decoding and sends keyboard/mouse events. There is no external VNC app, browser service or Winlator handoff in this path.
 - `work/client/prefix` preserves the Wine registry and drive state. The imported client remains in `work/client/current`, mapped as Wine drive D:. Runtime installation does not replace the prefix or imported game.
