@@ -133,10 +133,10 @@ def main():
         wait_for(lambda:json.loads(Path('/session/status.json').read_text()).get('system_dinput8_loaded'), 'System DirectInput forwarding trace not recognized',15)
         # A negative control must reproduce the old native-only bug. Each check
         # is a separate Windows process while the private X display is alive.
-        env=client_runner.Supervisor(request).env
+        production_env=client_runner.Supervisor(request).env
         # CI-only teardown evidence for every small auxiliary Windows process.
         # The supervised game retains production logging and all exit checks.
-        env=dict(env,BOX64_LOG='2',WINEDEBUG=env.get('WINEDEBUG','')+',trace+process,trace+thread,trace+module')
+        env=dict(production_env,BOX64_LOG='2',WINEDEBUG=production_env.get('WINEDEBUG','')+',trace+process,trace+thread,trace+module')
         command=['/usr/local/bin/box64','/opt/wine/bin/wine',r'D:\eqgame.exe','--check-directinput']
         with Path('/logs/client-proxy-regression.log').open('wb') as output:
             for override,expected in [('n',23),('n,b',0)]:
@@ -151,7 +151,7 @@ def main():
             started=time.monotonic()
             with path.open('wb') as output:
                 result=subprocess.run(command[:-1]+['--check-debug-output'],cwd='/client',
-                    env=dict(env,WINEDLLOVERRIDES=env['WINEDLLOVERRIDES']+';dinput8=n,b',WINEDEBUG=client_runner.wine_debug(verbose)),
+                    env=dict(production_env,WINEDLLOVERRIDES=production_env['WINEDLLOVERRIDES']+';dinput8=n,b',WINEDEBUG=client_runner.wine_debug(verbose)),
                     stdin=subprocess.DEVNULL,stdout=output,stderr=output,timeout=60)
             assert result.returncode==0,(label,result.returncode)
             trace=path.read_text(errors='replace')
