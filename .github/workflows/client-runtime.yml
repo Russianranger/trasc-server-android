@@ -47,9 +47,9 @@ jobs:
       - name: Compile our own Windows 32-bit test program and DLL
         run: |
           sudo apt-get update
-          sudo apt-get install -y gcc-mingw-w64-i686 gcc-x86-64-linux-gnu
+          sudo apt-get install -y gcc-mingw-w64-i686
           mkdir -p runtime-work/client-test/client runtime-work/client-test/logs
-          x86_64-linux-gnu-gcc -shared -fPIC -O2 -Wall -Wextra -Werror tests/client_exit_delay.c -o runtime-work/client-test/client/exit-delay.so
+          cc -shared -fPIC -O2 -Wall -Wextra -Werror tests/client_exit_delay.c -ldl -o runtime-work/client-test/client/exit-delay.so
           i686-w64-mingw32-gcc tests/client_probe.c -o runtime-work/client-test/client/eqgame.exe -mwindows -ld3d9
           i686-w64-mingw32-gcc tests/client_textures.c -o runtime-work/client-test/client/textures.exe -mwindows -ld3d9
           i686-w64-mingw32-gcc tests/client_models.c -o runtime-work/client-test/client/models.exe -mwindows -ld3d9

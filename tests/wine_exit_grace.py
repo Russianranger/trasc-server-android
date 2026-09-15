@@ -1,7 +1,7 @@
 """Reproduce Wine's premature SIGKILL, then require real zero/nonzero exits.
 
 The negative control alone expects SIGKILL. Every patched normal exit must
-preserve the Windows code and finish a real two-second native destructor.
+preserve the Windows code and finish a real two-second native exit delay.
 """
 import json
 import os
@@ -30,6 +30,11 @@ with tempfile.TemporaryDirectory(prefix='trasc-exit-grace-') as temporary, (logs
         for option in ('-k','-w'):
             subprocess.run(['/usr/local/bin/box64',server,option],env=selected,stdout=output,stderr=output,timeout=20,check=True)
 
+    # Loader-level preload survives Wine exec and bypasses Box64's guest-library
+    # finalizer rules. This container is disposable; never alter a device image.
+    preload=Path('/etc/ld.so.preload')
+    assert not preload.exists(), 'Exit fixture requires an isolated container without a preload'
+    preload.write_text('/client/exit-delay.so\n')
     try:
         deadline=time.monotonic()+15
         while not Path('/tmp/.X11-unix/X8').exists():
@@ -39,11 +44,11 @@ with tempfile.TemporaryDirectory(prefix='trasc-exit-grace-') as temporary, (logs
         stop_server(stock)
         for label,server,code,expected in [('stock',stock,0,-9),('patched-zero',patched,0,0),('patched-nonzero',patched,23,23)]:
             marker=logs/('exit-delay-'+label+'.txt');marker.unlink(missing_ok=True)
-            selected=dict(env,WINESERVER=server,BOX64_LD_PRELOAD='/client/exit-delay.so',TRASC_EXIT_DELAY_REPORT=str(marker))
+            selected=dict(env,WINESERVER=server,TRASC_EXIT_DELAY_REPORT=str(marker))
             started=time.monotonic()
             child=subprocess.run(wine+[r'C:\windows\syswow64\cmd.exe','/d','/c','exit',str(code)],env=selected,stdout=output,stderr=output,timeout=30)
             trace=marker.read_text() if marker.exists() else ''
-            result={'case':label,'returncode':child.returncode,'seconds':round(time.monotonic()-started,3),'destructor':trace}
+            result={'case':label,'returncode':child.returncode,'seconds':round(time.monotonic()-started,3),'cleanup':trace}
             results.append(result);(logs/'exit-grace.json').write_text(json.dumps(results,indent=2))
             assert child.returncode==expected,result
             assert 'begin\n' in trace,result
@@ -63,5 +68,6 @@ with tempfile.TemporaryDirectory(prefix='trasc-exit-grace-') as temporary, (logs
             if child.poll() is None:child.kill();child.wait()
         print('PASS: stock Wine timer reproduces SIGKILL; bundled server preserves exit 0/23 through delayed native cleanup and explicit Stop still terminates the process')
     finally:
+        preload.unlink()
         stop_server(patched)
         display.terminate();display.wait(timeout=10)
