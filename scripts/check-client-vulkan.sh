@@ -15,10 +15,11 @@ import ctypes,json,os,pathlib,subprocess
 p=pathlib.Path("/opt/trasc-client");ctypes.CDLL(str(p/"turnip.so"))
 icd=pathlib.Path("/tmp/turnip.json");icd.write_text(json.dumps({"file_format_version":"1.0.0","ICD":{"library_path":str(p/"turnip.so"),"api_version":"1.3.0"}}))
 r=subprocess.run([str(p/"vulkan-probe")],env=dict(os.environ,VK_ICD_FILENAMES=str(icd),VK_DRIVER_FILES=str(icd),MESA_VK_WSI_DEBUG="sw"),capture_output=True,text=True,timeout=30)
-print(r.stderr)
-assert r.returncode!=0 and "No usable Vulkan device" in r.stderr
+print(r.stderr,flush=True)
+assert not pathlib.Path("/dev/kgsl-3d0").exists(), "This CI negative control requires a host without Qualcomm KGSL"
+assert r.returncode==1 and "Cannot open /dev/kgsl-3d0 for Turnip: No such file or directory" in r.stderr
 print("PASS: bundled Turnip dependencies load, unavailable Qualcomm hardware is rejected")
-'
+' 2>&1 | tee runtime-work/client-vulkan/logs/turnip-unavailable.log
 docker run --rm --network none \
     -e TRASC_TEST_RENDERER=turnip -e TRASC_TEST_ALLOW_SOFTWARE_VULKAN=1 \
     -e TRASC_TEST_VULKAN_ICD=/usr/share/vulkan/icd.d/lvp_icd.aarch64.json \

@@ -2,6 +2,8 @@
 #define VK_USE_PLATFORM_XLIB_KHR
 #include <vulkan/vulkan.h>
 #include <X11/Xlib.h>
+#include <errno.h>
+#include <fcntl.h>
 #include <stdint.h>
 #include <stdio.h>
 #include <stdlib.h>
@@ -22,6 +24,14 @@ static void json_string(const char *s) {
 int main(int argc, char **argv) {
     /* Software is permitted only in explicit CI invocations, never by device fallback. */
     int allow_software=argc==2 && !strcmp(argv[1],"--allow-software");
+    if (!allow_software) {
+        int kgsl=open("/dev/kgsl-3d0",O_RDWR|O_CLOEXEC);
+        if (kgsl<0) {
+            fprintf(stderr,"Cannot open /dev/kgsl-3d0 for Turnip: %s\n",strerror(errno));
+            return 1;
+        }
+        close(kgsl);
+    }
     const char *extensions[]={VK_KHR_SURFACE_EXTENSION_NAME,VK_KHR_XLIB_SURFACE_EXTENSION_NAME};
     VkApplicationInfo app={.sType=VK_STRUCTURE_TYPE_APPLICATION_INFO,.pApplicationName="TRASC Vulkan preflight",.apiVersion=VK_API_VERSION_1_3};
     VkInstanceCreateInfo ici={.sType=VK_STRUCTURE_TYPE_INSTANCE_CREATE_INFO,.pApplicationInfo=&app,.enabledExtensionCount=2,.ppEnabledExtensionNames=extensions};
