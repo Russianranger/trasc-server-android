@@ -14,6 +14,7 @@ import shutil
 import tempfile
 import time
 from contextlib import contextmanager
+from client_metrics import process_threads
 
 SESSION = Path('/session')
 CLIENT = Path('/client')
@@ -48,6 +49,31 @@ def archive_log(path, limit=WINE_LOG_LIMIT):
         out.write(source.read(head)); out.write(marker)
         source.seek(-(limit-head-len(marker)), os.SEEK_END); out.write(source.read())
     os.replace(temporary, previous); path.unlink()
+
+
+def preserve_game_log(client=CLIENT, logs=LOGS, limit=WINE_LOG_LIMIT):
+    """Copy only the known startup diagnostic before ROF2 overwrites it.
+
+    No INI/chat files, symlink traversal or modifications to imported game logs.
+    An oversized log retains bounded startup/final excerpts.
+    """
+    target = logs/'client-game.previous.log'
+    target.unlink(missing_ok=True)
+    for relative in ('Logs/dbg.txt', 'logs/dbg.txt', 'dbg.txt'):
+        source = client/relative
+        if source.is_symlink() or source.parent.is_symlink() or not source.is_file(): continue
+        temporary = target.with_suffix('.new')
+        with source.open('rb') as inp, temporary.open('wb') as out:
+            size = source.stat().st_size
+            if size <= limit: out.write(inp.read(limit))
+            else:
+                marker = b'\n[TRASC: previous game log shortened; startup and final output retained]\n'
+                head = limit//2
+                out.write(inp.read(head)); out.write(marker)
+                inp.seek(-(limit-head-len(marker)), os.SEEK_END)
+                out.write(inp.read(limit-head-len(marker)))
+        os.replace(temporary,target)
+        return
 
 
 class WineLog:
@@ -148,7 +174,7 @@ def validate_request(request):
     if request.get('renderer', 'software') not in ('software', 'virgl'): raise ValueError('Unsupported graphics option')
     if request.get('cpu_profile', 'balanced') not in ('balanced', 'compatibility'): raise ValueError('Unsupported CPU profile')
     if request.get('runtime_mode', 'auto') not in ('auto', 'compatibility'): raise ValueError('Unsupported runtime mode')
-    if request.get('graphics_threading', 'multi') not in ('multi', 'single'): raise ValueError('Unsupported graphics threading')
+    if request.get('graphics_threading', 'multi') not in ('multi', 'single', 'opengl_worker'): raise ValueError('Unsupported graphics threading')
     if not isinstance(request.get('native_d3dx', False), bool): raise ValueError('Invalid model-library option')
     if not isinstance(request.get('diagnostic_logging', False), bool): raise ValueError('Invalid Wine diagnostic option')
     if request['mode'] == 'client':
@@ -290,6 +316,7 @@ class Supervisor:
         self.children = []
         self.wine_log = None
         self.log_thread = None
+        self.last_thread_sample = 0
         self.started_monotonic = time.monotonic()
         self.status = {'phase': 'starting', 'mode': request['mode'], 'resolution': request['resolution'],
                        'native_dinput8_requested': request['mode']=='client' and request.get('native_dinput8', True), 'native_loaded': False,
@@ -312,7 +339,11 @@ class Supervisor:
                         LIBGL_ALWAYS_SOFTWARE='1', GALLIUM_DRIVER='llvmpipe', LP_NUM_THREADS='4')
         # Wine 10's supported per-launch configuration overrides registry state.
         # No prefix edits: stop/relaunch switches modes independently of CPU flags.
-        self.env['WINE_D3D_CONFIG'] = 'csmt=' + ('0' if request.get('graphics_threading', 'multi') == 'single' else '1')
+        self.env['WINE_D3D_CONFIG'] = 'csmt=' + ('1' if request.get('graphics_threading', 'multi') == 'multi' else '0')
+        # DRI's supported override starts Mesa's native GL command worker.
+        # Keep old modes explicit so switching back removes the experiment.
+        self.env['mesa_glthread'] = 'true' if request.get('graphics_threading') == 'opengl_worker' else 'false'
+        self.status['mesa_glthread_requested'] = self.env['mesa_glthread'] == 'true'
         if request.get('renderer','software') == 'virgl':
             # swrast's virpipe transport forwards rendering to the native GLES
             # server. LIBGL_ALWAYS_SOFTWARE selects that headless DRI loader;
@@ -445,6 +476,9 @@ class Supervisor:
         validate_request(self.request)
         print(f"Client session started at {self.status['started_at']}: {self.request['mode']}", flush=True)
         for p in (SESSION, PREFIX, LOGS): p.mkdir(parents=True, exist_ok=True)
+        previous_state = LOGS/'client-state.json'
+        if previous_state.is_file() and not previous_state.is_symlink() and previous_state.stat().st_size <= 131072:
+            shutil.copyfile(previous_state, LOGS/'client-state.previous.json')
         self.configure_cpu()
         native_log = LOGS / 'client-proot.log'
         observed = False
@@ -454,7 +488,7 @@ class Supervisor:
         self.update(runtime_acceleration_observed=observed)
         if self.request.get('runtime_acceleration') == 'seccomp' and not observed:
             raise RuntimeError('Runtime acceleration was not confirmed. Select Compatibility runtime mode and export Logs.')
-        for name in ('client-wine.log', 'client-prefix.log', 'client-display.log', 'client-graphics.log'):
+        for name in ('client-wine.log', 'client-prefix.log', 'client-display.log', 'client-graphics.log', 'client-threads.log'):
             archive_log(LOGS / name)
         (LOGS / 'client-wine.overflow.log').unlink(missing_ok=True)
         # The RFB display has no TCP listener. X11 requires an unpredictable cookie.
@@ -489,6 +523,7 @@ class Supervisor:
         env = dict(self.env)
         env['WINEDEBUG'] = wine_debug(self.request.get('diagnostic_logging', False))
         if self.request['mode'] == 'client':
+            preserve_game_log()
             args += ['D:\\' + self.request['executable'], 'patchme']
             # The imported DLL forwards DirectInput8Create to an absolute system
             # dinput8 path. Native-only blocks Wine's system DLL and breaks input.
@@ -508,6 +543,21 @@ class Supervisor:
             if xserver.poll() is not None: raise RuntimeError('Display exited; see client-display.log')
             observed, fatal = self.wine_log.snapshot()
             if fatal: raise RuntimeError(fatal)
+            if time.monotonic() - self.last_thread_sample >= 10:
+                self.last_thread_sample = time.monotonic()
+                before = time.monotonic()
+                sample = process_threads(launcher.pid)
+                sample['collection_seconds'] = round(time.monotonic()-before, 4)
+                self.status['mesa_glthread_observed'] = bool(sample['mesa_gl_workers'])
+                # Keep the once-per-second status file small. Full thread
+                # counters belong only in the ten-second diagnostic log.
+                self.status['thread_sample'] = {k:v for k,v in sample.items() if k != 'threads'}
+                self.status['thread_sample']['thread_count'] = len(sample['threads'])
+                path = LOGS/'client-threads.log'
+                if path.exists() and path.stat().st_size > WINE_LOG_LIMIT:
+                    os.replace(path, path.with_suffix('.overflow.log'))
+                with path.open('a') as output:
+                    output.write(json.dumps(sample)+'\n')
             self.update(launcher_exit=launcher.poll(), **observed)
             time.sleep(1)
 

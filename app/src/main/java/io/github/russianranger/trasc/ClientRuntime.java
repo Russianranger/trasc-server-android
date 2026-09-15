@@ -121,7 +121,7 @@ final class ClientRuntime {
             String runtimeMode=options.optString("runtime_mode","auto");
             if(!Arrays.asList("auto","compatibility").contains(runtimeMode))throw new IOException("Unsupported runtime mode");
             String graphicsThreading=options.optString("graphics_threading","multi");
-            if(!Arrays.asList("multi","single").contains(graphicsThreading))throw new IOException("Unsupported graphics threading");
+            if(!Arrays.asList("multi","single","opengl_worker").contains(graphicsThreading))throw new IOException("Unsupported graphics threading");
             if(!Arrays.asList("software","virgl").contains(renderer))throw new IOException("Unsupported graphics option");
             if(!Arrays.asList("desktop","client").contains(mode)||!Arrays.asList("640x480","800x600","960x540","1024x768").contains(resolution))throw new IOException("Unsupported client launch option");
             if(mode.equals("client")&&options.optBoolean("native_d3dx",true)&&!DirectXInstaller.installed(directx))throw new IOException("Install DirectX model helpers in the Client tab first, or disable model helpers for a Wine comparison");
@@ -143,7 +143,7 @@ final class ClientRuntime {
             request.put("graphics_threading",graphicsThreading);
             RuntimeManager.write(new File(run,"request.json"),request.toString());
             File backend=new File(server.home,"client-backend");backend.mkdirs();
-            for(String name:new String[]{"client_runner.py","graphics_probe.py","runtime_probe.py","wined3d.dll","wined3d-patch.json"})
+            for(String name:new String[]{"client_runner.py","client_metrics.py","graphics_probe.py","runtime_probe.py","wined3d.dll","wined3d-patch.json"})
                 try(InputStream in=context.getAssets().open(name)){RuntimeManager.copy(in,new File(backend,name));}
             RuntimeManager.write(new File(root,"etc/hosts"),"127.0.0.1 localhost\n::1 localhost\n");
             RuntimeManager.write(new File(root,"etc/resolv.conf"),"nameserver 1.1.1.1\nnameserver 8.8.8.8\n");

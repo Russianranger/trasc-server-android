@@ -33,7 +33,7 @@ def recv(stream, size):
 def main():
     for name in ('/session','/prefix','/logs'): Path(name).mkdir(exist_ok=True)
     renderer=os.environ.get('TRASC_TEST_RENDERER','software')
-    request={'mode':'client','resolution':'800x600','executable':'eqgame.exe','native_dinput8':True,'native_d3dx':True,'renderer':renderer}
+    request={'mode':'client','resolution':'800x600','executable':'eqgame.exe','native_dinput8':True,'native_d3dx':True,'renderer':renderer,'graphics_threading':'opengl_worker'}
     Path('/session/request.json').write_text(json.dumps(request))
     runner = subprocess.Popen(['python3','/opt/trasc-client/client_runner.py'])
     try:
@@ -51,6 +51,9 @@ def main():
         assert graphics['cpu_profile']=='balanced',graphics
         assert graphics['prefix_update']=='update',graphics
         assert graphics['cpu_settings']['BOX64_DYNAREC_STRONGMEM']=='1',graphics
+        wait_for(lambda:json.loads(Path('/session/status.json').read_text()).get('mesa_glthread_observed'),
+                 'Requested OpenGL worker was not observed in the real Wine process tree',30)
+        print('PASS: real supervisor observes Mesa GL command worker in Wine descendants')
         if renderer=='virgl':
             assert 'virgl' in graphics['renderer'].lower(),graphics
             assert graphics['host_gl_renderer'],graphics
@@ -175,9 +178,10 @@ def main():
 
 
 def check_graphics_threading(env):
-    for mode,setting in [('multi','1'),('single','0')]:
+    for mode,setting in [('multi','1'),('single','0'),('opengl_worker','0')]:
         path=Path('/logs/threading-'+mode+'.log')
         selected=dict(env,WINE_D3D_CONFIG='csmt='+setting,
+                      mesa_glthread='true' if mode=='opengl_worker' else 'false',
                       WINEDLLOVERRIDES=env['WINEDLLOVERRIDES']+';d3dx9_35=n,b')
         with path.open('wb') as out:
             result=subprocess.run(['/usr/local/bin/box64','/opt/wine/bin/wine',r'D:\textures.exe','--present-telemetry'],
@@ -187,12 +191,13 @@ def check_graphics_threading(env):
         with path.open('rb') as stream:capture.pump(stream)
         fields,error=capture.snapshot()
         assert not error,error
-        assert fields.get('graphics_threading_observed')==mode,fields
+        assert fields.get('graphics_threading_observed')==('multi' if mode=='multi' else 'single'),fields
         assert fields.get('wine_present',{}).get('per_second',0)>0,fields
         assert 'trace:frametime' not in path.read_text(errors='replace')
         Path('/logs/threading-'+mode+'.json').write_text(json.dumps(fields,indent=2))
-    check_models(dict(env,WINE_D3D_CONFIG='csmt=0'),'single-')
-    print('PASS: both graphics threading modes preserve artwork/shader pixels and emit real aggregate Wine presentation rates; single-threaded native models animate')
+    check_models(dict(env,WINE_D3D_CONFIG='csmt=0',mesa_glthread='false'),'single-')
+    check_models(dict(env,WINE_D3D_CONFIG='csmt=0',mesa_glthread='true'),'opengl-worker-')
+    print('PASS: all three graphics threading modes preserve artwork/shader pixels and emit real aggregate Wine presentation rates; single and OpenGL-worker native models animate')
 
 
 def check_models(env,label=''):

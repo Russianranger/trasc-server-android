@@ -151,7 +151,9 @@ public final class ClientActivity extends Activity {
                     String[] keys={"window_seconds","rfb_updates_per_second","new_bitmap_draws_per_second","receive_ms_per_update","decode_apply_ms_per_update","canvas_submit_ms_per_draw","raw_pixels_per_second","last_update_age_seconds"};
                     for(int i=0;i<keys.length;i++)info.put(keys[i],sample[i]);
                     if(fresh)info.put("wine_present",wine);
-                    if(launch!=null)info.put("graphics_threading",launch.optString("graphics_threading_observed","unknown"));
+                    if(launch!=null)info.put("graphics_threading",launch.optString("graphics_threading_observed","unknown"))
+                        .put("graphics_threading_requested",launch.optString("graphics_threading","multi"))
+                        .put("mesa_glthread_observed",launch.optBoolean("mesa_glthread_observed",false));
                     String line=info.toString()+"\n";
                     writer.execute(()->{
                         try {

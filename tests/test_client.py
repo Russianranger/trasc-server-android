@@ -11,6 +11,7 @@ from unittest.mock import patch
 sys.path.insert(0, str(Path(__file__).resolve().parents[1] / 'backend'))
 import client_runner
 import runtime_probe
+import client_metrics
 from engine import Engine, CLIENT_FILES
 from managed_content import update_ini
 
@@ -122,10 +123,51 @@ class ClientTests(unittest.TestCase):
         multi=client_runner.Supervisor(request);single=client_runner.Supervisor(dict(request,graphics_threading='single'))
         self.assertEqual(multi.env['WINE_D3D_CONFIG'],'csmt=1')
         self.assertEqual(single.env['WINE_D3D_CONFIG'],'csmt=0')
+        worker=client_runner.Supervisor(dict(request,graphics_threading='opengl_worker'))
+        client_runner.validate_request(dict(request,graphics_threading='opengl_worker'))
+        self.assertEqual(worker.env['WINE_D3D_CONFIG'],'csmt=0')
+        self.assertEqual(worker.env['mesa_glthread'],'true')
+        self.assertEqual(single.env['mesa_glthread'],'false')
+        self.assertEqual({k:v for k,v in worker.env.items() if k!='mesa_glthread'},
+                         {k:v for k,v in single.env.items() if k!='mesa_glthread'})
         self.assertEqual({k:v for k,v in multi.env.items() if k!='WINE_D3D_CONFIG'},
                          {k:v for k,v in single.env.items() if k!='WINE_D3D_CONFIG'})
         with self.assertRaisesRegex(ValueError,'graphics threading'):
             client_runner.validate_request(dict(request,graphics_threading='unknown'))
+
+    def test_previous_game_log_is_bounded_and_does_not_modify_imported_files(self):
+        logs=self.root/'logs';logs.mkdir(exist_ok=True)
+        source=self.client/'Logs';source.mkdir()
+        game=source/'dbg.txt';data=b'begin\n'+b'x'*4096+b'\nend';game.write_bytes(data)
+        (self.client/'eqclient.ini').write_text('private settings')
+        client_runner.preserve_game_log(self.client,logs,1024)
+        saved=(logs/'client-game.previous.log').read_bytes()
+        self.assertEqual(len(saved),1024);self.assertTrue(saved.startswith(b'begin'));self.assertTrue(saved.endswith(b'end'))
+        self.assertEqual(game.read_bytes(),data)
+        game.unlink();game.symlink_to(self.client/'eqclient.ini')
+        client_runner.preserve_game_log(self.client,logs,1024)
+        self.assertFalse((logs/'client-game.previous.log').exists())
+        game.unlink();source.rmdir();source.symlink_to(self.root/'logs',target_is_directory=True)
+        (logs/'dbg.txt').write_text('outside')
+        client_runner.preserve_game_log(self.client,logs,1024)
+        self.assertFalse((logs/'client-game.previous.log').exists())
+
+    def test_thread_observation_follows_owned_children_and_handles_exits(self):
+        proc=self.root/'proc'
+        def task(pid,tid,name,children='',cpu=3):
+            p=proc/str(pid)/'task'/str(tid);p.mkdir(parents=True)
+            fields=['0']*40;fields[0]='R';fields[11]='11';fields[12]='7';fields[36]=str(cpu)
+            (p/'stat').write_text(str(tid)+' ('+name+') '+' '.join(fields))
+            (p/'status').write_text('Cpus_allowed_list:\t0-5\n');(p/'children').write_text(children)
+        task(10,10,'wine main (x)','20 30');task(20,20,'eqgame.exe');task(20,21,'wine:gl0')
+        task(40,40,'unrelated:gl0')
+        sample=client_metrics.process_threads(10,proc)
+        self.assertTrue(sample['incomplete']) # Child 30 exited / is inaccessible.
+        self.assertEqual([w['tid'] for w in sample['mesa_gl_workers']],[21])
+        self.assertEqual(sample['threads'][0]['cpu_ticks'],18)
+        self.assertEqual(sample['mesa_gl_workers'][0]['allowed_cpus'],'0-5')
+        self.assertEqual(sample['mesa_gl_workers'][0]['last_cpu'],3)
+        self.assertNotIn(40,[t['pid'] for t in sample['threads']])
 
     def test_stream_rotation_keeps_load_evidence_and_split_fatal_error(self):
         path=self.root/'client-wine.log'

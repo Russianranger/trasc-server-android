@@ -93,8 +93,8 @@ for(const [name,type,value,min,max]of [['Character:RaidExpMultiplier','real','0.
   assert((await page.locator('#client-launch-status').textContent()).includes('Wine system DirectInput loaded.'));
   await page.locator('#client-view').click();await page.waitForFunction(()=>window.__clientViews===3);
   await page.locator('#client-stop').click();await page.waitForFunction(()=>document.getElementById('client-launch-status').textContent.startsWith('Client stopped.'));
-  await page.locator('#client-graphics-threading').selectOption('single');await page.locator('#client-runtime-mode').selectOption('compatibility');await page.locator('#client-cpu-profile').selectOption('compatibility');await page.locator('#client-diagnostics').check();await page.locator('#client-prefix-repair').click();await page.waitForFunction(()=>window.__clientViews===4);
-  assert.deepEqual(await page.evaluate(()=>window.__clientStarts[2]),{mode:'desktop',resolution:'960x540',native_dinput8:true,diagnostic_logging:true,native_d3dx:false,repair_prefix:true,renderer:'software',cpu_profile:'compatibility',runtime_mode:'compatibility',graphics_threading:'single'});
+  await page.locator('#client-graphics-threading').selectOption('opengl_worker');await page.locator('#client-runtime-mode').selectOption('compatibility');await page.locator('#client-cpu-profile').selectOption('compatibility');await page.locator('#client-diagnostics').check();await page.locator('#client-prefix-repair').click();await page.waitForFunction(()=>window.__clientViews===4);
+  assert.deepEqual(await page.evaluate(()=>window.__clientStarts[2]),{mode:'desktop',resolution:'960x540',native_dinput8:true,diagnostic_logging:true,native_d3dx:false,repair_prefix:true,renderer:'software',cpu_profile:'compatibility',runtime_mode:'compatibility',graphics_threading:'opengl_worker'});
   assert((await page.locator('#client-launch-status').textContent()).includes('Verbose diagnostics enabled'));
   await page.locator('#client-stop').click();
   await page.locator('nav [data-tab=setup]').click();await page.waitForFunction(()=>document.getElementById('controller-focus').textContent==='Controller capture is off.');

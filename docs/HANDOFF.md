@@ -1,3 +1,13 @@
+# Active work: 0.3.10 native OpenGL worker comparison (2026-09-15)
+
+User tested 0.3.9 Multithreaded then Single; Single felt faster in game but slower to load. Bundle `../upload/logs-5272698694105119380.zip`, extracted `../analysis-039`. Compare details in `docs/client-performance.md`: median Wine 5.99 → 7.73 presents/s in selected movement windows, display keeps up, decoding ~1–1.5 ms. Different routes/window durations preclude controlled speedup claims. Second run global assets39s / zone UI53s; first run's game dbg.txt was overwritten. First prefix33.211s (update), second6.648s (reuse), so do not attribute cold/warm differences to threading. Both actual renderer/PRoot/native DLL modes verified; normal quit. No proven CPU-core bottleneck.
+
+Candidate0.3.10/code16 adds Graphics threading `opengl_worker` (Wine csmt0 + Mesa mesa_glthread=true), previous modes explicitly false. Sample own launcher's descendant threads every10s for actual `:gl0` worker/CPU ticks/lastCPU/mask, limits32processes/256threads, no affinity/priority changes, environments or unrelated processes. Preserve bounded previous game startup log and previous state. All original graphics/native DLL/patchme/server/runtime behavior retained. Local53tests passed. Need CI real ARM64 direct/PRoot Software/VirGL real worker and model/pixel/input gates, APK/signing verification and release download checks before claiming release verified. Update this entry with exact code commit/run/hashes after publication. No subagents unless explicitly requested.
+
+Device test: stop runtimes, update APK in place; same VirGL800x600/Balanced/Automatic/native helpers, shadows/verbose off. Compare warm Single thread with Single + OpenGL worker along same route30–60s each, export after second. Current selected Single remains available if worker regresses. First post-APK launch may refresh prefix once. No runtime download, prefix repair, server rebuild or client reimport. Turnip/DXVK remains unimplemented; don't claim guaranteed playableFPS.
+
+---
+
 # Active handoff: 0.3.9 frame delivery and threading comparison (2026-09-15)
 
 Current turn: user confirms loading substantially improved on 0.3.8 but FPS remains very poor; shadows off, screenshot/video/logs attached. Scratch was pruned automatically; repo re-cloned from GitHub. Latest attachments are present, extracted under `../analysis-038`; video contact sheet inspected. Previous artifacts can be recovered from releases/Library if needed. See `docs/client-performance.md` for exact timings and source references.

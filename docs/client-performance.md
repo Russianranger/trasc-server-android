@@ -1,3 +1,33 @@
+# New evidence and change: 0.3.10 (2026-09-15)
+
+Bundle `logs-5272698694105119380.zip` contains the user's Multithreaded-first / Single-thread-second 0.3.9 comparison. Actual Wine settings confirm `csmt=1` then `csmt=0`; native/system DirectInput, native D3DX30/35, patched graphics, Adreno 740 and PRoot acceleration remain active. The second client quits normally and is explicitly stopped. Startup Wine address-map retries and isolated graphics/audio/RpcSs warnings remain, without evidence of a new fatal client failure or log flood.
+
+| Measurement in movement windows | Multithreaded | Single thread |
+| --- | ---: | ---: |
+| Window, UTC | 15:20:07–15:21:17 | 15:27:30–15:29:10 |
+| Five-second samples | 15 | 21 |
+| Wine presents/s, median | 5.99 | 7.73 |
+| New bitmap draws/s, median | 6.17 | 8.78 |
+| Decode/apply ms per update, median | 1.50 | 1.21 |
+| Receive/assembly ms per update, median | 12.70 | 25.70 |
+| Canvas CPU submission ms per draw, median | 0.086 | 0.068 |
+
+Windows select the sustained large-pixel-update portions rather than loading/menus/camping. Different movement/camera paths, sampling intervals and session order prevent interpreting this as a controlled speedup. Display tracks the low Wine rate; decoding alone is too short to explain it. Receive/assembly includes socket waits and is not pure bandwidth or GPU time. This narrows the next work upstream of bitmap decoding, but does not establish CPU versus GPU dominance or rule out presentation/readback overhead within Wine Present.
+
+The first run's prefix took 33.211 seconds because the rebuilt Wine module required a refresh; the second reused the prefix in 6.648 seconds (8.295 until launch requested). The only retained ROF2 `dbg.txt` belongs to Single thread: global assets **39 seconds**, zone UI **53 seconds**, main loop 15:27:14 UTC, camp complete 15:29:54 and normal quit 15:30:14. The multithreaded game's startup log was overwritten, so do not claim an exact per-mode asset/UI comparison or attribute the perceived longer loading to threading. The new snapshot preserves this evidence before the next launch without altering imported client files.
+
+## Implemented candidate
+
+A third existing-selector choice, `opengl_worker`, combines Wine `WINE_D3D_CONFIG=csmt=0` with Mesa `mesa_glthread=true`. Both old choices explicitly disable this Mesa experiment, and Single thread remains a direct recovery comparison. Wine logging, shader/native model fixes, `eqgame.exe patchme`, DLL overrides, display protocol, runtime images and CPU memory-ordering settings are unchanged. No CPU placement or priority changes.
+
+Upstream Mesa 22.3.6 [GL command batching](https://gitlab.freedesktop.org/mesa/mesa/-/blob/mesa-22.3.6/src/mesa/main/glthread.c) queues GL calls for a worker to overlap application and driver CPU work. The [DRI context setup](https://gitlab.freedesktop.org/mesa/mesa/-/blob/mesa-22.3.6/src/gallium/frontends/dri/dri_context.c) honors the `mesa_glthread` option only with a safe loader, and the [software DRI front end](https://gitlab.freedesktop.org/mesa/mesa/-/blob/mesa-22.3.6/src/gallium/frontends/dri/drisw.c) synchronizes this worker before shared pipe-context access. These exact sources were inspected from the official archive. Mesa's queue names the worker `<process>:gl0`; the supervisor samples its own descendant threads to distinguish observed work from a requested option. An observed worker in another Wine descendant is not proof of the game's CPU/GPU bottleneck. Missing/denied proc access is reported as incomplete rather than failed rendering.
+
+`client-threads.log` retains bounded, ten-second CPU-tick/last-CPU/mask observations for the launcher's descendants only, with collection duration. `client-state.json` carries the latest observation and requested/observed worker flags. No command lines, environments or unrelated processes are collected. The process-tree limits and racing exits are tested. Previous game startup evidence is copied with bounded head/tail excerpts and no symlinks/INI/chat files. Existing native log export and session backup include these app log files.
+
+Local 53 backend tests pass. ARM64 direct/PRoot Software/VirGL worker, pixels/models/input checks and APK publication are pending; see `HANDOFF.md` for release provenance once verified. Actual Thor speedup is not assumed. The comparison is Single thread versus Single + OpenGL worker at the same settings and route, with warm-prefix timing kept separate.
+
+---
+
 # New evidence and change: 0.3.9 (2026-09-15)
 
 Bundle `logs-7195588022919037426.zip`, screenshot and 10.68-second screen recording confirm 0.3.8 loads faster but world movement remains uneven with shadows disabled. Actual Adreno 740, native/system DirectInput and D3DX30/35, patched Wine shaders and PRoot acceleration remain verified. The client camps and quits normally; no repeat of the earlier CI SIGKILL was observed in these device logs.
