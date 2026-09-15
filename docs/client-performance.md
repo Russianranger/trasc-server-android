@@ -1,4 +1,4 @@
-# Turnip/DXVK candidate: 0.4.0 (2026-09-15)
+# Turnip/DXVK release: 0.4.0 (2026-09-15)
 
 The 0.3.10 device comparison (`logs-5171237087911039269.zip`) does not support a benefit from the OpenGL worker. Selected world movement windows show Single median Wine/display 6.46/6.77 per second and worker 6.10/6.47; routes and timings differ, so these are observations rather than a controlled regression measurement. Both prefixes reuse in about 5.43 seconds. Both retained game logs show similar global-asset times (40/38 seconds) and zone-UI times (51/52 seconds).
 
@@ -10,7 +10,11 @@ Upstream [Mesa 24.3.4 device definitions](https://gitlab.freedesktop.org/mesa/me
 
 Production preflight requires Vulkan 1.3, Mesa Turnip driver ID 18, Qualcomm vendor 0x5143, a non-CPU device and three successful swapchain presentations. Failing hardware/device access is reported; it never silently calls Lavapipe accelerated. The DXVK HUD shows device/FPS/compiler activity. Logs retain device evidence, DXVK load evidence, previous Vulkan/DXVK output, native thread masks and both game startup logs. Shader caches live in the backed-up private prefix.
 
-Native package build succeeded in staging run35001126877. Full APK, runtime and presentation validation is pending. CI uses an explicitly separate Lavapipe runtime only to test Vulkan/Wine/Box64 plumbing and pixels; it cannot test the Thor's Adreno or establish a hardware speedup. Release provenance will be recorded in HANDOFF.md after all gates pass.
+Published **0.4.0/code17** from `25d541a0baf36d82c0797126c0e536a775c37f4a`; all six jobs passed in [run 35005200443](https://github.com/Russianranger/trasc-server-android/actions/runs/35005200443). Released APK and corresponding sources match the tested candidates and asset digests. Checks include 59 backend tests, browser/JVM flows, Android compile/lint/signing, database/runtime backup and restore, and real ARM64 direct/PRoot rendering, animated models and input. The new Vulkan checks verify actual DXVK loading, three swapchain presents, artwork/shader pixels and recovery to WineD3D using the same prefix. A separate negative control loads Turnip in the unchanged runtime and verifies that missing KGSL access is rejected.
+
+CI uses an explicitly separate Lavapipe runtime for Vulkan/Wine/Box64 integration tests; it cannot test the Thor's Adreno or establish a hardware speedup. One earlier candidate failed an expected diagnostic-string assertion on the GPU-less host; preflight now reports actual KGSL access errors. A later candidate repeated the older PRoot compatibility fixture SIGKILL after passing pixel checks. Focused teardown/process diagnostics were added, exit-zero assertions retained, and the final run passed all fixtures. The prior termination's cause remains unproven. Full release hashes and CI history are in [HANDOFF.md](HANDOFF.md).
+
+Device test: update in place and select Turnip + DXVK, 800×600, Balanced CPU, Automatic runtime, Allow available cores, native helpers on, shadows/verbose logging off. Check menus/models/movement and the DXVK HUD, then repeat the launch and export logs. On failure, preserve logs before further launches and return to VirGL. No runtime download or reimport is required. This first Turnip path retains frame copies; improved game FPS is still a device-test question.
 
 ---
 
