@@ -1,3 +1,12 @@
+TRASC Server Android **0.3.7** adds a Balanced CPU profile and reuses verified Wine prefixes to reduce repeated startup work.
+
+- **CPU profile → Balanced** uses larger Box64 translation blocks and default flag handling, retains x86 memory-order barriers, and reports the actual CPU count instead of the bundled 64-core Wine override. **Compatibility** restores the previous CPU settings. Neither option changes the graphics fixes.
+- A completed Wine prefix is reused on later launches. Runtime/graphics-module changes, missing system files or interrupted checks trigger a full update. The first launch after installing 0.3.7 still performs one update; compare the **second** launch as well.
+- Exported client state includes startup-stage durations, CPU settings and inherited CPU affinity. Selected ROF2 launch options are remembered and included in session backups.
+- Turnip is not installed by this update. A direct Turnip/DXVK path is a separate implementation milestone; see [performance findings and integration plan](client-performance.md).
+
+**Device test:** stop both runtimes, update the APK in place, and retain the installed client/runtime/prefix/model helpers. Start the server. Select **Android GPU / VirGL**, **Balanced**, **800×600**, native dinput8 and model helpers enabled, diagnostics off. Launch, visit the same character/zone, stop the client, and repeat once. Export Logs after the second attempt. If behavior regresses, select Compatibility and repeat at the same resolution. No runtime download or server rebuild is required. This build does not claim a measured Android FPS improvement before device testing.
+
 TRASC Server Android **0.3.6** corrects texture storage and legacy Wine shaders in the experimental Android GPU path.
 
 - DXT1/3/5 artwork now uses consistent RGBA host storage. Uploads preserve texture subregions, mip levels, alpha and sRGB; other compressed formats keep their own paths.
@@ -97,7 +106,7 @@ All 0.2.0 management features remain included:
 - **Client:** ZIP import, private temporary-ZIP cleanup, DLL inventory, saved controller-to-keyboard/mouse bindings and a focused input diagnostic. The separate client runtime adds an experimental launch/display/DLL-loading path.
 - **Continuity:** implementation decisions, validation and remaining work are recorded in `docs/HANDOFF.md`.
 
-For the current device pass, use the 0.3.6 sequence at the top of these notes. Export Logs after the attempt.
+For the current device pass, use the 0.3.7 sequence at the top of these notes. Export Logs after the attempt.
 
 Backups contain accounts, credentials and client files and are not encrypted. Save them privately outside the app. Only the private temporary copy of an imported session/client ZIP is removed; the selected source document remains intact.
 

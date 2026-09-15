@@ -48,6 +48,9 @@ def main():
         graphics=json.loads(Path('/session/status.json').read_text())
         assert graphics['graphics_backend']==renderer,graphics
         assert graphics['wined3d_patch']=='legacy-specular-fog-v1',graphics
+        assert graphics['cpu_profile']=='balanced',graphics
+        assert graphics['prefix_update']=='update',graphics
+        assert graphics['cpu_settings']['BOX64_DYNAREC_STRONGMEM']=='1',graphics
         if renderer=='virgl':
             assert 'virgl' in graphics['renderer'].lower(),graphics
             assert graphics['host_gl_renderer'],graphics
@@ -132,11 +135,42 @@ def main():
         assert result.returncode==0,('D3D texture/legacy shader regression', result.returncode,Path('/logs/texture-shaders.log').read_text(errors='replace')[-8000:])
         print('PASS: D3D compressed artwork and SM1/2 specular-fog shader pixels')
         check_models(env)
+        compatible=client_runner.Supervisor(dict(request,cpu_profile='compatibility')).env
+        with Path('/logs/compatibility-textures.log').open('wb') as out:
+            result=subprocess.run(['/usr/local/bin/box64','/opt/wine/bin/wine',r'D:\textures.exe'],cwd='/client',
+                env=dict(compatible,WINEDLLOVERRIDES=compatible['WINEDLLOVERRIDES']+';d3dx9_35=n,b'),stdout=out,stderr=out,timeout=90)
+        assert result.returncode==0,('Compatibility CPU profile texture/shader check',result.returncode)
         print('PASS: ARM64 PE32 native proxy forwards to system DirectInput8, creates keyboard/mouse devices, renders Direct3D9 and receives private-display input')
     finally:
         Path('/session/stop').touch()
         try: runner.wait(timeout=25)
         except subprocess.TimeoutExpired: runner.kill();runner.wait();raise
+
+    # A second real supervisor launch uses the same checked prefix, but boots
+    # services without repeating forced file registration. No test-only bypass.
+    cold=json.loads(Path('/session/status.json').read_text())
+    system=Path('/prefix/drive_c/windows/syswow64/kernel32.dll')
+    original_mtime=system.stat().st_mtime_ns
+    Path('/session/stop').unlink()
+    Path('/session/request.json').write_text(json.dumps(dict(request,mode='desktop')))
+    runner=subprocess.Popen(['python3','/opt/trasc-client/client_runner.py'])
+    try:
+        def warm_ready():
+            state=json.loads(Path('/session/status.json').read_text())
+            if runner.poll() is not None or state.get('phase')=='error':raise AssertionError(state)
+            return state.get('phase')=='launch_requested' and state.get('prefix_update')=='reuse'
+        wait_for(warm_ready,'Warm Wine startup failed or did not reuse prefix')
+        warm=json.loads(Path('/session/status.json').read_text())
+        assert warm['wine32_ready'],warm
+        assert system.stat().st_mtime_ns==original_mtime,'Warm boot rewrote Wine system files'
+        Path('/logs/client-startup-comparison.json').write_text(json.dumps({
+            'cold':cold['timings_seconds'],'warm':warm['timings_seconds'],
+            'warm_prefix_reused':True,'note':'Host startup timings; not Android game FPS.'},indent=2))
+        print('PASS: real warm Wine boot preserves system files and passes the PE32 loader check')
+    finally:
+        Path('/session/stop').touch()
+        try:runner.wait(timeout=25)
+        except subprocess.TimeoutExpired:runner.kill();runner.wait();raise
 
 
 def check_models(env):

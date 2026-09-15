@@ -26,6 +26,34 @@ class ClientTests(unittest.TestCase):
 
     def tearDown(self): self.temp.cleanup()
 
+    def test_prefix_reuse_invalidates_on_changes_missing_files_or_failed_check(self):
+        for folder in ('prefix', 'session', 'logs'): (self.root/folder).mkdir(exist_ok=True)
+        with patch.object(client_runner, 'PREFIX', self.root/'prefix'), patch.object(client_runner, 'SESSION', self.root/'session'), patch.object(client_runner, 'LOGS', self.root/'logs'):
+            supervisor=client_runner.Supervisor({'mode':'desktop','resolution':'800x600'})
+            marker=self.root/'prefix/.trasc-prefix-ready.json'
+            with patch.object(supervisor, 'prefix_signature', return_value={'version':1}) as signature, patch.object(client_runner, 'prefix_diagnostics', return_value={'prefix_ready':True}) as diagnostics, patch.object(supervisor,'run') as run, patch.object(supervisor,'check_prefix') as check:
+                supervisor.prepare_prefix();self.assertEqual(run.call_args.args[0][-1],'-u')
+                supervisor.prepare_prefix();self.assertEqual(run.call_args.args[0][-1],'-i')
+                signature.return_value={'version':2}
+                supervisor.prepare_prefix();self.assertEqual(run.call_args.args[0][-1],'-u')
+                diagnostics.return_value={'prefix_ready':False}
+                supervisor.prepare_prefix();self.assertEqual(run.call_args.args[0][-1],'-u')
+                check.side_effect=RuntimeError('failed check')
+                with self.assertRaisesRegex(RuntimeError,'failed check'):supervisor.prepare_prefix()
+                self.assertFalse(marker.exists())
+                self.assertIn('wine_prefix',supervisor.status['timings_seconds'])
+
+    def test_cpu_profiles_retain_memory_ordering_and_validate_selection(self):
+        request={'mode':'desktop','resolution':'800x600','cpu_profile':'balanced'}
+        client_runner.validate_request(request)
+        balanced=client_runner.Supervisor(request).env
+        compatible=client_runner.Supervisor(dict(request,cpu_profile='compatibility')).env
+        self.assertEqual(balanced['BOX64_DYNAREC_STRONGMEM'],compatible['BOX64_DYNAREC_STRONGMEM'])
+        self.assertEqual(balanced['BOX64_DYNAREC_SAFEFLAGS'],'1')
+        self.assertEqual(compatible['BOX64_DYNAREC_SAFEFLAGS'],'2')
+        self.assertEqual(compatible['BOX64_DYNAREC_BIGBLOCK'],'0')
+        with self.assertRaisesRegex(ValueError,'CPU profile'):client_runner.validate_request(dict(request,cpu_profile='unknown'))
+
     def test_graphics_identity_requires_actual_virgl_and_host_driver(self):
         guest='OpenGL renderer string: virgl (Adreno (TM) 740)\n'
         status=client_runner.graphics_status('virgl',guest,'TRASC GPU renderer: Adreno (TM) 740\n')

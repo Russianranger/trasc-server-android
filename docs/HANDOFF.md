@@ -1,3 +1,13 @@
+# Active handoff: 0.3.7 performance iteration (2026-09-15)
+
+User confirms 0.3.6 graphics correct but loading/in-game performance poor, asks about Turnip. Latest bundle `logs-810542259983773733.zip` extracted locally to `upload/performance-036`. See `docs/client-performance.md` for exact evidence and Vulkan implementation requirements.
+
+Implemented: Balanced/Compatibility CPU profiles (Balanced default, retains strongmem), private Box64 rcfile removing the 64-core Wine override, verified prefix reuse (`wineboot -i` after one successful update), startup timings/CPU affinity, persisted client launch options. Version 0.3.7/code13. No new graphics driver/runtime required. Keep patched texture/shader path, native model helpers, dinput8=n,b and patchme.
+
+Local 48 Python tests pass. Regression suite extended with real warm supervisor launch, unchanged system-file check and Compatibility D3D texture/shader test; UI checks cover CPU selection. CI APK/ARM64 integration and release verification pending. Do not call 0.3.7 published until the main workflow and release checksum/certificate verification succeed. First device launch still forces prefix update; compare second launch, then Compatibility if needed. No measured device speedup yet. No Turnip implementation shipped.
+
+---
+
 # Development handoff — 2026-09-14
 
 ## Published: 0.3.6 texture and legacy GLSL corrections

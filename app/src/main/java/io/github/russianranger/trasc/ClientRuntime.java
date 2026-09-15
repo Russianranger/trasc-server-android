@@ -37,6 +37,8 @@ final class ClientRuntime {
         JSONObject result=new JSONObject().put("installed",installed()).put("alive",alive()).put("busy",busy).put("status",status);
         File report=new File(run,"status.json");
         if(report.isFile())try{result.put("launch",json(report));}catch(Exception ignored){}
+        File options=new File(server.work,"client/launch-options.json");
+        if(options.isFile())try{result.put("launch_options",json(options));}catch(Exception ignored){}
         result.put("directx_installed",DirectXInstaller.installed(directx));
         result.put("display_ready",alive()&&displaySocket().exists());
         return result;
@@ -114,6 +116,8 @@ final class ClientRuntime {
                 }
             }
             String mode=options.optString("mode","client"),resolution=options.optString("resolution","800x600"),renderer=options.optString("renderer","software");
+            String cpuProfile=options.optString("cpu_profile","balanced");
+            if(!Arrays.asList("balanced","compatibility").contains(cpuProfile))throw new IOException("Unsupported CPU profile");
             if(!Arrays.asList("software","virgl").contains(renderer))throw new IOException("Unsupported graphics option");
             if(!Arrays.asList("desktop","client").contains(mode)||!Arrays.asList("640x480","800x600","960x540","1024x768").contains(resolution))throw new IOException("Unsupported client launch option");
             if(mode.equals("client")&&options.optBoolean("native_d3dx",true)&&!DirectXInstaller.installed(directx))throw new IOException("Install DirectX model helpers in the Client tab first, or disable model helpers for a Wine comparison");
@@ -127,7 +131,7 @@ final class ClientRuntime {
             }
             TarExtractor.remove(run);TarExtractor.remove(tmp);run.mkdirs();tmp.mkdirs();prefix.mkdirs();client.mkdirs();
             JSONObject request=new JSONObject().put("mode",mode).put("resolution",resolution).put("executable",executable).put("native_dinput8",options.optBoolean("native_dinput8",true))
-                .put("diagnostic_logging",options.optBoolean("diagnostic_logging",false)).put("native_d3dx",mode.equals("client")&&options.optBoolean("native_d3dx",true)).put("renderer",renderer);
+                .put("diagnostic_logging",options.optBoolean("diagnostic_logging",false)).put("native_d3dx",mode.equals("client")&&options.optBoolean("native_d3dx",true)).put("renderer",renderer).put("cpu_profile",cpuProfile);
             RuntimeManager.write(new File(run,"request.json"),request.toString());
             File backend=new File(server.home,"client-backend");backend.mkdirs();
             for(String name:new String[]{"client_runner.py","graphics_probe.py","wined3d.dll","wined3d-patch.json"})
@@ -149,6 +153,7 @@ final class ClientRuntime {
             builder.environment().put("PROOT_TMP_DIR",tmp.getPath());builder.environment().put("PROOT_NO_SECCOMP","1");
             builder.redirectErrorStream(true);builder.redirectOutput(ProcessBuilder.Redirect.appendTo(new File(server.work,"logs/client-runtime.log")));
             process=builder.start();started=true;status="Starting client display and Wine…";
+            if(mode.equals("client"))RuntimeManager.write(new File(server.work,"client/launch-options.json"),request.toString());
             final Process active=process;final GraphicsBridge bridge=graphics;
             Thread monitor=new Thread(()->{
                 try {

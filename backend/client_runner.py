@@ -13,6 +13,7 @@ import hashlib
 import shutil
 import tempfile
 import time
+from contextlib import contextmanager
 
 SESSION = Path('/session')
 CLIENT = Path('/client')
@@ -132,6 +133,7 @@ def validate_request(request):
     if request.get('mode') not in ('desktop', 'client'): raise ValueError('Choose Wine desktop or ROF2 client')
     if request.get('resolution') not in ('640x480', '800x600', '960x540', '1024x768'): raise ValueError('Unsupported client resolution')
     if request.get('renderer', 'software') not in ('software', 'virgl'): raise ValueError('Unsupported graphics option')
+    if request.get('cpu_profile', 'balanced') not in ('balanced', 'compatibility'): raise ValueError('Unsupported CPU profile')
     if not isinstance(request.get('native_d3dx', False), bool): raise ValueError('Invalid model-library option')
     if not isinstance(request.get('diagnostic_logging', False), bool): raise ValueError('Invalid Wine diagnostic option')
     if request['mode'] == 'client':
@@ -273,6 +275,7 @@ class Supervisor:
         self.children = []
         self.wine_log = None
         self.log_thread = None
+        self.started_monotonic = time.monotonic()
         self.status = {'phase': 'starting', 'mode': request['mode'], 'resolution': request['resolution'],
                        'native_dinput8_requested': request['mode']=='client' and request.get('native_dinput8', True), 'native_loaded': False,
                        'system_dinput8_loaded': False,
@@ -280,6 +283,7 @@ class Supervisor:
                        'native_d3dx_requested': request['mode']=='client' and request.get('native_d3dx', False),
                        'renderer': 'Checking graphics driver', 'graphics_backend': request.get('renderer','software'),
                        'graphics_acceleration': 'unknown', 'started_at': time.time()}
+        self.status.update(cpu_profile=request.get('cpu_profile', 'balanced'), timings_seconds={})
         self.env = dict(os.environ, DISPLAY=':7', XAUTHORITY=str(SESSION / 'Xauthority'),
                         WINEPREFIX=str(PREFIX), WINEARCH='win64', WINEDEBUG=wine_debug(),
                         WINEDLLOVERRIDES='winemenubuilder,mscoree,mshtml,winegstreamer=',
@@ -292,6 +296,59 @@ class Supervisor:
             # server. LIBGL_ALWAYS_SOFTWARE selects that headless DRI loader;
             # it does not select llvmpipe when GALLIUM_DRIVER is virpipe.
             self.env.update(GALLIUM_DRIVER='virpipe', VTEST_SOCKET_NAME='/tmp/.virgl_test')
+        if request.get('cpu_profile', 'balanced') == 'balanced':
+            self.env.update(BOX64_DYNAREC_BIGBLOCK='2', BOX64_DYNAREC_SAFEFLAGS='1',
+                            BOX64_MAXCPU='0', BOX64_RCFILE=str(SESSION / 'box64.rc'))
+
+    def configure_cpu(self):
+        if self.request.get('cpu_profile', 'balanced') == 'balanced':
+            # This runtime only launches our Wine desktop and the imported ROF2.
+            # Box64's stock [wine] entry overrides the environment with 64 CPUs.
+            # Use a private rcfile so the real CPU count and selected flags win;
+            # preserve its explorer-specific small-block startup workaround.
+            (SESSION / 'box64.rc').write_text(
+                '[wine]\nBOX64_MAXCPU=0\n[wine64]\nBOX64_MAXCPU=0\n'
+                '[explorer.exe]\nBOX64_DYNAREC_BIGBLOCK=0\n'
+                '[eqgame.exe]\nBOX64_DYNAREC_BIGBLOCK=2\nBOX64_DYNAREC_SAFEFLAGS=1\nBOX64_DYNAREC_STRONGMEM=1\n')
+        settings = {k: v for k, v in self.env.items() if k.startswith('BOX64_')}
+        try: affinity = sorted(os.sched_getaffinity(0))
+        except (AttributeError, OSError): affinity = []
+        self.update(cpu_settings=settings, available_cpu_ids=affinity)
+
+    @contextmanager
+    def timed(self, name):
+        started = time.monotonic()
+        try: yield
+        finally:
+            elapsed = round(time.monotonic() - started, 3)
+            self.status['timings_seconds'][name] = elapsed
+            self.update()
+            print(f'Client timing: {name}={elapsed}s', flush=True)
+
+    def prefix_signature(self):
+        # Content fingerprints survive backup/restore and invalidate on runtime
+        # upgrades. The overlay is checked separately before this is called.
+        paths = [Path('/etc/trasc-client-runtime.json'), Path('/opt/wine/share/wine/wine.inf'),
+                 Path('/opt/wine/lib/wine/i386-windows/ntdll.dll')]
+        return {'format': 1, 'runtime': {str(p): hashlib.sha256(p.read_bytes()).hexdigest() for p in paths},
+                'wined3d': self.status.get('wined3d_sha256', '')}
+
+    def prepare_prefix(self):
+        marker = PREFIX / '.trasc-prefix-ready.json'
+        signature = self.prefix_signature()
+        try: previous = json.loads(marker.read_text())
+        except (OSError, ValueError): previous = None
+        ready = previous == signature and prefix_diagnostics()['prefix_ready']
+        # -u forces Wine to copy/register its system files again, even when
+        # unchanged. -i boots services and honors Wine's own update timestamp.
+        # Invalidate first so interrupted or failed checks always retry -u.
+        marker.unlink(missing_ok=True)
+        self.update('preparing_prefix', prefix_update='reuse' if ready else 'update')
+        with self.timed('wine_prefix'):
+            self.run(['/usr/local/bin/box64', '/opt/wine/bin/wine', 'wineboot', '-i' if ready else '-u'])
+        with self.timed('wine32_check'): self.check_prefix()
+        temporary = marker.with_suffix('.new')
+        temporary.write_text(json.dumps(signature)); os.replace(temporary, marker)
 
     def update(self, phase=None, **fields):
         if phase: self.status['phase'] = phase
@@ -366,6 +423,7 @@ class Supervisor:
         validate_request(self.request)
         print(f"Client session started at {self.status['started_at']}: {self.request['mode']}", flush=True)
         for p in (SESSION, PREFIX, LOGS): p.mkdir(parents=True, exist_ok=True)
+        self.configure_cpu()
         for name in ('client-wine.log', 'client-prefix.log', 'client-display.log', 'client-graphics.log'):
             archive_log(LOGS / name)
         (LOGS / 'client-wine.overflow.log').unlink(missing_ok=True)
@@ -384,16 +442,14 @@ class Supervisor:
             time.sleep(.1)
         else: raise RuntimeError('Client display did not become ready')
         self.update(display_ready=True)
-        self.check_graphics()
+        with self.timed('graphics_check'): self.check_graphics()
         patch = Path(__file__).with_name('wined3d-patch.json')
         if patch.is_file():
             expected = json.loads(patch.read_text())
             actual = hashlib.sha256(Path('/opt/wine/lib/wine/i386-windows/wined3d.dll').read_bytes()).hexdigest()
             if actual != expected['sha256']: raise RuntimeError('WineD3D compatibility fix failed verification')
             self.update(wined3d_patch=expected['patch'], wined3d_sha256=actual)
-        self.update('preparing_prefix')
-        self.run(['/usr/local/bin/box64', '/opt/wine/bin/wine', 'wineboot', '-u'])
-        self.check_prefix()
+        self.prepare_prefix()
         devices = PREFIX / 'dosdevices'; devices.mkdir(exist_ok=True)
         drive = devices / 'd:'
         if drive.is_symlink(): drive.unlink()
@@ -410,11 +466,13 @@ class Supervisor:
             env['WINEDLLOVERRIDES'] += ';dinput8=' + override
             native_models = self.request.get('native_d3dx', False)
             if native_models:
-                self.update('preparing_models', model_library_sha256=prepare_model_libraries())
+                with self.timed('model_helpers'):
+                    self.update('preparing_models', model_library_sha256=prepare_model_libraries())
             for name in MODEL_DLLS:
                 env['WINEDLLOVERRIDES'] += ';' + name[:-4] + ('=n,b' if native_models else '=b')
             self.status['dinput8_override'] = override
         launcher = self.spawn(args, 'client-wine.log', env)
+        self.status['timings_seconds']['until_launch_requested'] = round(time.monotonic() - self.started_monotonic, 3)
         self.update('launch_requested', display_ready=True, launcher_pid=launcher.pid)
         while not self.stopping():
             if xserver.poll() is not None: raise RuntimeError('Display exited; see client-display.log')
