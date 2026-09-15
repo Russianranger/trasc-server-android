@@ -15,6 +15,8 @@ jobs:
       contents: write
     steps:
       - uses: actions/checkout@v4
+      - name: Observe kernel SIGKILL senders during client tests
+        run: bash scripts/client-exit-trace.sh start
       - uses: actions/download-artifact@v4
         with:
           name: client-wined3d
@@ -150,6 +152,14 @@ jobs:
         run: bash scripts/check-client-graphics.sh
       - name: Verify VirGL GLES through the installed PRoot runtime
         run: bash scripts/check-client-proot.sh virgl
+      - name: Collect kernel process-exit evidence
+        if: always()
+        run: bash scripts/client-exit-trace.sh collect
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: client-exit-trace
+          path: runtime-work/exit-trace/
       - uses: actions/upload-artifact@v4
         if: always()
         with:

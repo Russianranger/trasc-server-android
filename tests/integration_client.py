@@ -134,6 +134,9 @@ def main():
         # A negative control must reproduce the old native-only bug. Each check
         # is a separate Windows process while the private X display is alive.
         env=client_runner.Supervisor(request).env
+        # CI-only teardown evidence for every small auxiliary Windows process.
+        # The supervised game retains production logging and all exit checks.
+        env=dict(env,BOX64_LOG='2',WINEDEBUG=env.get('WINEDEBUG','')+',trace+process,trace+thread,trace+module')
         command=['/usr/local/bin/box64','/opt/wine/bin/wine',r'D:\eqgame.exe','--check-directinput']
         with Path('/logs/client-proxy-regression.log').open('wb') as output:
             for override,expected in [('n',23),('n,b',0)]:
@@ -194,6 +197,7 @@ def main():
         assert system.stat().st_mtime_ns==original_mtime,'Warm boot rewrote Wine system files'
         if renderer=='turnip':
             fallback=client_runner.Supervisor(warm_request).env
+            fallback=dict(fallback,BOX64_LOG='2',WINEDEBUG=fallback.get('WINEDEBUG','')+',trace+process,trace+thread,trace+module')
             with Path('/logs/vulkan-fallback.log').open('wb') as out:
                 result=subprocess.run(['/usr/local/bin/box64','/opt/wine/bin/wine',r'D:\textures.exe'],cwd='/client',
                     env=dict(fallback,WINEDLLOVERRIDES=fallback['WINEDLLOVERRIDES']+';d3dx9_35=n,b'),stdout=out,stderr=out,timeout=90)
@@ -224,7 +228,7 @@ def check_compatibility_exit(env):
     started=time.monotonic()
     with Path('/logs/compatibility-textures.log').open('wb') as out:
         child=subprocess.Popen(['/usr/local/bin/box64','/opt/wine/bin/wine',r'D:\textures.exe'],cwd='/client',
-            env=dict(env,WINEDLLOVERRIDES=env['WINEDLLOVERRIDES']+';d3dx9_35=n,b',
+            env=dict(env,BOX64_LOG='2',WINEDLLOVERRIDES=env['WINEDLLOVERRIDES']+';d3dx9_35=n,b',
                      WINEDEBUG=env.get('WINEDEBUG','')+',trace+process,trace+module'),stdout=out,stderr=out)
         try:
             while child.poll() is None:
