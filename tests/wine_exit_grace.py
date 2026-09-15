@@ -42,6 +42,7 @@ with tempfile.TemporaryDirectory(prefix='trasc-exit-grace-') as temporary, (logs
     preload=Path('/etc/ld.so.preload')
     assert not preload.exists(), 'Exit fixture requires an isolated container without a preload'
     preload.write_text('/client/exit-delay.so\n')
+    cleanup_needed=True
     try:
         deadline=time.monotonic()+15
         while not Path('/tmp/.X11-unix/X8').exists():
@@ -71,6 +72,7 @@ with tempfile.TemporaryDirectory(prefix='trasc-exit-grace-') as temporary, (logs
             started=time.monotonic();stop_server(patched);child.wait(timeout=10)
             seconds=round(time.monotonic()-started,3)
             assert seconds<15,seconds
+            cleanup_needed=False  # -k/-w and child.wait already proved shutdown.
             results.append({'case':'explicit-stop','seconds':seconds,'returncode':child.returncode})
             (logs/'exit-grace.json').write_text(json.dumps(results,indent=2))
         finally:
@@ -78,6 +80,8 @@ with tempfile.TemporaryDirectory(prefix='trasc-exit-grace-') as temporary, (logs
         print('PASS: stock Wine timer reproduces SIGKILL; bundled server preserves exit 0/23 through delayed native cleanup and explicit Stop still terminates the process')
     finally:
         preload.unlink()
-        stop_server(str(adjacent))
-        install_server(stock)
-        display.terminate();display.wait(timeout=10)
+        try:
+            if cleanup_needed: stop_server(str(adjacent))
+        finally:
+            install_server(stock)
+            display.terminate();display.wait(timeout=10)
