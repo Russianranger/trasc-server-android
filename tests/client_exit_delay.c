@@ -1,4 +1,4 @@
-/* CI-only native teardown delay. It never changes the program's exit code. */
+/* CI-only Unix teardown delay, preloaded as x86-64 through Box64. */
 #define _POSIX_C_SOURCE 200809L
 #include <fcntl.h>
 #include <stdlib.h>
@@ -11,8 +11,7 @@ static char report[512];
 __attribute__((constructor)) static void prepare_delay(void) {
     const char *path=getenv("TRASC_EXIT_DELAY_REPORT");
     if(path && strlen(path)<sizeof(report)) strcpy(report,path);
-    /* Instrument this native Box64 process only, never its Wine server. */
-    unsetenv("LD_PRELOAD");
+    /* The Box64 preload survives Wine's loader restart. Only cmd.exe delays. */
 }
 __attribute__((destructor)) static void delay_exit(void) {
     char name[16]={0};

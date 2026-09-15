@@ -46,6 +46,12 @@ patch and build recipe are included in wined3d-sources.tar.gz inside the
 published launcher-sources.tar.gz. It is mounted over the app-private runtime
 module at launch; no EverQuest binary is modified or distributed.
 
+The APK also carries Wine 10.0's LGPL-2.1-or-later x86-64 wineserver, built in
+Debian Bookworm with a bounded cleanup-grace correction for translated Unix
+processes. Its original Wine source, patch and Docker build recipe are in the
+same wined3d-sources.tar.gz bundle. The app selects this private helper through
+Wine's WINESERVER setting; the installed runtime image remains intact.
+
 TRASC additionally patches the vtest worker lifecycle to terminate workers when their owning renderer exits. The native launcher probes Android EGL in an isolated child before serving client connections. These project modifications are included with the corresponding sources.
 
 ## Turnip / DXVK Vulkan path

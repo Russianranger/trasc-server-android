@@ -39,7 +39,7 @@ with tempfile.TemporaryDirectory(prefix='trasc-exit-grace-') as temporary, (logs
         stop_server(stock)
         for label,server,code,expected in [('stock',stock,0,-9),('patched-zero',patched,0,0),('patched-nonzero',patched,23,23)]:
             marker=logs/('exit-delay-'+label+'.txt');marker.unlink(missing_ok=True)
-            selected=dict(env,WINESERVER=server,LD_PRELOAD='/client/exit-delay.so',TRASC_EXIT_DELAY_REPORT=str(marker))
+            selected=dict(env,WINESERVER=server,BOX64_LD_PRELOAD='/client/exit-delay.so',TRASC_EXIT_DELAY_REPORT=str(marker))
             started=time.monotonic()
             child=subprocess.run(wine+[r'C:\windows\syswow64\cmd.exe','/d','/c','exit',str(code)],env=selected,stdout=output,stderr=output,timeout=30)
             trace=marker.read_text() if marker.exists() else ''
