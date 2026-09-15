@@ -71,7 +71,7 @@ jobs:
             -v "$PWD/runtime-work/client-test/client:/client" \
             -v "$PWD/runtime-work/client-test/logs:/logs" \
             -v "$PWD/runtime-work/directx-test/output/directx:/directx:ro" \
-            trasc-client:1 bash -c 'python3 /tests/integration_client.py && python3 /tests/wine_exit_grace.py'
+            trasc-client:1 bash -c 'python3 /tests/wine_exit_grace.py && cp /opt/trasc-client/wineserver /opt/wine/bin/wineserver && python3 /tests/integration_client.py'
       - uses: actions/upload-artifact@v4
         if: always()
         with:

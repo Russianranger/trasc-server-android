@@ -24,6 +24,7 @@ docker run --rm --network none \
     -e TRASC_TEST_RENDERER=turnip -e TRASC_TEST_ALLOW_SOFTWARE_VULKAN=1 \
     -e TRASC_TEST_VULKAN_ICD=/usr/share/vulkan/icd.d/lvp_icd.aarch64.json \
     -v "$PWD/backend-assets/wined3d.dll:/opt/wine/lib/wine/i386-windows/wined3d.dll:ro" \
+    -v "$PWD/backend-assets/wineserver:/opt/wine/bin/wineserver:ro" \
     -v "$PWD/backend:/opt/trasc-client:ro" -v "$PWD/tests:/tests:ro" \
     -v "$PWD/runtime-work/client-vulkan/client:/client" -v "$PWD/runtime-work/client-vulkan/logs:/logs" \
     -v "$PWD/runtime-work/directx-test/output/directx:/directx:ro" \

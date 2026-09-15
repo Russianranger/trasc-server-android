@@ -5,6 +5,7 @@ preserve the Windows code and finish a real two-second native exit delay.
 """
 import json
 import os
+import shutil
 from pathlib import Path
 import subprocess
 import sys
@@ -15,11 +16,17 @@ sys.path.insert(0, '/opt/trasc-client')
 import client_runner
 
 wine=['/usr/local/bin/box64','/opt/wine/bin/wine']
-stock='/opt/wine/bin/wineserver'
+adjacent=Path('/opt/wine/bin/wineserver')
 patched='/opt/trasc-client/wineserver'
 logs=Path('/logs');logs.mkdir(exist_ok=True)
 results=[]
 with tempfile.TemporaryDirectory(prefix='trasc-exit-grace-') as temporary, (logs/'exit-grace.log').open('wb') as output:
+    stock=str(Path(temporary)/'stock-wineserver')
+    shutil.copy2(adjacent,stock)
+    def install_server(source):
+        staged=adjacent.with_name('wineserver.exit-test')
+        shutil.copy2(source,staged);staged.chmod(0o755);os.replace(staged,adjacent)
+
     env=client_runner.Supervisor({'mode':'desktop','resolution':'800x600','cpu_profile':'compatibility'}).env
     env.update(WINEPREFIX=temporary,WINESERVER=stock,DISPLAY=':8',WINEDEBUG='-all',BOX64_LOG='1')
     env.pop('XAUTHORITY',None)
@@ -43,10 +50,12 @@ with tempfile.TemporaryDirectory(prefix='trasc-exit-grace-') as temporary, (logs
         subprocess.run(wine+['wineboot','-u'],env=env,stdout=output,stderr=output,timeout=120,check=True)
         stop_server(stock)
         for label,server,code,expected in [('stock',stock,0,-9),('patched-zero',patched,0,0),('patched-nonzero',patched,23,23)]:
+            install_server(server)
             marker=logs/('exit-delay-'+label+'.txt');marker.unlink(missing_ok=True)
             selected=dict(env,WINESERVER=server,TRASC_EXIT_DELAY_REPORT=str(marker))
             started=time.monotonic()
             child=subprocess.run(wine+[r'C:\windows\syswow64\cmd.exe','/d','/c','exit',str(code)],env=selected,stdout=output,stderr=output,timeout=30)
+            if marker.exists(): marker.chmod(0o644)
             trace=marker.read_text() if marker.exists() else ''
             result={'case':label,'returncode':child.returncode,'seconds':round(time.monotonic()-started,3),'cleanup':trace}
             results.append(result);(logs/'exit-grace.json').write_text(json.dumps(results,indent=2))
@@ -69,5 +78,6 @@ with tempfile.TemporaryDirectory(prefix='trasc-exit-grace-') as temporary, (logs
         print('PASS: stock Wine timer reproduces SIGKILL; bundled server preserves exit 0/23 through delayed native cleanup and explicit Stop still terminates the process')
     finally:
         preload.unlink()
-        stop_server(patched)
+        stop_server(str(adjacent))
+        install_server(stock)
         display.terminate();display.wait(timeout=10)

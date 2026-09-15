@@ -19,7 +19,7 @@ __attribute__((destructor)) static void delay_exit(void) {
     ssize_t count=read(fd,name,sizeof(name)-1);close(fd);
     if(count<0 || strcmp(name,"cmd.exe\n")) return;
     delayed=1;
-    fd=open(report,O_WRONLY|O_CREAT|O_APPEND,0600);
+    fd=open(report,O_WRONLY|O_CREAT|O_APPEND,0644);
     if(fd<0) return;
     if(write(fd,"begin\n",6)!=6) { close(fd); return; }
     struct timespec remaining={2,0};

@@ -40,6 +40,7 @@ if [ "$renderer" = turnip ]; then
 fi
 client_command=("$task_dir/proot/src/proot" --kill-on-exit -0 -r "$task_dir/root" \
     -b "$PWD/runtime-work/directx-test/output/directx:/directx" \
+    -b "$PWD/backend-assets/wineserver:/opt/wine/bin/wineserver" \
     -b "$PWD/backend-assets/wined3d.dll:/opt/wine/lib/wine/i386-windows/wined3d.dll" \
     -b /dev -b /proc -b /sys -b "$PWD/backend:/opt/trasc-client" -b "$PWD/tests:/tests" \
     -b "$task_dir/client:/client" -b "$task_dir/prefix:/prefix" -b "$task_dir/session:/session" \

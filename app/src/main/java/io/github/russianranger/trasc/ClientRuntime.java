@@ -159,6 +159,7 @@ final class ClientRuntime {
             directx.mkdirs();new File(root,"directx").mkdirs();
             File nativeDir=new File(context.getApplicationInfo().nativeLibraryDir);
             List<String> command=new ArrayList<>(Arrays.asList(new File(nativeDir,"libproot.so").getPath(),"--kill-on-exit","-0","-r",root.getPath(),
+                "-b",new File(backend,"wineserver").getPath()+":/opt/wine/bin/wineserver",
                 "-b",new File(backend,"wined3d.dll").getPath()+":/opt/wine/lib/wine/i386-windows/wined3d.dll","-b","/dev","-b","/proc","-b","/sys","-b",directx.getPath()+":/directx","-b",client.getPath()+":/client","-b",prefix.getPath()+":/prefix","-b",run.getPath()+":/session",
                 "-b",new File(server.work,"logs").getPath()+":/logs","-b",backend.getPath()+":/opt/trasc-client","-b",tmp.getPath()+":/tmp",
                 "-w","/client","/usr/bin/env","-i","HOME=/root","USER=root","PATH=/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin",

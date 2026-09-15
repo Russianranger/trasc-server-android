@@ -51,6 +51,7 @@ def main():
         assert graphics['wined3d_patch']=='legacy-specular-fog-v1',graphics
         assert graphics['wineserver_patch']=='translated-exit-grace-v1',graphics
         assert graphics['wineserver_exit_grace_seconds']==8,graphics
+        assert graphics['wineserver_path']=='/opt/wine/bin/wineserver',graphics
         assert graphics['cpu_profile']=='balanced',graphics
         assert graphics['prefix_update']=='update',graphics
         assert graphics['cpu_settings']['BOX64_DYNAREC_STRONGMEM']=='1',graphics
