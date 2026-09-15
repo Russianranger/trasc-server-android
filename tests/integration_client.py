@@ -36,7 +36,7 @@ def main():
     request={'mode':'client','resolution':'800x600','executable':'eqgame.exe','native_dinput8':True,'native_d3dx':True,'renderer':renderer,'graphics_threading':'single' if renderer=='turnip' else 'opengl_worker','cpu_affinity':'available'}
     if renderer=='turnip': request.update(resolution='1280x720',fullscreen=True)
     Path('/session/request.json').write_text(json.dumps(request))
-    runner = subprocess.Popen(['python3','/opt/trasc-client/client_runner.py'])
+    runner = subprocess.Popen(['python3','/tests/client_runner_diagnostics.py'])
     try:
         def ready():
             error = Path('/client/probe-error.txt')
@@ -182,7 +182,7 @@ def main():
     Path('/session/stop').unlink()
     warm_request=dict(request,mode='desktop',renderer='software' if renderer=='turnip' else renderer)
     Path('/session/request.json').write_text(json.dumps(warm_request))
-    runner=subprocess.Popen(['python3','/opt/trasc-client/client_runner.py'])
+    runner=subprocess.Popen(['python3','/tests/client_runner_diagnostics.py'])
     try:
         def warm_ready():
             state=json.loads(Path('/session/status.json').read_text())
