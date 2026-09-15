@@ -1,7 +1,9 @@
 package io.github.russianranger.trasc;
 
 import android.app.*;
+import android.content.res.ColorStateList;
 import android.graphics.*;
+import android.graphics.drawable.*;
 import android.net.*;
 import android.os.*;
 import android.view.*;
@@ -16,6 +18,10 @@ public final class ClientActivity extends Activity {
     private ControllerManager controller;
     private ClientView display;
     private TextView status;
+    private FrameLayout menuLayer;
+    private LinearLayout menu;
+    private ImageButton gear;
+    private boolean menuOpen, keyboardOpen;
     private String displayError;
     private boolean failureShown;
     private final Handler handler=new Handler(Looper.getMainLooper());
@@ -29,7 +35,7 @@ public final class ClientActivity extends Activity {
             status.setText(phase+(launch!=null&&launch.optBoolean("native_loaded")?" · native dinput8 loaded":"")+
                 (launch!=null&&launch.optBoolean("system_dinput8_loaded")?" · system DirectInput loaded":"")+display.measure(launch));
             if(launch!=null&&launch.has("error")&&!failureShown&&hasWindowFocus()&&!isFinishing()) {
-                failureShown=true;controller.capture(false);display.input.releaseAll();
+                failureShown=true;controller.capture(false);display.input.releaseAll();setMenuOpen(true);
                 new AlertDialog.Builder(ClientActivity.this).setTitle("Client startup failed").setMessage(launch.optString("error"))
                     .setPositiveButton("Back to Client",(dialog,which)->finish()).setCancelable(false).show();
             }
@@ -39,14 +45,37 @@ public final class ClientActivity extends Activity {
     @Override public void onCreate(Bundle saved) {
         super.onCreate(saved);runtime=ClientRuntime.get(this);
         getWindow().addFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON);
-        getWindow().setStatusBarColor(0xff10191c);getWindow().setNavigationBarColor(0xff10191c);
-        LinearLayout layout=new LinearLayout(this);layout.setOrientation(LinearLayout.VERTICAL);layout.setBackgroundColor(0xff10191c);
-        LinearLayout bar=new LinearLayout(this);bar.setPadding(8,0,8,0);bar.setGravity(Gravity.CENTER_VERTICAL);
-        Button back=new Button(this);back.setText("Back");back.setOnClickListener(v->finish());bar.addView(back);
-        status=new TextView(this);status.setTextColor(0xffe2eded);status.setTextSize(12);bar.addView(status,new LinearLayout.LayoutParams(0,ViewGroup.LayoutParams.WRAP_CONTENT,1));
-        Button keyboard=new Button(this);keyboard.setText("Keyboard");keyboard.setOnClickListener(v->textDialog());bar.addView(keyboard);
-        Button escape=new Button(this);escape.setText("Esc");escape.setOnClickListener(v->{display.input.key("escape",0xff1b,true);display.input.key("escape",0xff1b,false);});bar.addView(escape);
-        layout.addView(bar);display=new ClientView();layout.addView(display,new LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT,0,1));setContentView(layout);
+        FrameLayout layout=new FrameLayout(this);layout.setBackgroundColor(Color.BLACK);
+        display=new ClientView();layout.addView(display,new FrameLayout.LayoutParams(-1,-1));
+        // A separate overlay never changes the framebuffer's size or touch map.
+        menuLayer=new FrameLayout(this);menuLayer.setVisibility(View.GONE);
+        menuLayer.setOnClickListener(v->setMenuOpen(false));
+        layout.addView(menuLayer,new FrameLayout.LayoutParams(-1,-1));
+        ScrollView scroll=new ScrollView(this);scroll.setFillViewport(false);
+        menu=new LinearLayout(this);menu.setOrientation(LinearLayout.VERTICAL);menu.setPadding(dp(12),dp(8),dp(12),dp(12));
+        menu.setBackground(panelBackground(0xd010191c));menu.setOnClickListener(v->{});
+        addMenuButton("Back to Client",v->finish());
+        addMenuButton("Keyboard",v->textDialog());
+        addMenuButton("Esc",v->{setMenuOpen(false);display.input.key("escape",0xff1b,true);display.input.key("escape",0xff1b,false);});
+        status=new TextView(this);status.setTextColor(0xffe2eded);status.setTextSize(12);status.setPadding(dp(4),dp(10),dp(4),0);
+        menu.addView(status);scroll.addView(menu);
+        FrameLayout.LayoutParams panel=new FrameLayout.LayoutParams(dp(280),-2,Gravity.TOP|Gravity.RIGHT);
+        panel.setMargins(dp(12),dp(68),dp(12),dp(12));menuLayer.addView(scroll,panel);
+        gear=new ImageButton(this);gear.setImageResource(R.drawable.ic_client_gear);gear.setPadding(dp(12),dp(12),dp(12),dp(12));
+        gear.setContentDescription("Open client controls");gear.setTooltipText("Client controls");
+        gear.setBackground(new RippleDrawable(ColorStateList.valueOf(0x55ffffff),panelBackground(0x6010191c),null));
+        gear.setOnClickListener(v->setMenuOpen(!menuOpen));
+        FrameLayout.LayoutParams gearPosition=new FrameLayout.LayoutParams(dp(48),dp(48),Gravity.TOP|Gravity.RIGHT);
+        gearPosition.setMargins(dp(12),dp(12),dp(12),0);layout.addView(gear,gearPosition);
+        // Keep controls clear of display cutouts and temporarily revealed bars.
+        layout.setOnApplyWindowInsetsListener((view,insets)->{
+            int left=insets.getSystemWindowInsetLeft(),top=insets.getSystemWindowInsetTop(),right=insets.getSystemWindowInsetRight(),bottom=insets.getSystemWindowInsetBottom();
+            if(Build.VERSION.SDK_INT>=28&&insets.getDisplayCutout()!=null){DisplayCutout cutout=insets.getDisplayCutout();left=Math.max(left,cutout.getSafeInsetLeft());top=Math.max(top,cutout.getSafeInsetTop());right=Math.max(right,cutout.getSafeInsetRight());bottom=Math.max(bottom,cutout.getSafeInsetBottom());}
+            gearPosition.setMargins(dp(12)+left,dp(12)+top,dp(12)+right,0);gear.setLayoutParams(gearPosition);
+            panel.setMargins(dp(12)+left,dp(68)+top,dp(12)+right,dp(12)+bottom);scroll.setLayoutParams(panel);
+            return insets;
+        });
+        setContentView(layout);immersive();
         controller=new ControllerManager(this,runtime.server.work,event->{
             switch(event.optString("type")) {
                 case "button":display.input.action(event.optString("action"),event.optBoolean("down"));break;
@@ -54,22 +83,39 @@ public final class ClientActivity extends Activity {
                 case "wheel":display.input.wheel(event.optInt("y"));break;
             }
         });
-        display.connect();handler.post(refresh);
+        setMenuOpen(false);display.connect();handler.post(refresh);
+    }
+    private int dp(int value){return Math.round(value*getResources().getDisplayMetrics().density);}
+    private GradientDrawable panelBackground(int color){GradientDrawable background=new GradientDrawable();background.setColor(color);background.setCornerRadius(dp(16));return background;}
+    private void addMenuButton(String title,View.OnClickListener action){Button button=new Button(this);button.setText(title);button.setAllCaps(false);button.setTextColor(Color.WHITE);button.setMinHeight(dp(48));button.setBackground(new RippleDrawable(ColorStateList.valueOf(0x44ffffff),panelBackground(0x18ffffff),null));button.setOnClickListener(action);LinearLayout.LayoutParams params=new LinearLayout.LayoutParams(-1,dp(48));params.topMargin=dp(4);menu.addView(button,params);}
+    private void immersive(){
+        if(Build.VERSION.SDK_INT>=30){
+            getWindow().setDecorFitsSystemWindows(false);
+            WindowInsetsController insets=getWindow().getInsetsController();
+            if(insets!=null){insets.setSystemBarsBehavior(WindowInsetsController.BEHAVIOR_SHOW_TRANSIENT_BARS_BY_SWIPE);insets.hide(WindowInsets.Type.systemBars());}
+        }else getWindow().getDecorView().setSystemUiVisibility(View.SYSTEM_UI_FLAG_IMMERSIVE_STICKY|View.SYSTEM_UI_FLAG_FULLSCREEN|View.SYSTEM_UI_FLAG_HIDE_NAVIGATION|View.SYSTEM_UI_FLAG_LAYOUT_STABLE|View.SYSTEM_UI_FLAG_LAYOUT_FULLSCREEN|View.SYSTEM_UI_FLAG_LAYOUT_HIDE_NAVIGATION);
+    }
+    private boolean gameInputActive(){return hasWindowFocus()&&!menuOpen&&!keyboardOpen&&!failureShown;}
+    private void setMenuOpen(boolean open){
+        menuOpen=open;menuLayer.setVisibility(open?View.VISIBLE:View.GONE);
+        gear.setContentDescription(open?"Close client controls":"Open client controls");gear.setAlpha(open?1f:.78f);
+        if(controller!=null)controller.capture(gameInputActive());
+        if(open){display.input.releaseAll();menu.getChildAt(0).requestFocus();}else display.requestFocus();
     }
     private void textDialog() {
-        controller.capture(false);display.input.releaseAll();
+        keyboardOpen=true;setMenuOpen(false);controller.capture(false);display.input.releaseAll();
         EditText text=new EditText(this);text.setSingleLine(true);text.setHint("Type into the focused client field");
         text.setFilters(new android.text.InputFilter[]{new android.text.InputFilter.LengthFilter(4096)});
         AlertDialog dialog=new AlertDialog.Builder(this).setTitle("Client keyboard").setView(text)
             .setPositiveButton("Type",(d,w)->display.input.text(text.getText().toString(),false))
             .setNeutralButton("Send + Enter",(d,w)->display.input.text(text.getText().toString(),true))
             .setNegativeButton("Cancel",null).create();
-        dialog.setOnDismissListener(d->{if(hasWindowFocus())controller.capture(true);});dialog.show();
+        dialog.setOnDismissListener(d->{keyboardOpen=false;display.requestFocus();immersive();controller.capture(gameInputActive());});dialog.show();
         text.requestFocus();dialog.getWindow().setSoftInputMode(WindowManager.LayoutParams.SOFT_INPUT_STATE_ALWAYS_VISIBLE);
     }
     @Override public boolean dispatchKeyEvent(KeyEvent event) {
-        if(controller!=null&&controller.key(event))return true;
-        if(display!=null&&hasWindowFocus()&&event.getKeyCode()!=KeyEvent.KEYCODE_BACK&&
+        if(gameInputActive()&&controller!=null&&controller.key(event))return true;
+        if(display!=null&&gameInputActive()&&event.getKeyCode()!=KeyEvent.KEYCODE_BACK&&
                 (event.getSource()&InputDevice.SOURCE_KEYBOARD)==InputDevice.SOURCE_KEYBOARD) {
             int symbol=physicalSymbol(event);
             if(symbol!=0&&(event.getAction()==KeyEvent.ACTION_DOWN||event.getAction()==KeyEvent.ACTION_UP)) {
@@ -91,8 +137,9 @@ public final class ClientActivity extends Activity {
         int code=event.getUnicodeChar(event.getMetaState()&(KeyEvent.META_SHIFT_ON|KeyEvent.META_CAPS_LOCK_ON));
         return code<=255?code:code<=0x10ffff?0x01000000|code:0;
     }
-    @Override public boolean dispatchGenericMotionEvent(MotionEvent event){return controller!=null&&controller.motion(event)||super.dispatchGenericMotionEvent(event);}
-    @Override public void onWindowFocusChanged(boolean focus){super.onWindowFocusChanged(focus);if(controller!=null)controller.capture(focus);if(!focus&&display!=null)display.input.releaseAll();}
+    @Override public boolean dispatchGenericMotionEvent(MotionEvent event){return gameInputActive()&&controller!=null&&controller.motion(event)||super.dispatchGenericMotionEvent(event);}
+    @Override public void onBackPressed(){if(menuOpen)setMenuOpen(false);else super.onBackPressed();}
+    @Override public void onWindowFocusChanged(boolean focus){super.onWindowFocusChanged(focus);if(focus&&!keyboardOpen)immersive();if(controller!=null)controller.capture(gameInputActive());if(!focus&&display!=null)display.input.releaseAll();}
     @Override protected void onPause(){if(controller!=null)controller.capture(false);if(display!=null)display.input.releaseAll();super.onPause();}
     @Override protected void onDestroy(){handler.removeCallbacks(refresh);if(controller!=null)controller.close();if(display!=null)display.close();super.onDestroy();}
 
@@ -127,7 +174,7 @@ public final class ClientActivity extends Activity {
             }catch(IOException e){if(!closed)failure(e);}
             finally {try{if(socket!=null)socket.close();}catch(IOException ignored){}connection=null;}
         },"TRASC client display").start();}
-        void failure(Exception error){if(closed)return;runtime.server.recordFailure("client_display",error);post(()->{displayError="Display disconnected: "+error.getMessage()+" · Back to Client to reconnect";if(!isDestroyed())status.setText(displayError);});}
+        void failure(Exception error){if(closed)return;runtime.server.recordFailure("client_display",error);post(()->{displayError="Display disconnected: "+error.getMessage()+" · Back to Client to reconnect";if(!isDestroyed()){status.setText(displayError);setMenuOpen(true);}});}
         @Override public void resize(int w,int h){synchronized(pixelsLock){bitmap=Bitmap.createBitmap(w,h,Bitmap.Config.ARGB_8888);}post(()->input.size(w,h));}
         @Override public void pixels(int x,int y,int w,int h,int[] colors){synchronized(pixelsLock){bitmap.setPixels(colors,0,w,x,y,w,h);}}
         @Override public void copy(int x,int y,int w,int h,int sx,int sy){synchronized(pixelsLock){if(copyBuffer.length<w*h)copyBuffer=new int[w*h];bitmap.getPixels(copyBuffer,0,w,sx,sy,w,h);bitmap.setPixels(copyBuffer,0,w,x,y,w,h);}}
@@ -148,6 +195,10 @@ public final class ClientActivity extends Activity {
                 if(sample!=null)try {
                     displayRate=sample[2];
                     JSONObject info=new JSONObject().put("created_utc",java.time.Instant.now().toString());
+                    info.put("view_width",getWidth()).put("view_height",getHeight()).put("controls_open",menuOpen).put("keyboard_open",keyboardOpen).put("window_focused",hasWindowFocus());
+                    // Read Android's reported state; no scheduling/power policy changes.
+                    PowerManager power=getSystemService(PowerManager.class);
+                    try{if(power!=null){info.put("power_save",power.isPowerSaveMode());if(Build.VERSION.SDK_INT>=29)info.put("thermal_status",power.getCurrentThermalStatus());}}catch(RuntimeException unavailable){info.put("power_state_unavailable",true);}
                     String[] keys={"window_seconds","rfb_updates_per_second","new_bitmap_draws_per_second","receive_ms_per_update","decode_apply_ms_per_update","canvas_submit_ms_per_draw","raw_pixels_per_second","last_update_age_seconds"};
                     for(int i=0;i<keys.length;i++)info.put(keys[i],sample[i]);
                     if(fresh)info.put("wine_present",wine);
@@ -155,7 +206,7 @@ public final class ClientActivity extends Activity {
                         .put("graphics_threading_requested",launch.optString("graphics_threading","multi"))
                         .put("mesa_glthread_observed",launch.optBoolean("mesa_glthread_observed",false))
                         .put("graphics_backend",launch.optString("graphics_backend"))
-                        .put("cpu_affinity",launch.optString("cpu_affinity"));
+                        .put("cpu_affinity",launch.optString("cpu_affinity")).put("game_fullscreen",launch.optBoolean("fullscreen")).put("display_target_fps",launch.optInt("display_target_fps",30));
                     String line=info.toString()+"\n";
                     writer.execute(()->{
                         try {
@@ -174,6 +225,7 @@ public final class ClientActivity extends Activity {
             input.position((event.getX()-bounds.left)*bitmap.getWidth()/bounds.width(),(event.getY()-bounds.top)*bitmap.getHeight()/bounds.height());return true;
         }
         @Override public boolean onTouchEvent(MotionEvent event) {
+            if(!gameInputActive())return true;
             boolean mouse=event.isFromSource(InputDevice.SOURCE_MOUSE);
             if(event.getActionMasked()==MotionEvent.ACTION_CANCEL){input.releaseAll();return true;}
             if(event.getActionMasked()==MotionEvent.ACTION_UP){input.mouse("touch",1,false);if(mouse)mouseButtons(event);performClick();return true;}
@@ -183,6 +235,7 @@ public final class ClientActivity extends Activity {
         }
         private void mouseButtons(MotionEvent event){int mask=event.getButtonState();input.mouse("mouse-left",1,(mask&MotionEvent.BUTTON_PRIMARY)!=0);input.mouse("mouse-right",4,(mask&MotionEvent.BUTTON_SECONDARY)!=0);input.mouse("mouse-middle",2,(mask&MotionEvent.BUTTON_TERTIARY)!=0);}
         @Override public boolean onGenericMotionEvent(MotionEvent event) {
+            if(!gameInputActive())return true;
             if(event.isFromSource(InputDevice.SOURCE_MOUSE)){position(event);mouseButtons(event);if(event.getAction()==MotionEvent.ACTION_SCROLL)input.wheel(Math.round(event.getAxisValue(MotionEvent.AXIS_VSCROLL)));return true;}
             return super.onGenericMotionEvent(event);
         }

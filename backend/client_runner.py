@@ -16,6 +16,7 @@ import time
 from contextlib import contextmanager
 from client_metrics import process_threads, allow_game_cpus
 import client_vulkan
+from client_display import RESOLUTIONS, apply_display
 
 SESSION = Path('/session')
 CLIENT = Path('/client')
@@ -174,12 +175,13 @@ def pe_machine(path):
 
 def validate_request(request):
     if request.get('mode') not in ('desktop', 'client'): raise ValueError('Choose Wine desktop or ROF2 client')
-    if request.get('resolution') not in ('640x480', '800x600', '960x540', '1024x768'): raise ValueError('Unsupported client resolution')
+    if request.get('resolution') not in RESOLUTIONS: raise ValueError('Unsupported client resolution')
     if request.get('renderer', 'software') not in ('software', 'virgl', 'turnip'): raise ValueError('Unsupported graphics option')
     if request.get('cpu_affinity', 'available') not in ('available', 'game'): raise ValueError('Unsupported CPU affinity')
     if request.get('cpu_profile', 'balanced') not in ('balanced', 'compatibility'): raise ValueError('Unsupported CPU profile')
     if request.get('runtime_mode', 'auto') not in ('auto', 'compatibility'): raise ValueError('Unsupported runtime mode')
     if request.get('graphics_threading', 'multi') not in ('multi', 'single', 'opengl_worker'): raise ValueError('Unsupported graphics threading')
+    if not isinstance(request.get('fullscreen', False), bool): raise ValueError('Invalid fullscreen option')
     if not isinstance(request.get('native_d3dx', False), bool): raise ValueError('Invalid model-library option')
     if not isinstance(request.get('diagnostic_logging', False), bool): raise ValueError('Invalid Wine diagnostic option')
     if request['mode'] == 'client':
@@ -324,7 +326,7 @@ class Supervisor:
         self.last_thread_sample = 0
         self.launch_token = secrets.token_hex(16)
         self.started_monotonic = time.monotonic()
-        self.status = {'phase': 'starting', 'mode': request['mode'], 'resolution': request['resolution'],
+        self.status = {'phase': 'starting', 'mode': request['mode'], 'resolution': request['resolution'], 'fullscreen': request.get('fullscreen', False), 'display_target_fps': 30,
                        'native_dinput8_requested': request['mode']=='client' and request.get('native_dinput8', True), 'native_loaded': False,
                        'system_dinput8_loaded': False,
                        'diagnostic_logging': request.get('diagnostic_logging', False),
@@ -556,6 +558,8 @@ class Supervisor:
         env['WINEDEBUG'] = wine_debug(self.request.get('diagnostic_logging', False))
         if self.request['mode'] == 'client':
             preserve_game_log()
+            if 'fullscreen' in self.request:
+                self.update(display_settings=apply_display(CLIENT, PREFIX, self.request['resolution'], self.request['fullscreen']))
             args += ['D:\\' + self.request['executable'], 'patchme']
             # The imported DLL forwards DirectInput8Create to an absolute system
             # dinput8 path. Native-only blocks Wine's system DLL and breaks input.

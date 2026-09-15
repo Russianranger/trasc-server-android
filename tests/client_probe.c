@@ -46,11 +46,16 @@ int WINAPI WinMain(HINSTANCE instance,HINSTANCE previous,LPSTR command,int show)
     BOOL saw_hold=FALSE;int previous_held=-99;
     WNDCLASSA cls={0};cls.lpfnWndProc=window_proc;cls.hInstance=instance;cls.lpszClassName="TrascProbe";
     RegisterClassA(&cls);
-    HWND window=CreateWindowA(cls.lpszClassName,"TRASC 32-bit Direct3D/input probe",WS_OVERLAPPEDWINDOW|WS_VISIBLE,
-                             0,0,600,400,NULL,NULL,instance,NULL);
+    char windowed[16];GetPrivateProfileStringA("Defaults","WindowedMode","TRUE",windowed,sizeof(windowed),"D:\\eqclient.ini");
+    BOOL fullscreen=!lstrcmpiA(windowed,"FALSE");
+    UINT width=GetPrivateProfileIntA("VideoMode","Width",800,"D:\\eqclient.ini");
+    UINT height=GetPrivateProfileIntA("VideoMode","Height",600,"D:\\eqclient.ini");
+    HWND window=CreateWindowA(cls.lpszClassName,"TRASC 32-bit Direct3D/input probe",(fullscreen?WS_POPUP:WS_OVERLAPPEDWINDOW)|WS_VISIBLE,
+                             0,0,fullscreen?width:600,fullscreen?height:400,NULL,NULL,instance,NULL);
     SetForegroundWindow(window);SetFocus(window);
     IDirect3D9 *d3d=Direct3DCreate9(D3D_SDK_VERSION);
-    D3DPRESENT_PARAMETERS params={0};params.Windowed=TRUE;params.SwapEffect=D3DSWAPEFFECT_DISCARD;params.hDeviceWindow=window;
+    D3DPRESENT_PARAMETERS params={0};params.Windowed=!fullscreen;params.SwapEffect=D3DSWAPEFFECT_DISCARD;params.hDeviceWindow=window;
+    if(fullscreen){params.BackBufferWidth=width;params.BackBufferHeight=height;params.BackBufferFormat=D3DFMT_X8R8G8B8;params.PresentationInterval=D3DPRESENT_INTERVAL_IMMEDIATE;}
     IDirect3DDevice9 *device=NULL;
     if(!d3d||FAILED(IDirect3D9_CreateDevice(d3d,0,D3DDEVTYPE_HAL,window,D3DCREATE_SOFTWARE_VERTEXPROCESSING,&params,&device))) {
         marker("D:\\probe-error.txt","Direct3D9 device creation failed");return 2;
@@ -63,6 +68,10 @@ int WINAPI WinMain(HINSTANCE instance,HINSTANCE previous,LPSTR command,int show)
         HRESULT cleared=IDirect3DDevice9_Clear(device,0,NULL,D3DCLEAR_TARGET,D3DCOLOR_XRGB(24,72,96),1,0);
         HRESULT presented=IDirect3DDevice9_Present(device,NULL,NULL,NULL,NULL);
         if(!ready&&SUCCEEDED(cleared)&&SUCCEEDED(presented)) {
+            IDirect3DSwapChain9 *chain=NULL;D3DPRESENT_PARAMETERS actual={0};RECT area={0};
+            if(FAILED(IDirect3DDevice9_GetSwapChain(device,0,&chain))||FAILED(IDirect3DSwapChain9_GetPresentParameters(chain,&actual))||!GetClientRect(window,&area))return 4;
+            char report[256];snprintf(report,sizeof(report),"{\"windowed\":%s,\"backbuffer_width\":%u,\"backbuffer_height\":%u,\"client_width\":%ld,\"client_height\":%ld}",actual.Windowed?"true":"false",actual.BackBufferWidth,actual.BackBufferHeight,area.right-area.left,area.bottom-area.top);
+            marker("D:\\probe-display.json",report);IDirect3DSwapChain9_Release(chain);
             marker("D:\\probe-result.json","{\"pe32\":true,\"native_dinput8\":true,\"system_directinput\":true,\"direct3d9\":true}");
             ready=TRUE;
         }

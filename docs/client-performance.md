@@ -1,3 +1,25 @@
+# 0.4.0 Thor Turnip acceptance (2026-09-15)
+
+User reports a substantial improvement, with the second run feeling slower. Evidence: `logs-4814310534970933887.zip` and a 10.62-second 1920×1080 video of the first run. Both use DXVK 2.5.3, real Turnip Adreno 740 (driver 18, Qualcomm 20803, software=false), three verified preflight presents, native D3DX30/35 and native/system DirectInput. Both game logs say `Quitting normally`. No fatal Vulkan/device-lost error or model initialization failure was found.
+
+| Measurement | First run | Second run |
+| --- | ---: | ---: |
+| Prefix preparation | 45.334 s (update) | 5.426 s (reuse) |
+| Until launch requested | 47.135 s | 6.730 s |
+| Global data initialization | 18 s | 15 s |
+| Game UI initialization | 13 s | 10 s |
+| Display updates/s, selected world window median | 30.18 | 30.27 |
+| Decode/apply ms/update, same window median | 0.86 | 1.08 |
+| Receive ms/update, same window median | 3.13 | 6.56 |
+
+Selected windows are 19:12:40–19:13:30 and 19:16:40–19:17:30 UTC, ten five-second samples each. Routes/frames are not controlled. Receive time includes waiting/transport and is not isolated CPU processing. First-run video at ~1 s shows DXVK 54.9 FPS with Android display ~30.2 updates/s. The configured Xtigervnc FrameRate is 30, so the display rates cannot rule out different game rendering rates above that cap. DXVK HUD FPS is not retained as a timestamped series in these logs.
+
+First-window sampled game main-thread masks are 0–7; second-window masks vary (0–4,6–7; 0–5; 0–6). Main-thread CPU utilization medians are about 79% and 61% of one core, respectively. The game is no longer restricted to CPU 0. Android's available masks vary; this does not prove thermal throttling or a scheduling bug. No device thermal/power-status samples are present. 0.4.1 adds those readings to the existing five-second display log without changing power or affinity policy.
+
+Both runs retain nonfatal unknown-world-message/GlobalLoad_chr warnings and DXVK gamma-ramp/unhandled-state warnings, and both progress to world entry and normal quit. MIDI synthesizer output is unavailable. These do not establish the cause of the subjective second-run slowdown. Keep future diagnosis separate from fullscreen/resolution acceptance. 1280×720 has 1.92 times the pixels of 800×600; compare at the same resolution before attributing a frame-rate change to fullscreen.
+
+---
+
 # Turnip/DXVK release: 0.4.0 (2026-09-15)
 
 The 0.3.10 device comparison (`logs-5171237087911039269.zip`) does not support a benefit from the OpenGL worker. Selected world movement windows show Single median Wine/display 6.46/6.77 per second and worker 6.10/6.47; routes and timings differ, so these are observations rather than a controlled regression measurement. Both prefixes reuse in about 5.43 seconds. Both retained game logs show similar global-asset times (40/38 seconds) and zone-UI times (51/52 seconds).

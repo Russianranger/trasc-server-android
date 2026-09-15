@@ -34,6 +34,7 @@ def main():
     for name in ('/session','/prefix','/logs'): Path(name).mkdir(exist_ok=True)
     renderer=os.environ.get('TRASC_TEST_RENDERER','software')
     request={'mode':'client','resolution':'800x600','executable':'eqgame.exe','native_dinput8':True,'native_d3dx':True,'renderer':renderer,'graphics_threading':'single' if renderer=='turnip' else 'opengl_worker','cpu_affinity':'available'}
+    if renderer=='turnip': request.update(resolution='1280x720',fullscreen=True)
     Path('/session/request.json').write_text(json.dumps(request))
     runner = subprocess.Popen(['python3','/opt/trasc-client/client_runner.py'])
     try:
@@ -62,6 +63,10 @@ def main():
             assert graphics['native_d3d9_loaded'],graphics
             assert graphics['vulkan']['presentation_frames']==3,graphics
             assert graphics['graphics_acceleration']=='software_test',graphics
+            geometry=json.loads(Path('/client/probe-display.json').read_text())
+            assert geometry=={'windowed':False,'backbuffer_width':1280,'backbuffer_height':720,'client_width':1280,'client_height':720},geometry
+            assert graphics['display_settings']['fullscreen'],graphics
+            print('PASS: actual 1280x720 fullscreen D3D9 backbuffer and game client area')
             print('PASS: real DXVK D3D9 and Vulkan X11 presentation; CI device is explicitly software, NOT Turnip hardware')
         def affinity_freed():
             log=Path('/logs/client-threads.log')
@@ -84,6 +89,7 @@ def main():
             types=recv(display,recv(display,1)[0]);assert 1 in types;display.sendall(b'\1')
             assert recv(display,4)==bytes(4);display.sendall(b'\1')
             width,height=struct.unpack('>HH',recv(display,4));recv(display,16)
+            if renderer=='turnip': assert (width,height)==(1280,720),(width,height)
             recv(display,struct.unpack('>I',recv(display,4))[0])
             # RGB888, little endian; raw rectangles only, matching the Android client.
             display.sendall(b'\0\0\0\0'+struct.pack('>BBBBHHHBBBxxx',32,24,0,1,255,255,255,16,8,0))
@@ -111,6 +117,7 @@ def main():
             summary={color.hex():count for color,count in colors.most_common(16)}
             Path('/logs/display-colors.json').write_text(json.dumps(summary,indent=2))
             assert colors[bytes([96,72,24])]>1000,('Direct3D output not visible in native display protocol',summary)
+            if renderer=='turnip': assert colors[bytes([96,72,24])]>width*height*.95,('Fullscreen image does not fill the display',summary)
             # Focus the probe interior, then deliver a keyboard press/release.
             display.sendall(struct.pack('>BBHH',5,1,200,200)+struct.pack('>BBHH',5,0,200,200))
             display.sendall(struct.pack('>BBHI',4,1,0,ord('t'))+struct.pack('>BBHI',4,0,0,ord('t')))

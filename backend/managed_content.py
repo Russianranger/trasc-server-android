@@ -8,28 +8,9 @@ import secrets
 import shutil
 import time
 import zipfile
+from client_display import RESOLUTIONS, update_ini, display_ini
 
 NEKTULOS = ('base/nektulos.map', 'nav/nektulos.nav')
-
-
-def update_ini(text, section, values):
-    """Update only selected INI values, preserving unrelated settings/comments."""
-    result, pending, active, found = [], dict(values), False, False
-    for line in text.splitlines():
-        stripped = line.strip()
-        if stripped.startswith('[') and stripped.endswith(']'):
-            if active:
-                result.extend(f'{k}={v}' for k, v in pending.items()); pending.clear()
-            active = stripped[1:-1].casefold() == section.casefold(); found |= active
-        elif active and '=' in line and not stripped.startswith((';', '#')):
-            key = line.split('=', 1)[0].strip()
-            match = next((k for k in values if k.casefold() == key.casefold()), None)
-            if match:
-                line = key + '=' + str(values[match]); pending.pop(match, None)
-        result.append(line)
-    if not found: result += ['', '[' + section + ']']
-    result.extend(f'{k}={v}' for k, v in pending.items())
-    return '\r\n'.join(result) + '\r\n'
 
 
 def digest(path):
@@ -157,7 +138,9 @@ class ManagedContent:
         client = self.work / 'client/current'
         if client.is_symlink() or not (client / 'trasc-client.json').is_file(): raise ValueError('Import a client ZIP first')
         resolution = args.get('resolution', '800x600')
-        if resolution not in ('640x480', '800x600', '960x540', '1024x768'): raise ValueError('Unsupported client resolution')
+        if resolution not in RESOLUTIONS: raise ValueError('Unsupported client resolution')
+        fullscreen = args.get('fullscreen', False)
+        if not isinstance(fullscreen, bool): raise ValueError('Invalid fullscreen option')
         self.export_client({})
         backup = self.work / 'backups/client-setup' / (time.strftime('%Y%m%d-%H%M%S') + '-' + secrets.token_hex(3))
         backup.mkdir(parents=True)
@@ -176,9 +159,7 @@ class ManagedContent:
         changes[host] = '[LoginServer]\r\nHost=' + self.config['ip'] + ':' + str(self.config['login_port']) + '\r\n'
         ini = existing(client, 'eqclient.ini')
         text = ini.read_text(encoding='cp1252') if ini.exists() else ''
-        width, height = resolution.split('x')
-        text = update_ini(text, 'Defaults', {'WindowedMode':'TRUE'})
-        changes[ini] = update_ini(text, 'VideoMode', {'Width':width,'Height':height,'WindowedWidth':width,'WindowedHeight':height})
+        changes[ini] = display_ini(text, resolution, fullscreen)
         record = {'state':'prepared','files':{},'created':time.time()}
         for target in changes:
             relative = str(target.relative_to(client)); safe_path(client, relative)
@@ -205,7 +186,7 @@ class ManagedContent:
             raise
         finally:
             for target in changes: target.with_name(target.name + '.trasc-new').unlink(missing_ok=True)
-        return {'message':'Client data, login address and windowed resolution prepared. Existing files saved in ' + str(backup.relative_to(self.work)), 'backup':str(backup.relative_to(self.work))}
+        return {'message':'Client data, login address and display settings prepared. Existing files saved in ' + str(backup.relative_to(self.work)), 'backup':str(backup.relative_to(self.work))}
 
     def import_client_zip(self, args):
         from engine import atomic_json, safe_path, extract_archive

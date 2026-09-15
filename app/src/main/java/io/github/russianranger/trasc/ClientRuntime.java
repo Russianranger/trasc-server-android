@@ -125,7 +125,7 @@ final class ClientRuntime {
             String cpuAffinity=options.optString("cpu_affinity","available");
             if(!Arrays.asList("available","game").contains(cpuAffinity))throw new IOException("Unsupported CPU affinity");
             if(!Arrays.asList("software","virgl","turnip").contains(renderer))throw new IOException("Unsupported graphics option");
-            if(!Arrays.asList("desktop","client").contains(mode)||!Arrays.asList("640x480","800x600","960x540","1024x768").contains(resolution))throw new IOException("Unsupported client launch option");
+            if(!Arrays.asList("desktop","client").contains(mode)||!Arrays.asList("640x480","800x600","960x540","1024x768","1280x720").contains(resolution))throw new IOException("Unsupported client launch option");
             if(mode.equals("client")&&options.optBoolean("native_d3dx",true)&&!DirectXInstaller.installed(directx))throw new IOException("Install DirectX model helpers in the Client tab first, or disable model helpers for a Wine comparison");
             if(mode.equals("client")&&!new File(client,"trasc-client.json").isFile())throw new IOException("Import your ROF2 client ZIP first");
             String executable=mode.equals("client")?json(new File(client,"trasc-client.json")).getString("executable"):"";
@@ -142,10 +142,10 @@ final class ClientRuntime {
                 .put("diagnostic_logging",options.optBoolean("diagnostic_logging",false)).put("native_d3dx",mode.equals("client")&&options.optBoolean("native_d3dx",true)).put("renderer",renderer).put("cpu_profile",cpuProfile);
             request.put("runtime_mode",runtimeMode).put("storage",new JSONObject().put("kind","app_private_internal")
                 .put("android_directory",client.getCanonicalPath()).put("windows_drive","D:").put("shared_storage",false));
-            request.put("graphics_threading",graphicsThreading).put("cpu_affinity",cpuAffinity);
+            request.put("graphics_threading",graphicsThreading).put("cpu_affinity",cpuAffinity).put("fullscreen",mode.equals("client")&&options.optBoolean("fullscreen",true));
             RuntimeManager.write(new File(run,"request.json"),request.toString());
             File backend=new File(server.home,"client-backend");backend.mkdirs();
-            for(String name:new String[]{"client_runner.py","client_metrics.py","client_vulkan.py","graphics_probe.py","runtime_probe.py","wined3d.dll","wined3d-patch.json"})
+            for(String name:new String[]{"client_runner.py","client_display.py","client_metrics.py","client_vulkan.py","graphics_probe.py","runtime_probe.py","wined3d.dll","wined3d-patch.json"})
                 try(InputStream in=context.getAssets().open(name)){RuntimeManager.copy(in,new File(backend,name));}
             if(renderer.equals("turnip")) {
                 status="Preparing bundled Turnip and DXVK…";

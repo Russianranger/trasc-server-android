@@ -1,3 +1,16 @@
+TRASC Server Android **0.4.1** adds **1280×720 fullscreen** and a compact in-game controls menu.
+
+- The Android display fills the screen in landscape. System bars hide during play and can be revealed with an edge swipe. The permanent toolbar is replaced by a translucent gear at the top right.
+- Gear opens **Back to Client**, **Keyboard**, **Esc** and session status over the game. Tap the gear, outside the panel or Android Back to collapse it. Opening controls releases held game input; closing them returns input to the game. Keyboard Type and Send + Enter remain available.
+- Choose **1280x720** and enable **Fullscreen game** in Client. Launch applies the game resolution and removes its window border. Only display INI keys change, with original and previous byte-exact copies under `client/prefix/trasc-display-originals`. Disable Fullscreen game for the previous windowed behavior. Existing saved resolution is retained until changed.
+- Turnip and the successful CPU-affinity path remain in place. The display delivery target remains 30 updates/sec for this resolution/UI pass. Diagnostic logs now include Android thermal status, battery-saver state, focus, menu visibility and view dimensions.
+
+**Device test:** stop both runtimes and update in place. Start the server, select **Turnip + DXVK / 1280x720 / Fullscreen game / Balanced / Automatic / Allow available cores**. Keep native DLL/model helpers enabled and shadows/verbose logging off. Launch ROF2, verify the game fills the screen without a title bar, and check taps near each corner. Open/collapse the gear, test Keyboard and Esc, then Back to Client and Return to client. Repeat the same route after relaunching and export logs after the second run. Include the DXVK FPS seen in each run. If fullscreen fails, stop, export logs and disable Fullscreen game before relaunching. No Prepare, runtime download, prefix repair, client reimport or server rebuild is needed.
+
+0.4.0 device logs verify real Turnip Adreno 740 rendering and normal game exits in both sessions. Loading was faster on the second run; the existing 30/s display cap hides possible differences in game FPS above that. Thermal throttling is not established. See `docs/client-performance.md` for the measured comparison.
+
+---
+
 TRASC Server Android **0.4.0** adds **Turnip + DXVK (experimental)** and addresses the observed game CPU restriction.
 
 - Turnip's Qualcomm driver, Vulkan presentation probe and DXVK D3D9 module are bundled with the APK. The first launch checks actual hardware and presentation. If the check fails, select VirGL and export logs.
