@@ -18,4 +18,6 @@ jobs:
           path: |
             backend-assets/wined3d.dll
             backend-assets/wined3d-patch.json
+            backend-assets/wineserver
+            backend-assets/wineserver-patch.json
             dist/wined3d-sources.tar.gz

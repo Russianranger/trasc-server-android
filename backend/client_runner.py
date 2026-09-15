@@ -345,6 +345,8 @@ class Supervisor:
                         BOX64_LOG='1', BOX64_NOBANNER='0', BOX64_PATH='/opt/wine/bin',
                         BOX64_LD_LIBRARY_PATH='/usr/lib/x86_64-linux-gnu:/lib/x86_64-linux-gnu:/opt/wine/lib/wine/x86_64-unix',
                         LIBGL_ALWAYS_SOFTWARE='1', GALLIUM_DRIVER='llvmpipe', LP_NUM_THREADS='4')
+        if Path(__file__).with_name('wineserver-patch.json').is_file():
+            self.env['WINESERVER'] = str(Path(__file__).with_name('wineserver'))
         # Wine 10's supported per-launch configuration overrides registry state.
         # No prefix edits: stop/relaunch switches modes independently of CPU flags.
         self.env['WINE_D3D_CONFIG'] = 'csmt=' + ('1' if request.get('graphics_threading', 'multi') == 'multi' else '0')
@@ -512,6 +514,12 @@ class Supervisor:
         if previous_state.is_file() and not previous_state.is_symlink() and previous_state.stat().st_size <= 131072:
             shutil.copyfile(previous_state, LOGS/'client-state.previous.json')
         self.configure_cpu()
+        if 'WINESERVER' in self.env:
+            patch = json.loads(Path(__file__).with_name('wineserver-patch.json').read_text())
+            binary = Path(self.env['WINESERVER'])
+            if binary.is_symlink() or not binary.is_file() or hashlib.sha256(binary.read_bytes()).hexdigest() != patch['sha256']:
+                raise RuntimeError('Bundled Wine server failed verification')
+            self.update(wineserver_patch=patch['patch'], wineserver_sha256=patch['sha256'], wineserver_exit_grace_seconds=patch['exit_grace_seconds'])
         native_log = LOGS / 'client-proot.log'
         observed = False
         if native_log.is_file():
@@ -602,7 +610,7 @@ class Supervisor:
 
     def stop(self):
         try:
-            subprocess.run(['/usr/local/bin/box64', '/opt/wine/bin/wineserver', '-k'], env=self.env,
+            subprocess.run(['/usr/local/bin/box64', self.env.get('WINESERVER', '/opt/wine/bin/wineserver'), '-k'], env=self.env,
                            timeout=10, stdin=subprocess.DEVNULL, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
         except (OSError, subprocess.TimeoutExpired): pass
         for child in reversed(self.children):

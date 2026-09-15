@@ -49,6 +49,8 @@ def main():
         graphics=json.loads(Path('/session/status.json').read_text())
         assert graphics['graphics_backend']==renderer,graphics
         assert graphics['wined3d_patch']=='legacy-specular-fog-v1',graphics
+        assert graphics['wineserver_patch']=='translated-exit-grace-v1',graphics
+        assert graphics['wineserver_exit_grace_seconds']==8,graphics
         assert graphics['cpu_profile']=='balanced',graphics
         assert graphics['prefix_update']=='update',graphics
         assert graphics['cpu_settings']['BOX64_DYNAREC_STRONGMEM']=='1',graphics
@@ -136,7 +138,7 @@ def main():
         production_env=client_runner.Supervisor(request).env
         # CI-only teardown evidence for every small auxiliary Windows process.
         # The supervised game retains production logging and all exit checks.
-        env=dict(production_env,BOX64_LOG='2',WINEDEBUG=production_env.get('WINEDEBUG','')+',trace+process,trace+thread,trace+module')
+        env=dict(production_env,BOX64_LOG='1',WINEDEBUG=production_env.get('WINEDEBUG','')+',trace+process,trace+thread,trace+module')
         command=['/usr/local/bin/box64','/opt/wine/bin/wine',r'D:\eqgame.exe','--check-directinput']
         with Path('/logs/client-proxy-regression.log').open('wb') as output:
             for override,expected in [('n',23),('n,b',0)]:
@@ -197,7 +199,7 @@ def main():
         assert system.stat().st_mtime_ns==original_mtime,'Warm boot rewrote Wine system files'
         if renderer=='turnip':
             fallback=client_runner.Supervisor(warm_request).env
-            fallback=dict(fallback,BOX64_LOG='2',WINEDEBUG=fallback.get('WINEDEBUG','')+',trace+process,trace+thread,trace+module')
+            fallback=dict(fallback,BOX64_LOG='1',WINEDEBUG=fallback.get('WINEDEBUG','')+',trace+process,trace+thread,trace+module')
             with Path('/logs/vulkan-fallback.log').open('wb') as out:
                 result=subprocess.run(['/usr/local/bin/box64','/opt/wine/bin/wine',r'D:\textures.exe'],cwd='/client',
                     env=dict(fallback,WINEDLLOVERRIDES=fallback['WINEDLLOVERRIDES']+';d3dx9_35=n,b'),stdout=out,stderr=out,timeout=90)
@@ -228,7 +230,7 @@ def check_compatibility_exit(env):
     started=time.monotonic()
     with Path('/logs/compatibility-textures.log').open('wb') as out:
         child=subprocess.Popen(['/usr/local/bin/box64','/opt/wine/bin/wine',r'D:\textures.exe'],cwd='/client',
-            env=dict(env,BOX64_LOG='2',WINEDLLOVERRIDES=env['WINEDLLOVERRIDES']+';d3dx9_35=n,b',
+            env=dict(env,BOX64_LOG='1',WINEDLLOVERRIDES=env['WINEDLLOVERRIDES']+';d3dx9_35=n,b',
                      WINEDEBUG=env.get('WINEDEBUG','')+',trace+process,trace+module'),stdout=out,stderr=out)
         try:
             while child.poll() is None:

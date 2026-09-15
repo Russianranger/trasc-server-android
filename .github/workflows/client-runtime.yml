@@ -24,6 +24,7 @@ jobs:
         with:
           name: client-vulkan
       - run: cp backend-assets/wined3d-patch.json backend/
+      - run: cp backend-assets/wineserver backend-assets/wineserver-patch.json backend/ && chmod +x backend/wineserver
       - run: cp backend-assets/turnip.so backend-assets/vulkan-probe backend-assets/dxvk-d3d9.dll backend-assets/vulkan-bundle.json backend/ && chmod +x backend/vulkan-probe
       - uses: actions/cache/restore@v4
         id: client-image
@@ -48,6 +49,7 @@ jobs:
           sudo apt-get update
           sudo apt-get install -y gcc-mingw-w64-i686
           mkdir -p runtime-work/client-test/client runtime-work/client-test/logs
+          cc -shared -fPIC -O2 -Wall -Wextra -Werror tests/client_exit_delay.c -o runtime-work/client-test/client/exit-delay.so
           i686-w64-mingw32-gcc tests/client_probe.c -o runtime-work/client-test/client/eqgame.exe -mwindows -ld3d9
           i686-w64-mingw32-gcc tests/client_textures.c -o runtime-work/client-test/client/textures.exe -mwindows -ld3d9
           i686-w64-mingw32-gcc tests/client_models.c -o runtime-work/client-test/client/models.exe -mwindows -ld3d9
@@ -69,7 +71,7 @@ jobs:
             -v "$PWD/runtime-work/client-test/client:/client" \
             -v "$PWD/runtime-work/client-test/logs:/logs" \
             -v "$PWD/runtime-work/directx-test/output/directx:/directx:ro" \
-            trasc-client:1 python3 /tests/integration_client.py
+            trasc-client:1 bash -c 'python3 /tests/integration_client.py && python3 /tests/wine_exit_grace.py'
       - uses: actions/upload-artifact@v4
         if: always()
         with:

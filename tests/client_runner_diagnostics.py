@@ -31,7 +31,7 @@ def observed_run(self, args, timeout=180, env=None, label='Wine setup'):
     # Limit additional Wine tracing to the small PE32 cmd /c exit 0 probe.
     traced = dict(env or self.env)
     traced['WINEDEBUG'] = traced.get('WINEDEBUG', '') + ',trace+process,trace+thread'
-    traced['BOX64_LOG'] = '2'
+    traced['BOX64_LOG'] = '1'
     before = len(self.children)
     done = threading.Event()
     evidence = {'label':label, 'before':memory_counters(), 'samples':[]}
