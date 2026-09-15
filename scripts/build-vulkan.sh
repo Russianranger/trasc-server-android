@@ -7,7 +7,7 @@ vulkan_container=$(docker create trasc-vulkan:1)
 trap 'docker rm -f "$vulkan_container" >/dev/null 2>&1 || true' EXIT
 docker cp "$vulkan_container:/out/." backend-assets/
 docker cp "$vulkan_container:/build/mesa.tar.xz" runtime-work/vulkan-sources/mesa-24.3.4.tar.xz
-curl -fL --retry 3 https://github.com/doitsujin/dxvk/releases/download/v2.5.3/dxvk-2.5.3.tar.gz -o runtime-work/dxvk-2.5.3.tar.gz
+curl -fL --retry 3 'https://github.com/doitsujin/dxvk/releases/download/v2.5.3/dxvk-2.5.3.tar.gz?download=1' -o runtime-work/dxvk-2.5.3.tar.gz
 echo 'd8e6ef7d1168095165e1f8a98c7d5a4485b080467bb573d2a9ef3e3d79ea1eb8  runtime-work/dxvk-2.5.3.tar.gz' | sha256sum -c -
 tar -xzf runtime-work/dxvk-2.5.3.tar.gz -C runtime-work
 cp runtime-work/dxvk-2.5.3/x32/d3d9.dll backend-assets/dxvk-d3d9.dll
