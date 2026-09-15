@@ -128,10 +128,10 @@ class ClientTests(unittest.TestCase):
         self.assertEqual(worker.env['WINE_D3D_CONFIG'],'csmt=0')
         self.assertEqual(worker.env['mesa_glthread'],'true')
         self.assertEqual(single.env['mesa_glthread'],'false')
-        self.assertEqual({k:v for k,v in worker.env.items() if k!='mesa_glthread'},
-                         {k:v for k,v in single.env.items() if k!='mesa_glthread'})
-        self.assertEqual({k:v for k,v in multi.env.items() if k!='WINE_D3D_CONFIG'},
-                         {k:v for k,v in single.env.items() if k!='WINE_D3D_CONFIG'})
+        self.assertEqual({k:v for k,v in worker.env.items() if k not in ('mesa_glthread','TRASC_CLIENT_LAUNCH')},
+                         {k:v for k,v in single.env.items() if k not in ('mesa_glthread','TRASC_CLIENT_LAUNCH')})
+        self.assertEqual({k:v for k,v in multi.env.items() if k not in ('WINE_D3D_CONFIG','TRASC_CLIENT_LAUNCH')},
+                         {k:v for k,v in single.env.items() if k not in ('WINE_D3D_CONFIG','TRASC_CLIENT_LAUNCH')})
         with self.assertRaisesRegex(ValueError,'graphics threading'):
             client_runner.validate_request(dict(request,graphics_threading='unknown'))
 
@@ -168,6 +168,20 @@ class ClientTests(unittest.TestCase):
         self.assertEqual(sample['mesa_gl_workers'][0]['allowed_cpus'],'0-5')
         self.assertEqual(sample['mesa_gl_workers'][0]['last_cpu'],3)
         self.assertNotIn(40,[t['pid'] for t in sample['threads']])
+
+    def test_launch_marker_finds_detached_wine_without_collecting_other_environments(self):
+        proc=self.root/'proc';proc.mkdir();(proc/'self').symlink_to(proc/'10')
+        for pid,marker in [(10,'session-a'),(20,'session-a'),(30,'session-a-old')]:
+            p=proc/str(pid);task=p/'task'/str(pid);task.mkdir(parents=True)
+            (p/'environ').write_bytes(('PRIVATE=not-for-logs\0TRASC_CLIENT_LAUNCH='+marker+'\0').encode())
+            fields=['0']*40;fields[0]='R'
+            (task/'stat').write_text(str(pid)+' (wine:gl0) '+' '.join(fields))
+            (task/'status').write_text('Cpus_allowed_list:\t0-3\n')
+            # No children file: all processes have reparented independently.
+        sample=client_metrics.process_threads(10,proc,launch_token='session-a')
+        self.assertEqual({w['pid'] for w in sample['mesa_gl_workers']},{10,20})
+        self.assertFalse(sample['incomplete'])
+        self.assertNotIn('PRIVATE',json.dumps(sample));self.assertNotIn('session-a',json.dumps(sample))
 
     def test_stream_rotation_keeps_load_evidence_and_split_fatal_error(self):
         path=self.root/'client-wine.log'

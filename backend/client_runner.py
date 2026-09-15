@@ -317,6 +317,7 @@ class Supervisor:
         self.wine_log = None
         self.log_thread = None
         self.last_thread_sample = 0
+        self.launch_token = secrets.token_hex(16)
         self.started_monotonic = time.monotonic()
         self.status = {'phase': 'starting', 'mode': request['mode'], 'resolution': request['resolution'],
                        'native_dinput8_requested': request['mode']=='client' and request.get('native_dinput8', True), 'native_loaded': False,
@@ -344,6 +345,7 @@ class Supervisor:
         # Keep old modes explicit so switching back removes the experiment.
         self.env['mesa_glthread'] = 'true' if request.get('graphics_threading') == 'opengl_worker' else 'false'
         self.status['mesa_glthread_requested'] = self.env['mesa_glthread'] == 'true'
+        self.env['TRASC_CLIENT_LAUNCH'] = self.launch_token
         if request.get('renderer','software') == 'virgl':
             # swrast's virpipe transport forwards rendering to the native GLES
             # server. LIBGL_ALWAYS_SOFTWARE selects that headless DRI loader;
@@ -546,7 +548,7 @@ class Supervisor:
             if time.monotonic() - self.last_thread_sample >= 10:
                 self.last_thread_sample = time.monotonic()
                 before = time.monotonic()
-                sample = process_threads(launcher.pid)
+                sample = process_threads(launcher.pid, launch_token=self.launch_token)
                 sample['collection_seconds'] = round(time.monotonic()-before, 4)
                 self.status['mesa_glthread_observed'] = bool(sample['mesa_gl_workers'])
                 # Keep the once-per-second status file small. Full thread

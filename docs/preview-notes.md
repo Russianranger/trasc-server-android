@@ -1,7 +1,7 @@
 TRASC Server Android **0.3.10** adds **Single + OpenGL worker (experimental)** to Graphics threading.
 
 - Wine stays single-threaded while Mesa 22.3 batches GL commands on its native worker (`mesa_glthread=true`). Existing Multithreaded and Single thread explicitly keep this worker off. Switching modes does not repair or change the prefix.
-- Exported state distinguishes requested batching from a worker actually observed in the launcher's Linux descendants. `client-threads.log` samples bounded thread CPU ticks, last CPU and available CPU masks every ten seconds. It does not log command lines, environments or unrelated processes, and does not change CPU affinity or Android policy.
+- Exported state distinguishes requested batching from a worker actually observed in the current Wine launch. `client-threads.log` samples bounded thread CPU ticks, last CPU and available CPU masks every ten seconds. It does not log command lines, environments or unrelated processes, and does not change CPU affinity or Android policy.
 - Preserve a bounded copy of ROF2's previous `dbg.txt` as `client-game.previous.log` before a new client launch, and preserve `client-state.previous.json`. Current startup diagnostics stay in their original location. This fixes the missing first-run loading evidence in the latest comparison.
 - Latest 0.3.9 movement samples: Wine median approximately 6.0 presents/s with Multithreaded and 7.7 with Single thread. Android bitmap delivery generally tracked these rates; decode/apply was about 1–1.5 ms per update. These are separate scene samples, not identical-path benchmarks. The previous run's game startup log was not retained, so its asset/UI durations cannot be reconstructed precisely.
 
