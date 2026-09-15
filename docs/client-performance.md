@@ -10,7 +10,18 @@ The launcher was explicitly setting `PROOT_NO_SECCOMP=1`, forcing PRoot to stop 
 
 New logs: `client-runtime-probe.log`, `client-proot.log` (and `.previous.log`), plus storage and accelerator fields in `client-state.json`. Native helper activation is checked independently of the selected option. No client files are moved or rewritten by the preflight. The latest inherited CPU mask is 0–5; this does not establish which cores the later Wine/game threads can use. No affinity or Android scheduling controls were changed.
 
-Pending: full CI/release verification and device comparison. Keep VirGL/800×600/Balanced constant and compare Automatic vs Runtime Compatibility. Turnip remains a separate graphics milestone below.
+Published as 0.3.8 from `45311704d0f03f6004d7abe0f9866831b3a7d9f5`; [CI attempt 2](https://github.com/Russianranger/trasc-server-android/actions/runs/34915871917/attempts/2) passed all release gates, including actual native acceleration events in both PRoot renderers. Same underlying runtime images and signing certificate; APK update only.
+
+| PRoot test, successful 0.3.8 run | Full-update prefix | Repeat prefix | Repeat total until launch request |
+| --- | ---: | ---: | ---: |
+| Software | 28.054 s | 3.007 s | 3.640 s |
+| VirGL GLES | 27.252 s | 3.006 s | 3.840 s |
+
+Previous 0.3.7 PRoot/VirGL values were 89.356 / 6.415 / 7.974 seconds. These are separate CI observations, not a controlled device benchmark; host graphics uses llvmpipe GLES, not the Thor's Adreno. Actual game performance remains pending.
+
+The first CI attempt had one SIGKILL (`-9`) in the intentionally native-only DirectInput negative control after successful rendering/input. An unchanged retry passed that exact assertion (23), the corrected control (0), models, shaders and all remaining gates. Cause is not established; no assertion was weakened. Preserve this diagnostic if termination recurs (details in HANDOFF).
+
+Device comparison: keep VirGL/800×600/Balanced constant, use Automatic runtime, launch twice to account for the one-time prefix update, then compare Runtime Compatibility if needed. Export logs with actual acceleration evidence. Turnip remains a separate graphics milestone below.
 
 ---
 
