@@ -127,7 +127,7 @@ All 0.2.0 management features remain included:
 - **Client:** ZIP import, private temporary-ZIP cleanup, DLL inventory, saved controller-to-keyboard/mouse bindings and a focused input diagnostic. The separate client runtime adds an experimental launch/display/DLL-loading path.
 - **Continuity:** implementation decisions, validation and remaining work are recorded in `docs/HANDOFF.md`.
 
-For the current device pass, use the 0.3.8 sequence at the top of these notes. Export Logs after the attempt.
+For the current device pass, use the comparison sequence at the top of these notes. Export Logs after the attempt.
 
 Backups contain accounts, credentials and client files and are not encrypted. Save them privately outside the app. Only the private temporary copy of an imported session/client ZIP is removed; the selected source document remains intact.
 
