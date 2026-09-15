@@ -120,6 +120,8 @@ final class ClientRuntime {
             if(!Arrays.asList("balanced","compatibility").contains(cpuProfile))throw new IOException("Unsupported CPU profile");
             String runtimeMode=options.optString("runtime_mode","auto");
             if(!Arrays.asList("auto","compatibility").contains(runtimeMode))throw new IOException("Unsupported runtime mode");
+            String graphicsThreading=options.optString("graphics_threading","multi");
+            if(!Arrays.asList("multi","single").contains(graphicsThreading))throw new IOException("Unsupported graphics threading");
             if(!Arrays.asList("software","virgl").contains(renderer))throw new IOException("Unsupported graphics option");
             if(!Arrays.asList("desktop","client").contains(mode)||!Arrays.asList("640x480","800x600","960x540","1024x768").contains(resolution))throw new IOException("Unsupported client launch option");
             if(mode.equals("client")&&options.optBoolean("native_d3dx",true)&&!DirectXInstaller.installed(directx))throw new IOException("Install DirectX model helpers in the Client tab first, or disable model helpers for a Wine comparison");
@@ -132,10 +134,13 @@ final class ClientRuntime {
                 RuntimeManager.write(new File(server.work,"logs/client-prefix-repair.json"),new JSONObject().put("created_utc",java.time.Instant.now().toString()).put("previous_prefix",saved==null?"none":server.work.toPath().relativize(saved.toPath()).toString()).toString(2));
             }
             TarExtractor.remove(run);TarExtractor.remove(tmp);run.mkdirs();tmp.mkdirs();prefix.mkdirs();client.mkdirs();
+            File presentationLog=new File(server.work,"logs/client-presentation.log");
+            if(presentationLog.exists())Files.move(presentationLog.toPath(),new File(server.work,"logs/client-presentation.previous.log").toPath(),StandardCopyOption.REPLACE_EXISTING);
             JSONObject request=new JSONObject().put("mode",mode).put("resolution",resolution).put("executable",executable).put("native_dinput8",options.optBoolean("native_dinput8",true))
                 .put("diagnostic_logging",options.optBoolean("diagnostic_logging",false)).put("native_d3dx",mode.equals("client")&&options.optBoolean("native_d3dx",true)).put("renderer",renderer).put("cpu_profile",cpuProfile);
             request.put("runtime_mode",runtimeMode).put("storage",new JSONObject().put("kind","app_private_internal")
                 .put("android_directory",client.getCanonicalPath()).put("windows_drive","D:").put("shared_storage",false));
+            request.put("graphics_threading",graphicsThreading);
             RuntimeManager.write(new File(run,"request.json"),request.toString());
             File backend=new File(server.home,"client-backend");backend.mkdirs();
             for(String name:new String[]{"client_runner.py","graphics_probe.py","runtime_probe.py","wined3d.dll","wined3d-patch.json"})

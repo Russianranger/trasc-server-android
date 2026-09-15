@@ -27,7 +27,9 @@ WINE_LOG_LIMIT = 8 * 1024 * 1024
 def wine_debug(verbose=False):
     # +seh expands each routine OutputDebugString exception into dozens of
     # lines. ROF2 generated 1.06 GB of this in one session through PRoot.
-    normal = '-all,+timestamp,+pid,err+all,trace+loaddll'
+    # Wine's fps channel emits one aggregate per swapchain every 1.5 seconds,
+    # unlike per-frame frametime / d3d traces. Keep the latter disabled.
+    normal = '-all,+timestamp,+pid,err+all,trace+loaddll,trace+fps'
     return normal + (',warn+all,fixme+all,trace+module,trace+seh' if verbose else '')
 
 
@@ -64,6 +66,7 @@ class WineLog:
         self.error = None
         self.pending = b''
         self.trace = ''
+        self.fps_streams = set()
 
     def observe(self, chunk):
         self.pending += chunk
@@ -74,6 +77,16 @@ class WineLog:
         observed = dll_status(text)
         models, model_evidence = model_dll_status(text)
         with self.lock:
+            for line in text.splitlines():
+                fps = re.search(r':([0-9a-f]+):[0-9a-f]+:trace:fps:wined3d_cs_exec_present ((?:0x)?[0-9a-f]+) @ approx ([0-9]+\.[0-9]+)fps', line, re.I)
+                if fps:
+                    stream = fps[1].lower() + ':' + fps[2].lower()
+                    # Wine's first interval starts at tick zero, not first Present.
+                    if stream in self.fps_streams and 0 <= float(fps[3]) <= 10000:
+                        self.fields['wine_present'] = {'per_second': float(fps[3]), 'sampled_at': time.time(), 'stream': stream}
+                    if len(self.fps_streams) < 64: self.fps_streams.add(stream)
+                threading = re.search(r'Setting multithreaded command stream to (0x1|0x0|1|0)\.', line)
+                if threading: self.fields['graphics_threading_observed'] = 'multi' if int(threading[1], 0) else 'single'
             self.fields['wine_log_bytes'] += len(chunk)
             self.fields['model_libraries_loaded'] = {**self.fields['model_libraries_loaded'], **models}
             self.fields['model_dll_evidence'] = list(dict.fromkeys(self.fields['model_dll_evidence'] + model_evidence))[-8:]
@@ -135,6 +148,7 @@ def validate_request(request):
     if request.get('renderer', 'software') not in ('software', 'virgl'): raise ValueError('Unsupported graphics option')
     if request.get('cpu_profile', 'balanced') not in ('balanced', 'compatibility'): raise ValueError('Unsupported CPU profile')
     if request.get('runtime_mode', 'auto') not in ('auto', 'compatibility'): raise ValueError('Unsupported runtime mode')
+    if request.get('graphics_threading', 'multi') not in ('multi', 'single'): raise ValueError('Unsupported graphics threading')
     if not isinstance(request.get('native_d3dx', False), bool): raise ValueError('Invalid model-library option')
     if not isinstance(request.get('diagnostic_logging', False), bool): raise ValueError('Invalid Wine diagnostic option')
     if request['mode'] == 'client':
@@ -285,6 +299,7 @@ class Supervisor:
                        'renderer': 'Checking graphics driver', 'graphics_backend': request.get('renderer','software'),
                        'graphics_acceleration': 'unknown', 'started_at': time.time()}
         self.status.update(cpu_profile=request.get('cpu_profile', 'balanced'), timings_seconds={})
+        self.status['graphics_threading'] = request.get('graphics_threading', 'multi')
         self.status.update(runtime_mode=request.get('runtime_mode', 'auto'),
                            runtime_acceleration=request.get('runtime_acceleration', 'unspecified'),
                            storage=request.get('storage', {}))
@@ -295,6 +310,9 @@ class Supervisor:
                         BOX64_LOG='1', BOX64_NOBANNER='0', BOX64_PATH='/opt/wine/bin',
                         BOX64_LD_LIBRARY_PATH='/usr/lib/x86_64-linux-gnu:/lib/x86_64-linux-gnu:/opt/wine/lib/wine/x86_64-unix',
                         LIBGL_ALWAYS_SOFTWARE='1', GALLIUM_DRIVER='llvmpipe', LP_NUM_THREADS='4')
+        # Wine 10's supported per-launch configuration overrides registry state.
+        # No prefix edits: stop/relaunch switches modes independently of CPU flags.
+        self.env['WINE_D3D_CONFIG'] = 'csmt=' + ('0' if request.get('graphics_threading', 'multi') == 'single' else '1')
         if request.get('renderer','software') == 'virgl':
             # swrast's virpipe transport forwards rendering to the native GLES
             # server. LIBGL_ALWAYS_SOFTWARE selects that headless DRI loader;

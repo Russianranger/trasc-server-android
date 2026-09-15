@@ -79,5 +79,15 @@ int WINAPI WinMain(HINSTANCE instance,HINSTANCE prev,LPSTR command,int show) {
     IDirect3DDevice9_SetRenderState(dev,D3DRS_LIGHTING,FALSE);IDirect3DDevice9_SetRenderState(dev,D3DRS_ZENABLE,FALSE);IDirect3DDevice9_SetRenderState(dev,D3DRS_CULLMODE,D3DCULL_NONE);
     int result=0;if(!strstr(command,"--shader-only"))result=artwork();
     if(!result)result=specular_shader("vs_1_1");if(!result)result=specular_shader("vs_2_0");
+    if(!result&&strstr(command,"--present-telemetry")) {
+        /* Exercise Wine's real aggregate fps channel, not a fabricated log.
+         * Fixed idle work is intentionally NOT a ROF2 performance benchmark. */
+        DWORD until=GetTickCount()+4000;
+        while(GetTickCount()<until) {
+            HR(IDirect3DDevice9_Clear(dev,0,NULL,D3DCLEAR_TARGET,0xff112233,1,0));
+            HR(IDirect3DDevice9_Present(dev,NULL,NULL,NULL,NULL));
+            Sleep(30);
+        }
+    }
     IDirect3DDevice9_Release(dev);IDirect3D9_Release(d3d);DestroyWindow(window);fflush(stdout);return result;
 }

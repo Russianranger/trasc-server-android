@@ -1,3 +1,26 @@
+# New evidence and change: 0.3.9 (2026-09-15)
+
+Bundle `logs-7195588022919037426.zip`, screenshot and 10.68-second screen recording confirm 0.3.8 loads faster but world movement remains uneven with shadows disabled. Actual Adreno 740, native/system DirectInput and D3DX30/35, patched Wine shaders and PRoot acceleration remain verified. The client camps and quits normally; no repeat of the earlier CI SIGKILL was observed in these device logs.
+
+| Device stage | Prior 0.3.7 | Latest 0.3.8 |
+| --- | ---: | ---: |
+| Repeat Wine prefix | 15.697 s | 6.642 s |
+| Repeat total to launch request | 18.138 s | 8.175 s |
+| Global assets | 102 s | 46 s (13:10:49–13:11:35 UTC) |
+| In-zone UI | 48 s | 35 s (13:12:20–13:12:55 UTC) |
+
+These are different sessions, not controlled FPS benchmarks. The recording's encoded frame rate and the VNC session's 3,432 updates include duplicated/partial frames and idle periods; neither is game FPS. Approximate free physical memory at world initialization is 8.9 GB, so this log does not establish memory exhaustion. Remaining one-off invalid-size/framebuffer and insufficient-uniform messages merit follow-up, but there is no repeating graphics/log flood explaining the full slowdown.
+
+The decoder allocated a new int array per raw rectangle (1.83 MiB for a full 800×600 update) plus row buffers and CopyRect arrays. It now reuses bounded storage and decodes in up-to-64-KiB blocks. This removes avoidable allocation pressure; current evidence does not establish that decoding is the dominant cost. No pixel-format, display protocol or shader-capability change.
+
+Wine 10 already provides [aggregate presentation counters in cs.c](https://github.com/wine-mirror/wine/blob/wine-10.0/dlls/wined3d/cs.c) and [WINE_D3D_CONFIG=csmt=0/1 in wined3d_main.c](https://github.com/wine-mirror/wine/blob/wine-10.0/dlls/wined3d/wined3d_main.c). The release uses these existing mechanisms: explicit default multi threading, optional single threading, no registry edits. Aggregate `trace+fps` is enabled alongside quiet default errors/DLL evidence; per-frame and D3D tracing stay off. The first sample for each process/swapchain is excluded, values carry timestamps and actual mode comes from Wine's own initialization message.
+
+Android records RFB updates, new bitmap draw submissions (coalescing repeated invalidations), transfer/decode and Canvas submission durations every five seconds in `client-presentation.log`. It retains a previous session and bounded overflow segment. `client-state.json` records the latest `wine_present` and `graphics_threading_observed`. Low Wine and Display rates suggest upstream game/translation/render/presentation work; much higher Wine rate than new bitmap draws while moving points toward delivery/readback/display work. Neither observation alone separates CPU from GPU execution, and Canvas CPU submission time is not GPU completion time. The next test compares both threading modes in the same scene before choosing a new backend.
+
+Validation/publication pending. Retain VirGL/Software, CPU and runtime Compatibility, native helpers, patchme and all server data. Turnip/DXVK remains the separate architecture milestone below.
+
+---
+
 # New evidence and change: 0.3.8 (2026-09-15)
 
 Bundle `logs-2383206107737699672.zip` confirms the 0.3.7 repeat launch reused its Wine prefix: initial prefix update 102.731 seconds, repeat 15.697 seconds, total until launch requested 18.138 seconds. Global assets took 102 seconds (previous 121); in-zone UI initialization 48 seconds (previous 63). These stage reductions do not establish playable FPS. The user still reports unacceptable performance.

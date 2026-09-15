@@ -1,3 +1,15 @@
+# Active work: 0.3.9 frame delivery and threading comparison (2026-09-15)
+
+Current turn: user confirms loading substantially improved on 0.3.8 but FPS remains very poor; shadows off, screenshot/video/logs attached. Scratch was pruned automatically; repo re-cloned from GitHub. Latest attachments are present, extracted under `../analysis-038`; video contact sheet inspected. Previous artifacts can be recovered from releases/Library if needed. See `docs/client-performance.md` for exact timings and source references.
+
+Implemented, pending CI/APK publication: pooled RFB decode/CopyRect storage; Graphics threading multi(default)/single using WINE_D3D_CONFIG; actual Wine aggregate fps parsing (exclude first interval per process/swapchain, retain recent evidence); independent Android RFB/new-bitmap draw/work counters and bounded `client-presentation.log`; version 0.3.9/code15. No changes to GPU backend, model/native DLL fixes, CPU scheduling, runtime images, prefix registry or server. Preserves eqgame.exe patchme and dinput8=n,b. Added real Wine presentation/texture tests for both modes plus native animated model tests in single mode to all existing ARM64 direct/PRoot Software/VirGL runs. 51 backend tests and JVM buffer/counter/archive/controller/preflight tests pass locally. Android/UI and ARM64 gates still need to pass before release is called verified.
+
+Next: commit/push through GitHub connector, monitor CI, correct concrete failures, verify published APK hash/version/certificate and source archive, then replace this heading with the verified release details. User expects an APK, not a plan-only conclusion. GitHub publication is already authorized; preserve the preview signing cache/certificate. No subagents allowed unless explicitly requested.
+
+Device test after release: same scene with VirGL/800×600/Balanced/Automatic, native DLL/model helpers on, verbose off, shadows still off. Run Multithreaded, then stop/relaunch Single thread. Record 30–60 seconds of movement each and export after the second run. Wine presents and Android bitmap draws are distinct rates, not physical refresh FPS. First post-APK launch may update the prefix; mode switches do not require repairs/reimport. Return to Multithreaded if worse. Turnip still not implemented.
+
+---
+
 # Active handoff: 0.3.8 runtime acceleration (2026-09-15)
 
 Latest user bundle `logs-2383206107737699672.zip` in `upload/performance-037`: 0.3.7 repeat prefix works (102.731 → 15.697 seconds), globals 121 → 102 s, UI 63 → 48 s; performance remains unacceptable. Client already uses internal `getFilesDir()/work/client/current`; D: is not shared storage. Changing the drive letter would not bypass PRoot. Inherited CPU mask 0–5 noted, with no affinity changes.

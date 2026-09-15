@@ -12,6 +12,7 @@ if ! command -v javac >/dev/null; then compiler=(java -m jdk.compiler/com.sun.to
     app/src/main/java/io/github/russianranger/trasc/DisplayInput.java \
     app/src/main/java/io/github/russianranger/trasc/ClientPrefix.java \
     app/src/main/java/io/github/russianranger/trasc/RfbConnection.java \
+    app/src/main/java/io/github/russianranger/trasc/ClientFrameStats.java \
     app/src/main/java/io/github/russianranger/trasc/ProotAcceleration.java \
     tests/java/io/github/russianranger/trasc/ProotAccelerationHostTest.java \
     tests/java/io/github/russianranger/trasc/ClientHostTest.java \

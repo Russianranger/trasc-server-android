@@ -16,6 +16,7 @@ public final class ClientHostTest {
         return data.toByteArray();
     }
     public static void main(String[] args)throws Exception {
+        frameMeasurements();reusedPixels();
         int[] pixels=new int[6];ByteArrayOutputStream wire=new ByteArrayOutputStream();
         RfbConnection.Screen screen=new RfbConnection.Screen(){public void resize(int w,int h){check(w==3&&h==2,"Display dimensions");}public void pixels(int x,int y,int w,int h,int[] colors){System.arraycopy(colors,0,pixels,0,6);}public void copy(int x,int y,int w,int h,int sx,int sy){}public void updated(){}};
         RfbConnection r=new RfbConnection(new ByteArrayInputStream(server(false)),wire,screen);r.handshake();r.readUpdate();
@@ -45,5 +46,31 @@ public final class ClientHostTest {
             check(Files.readString(game.resolve("eqgame.exe")).equals("owned client"),"Repair never touches imported game files");
         } finally {TarExtractor.remove(tree.toFile());}
         System.out.println("PASS: native RFB pixels/events, malformed frames, combined controller/physical/touch holds, focus releases and typed Enter");
+    }
+    static void frameMeasurements(){
+        ClientFrameStats stats=new ClientFrameStats(0);
+        stats.received(100,2000000,1000000,480000);stats.drawn(500000);stats.drawn(500000);
+        stats.received(200,2000000,1000000,480000);stats.received(300,2000000,1000000,480000);
+        double[] sample=stats.sample(1000000000L);
+        check(sample[1]==3&&sample[2]==1,"Transport updates differ from coalesced bitmap draws");
+        check(sample[3]==2&&sample[4]==1&&sample[5]==.5,"Measured work has explicit millisecond units");
+        stats.drawn(500000);stats.drawn(500000);
+        sample=stats.sample(2000000000L);check(sample[1]==0&&sample[2]==1,"Pending generation drawn once after sample rollover");
+        stats.drawn(500000);sample=stats.sample(3000000000L);check(sample[1]==0&&sample[2]==0,"Idle UI redraws are not counted as new client frames");
+    }
+    static void reusedPixels()throws Exception {
+        byte[] first=server(false),second=Arrays.copyOfRange(first,first.length-40,first.length);
+        for(int i=16;i<second.length;i+=4){second[i]=(byte)0xcc;second[i+1]=(byte)0xbb;second[i+2]=(byte)0xaa;}
+        ByteArrayOutputStream stream=new ByteArrayOutputStream();stream.write(first);stream.write(second);
+        List<int[]> borrowed=new ArrayList<>();List<Integer> snapshots=new ArrayList<>();
+        RfbConnection.Screen screen=new RfbConnection.Screen(){
+            public void resize(int w,int h){}public void copy(int x,int y,int w,int h,int sx,int sy){}
+            public void pixels(int x,int y,int w,int h,int[] colors){borrowed.add(colors);snapshots.add(colors[0]);}public void updated(){}
+        };
+        RfbConnection r=new RfbConnection(new ByteArrayInputStream(stream.toByteArray()),new ByteArrayOutputStream(),screen);
+        r.handshake();r.readUpdate();r.readUpdate();
+        check(borrowed.get(0)==borrowed.get(1),"Repeated raw updates reuse the pixel storage");
+        check(snapshots.equals(Arrays.asList(0xff184860,0xffaabbcc)),"Reused buffers still decode each update correctly");
+        check(r.stats.sample(System.nanoTime())[1]>0,"RFB updates populate measured transport statistics");
     }
 }

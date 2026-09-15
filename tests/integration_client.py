@@ -135,6 +135,7 @@ def main():
         assert result.returncode==0,('D3D texture/legacy shader regression', result.returncode,Path('/logs/texture-shaders.log').read_text(errors='replace')[-8000:])
         print('PASS: D3D compressed artwork and SM1/2 specular-fog shader pixels')
         check_models(env)
+        check_graphics_threading(env)
         compatible=client_runner.Supervisor(dict(request,cpu_profile='compatibility')).env
         with Path('/logs/compatibility-textures.log').open('wb') as out:
             result=subprocess.run(['/usr/local/bin/box64','/opt/wine/bin/wine',r'D:\textures.exe'],cwd='/client',
@@ -173,15 +174,37 @@ def main():
         except subprocess.TimeoutExpired:runner.kill();runner.wait();raise
 
 
-def check_models(env):
+def check_graphics_threading(env):
+    for mode,setting in [('multi','1'),('single','0')]:
+        path=Path('/logs/threading-'+mode+'.log')
+        selected=dict(env,WINE_D3D_CONFIG='csmt='+setting,
+                      WINEDLLOVERRIDES=env['WINEDLLOVERRIDES']+';d3dx9_35=n,b')
+        with path.open('wb') as out:
+            result=subprocess.run(['/usr/local/bin/box64','/opt/wine/bin/wine',r'D:\textures.exe','--present-telemetry'],
+                cwd='/client',env=selected,stdout=out,stderr=out,timeout=90)
+        assert result.returncode==0,(mode,result.returncode)
+        capture=client_runner.WineLog(Path('/logs/threading-'+mode+'-captured.log'))
+        with path.open('rb') as stream:capture.pump(stream)
+        fields,error=capture.snapshot()
+        assert not error,error
+        assert fields.get('graphics_threading_observed')==mode,fields
+        assert fields.get('wine_present',{}).get('per_second',0)>0,fields
+        assert 'trace:frametime' not in path.read_text(errors='replace')
+        Path('/logs/threading-'+mode+'.json').write_text(json.dumps(fields,indent=2))
+    check_models(dict(env,WINE_D3D_CONFIG='csmt=0'),'single-')
+    print('PASS: both graphics threading modes preserve artwork/shader pixels and emit real aggregate Wine presentation rates; single-threaded native models animate')
+
+
+def check_models(env,label=''):
+    for marker in ('model-ready.json','model-stop.txt'):Path('/client',marker).unlink(missing_ok=True)
     command=['/usr/local/bin/box64','/opt/wine/bin/wine',r'D:\models.exe']
-    with Path('/logs/model-builtin.log').open('wb') as out:
+    with Path('/logs/'+label+'model-builtin.log').open('wb') as out:
         result=subprocess.run(command+['--once'],cwd='/client',
             env=dict(env,WINEDLLOVERRIDES=env['WINEDLLOVERRIDES']+';d3dx9_30=b;d3dx9_35=b'),
             stdin=subprocess.DEVNULL,stdout=out,stderr=out,timeout=60)
     assert result.returncode==31,('Expected built-in animation E_NOTIMPL',result.returncode)
     print('PASS: Wine built-in model negative control reproduces E_NOTIMPL')
-    with Path('/logs/model-native.log').open('wb') as out:
+    with Path('/logs/'+label+'model-native.log').open('wb') as out:
         model=subprocess.Popen(command,cwd='/client',
             env=dict(env,WINEDLLOVERRIDES=env['WINEDLLOVERRIDES']+';d3dx9_30=n,b;d3dx9_35=n,b'),
             stdin=subprocess.DEVNULL,stdout=out,stderr=out)
@@ -217,9 +240,9 @@ def check_models(env):
                     if len(centers)>1 and max(centers)-min(centers)>5:break
                     time.sleep(.17)
             assert len(centers)>1 and max(centers)-min(centers)>5,('Animated skinned mesh not visible/moving',centers)
-            trace=Path('/logs/model-native.log').read_text(errors='replace')
+            trace=Path('/logs/'+label+'model-native.log').read_text(errors='replace')
             assert client_runner.model_dll_status(trace)[0]=={'d3dx9_30.dll':'native','d3dx9_35.dll':'native'}
-            Path('/logs/model-verification.json').write_text(json.dumps({'visible_model_centers':centers,'native_d3dx':True}))
+            Path('/logs/'+label+'model-verification.json').write_text(json.dumps({'visible_model_centers':centers,'native_d3dx':True}))
             print('PASS: native D3DX30/35 registration, sampling, compression, skinning and animated model pixels in private display')
         finally:
             Path('/client/model-stop.txt').touch()

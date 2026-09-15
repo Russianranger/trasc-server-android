@@ -1,3 +1,14 @@
+TRASC Server Android **0.3.9** adds a graphics-threading comparison and measures the remaining frame-rate bottleneck.
+
+- Display decoding and CopyRect reuse bounded buffers, reducing repeated allocations while preserving the current graphics path.
+- **Graphics threading → Multithreaded** retains Wine's previous default. **Single thread** uses Wine 10's supported per-launch setting to remove the graphics command queue. Compare both; single threading is not assumed to be faster. No prefix registry changes or runtime reimport.
+- The client bar shows **Wine** presentations per second and **Display** new bitmap draws per second separately. Wine uses its aggregate fps channel, about one line per 1.5 seconds, with the first incomplete interval discarded. A dash means no recent sample. Display measurements include transfer/decoding/Canvas submission timings in `client-presentation.log`, sampled every five seconds and bounded with rotation. Canvas submission is not a GPU timing; neither counter measures physical monitor refresh.
+- Device 0.3.8 evidence: acceleration actually enabled, repeat startup 18.138 → 8.175 seconds, global assets 102 → 46 seconds, game UI 48 → 35 seconds. Graphics remained correct; frame rate is still unacceptable. These are separate user runs, not a controlled benchmark.
+
+**Device comparison:** stop both runtimes and update in place. Keep **VirGL / 800×600 / Balanced CPU / Automatic runtime**, native DLL/model helpers on and verbose diagnostics off. Leave shadows off. First check **Multithreaded** in the same scene for 30–60 seconds, then stop the client, select **Single thread**, and repeat. Export logs after the second run; both current and previous sessions are retained. Note each Wine/Display counter while turning or moving. If single threading regresses, return to Multithreaded. The first APK launch may refresh the Wine prefix once. No server rebuild, client move, prefix repair or runtime download is required. Turnip/DXVK is not included yet; actual device FPS improvement from this release remains unverified.
+
+---
+
 TRASC Server Android **0.3.8** enables a verified PRoot syscall accelerator for the client.
 
 - **Runtime mode → Automatic** runs an isolated file/socket/child-process check and requires actual accelerator activation before starting Wine. An unsupported or failed check selects Compatibility. A hung check aborts startup and offers the manual Compatibility path.

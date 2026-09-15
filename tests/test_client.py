@@ -93,9 +93,39 @@ class ClientTests(unittest.TestCase):
 
     def test_normal_launch_disables_hot_traces_but_keeps_errors_and_dll_proof(self):
         normal=client_runner.Supervisor({'mode':'client','resolution':'800x600'}).env['WINEDEBUG']
-        self.assertEqual(normal,'-all,+timestamp,+pid,err+all,trace+loaddll')
+        self.assertEqual(normal,'-all,+timestamp,+pid,err+all,trace+loaddll,trace+fps')
+        self.assertNotIn('trace+frametime',normal)
         self.assertNotIn('trace+seh',normal)
         self.assertIn('trace+seh',client_runner.wine_debug(True))
+
+    def test_frame_rates_require_a_complete_interval_and_survive_rotation(self):
+        capture=client_runner.WineLog(self.root/'fps.log',512)
+        first=b'10.1:0120:0124:trace:fps:wined3d_cs_exec_present 08ab @ approx 0.01fps\n'
+        capture.observe(first)
+        self.assertNotIn('wine_present',capture.snapshot()[0])
+        line=b'12.0:0120:0124:trace:fps:wined3d_cs_exec_present 08ab @ approx 4.25fps\n'
+        capture.observe(line[:25]);self.assertNotIn('wine_present',capture.snapshot()[0])
+        capture.observe(line[25:])
+        self.assertEqual(capture.snapshot()[0]['wine_present']['per_second'],4.25)
+        # Another process/swapchain gets its own initial-interval exclusion.
+        capture.observe(first.replace(b'0120',b'0150'))
+        self.assertEqual(capture.snapshot()[0]['wine_present']['stream'],'0120:08ab')
+        capture.pump(io.BytesIO(b'unrelated output\n'*1000))
+        self.assertEqual(capture.snapshot()[0]['wine_present']['per_second'],4.25)
+        capture.observe(b'err:winediag:wined3d_init Setting multithreaded command stream to 0x1.\n')
+        self.assertEqual(capture.snapshot()[0]['graphics_threading_observed'],'multi')
+        capture.observe(b'err:winediag:wined3d_init Setting multithreaded command stream to 0.\n')
+        self.assertEqual(capture.snapshot()[0]['graphics_threading_observed'],'single')
+
+    def test_graphics_threading_is_explicit_and_does_not_change_cpu_or_prefix(self):
+        request={'mode':'desktop','resolution':'800x600'}
+        multi=client_runner.Supervisor(request);single=client_runner.Supervisor(dict(request,graphics_threading='single'))
+        self.assertEqual(multi.env['WINE_D3D_CONFIG'],'csmt=1')
+        self.assertEqual(single.env['WINE_D3D_CONFIG'],'csmt=0')
+        self.assertEqual({k:v for k,v in multi.env.items() if k!='WINE_D3D_CONFIG'},
+                         {k:v for k,v in single.env.items() if k!='WINE_D3D_CONFIG'})
+        with self.assertRaisesRegex(ValueError,'graphics threading'):
+            client_runner.validate_request(dict(request,graphics_threading='unknown'))
 
     def test_stream_rotation_keeps_load_evidence_and_split_fatal_error(self):
         path=self.root/'client-wine.log'

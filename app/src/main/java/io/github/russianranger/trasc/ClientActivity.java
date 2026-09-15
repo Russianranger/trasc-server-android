@@ -27,7 +27,7 @@ public final class ClientActivity extends Activity {
             if(launch!=null&&launch.has("error"))phase=launch.optString("error");
             if(displayError!=null&&(launch==null||!launch.has("error")))phase=displayError;
             status.setText(phase+(launch!=null&&launch.optBoolean("native_loaded")?" · native dinput8 loaded":"")+
-                (launch!=null&&launch.optBoolean("system_dinput8_loaded")?" · system DirectInput loaded":""));
+                (launch!=null&&launch.optBoolean("system_dinput8_loaded")?" · system DirectInput loaded":"")+display.measure(launch));
             if(launch!=null&&launch.has("error")&&!failureShown&&hasWindowFocus()&&!isFinishing()) {
                 failureShown=true;controller.capture(false);display.input.releaseAll();
                 new AlertDialog.Builder(ClientActivity.this).setTitle("Client startup failed").setMessage(launch.optString("error"))
@@ -99,6 +99,9 @@ public final class ClientActivity extends Activity {
     private final class ClientView extends View implements RfbConnection.Screen {
         private final Object pixelsLock=new Object();
         private Bitmap bitmap;
+        private int[] copyBuffer=new int[0];
+        private long measuredAt=System.nanoTime();
+        private double displayRate;
         private final Paint paint=new Paint(Paint.FILTER_BITMAP_FLAG);
         private final RectF bounds=new RectF();
         private final ExecutorService writer=Executors.newSingleThreadExecutor();
@@ -127,11 +130,39 @@ public final class ClientActivity extends Activity {
         void failure(Exception error){if(closed)return;runtime.server.recordFailure("client_display",error);post(()->{displayError="Display disconnected: "+error.getMessage()+" · Back to Client to reconnect";if(!isDestroyed())status.setText(displayError);});}
         @Override public void resize(int w,int h){synchronized(pixelsLock){bitmap=Bitmap.createBitmap(w,h,Bitmap.Config.ARGB_8888);}post(()->input.size(w,h));}
         @Override public void pixels(int x,int y,int w,int h,int[] colors){synchronized(pixelsLock){bitmap.setPixels(colors,0,w,x,y,w,h);}}
-        @Override public void copy(int x,int y,int w,int h,int sx,int sy){synchronized(pixelsLock){int[] data=new int[w*h];bitmap.getPixels(data,0,w,sx,sy,w,h);bitmap.setPixels(data,0,w,x,y,w,h);}}
+        @Override public void copy(int x,int y,int w,int h,int sx,int sy){synchronized(pixelsLock){if(copyBuffer.length<w*h)copyBuffer=new int[w*h];bitmap.getPixels(copyBuffer,0,w,sx,sy,w,h);bitmap.setPixels(copyBuffer,0,w,x,y,w,h);}}
         @Override public void updated(){postInvalidateOnAnimation();}
         @Override protected void onDraw(Canvas canvas) {
+            long started=System.nanoTime();
             canvas.drawColor(Color.BLACK);
             synchronized(pixelsLock){if(bitmap!=null){float scale=Math.min((float)getWidth()/bitmap.getWidth(),(float)getHeight()/bitmap.getHeight());float w=bitmap.getWidth()*scale,h=bitmap.getHeight()*scale;bounds.set((getWidth()-w)/2,(getHeight()-h)/2,(getWidth()+w)/2,(getHeight()+h)/2);canvas.drawBitmap(bitmap,null,bounds,paint);}}
+            RfbConnection r=connection;if(r!=null)r.stats.drawn(System.nanoTime()-started);
+        }
+        String measure(JSONObject launch) {
+            RfbConnection r=connection;if(r==null||closed)return "";
+            JSONObject wine=launch==null?null:launch.optJSONObject("wine_present");
+            boolean fresh=wine!=null&&System.currentTimeMillis()/1000.0-wine.optDouble("sampled_at",0)<5;
+            long now=System.nanoTime();
+            if(now-measuredAt>=TimeUnit.SECONDS.toNanos(5)) {
+                measuredAt=now;double[] sample=r.stats.sample(now);
+                if(sample!=null)try {
+                    displayRate=sample[2];
+                    JSONObject info=new JSONObject().put("created_utc",java.time.Instant.now().toString());
+                    String[] keys={"window_seconds","rfb_updates_per_second","new_bitmap_draws_per_second","receive_ms_per_update","decode_apply_ms_per_update","canvas_submit_ms_per_draw","raw_pixels_per_second","last_update_age_seconds"};
+                    for(int i=0;i<keys.length;i++)info.put(keys[i],sample[i]);
+                    if(fresh)info.put("wine_present",wine);
+                    if(launch!=null)info.put("graphics_threading",launch.optString("graphics_threading_observed","unknown"));
+                    String line=info.toString()+"\n";
+                    writer.execute(()->{
+                        try {
+                            File log=new File(runtime.server.work,"logs/client-presentation.log");
+                            if(log.length()>1024*1024)java.nio.file.Files.move(log.toPath(),new File(log.getParentFile(),"client-presentation.overflow.log").toPath(),java.nio.file.StandardCopyOption.REPLACE_EXISTING);
+                            try(FileOutputStream out=new FileOutputStream(log,true)){out.write(line.getBytes(java.nio.charset.StandardCharsets.UTF_8));}
+                        }catch(IOException error){android.util.Log.w("TRASC","Could not record display measurements",error);}
+                    });
+                }catch(org.json.JSONException ignored){}
+            }
+            return String.format(java.util.Locale.ROOT," · Wine %s/s · Display %.1f/s",fresh?String.format(java.util.Locale.ROOT,"%.1f",wine.optDouble("per_second")):"—",displayRate);
         }
         private boolean position(MotionEvent event) {
             if(bitmap==null||bounds.width()==0||!bounds.contains(event.getX(),event.getY()))return false;

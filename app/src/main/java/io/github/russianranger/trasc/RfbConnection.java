@@ -15,6 +15,11 @@ final class RfbConnection {
     private final DataOutputStream out;
     private final Screen screen;
     int width,height;
+    // Borrowed only during Screen.pixels(); grow to the largest rectangle seen.
+    // An 800x600 moving scene no longer allocates another 1.8 MiB per update.
+    private int[] pixelBuffer=new int[0];
+    private byte[] rowBuffer=new byte[0];
+    final ClientFrameStats stats=new ClientFrameStats();
     RfbConnection(InputStream in,OutputStream out,Screen screen) {
         this.in=new DataInputStream(new BufferedInputStream(in,65536));
         this.out=new DataOutputStream(out);this.screen=screen;
@@ -49,23 +54,32 @@ final class RfbConnection {
         if(message==2)return; // Bell.
         if(message==3){bytes(3);bytes(in.readInt());return;} // No clipboard integration.
         if(message!=0)throw new IOException("Unexpected display message: "+message);
+        long started=System.nanoTime(),decode=0,pixelCount=0;
         in.readUnsignedByte();int count=in.readUnsignedShort();
         for(int i=0;i<count;i++) {
             int x=in.readUnsignedShort(),y=in.readUnsignedShort(),w=in.readUnsignedShort(),h=in.readUnsignedShort(),encoding=in.readInt();
             if(encoding==-223){resize(w,h);continue;}
             rectangle(x,y,w,h);
             if(encoding==0) {
-                int[] pixels=new int[w*h];byte[] row=new byte[w*4];
-                for(int iy=0;iy<h;iy++) {
-                    in.readFully(row);
-                    for(int ix=0;ix<w;ix++){int at=ix*4;pixels[iy*w+ix]=0xff000000|((row[at+2]&255)<<16)|((row[at+1]&255)<<8)|(row[at]&255);}
+                if(pixelBuffer.length<w*h)pixelBuffer=new int[w*h];
+                int rows=Math.max(1,65536/(w*4));
+                if(rowBuffer.length<rows*w*4)rowBuffer=new byte[rows*w*4];
+                for(int iy=0;iy<h;) {
+                    int rowCount=Math.min(rows,h-iy),length=rowCount*w;
+                    in.readFully(rowBuffer,0,length*4);
+                    long convert=System.nanoTime();
+                    for(int ix=0;ix<length;ix++){int at=ix*4;pixelBuffer[iy*w+ix]=0xff000000|((rowBuffer[at+2]&255)<<16)|((rowBuffer[at+1]&255)<<8)|(rowBuffer[at]&255);}
+                    decode+=System.nanoTime()-convert;iy+=rowCount;
                 }
-                screen.pixels(x,y,w,h,pixels);
+                long apply=System.nanoTime();screen.pixels(x,y,w,h,pixelBuffer);decode+=System.nanoTime()-apply;
+                pixelCount+=(long)w*h;
             } else if(encoding==1) {
-                int sx=in.readUnsignedShort(),sy=in.readUnsignedShort();rectangle(sx,sy,w,h);screen.copy(x,y,w,h,sx,sy);
+                int sx=in.readUnsignedShort(),sy=in.readUnsignedShort();rectangle(sx,sy,w,h);
+                long apply=System.nanoTime();screen.copy(x,y,w,h,sx,sy);decode+=System.nanoTime()-apply;
             } else throw new IOException("Unsupported display encoding: "+encoding);
         }
-        screen.updated();request(true);
+        if(count>0){stats.received(System.nanoTime(),System.nanoTime()-started,decode,pixelCount);screen.updated();}
+        request(true);
     }
     void request(boolean incremental)throws IOException {
         synchronized(out){out.writeByte(3);out.writeByte(incremental?1:0);out.writeShort(0);out.writeShort(0);out.writeShort(width);out.writeShort(height);out.flush();}

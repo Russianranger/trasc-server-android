@@ -78,7 +78,7 @@ for(const [name,type,value,min,max]of [['Character:RaidExpMultiplier','real','0.
   await page.locator('#client-resolution').selectOption('960x540');await page.locator('#client-desktop').click();
   await page.waitForFunction(()=>window.__clientViews===1);
   assert(await page.locator('#client-launch').isDisabled(),'A running desktop must be stopped before another launch');
-  assert.deepEqual(await page.evaluate(()=>window.__clientStarts[0]),{mode:'desktop',resolution:'960x540',native_dinput8:true,diagnostic_logging:false,native_d3dx:false,renderer:'software',cpu_profile:'balanced',runtime_mode:'auto'});
+  assert.deepEqual(await page.evaluate(()=>window.__clientStarts[0]),{mode:'desktop',resolution:'960x540',native_dinput8:true,diagnostic_logging:false,native_d3dx:false,renderer:'software',cpu_profile:'balanced',runtime_mode:'auto',graphics_threading:'multi'});
   assert(!(await page.locator('#client-launch-status').textContent()).includes('load confirmed'),'File presence/request must not claim DLL loaded');
   await page.locator('#client-stop').click();await page.waitForFunction(()=>document.getElementById('client-launch-status').textContent.startsWith('Client stopped.'));
   await page.locator('#client-renderer').selectOption('virgl');
@@ -93,8 +93,8 @@ for(const [name,type,value,min,max]of [['Character:RaidExpMultiplier','real','0.
   assert((await page.locator('#client-launch-status').textContent()).includes('Wine system DirectInput loaded.'));
   await page.locator('#client-view').click();await page.waitForFunction(()=>window.__clientViews===3);
   await page.locator('#client-stop').click();await page.waitForFunction(()=>document.getElementById('client-launch-status').textContent.startsWith('Client stopped.'));
-  await page.locator('#client-runtime-mode').selectOption('compatibility');await page.locator('#client-cpu-profile').selectOption('compatibility');await page.locator('#client-diagnostics').check();await page.locator('#client-prefix-repair').click();await page.waitForFunction(()=>window.__clientViews===4);
-  assert.deepEqual(await page.evaluate(()=>window.__clientStarts[2]),{mode:'desktop',resolution:'960x540',native_dinput8:true,diagnostic_logging:true,native_d3dx:false,repair_prefix:true,renderer:'software',cpu_profile:'compatibility',runtime_mode:'compatibility'});
+  await page.locator('#client-graphics-threading').selectOption('single');await page.locator('#client-runtime-mode').selectOption('compatibility');await page.locator('#client-cpu-profile').selectOption('compatibility');await page.locator('#client-diagnostics').check();await page.locator('#client-prefix-repair').click();await page.waitForFunction(()=>window.__clientViews===4);
+  assert.deepEqual(await page.evaluate(()=>window.__clientStarts[2]),{mode:'desktop',resolution:'960x540',native_dinput8:true,diagnostic_logging:true,native_d3dx:false,repair_prefix:true,renderer:'software',cpu_profile:'compatibility',runtime_mode:'compatibility',graphics_threading:'single'});
   assert((await page.locator('#client-launch-status').textContent()).includes('Verbose diagnostics enabled'));
   await page.locator('#client-stop').click();
   await page.locator('nav [data-tab=setup]').click();await page.waitForFunction(()=>document.getElementById('controller-focus').textContent==='Controller capture is off.');
