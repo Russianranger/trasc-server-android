@@ -19,9 +19,24 @@ A successful Wine prefix gets a content-based runtime/graphics signature. Repeat
 
 State now records startup-stage durations and CPU settings/affinity. ROF2 launch options persist under `client/launch-options.json`, already covered by complete session backups. Existing graphics, server, input and model-helper behavior is retained.
 
+## Validation measurements
+
+Run [34911899931](https://github.com/Russianranger/trasc-server-android/actions/runs/34911899931) exercises a real second supervisor launch against the same prefix, verifies a working PE32 loader, and checks that kernel32.dll was not rewritten.
+
+| ARM64 test environment | Full-update Wine prefix setup | Repeat prefix setup | Repeat total until launch request |
+| --- | ---: | ---: | ---: |
+| Direct runtime, Software | 13.212 s | 1.402 s | 1.817 s |
+| Installed runtime through PRoot, Software | 86.748 s | 6.415 s | 7.774 s |
+| Direct runtime, VirGL GLES | 13.016 s | 1.402 s | 2.017 s |
+| Installed runtime through PRoot, VirGL GLES | 89.356 s | 6.415 s | 7.974 s |
+
+The VirGL host is CI Mesa llvmpipe GLES, not Adreno. These are single CI observations from our test client, not Android ROF2 benchmarks or game FPS. They establish that repeat launches avoid the expensive forced-update path. Device acceptance still needs same-zone/resolution comparisons and a second launch.
+
 ## Turnip assessment and next implementation milestone
 
 Turnip is Mesa's Vulkan driver for supported Adreno devices; see [Mesa's Freedreno/Turnip documentation](https://docs.mesa3d.org/drivers/freedreno.html). [DXVK](https://github.com/doitsujin/dxvk) translates Direct3D 9 to Vulkan. Winlator uses these components alongside Wine/Box64, as its [official project](https://github.com/brunodev85/winlator) documents. A direct DXVK → Turnip path is a credible candidate for this Adreno device, but better performance in this app is an inference to test, not a guarantee.
+
+The inspected [Winlator display setup](https://github.com/brunodev85/winlator-app/blob/a030f552f452158a2db64fdb32b490fa19c0b48d/app/src/main/java/com/winlator/XServerDisplayActivity.java) installs the Vulkan ICD separately from its OpenGL/DXVK components. Its [guest launcher](https://github.com/brunodev85/winlator-app/blob/a030f552f452158a2db64fdb32b490fa19c0b48d/app/src/main/java/com/winlator/xenvironment/components/GuestProgramLauncherComponent.java) and in-app X server use a different runtime/presentation arrangement. This is why a driver-only swap is insufficient here.
 
 The current app exposes GL through a native Android GLES VirGL server and presents through TigerVNC/RFB. That server is built without Venus/Vulkan. Replacing a GLES library with a Turnip driver ZIP would not create a Vulkan device for Wine. Installing DXVK alone would likewise not provide the required driver or presentation transport.
 
