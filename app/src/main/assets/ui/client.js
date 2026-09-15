@@ -47,7 +47,7 @@ async function clientRuntimeState(){
  const s=await api('client_native_state');
  if(!launchOptionsLoaded){
   launchOptionsLoaded=true;const saved=s.launch_options||{};
-  for(const [id,key] of [['client-renderer','renderer'],['client-graphics-threading','graphics_threading'],['client-cpu-profile','cpu_profile'],['client-runtime-mode','runtime_mode'],['client-resolution','resolution']]){
+  for(const [id,key] of [['client-renderer','renderer'],['client-cpu-affinity','cpu_affinity'],['client-graphics-threading','graphics_threading'],['client-cpu-profile','cpu_profile'],['client-runtime-mode','runtime_mode'],['client-resolution','resolution']]){
    const select=$(id);if([...select.options].some(o=>o.value===saved[key]))select.value=saved[key];
   }
   for(const [id,key] of [['client-native-dll','native_dinput8'],['client-native-models','native_d3dx'],['client-diagnostics','diagnostic_logging']])if(typeof saved[key]==='boolean')$(id).checked=saved[key];
@@ -56,15 +56,16 @@ async function clientRuntimeState(){
  $('client-view').disabled=!(s.alive&&s.display_ready);
  $('client-runtime-status').textContent=(s.installed?'Installed · ':'Not installed · ')+s.status;
  $('client-directx-status').textContent=s.directx_installed?'DirectX model helpers installed.':'Install the DirectX helpers to enable the legacy character animation and model functions.';
+ graphicsControls();
  const launch=s.launch;
  const dllState=launch?.native_loaded?'Native dinput8.dll load confirmed. '+(launch.system_dinput8_loaded?'Wine system DirectInput loaded.':'System DirectInput load not yet confirmed.'):
   launch?.native_dinput8_requested?'Native dinput8.dll requested; load not yet confirmed.':'Built-in dinput8 comparison mode.';
  $('client-launch-status').textContent=launch?.error?launch.error:s.alive?
-  (launch?.phase||'Starting').replaceAll('_',' ')+' · '+(launch?.renderer||'Checking graphics')+' · '+(launch?.cpu_profile||'balanced')+' CPU · '+(launch?.runtime_acceleration_observed?'accelerated runtime':launch?.runtime_acceleration==='compatibility'?'compatibility runtime':'checking runtime')+' · '+(launch?.mode==='desktop'?'Wine desktop test.':dllState)+' '+(launch?.diagnostic_logging?'Verbose diagnostics enabled; launch may be much slower.':'Normal logging.')+' '+(launch?.mesa_glthread_requested?(launch?.mesa_glthread_observed?'OpenGL worker observed. ':'OpenGL worker requested; not yet observed. '):'')+' '+(launch?.native_d3dx_requested?'Native model libraries loaded: '+Object.values(launch.model_libraries_loaded||{}).filter(v=>v==='native').length+'/2.':''):
+  (launch?.phase||'Starting').replaceAll('_',' ')+' · '+(launch?.renderer||'Checking graphics')+' · '+(launch?.dxvk_loaded?'DXVK loaded · ':'')+(launch?.cpu_profile||'balanced')+' CPU · '+(launch?.runtime_acceleration_observed?'accelerated runtime':launch?.runtime_acceleration==='compatibility'?'compatibility runtime':'checking runtime')+' · '+(launch?.mode==='desktop'?'Wine desktop test.':dllState)+' '+(launch?.diagnostic_logging?'Verbose diagnostics enabled; launch may be much slower.':'Normal logging.')+' '+(launch?.mesa_glthread_requested?(launch?.mesa_glthread_observed?'OpenGL worker observed. ':'OpenGL worker requested; not yet observed. '):'')+' '+(launch?.native_d3dx_requested?'Native model libraries loaded: '+Object.values(launch.model_libraries_loaded||{}).filter(v=>v==='native').length+'/2.':''):
   'Client stopped. '+(launch?.native_loaded?'Last session confirmed native dinput8.dll loading.':'');
  return s;
 }
-const launchOptions=mode=>({mode,renderer:$('client-renderer').value,graphics_threading:$('client-graphics-threading').value,cpu_profile:$('client-cpu-profile').value,runtime_mode:$('client-runtime-mode').value,resolution:$('client-resolution').value,native_dinput8:$('client-native-dll').checked,diagnostic_logging:$('client-diagnostics').checked,native_d3dx:mode==='client'&&$('client-native-models').checked});
+const launchOptions=mode=>({mode,renderer:$('client-renderer').value,cpu_affinity:$('client-cpu-affinity').value,graphics_threading:$('client-graphics-threading').value,cpu_profile:$('client-cpu-profile').value,runtime_mode:$('client-runtime-mode').value,resolution:$('client-resolution').value,native_dinput8:$('client-native-dll').checked,diagnostic_logging:$('client-diagnostics').checked,native_d3dx:mode==='client'&&$('client-native-models').checked});
 action('client-runtime-online',async()=>{notice('Downloading the client runtime…');await api('client_runtime_online');await clientRuntimeState();notice('Client runtime installed. Try Wine desktop first.');});
 action('client-runtime-offline',async()=>{await api('pick',{kind:'client-runtime'});await clientRuntimeState();notice('Client runtime installed.');});
 action('client-directx-online',async()=>{notice('Downloading Microsoft DirectX model helpers…');await api('client_directx_online');await clientRuntimeState();notice('DirectX model helpers installed. Launch ROF2.');});
@@ -82,3 +83,6 @@ action('client-view',()=>api('client_view'));
 action('client-stop',async()=>{await api('client_stop');await clientRuntimeState();notice('Client stopped. Manage the server separately in Server.');});
 setInterval(()=>{if(currentTab==='client')clientRuntimeState().catch(e=>{$('client-runtime-status').textContent=e.message;});},1500);
 clientRuntimeState().catch(()=>{});
+
+function graphicsControls(){ $('client-graphics-threading').disabled=$('client-renderer').value==='turnip'; }
+$('client-renderer').addEventListener('change',graphicsControls);

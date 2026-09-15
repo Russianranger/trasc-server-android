@@ -18,7 +18,11 @@ jobs:
       - uses: actions/download-artifact@v4
         with:
           name: client-wined3d
+      - uses: actions/download-artifact@v4
+        with:
+          name: client-vulkan
       - run: cp backend-assets/wined3d-patch.json backend/
+      - run: cp backend-assets/turnip.so backend-assets/vulkan-probe backend-assets/dxvk-d3d9.dll backend-assets/vulkan-bundle.json backend/ && chmod +x backend/vulkan-probe
       - uses: actions/cache/restore@v4
         id: client-image
         with:
@@ -149,6 +153,24 @@ jobs:
                   if not p.is_file(): continue
                   print(p.name)
                   print(p.read_text(errors='replace')[-18000:])
+          PY
+      - name: Verify Vulkan DXVK presentation, pixels, models and input directly and through PRoot
+        run: bash scripts/check-client-vulkan.sh
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: client-vulkan-verification
+          path: |
+            runtime-work/client-vulkan/logs/
+            runtime-work/vulkan-proot/logs/
+      - name: Show Vulkan diagnostics on failure
+        if: failure()
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path
+          for parent in ('runtime-work/client-vulkan/logs','runtime-work/vulkan-proot/logs'):
+              for p in Path(parent).glob('*'):
+                  if p.is_file(): print(p.name, p.read_text(errors='replace')[-14000:])
           PY
       - name: Publish separate online and offline client runtime
         if: github.ref == 'refs/heads/main'

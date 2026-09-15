@@ -12,8 +12,10 @@ concurrency:
 jobs:
   wined3d:
     uses: ./.github/workflows/wined3d.yml
+  vulkan:
+    uses: ./.github/workflows/vulkan.yml
   client-runtime:
-    needs: wined3d
+    needs: [wined3d, vulkan]
     uses: ./.github/workflows/client-runtime.yml
     permissions:
       contents: write
@@ -70,7 +72,7 @@ jobs:
             database-test/work/database-verification.json
             database-test/runtime-manifest.json
   apk:
-    needs: wined3d
+    needs: [wined3d, vulkan]
     runs-on: ubuntu-latest
     env:
       TRASC_PREVIEW_KEYSTORE: ${{ github.ref == 'refs/heads/main' && format('{0}/runtime-work/signing/preview.keystore', github.workspace) || '' }}
@@ -79,6 +81,9 @@ jobs:
       - uses: actions/download-artifact@v4
         with:
           name: client-wined3d
+      - uses: actions/download-artifact@v4
+        with:
+          name: client-vulkan
       - uses: actions/setup-java@v4
         with:
           distribution: temurin

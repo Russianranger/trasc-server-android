@@ -33,7 +33,7 @@ def recv(stream, size):
 def main():
     for name in ('/session','/prefix','/logs'): Path(name).mkdir(exist_ok=True)
     renderer=os.environ.get('TRASC_TEST_RENDERER','software')
-    request={'mode':'client','resolution':'800x600','executable':'eqgame.exe','native_dinput8':True,'native_d3dx':True,'renderer':renderer,'graphics_threading':'opengl_worker'}
+    request={'mode':'client','resolution':'800x600','executable':'eqgame.exe','native_dinput8':True,'native_d3dx':True,'renderer':renderer,'graphics_threading':'single' if renderer=='turnip' else 'opengl_worker','cpu_affinity':'available'}
     Path('/session/request.json').write_text(json.dumps(request))
     runner = subprocess.Popen(['python3','/opt/trasc-client/client_runner.py'])
     try:
@@ -51,9 +51,29 @@ def main():
         assert graphics['cpu_profile']=='balanced',graphics
         assert graphics['prefix_update']=='update',graphics
         assert graphics['cpu_settings']['BOX64_DYNAREC_STRONGMEM']=='1',graphics
-        wait_for(lambda:json.loads(Path('/session/status.json').read_text()).get('mesa_glthread_observed'),
-                 'Requested OpenGL worker was not observed in the real Wine process tree',30)
-        print('PASS: real supervisor observes Mesa GL command worker in Wine descendants')
+        if renderer!='turnip':
+            wait_for(lambda:json.loads(Path('/session/status.json').read_text()).get('mesa_glthread_observed'),
+                     'Requested OpenGL worker was not observed in the real Wine process tree',30)
+            print('PASS: real supervisor observes Mesa GL command worker in Wine descendants')
+        else:
+            wait_for(lambda:json.loads(Path('/session/status.json').read_text()).get('dxvk_loaded')=='2.5.3',
+                     'Actual DXVK load not observed',30)
+            graphics=json.loads(Path('/session/status.json').read_text())
+            assert graphics['native_d3d9_loaded'],graphics
+            assert graphics['vulkan']['presentation_frames']==3,graphics
+            assert graphics['graphics_acceleration']=='software_test',graphics
+            print('PASS: real DXVK D3D9 and Vulkan X11 presentation; CI device is explicitly software, NOT Turnip hardware')
+        def affinity_freed():
+            log=Path('/logs/client-threads.log')
+            if not log.is_file(): return False
+            for line in log.read_text().splitlines():
+                sample=json.loads(line)
+                for t in sample['threads']:
+                    if t['tid']==t['pid'] and t['name']=='eqgame.exe':
+                        if len(os.sched_getaffinity(t['tid']))>1:return True
+            return False
+        wait_for(affinity_freed,'The simulated game CPU restriction was not removed',30)
+        print('PASS: real Windows CPU restriction removed from the game Linux thread within app-allowed cores')
         if renderer=='virgl':
             assert 'virgl' in graphics['renderer'].lower(),graphics
             assert graphics['host_gl_renderer'],graphics
@@ -138,7 +158,7 @@ def main():
         assert result.returncode==0,('D3D texture/legacy shader regression', result.returncode,Path('/logs/texture-shaders.log').read_text(errors='replace')[-8000:])
         print('PASS: D3D compressed artwork and SM1/2 specular-fog shader pixels')
         check_models(env)
-        check_graphics_threading(env)
+        if renderer!='turnip': check_graphics_threading(env)
         compatible=client_runner.Supervisor(dict(request,cpu_profile='compatibility')).env
         with Path('/logs/compatibility-textures.log').open('wb') as out:
             result=subprocess.run(['/usr/local/bin/box64','/opt/wine/bin/wine',r'D:\textures.exe'],cwd='/client',
@@ -156,7 +176,8 @@ def main():
     system=Path('/prefix/drive_c/windows/syswow64/kernel32.dll')
     original_mtime=system.stat().st_mtime_ns
     Path('/session/stop').unlink()
-    Path('/session/request.json').write_text(json.dumps(dict(request,mode='desktop')))
+    warm_request=dict(request,mode='desktop',renderer='software' if renderer=='turnip' else renderer)
+    Path('/session/request.json').write_text(json.dumps(warm_request))
     runner=subprocess.Popen(['python3','/opt/trasc-client/client_runner.py'])
     try:
         def warm_ready():
@@ -167,6 +188,14 @@ def main():
         warm=json.loads(Path('/session/status.json').read_text())
         assert warm['wine32_ready'],warm
         assert system.stat().st_mtime_ns==original_mtime,'Warm boot rewrote Wine system files'
+        if renderer=='turnip':
+            fallback=client_runner.Supervisor(warm_request).env
+            with Path('/logs/vulkan-fallback.log').open('wb') as out:
+                result=subprocess.run(['/usr/local/bin/box64','/opt/wine/bin/wine',r'D:\textures.exe'],cwd='/client',
+                    env=dict(fallback,WINEDLLOVERRIDES=fallback['WINEDLLOVERRIDES']+';d3dx9_35=n,b'),stdout=out,stderr=out,timeout=90)
+            assert result.returncode==0,('WineD3D fallback after DXVK',result.returncode)
+            assert 'DXVK: v2.5.3' not in Path('/logs/vulkan-fallback.log').read_text(errors='replace')
+            print('PASS: WineD3D recovery renders real shader/texture pixels after DXVK without prefix repair')
         Path('/logs/client-startup-comparison.json').write_text(json.dumps({
             'cold':cold['timings_seconds'],'warm':warm['timings_seconds'],
             'warm_prefix_reused':True,'note':'Host startup timings; not Android game FPS.'},indent=2))

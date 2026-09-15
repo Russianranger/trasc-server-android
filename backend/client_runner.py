@@ -14,7 +14,8 @@ import shutil
 import tempfile
 import time
 from contextlib import contextmanager
-from client_metrics import process_threads
+from client_metrics import process_threads, allow_game_cpus
+import client_vulkan
 
 SESSION = Path('/session')
 CLIENT = Path('/client')
@@ -104,6 +105,9 @@ class WineLog:
         models, model_evidence = model_dll_status(text)
         with self.lock:
             for line in text.splitlines():
+                if re.search(r'Loaded L".*\\+d3d9\.dll".*: native\s*$', line, re.I):
+                    self.fields['native_d3d9_loaded'] = True
+                if re.search(r'DXVK: v?2\.5\.3\b', line): self.fields['dxvk_loaded'] = '2.5.3'
                 fps = re.search(r':([0-9a-f]+):[0-9a-f]+:trace:fps:wined3d_cs_exec_present ((?:0x)?[0-9a-f]+) @ approx ([0-9]+\.[0-9]+)fps', line, re.I)
                 if fps:
                     stream = fps[1].lower() + ':' + fps[2].lower()
@@ -171,7 +175,8 @@ def pe_machine(path):
 def validate_request(request):
     if request.get('mode') not in ('desktop', 'client'): raise ValueError('Choose Wine desktop or ROF2 client')
     if request.get('resolution') not in ('640x480', '800x600', '960x540', '1024x768'): raise ValueError('Unsupported client resolution')
-    if request.get('renderer', 'software') not in ('software', 'virgl'): raise ValueError('Unsupported graphics option')
+    if request.get('renderer', 'software') not in ('software', 'virgl', 'turnip'): raise ValueError('Unsupported graphics option')
+    if request.get('cpu_affinity', 'available') not in ('available', 'game'): raise ValueError('Unsupported CPU affinity')
     if request.get('cpu_profile', 'balanced') not in ('balanced', 'compatibility'): raise ValueError('Unsupported CPU profile')
     if request.get('runtime_mode', 'auto') not in ('auto', 'compatibility'): raise ValueError('Unsupported runtime mode')
     if request.get('graphics_threading', 'multi') not in ('multi', 'single', 'opengl_worker'): raise ValueError('Unsupported graphics threading')
@@ -354,6 +359,14 @@ class Supervisor:
         if request.get('cpu_profile', 'balanced') == 'balanced':
             self.env.update(BOX64_DYNAREC_BIGBLOCK='2', BOX64_DYNAREC_SAFEFLAGS='1',
                             BOX64_MAXCPU='0', BOX64_RCFILE=str(SESSION / 'box64.rc'))
+        self.status['cpu_affinity'] = request.get('cpu_affinity', 'available')
+        if request.get('renderer') == 'turnip':
+            client_vulkan.configure_environment(self.env, Path(__file__).parent, SESSION, PREFIX)
+            self.status['mesa_glthread_requested'] = False
+        else:
+            # Built-in WineD3D ignores a previously installed DXVK copy. This
+            # makes switching back work without a prefix repair or registry edit.
+            self.env['WINEDLLOVERRIDES'] += ';d3d9=b'
 
     def configure_cpu(self):
         if self.request.get('cpu_profile', 'balanced') == 'balanced':
@@ -461,6 +474,21 @@ class Supervisor:
 
     def check_graphics(self):
         self.update('checking_graphics')
+        if self.request.get('renderer') == 'turnip':
+            manifest, command = client_vulkan.prepare_probe(Path(__file__).parent, SESSION, PREFIX, self.env)
+            process = self.spawn(command, 'client-vulkan.log')
+            deadline = time.monotonic()+30
+            while process.poll() is None:
+                if self.stopping(): raise StopRequested()
+                if time.monotonic()>deadline: raise RuntimeError('Turnip Vulkan preflight timed out. Choose VirGL and export Logs.')
+                time.sleep(.1)
+            if process.returncode: raise RuntimeError('Turnip device/presentation check failed. See client-vulkan.log; choose VirGL to recover.')
+            report = client_vulkan.parse_probe((LOGS/'client-vulkan.log').read_text(errors='replace'),
+                allow_software=os.environ.get('TRASC_TEST_ALLOW_SOFTWARE_VULKAN') == '1')
+            self.update(renderer='DXVK / '+report['driver']+' ('+report['device']+')',
+                        graphics_acceleration='software_test' if report['software'] else 'host_gpu',
+                        vulkan=report, vulkan_bundle=manifest, presentation='Vulkan → X11 copy → in-app display')
+            return
         command = ['python3', str(Path(__file__).with_name('graphics_probe.py'))] if self.request.get('renderer')=='virgl' else ['glxinfo', '-B']
         process = self.spawn(command, 'client-graphics.log')
         deadline = time.monotonic()+30
@@ -490,7 +518,7 @@ class Supervisor:
         self.update(runtime_acceleration_observed=observed)
         if self.request.get('runtime_acceleration') == 'seccomp' and not observed:
             raise RuntimeError('Runtime acceleration was not confirmed. Select Compatibility runtime mode and export Logs.')
-        for name in ('client-wine.log', 'client-prefix.log', 'client-display.log', 'client-graphics.log', 'client-threads.log'):
+        for name in ('client-wine.log', 'client-prefix.log', 'client-display.log', 'client-graphics.log', 'client-threads.log', 'client-vulkan.log', 'eqgame_d3d9.log'):
             archive_log(LOGS / name)
         (LOGS / 'client-wine.overflow.log').unlink(missing_ok=True)
         # The RFB display has no TCP listener. X11 requires an unpredictable cookie.
@@ -516,6 +544,8 @@ class Supervisor:
             if actual != expected['sha256']: raise RuntimeError('WineD3D compatibility fix failed verification')
             self.update(wined3d_patch=expected['patch'], wined3d_sha256=actual)
         self.prepare_prefix()
+        if self.request.get('renderer') == 'turnip':
+            self.update(dxvk_d3d9_sha256=client_vulkan.install_d3d9(Path(__file__).parent, PREFIX, CLIENT))
         devices = PREFIX / 'dosdevices'; devices.mkdir(exist_ok=True)
         drive = devices / 'd:'
         if drive.is_symlink(): drive.unlink()
@@ -549,6 +579,9 @@ class Supervisor:
                 self.last_thread_sample = time.monotonic()
                 before = time.monotonic()
                 sample = process_threads(launcher.pid, launch_token=self.launch_token)
+                if self.request.get('cpu_affinity', 'available') == 'available' and self.request['mode'] == 'client':
+                    sample['affinity_update'] = allow_game_cpus(sample, self.launch_token)
+                    self.status['affinity_update'] = sample['affinity_update']
                 sample['collection_seconds'] = round(time.monotonic()-before, 4)
                 self.status['mesa_glthread_observed'] = bool(sample['mesa_gl_workers'])
                 # Keep the once-per-second status file small. Full thread

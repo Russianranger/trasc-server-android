@@ -153,7 +153,9 @@ public final class ClientActivity extends Activity {
                     if(fresh)info.put("wine_present",wine);
                     if(launch!=null)info.put("graphics_threading",launch.optString("graphics_threading_observed","unknown"))
                         .put("graphics_threading_requested",launch.optString("graphics_threading","multi"))
-                        .put("mesa_glthread_observed",launch.optBoolean("mesa_glthread_observed",false));
+                        .put("mesa_glthread_observed",launch.optBoolean("mesa_glthread_observed",false))
+                        .put("graphics_backend",launch.optString("graphics_backend"))
+                        .put("cpu_affinity",launch.optString("cpu_affinity"));
                     String line=info.toString()+"\n";
                     writer.execute(()->{
                         try {
@@ -164,6 +166,7 @@ public final class ClientActivity extends Activity {
                     });
                 }catch(org.json.JSONException ignored){}
             }
+            if(launch!=null&&launch.optString("graphics_backend").equals("turnip")) return String.format(java.util.Locale.ROOT," · DXVK FPS in HUD · Display %.1f/s",displayRate);
             return String.format(java.util.Locale.ROOT," · Wine %s/s · Display %.1f/s",fresh?String.format(java.util.Locale.ROOT,"%.1f",wine.optDouble("per_second")):"—",displayRate);
         }
         private boolean position(MotionEvent event) {

@@ -7,7 +7,8 @@ case "$acceleration" in auto|compatibility) ;; *) exit 2 ;; esac
 case "$renderer" in
     software) task_dir="$PWD/runtime-work/client-proot" ;;
     virgl) task_dir="$PWD/runtime-work/gpu-proot" ;;
-    *) echo 'Expected software or virgl renderer' >&2; exit 2 ;;
+    turnip) task_dir="$PWD/runtime-work/vulkan-proot" ;;
+    *) echo 'Expected software, virgl or turnip renderer' >&2; exit 2 ;;
 esac
 mkdir -p "$task_dir"
 sudo apt-get update
@@ -19,7 +20,7 @@ sed -i '1i#include <string.h>' "$task_dir/proot/src/extension/ashmem_memfd/ashme
 make -C "$task_dir/proot/src" -j2 PROOT_UNBUNDLE_LOADER=/unused HAS_LOADER_32BIT=
 mkdir -p "$task_dir/classes" "$task_dir/root" "$task_dir/client" "$task_dir/prefix" "$task_dir/session" "$task_dir/tmp" "$task_dir/logs"
 javac -d "$task_dir/classes" tests/java/android/system/Os.java app/src/main/java/io/github/russianranger/trasc/TarExtractor.java tests/java/io/github/russianranger/trasc/ExtractRuntimeHost.java
-java -cp "$task_dir/classes" io.github.russianranger.trasc.ExtractRuntimeHost dist/client-runtime-arm64.tar.gz "$task_dir/root"
+java -cp "$task_dir/classes" io.github.russianranger.trasc.ExtractRuntimeHost "${TRASC_TEST_ROOTFS:-dist/client-runtime-arm64.tar.gz}" "$task_dir/root"
 mkdir -p "$task_dir/root/directx"
 cp runtime-work/client-test/client/eqgame.exe runtime-work/client-test/client/dinput8.dll runtime-work/client-test/client/models.exe runtime-work/client-test/client/textures.exe "$task_dir/client/"
 if [ "$renderer" = virgl ]; then
@@ -33,6 +34,10 @@ fi
 if [ "$acceleration" = compatibility ]; then export PROOT_NO_SECCOMP=1; else unset PROOT_NO_SECCOMP; fi
 export TRASC_PROOT_REPORT=1
 export PROOT_LOADER="$task_dir/proot/src/loader/loader" PROOT_TMP_DIR="$task_dir/tmp"
+vulkan_test_env=()
+if [ "$renderer" = turnip ]; then
+    vulkan_test_env=(TRASC_TEST_ALLOW_SOFTWARE_VULKAN=1 TRASC_TEST_VULKAN_ICD=/usr/share/vulkan/icd.d/lvp_icd.aarch64.json)
+fi
 client_command=("$task_dir/proot/src/proot" --kill-on-exit -0 -r "$task_dir/root" \
     -b "$PWD/runtime-work/directx-test/output/directx:/directx" \
     -b "$PWD/backend-assets/wined3d.dll:/opt/wine/lib/wine/i386-windows/wined3d.dll" \
@@ -40,7 +45,7 @@ client_command=("$task_dir/proot/src/proot" --kill-on-exit -0 -r "$task_dir/root
     -b "$task_dir/client:/client" -b "$task_dir/prefix:/prefix" -b "$task_dir/session:/session" \
     -b "$task_dir/tmp:/tmp" -b "$task_dir/logs:/logs" -w /client \
     /usr/bin/env -i HOME=/root USER=root PATH=/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin \
-    LANG=C.UTF-8 TMPDIR=/tmp PYTHONUNBUFFERED=1 TRASC_TEST_RENDERER="$renderer" /usr/bin/python3)
+    LANG=C.UTF-8 TMPDIR=/tmp PYTHONUNBUFFERED=1 TRASC_TEST_RENDERER="$renderer" "${vulkan_test_env[@]}" /usr/bin/python3)
 timeout 20 "${client_command[@]}" /opt/trasc-client/runtime_probe.py 2>&1 | tee "$task_dir/logs/client-runtime-probe.log"
 if [ "$acceleration" = auto ]; then
     grep -q "TRASC PRoot: seccomp acceleration observed" "$task_dir/logs/client-runtime-probe.log"

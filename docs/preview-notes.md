@@ -1,3 +1,14 @@
+TRASC Server Android **0.4.0** adds **Turnip + DXVK (experimental)** and addresses the observed game CPU restriction.
+
+- Turnip's Qualcomm driver, Vulkan presentation probe and DXVK D3D9 module are bundled with the APK. The first launch checks actual hardware and presentation. If the check fails, select VirGL and export logs.
+- CPU affinity → Allow available cores removes the game's observed CPU 0 restriction within Android's currently allowed cores. Choose Let the game choose to restore previous behavior on the next launch. No client INI edits.
+- The new path still copies frames into the existing in-app display. It is not yet Winlator's direct presentation path; physical-device rendering and performance need testing.
+- DXVK shows FPS and device identity inside the game. WineD3D's graphics-threading option does not apply to this renderer. Existing native dinput8, model helpers, controls, prefix and server data are retained.
+
+**Device test:** stop both runtimes and update in place. Choose **Turnip + DXVK / 800×600 / Balanced CPU / Automatic runtime / Allow available cores**, with native DLL/model helpers on and verbose diagnostics and shadows off. Launch twice to separate one-time setup/shader compilation from a warm comparison. Check menus, character models, world movement and the DXVK FPS/device HUD; export logs after the second run. If launch or graphics fail, stop, return to VirGL and export the failure logs before further launches. No runtime download, client reimport, prefix repair or server rebuild is required. Hardware success and better FPS are not assumed before the Thor test.
+
+---
+
 TRASC Server Android **0.3.10** adds **Single + OpenGL worker (experimental)** to Graphics threading.
 
 - Wine stays single-threaded while Mesa 22.3 batches GL commands on its native worker (`mesa_glthread=true`). Existing Multithreaded and Single thread explicitly keep this worker off. Switching modes does not repair or change the prefix.

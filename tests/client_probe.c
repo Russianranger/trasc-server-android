@@ -34,6 +34,13 @@ int WINAPI WinMain(HINSTANCE instance,HINSTANCE previous,LPSTR command,int show)
         for(int i=0;i<512;i++)OutputDebugStringA("[TRASC probe] routine asset-loading diagnostic");
         return 0;
     }
+    /* Reproduce ROF2's observed single-core process restriction. The native
+       supervisor must free our real Linux threads without editing game files. */
+    DWORD_PTR process_mask=0,system_mask=0;
+    if(!GetProcessAffinityMask(GetCurrentProcess(),&process_mask,&system_mask)||!process_mask||
+       !SetProcessAffinityMask(GetCurrentProcess(),process_mask&(~process_mask+1))) {
+        marker("D:\\probe-error.txt","Could not reproduce game CPU restriction");return 3;
+    }
     LoadLibraryA("d3dx9_30.dll");LoadLibraryA("d3dx9_35.dll");
     int (*held_key)(HWND,int)=(void*)GetProcAddress(dll,"TrascHeldKey");
     BOOL saw_hold=FALSE;int previous_held=-99;

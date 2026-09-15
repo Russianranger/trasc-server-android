@@ -1,3 +1,19 @@
+# Turnip/DXVK candidate: 0.4.0 (2026-09-15)
+
+The 0.3.10 device comparison (`logs-5171237087911039269.zip`) does not support a benefit from the OpenGL worker. Selected world movement windows show Single median Wine/display 6.46/6.77 per second and worker 6.10/6.47; routes and timings differ, so these are observations rather than a controlled regression measurement. Both prefixes reuse in about 5.43 seconds. Both retained game logs show similar global-asset times (40/38 seconds) and zone-UI times (51/52 seconds).
+
+Thread observations now establish that the main game thread changes from a multi-core mask to CPU 0 only, as do its graphics worker threads. The main thread consumes about 79%/75% of one CPU in the selected Single/worker windows. This is a concrete restriction, not proof that a specific INI field or DLL caused it. The new available-core option restores only this launch's game threads to the supervisor's current allowed mask, after rechecking owner, launch marker and thread lifetime. Android still enforces its CPU policy. No INI or server changes; choosing Game preserves previous behavior on the next launch.
+
+The new graphics path is **ROF2 D3D9 → DXVK 2.5.3 → native ARM64 Turnip 24.3.4/KGSL → X11 CPU-copy presentation → existing in-app RFB display**. Turnip and the device/presentation probe are built from pinned sources for Debian Bookworm's glibc and bundled in the APK, alongside upstream's checksum-pinned x86 DXVK D3D9 module. The existing runtime's Vulkan loader and Box64 bridge are retained. This replaces WineD3D/VirGL rendering but still copies completed frames; a native presentation integration remains a later milestone.
+
+Upstream [Mesa 24.3.4 device definitions](https://gitlab.freedesktop.org/mesa/mesa/-/blob/mesa-24.3.4/src/freedreno/common/freedreno_devices.py) include the A740 KGSL chip ID. Its [WSI initialization](https://gitlab.freedesktop.org/mesa/mesa/-/blob/mesa-24.3.4/src/vulkan/wsi/wsi_common.c) supports explicit CPU-image presentation using `MESA_VK_WSI_DEBUG=sw`; this flag selects how frames reach X11, not a software rendering driver. The exact sources were inspected from the official release archive. [DXVK's versioned instructions](https://github.com/doitsujin/dxvk/blob/v2.5.3/README.md) specify x86 d3d9.dll in the WoW64 directory with a native override. Imported d3d9.dll files that would shadow the bundle are rejected without modification. Native dinput8 and D3DX helpers remain active. Selecting VirGL/Software forces built-in D3D9, without registry changes or prefix repair.
+
+Production preflight requires Vulkan 1.3, Mesa Turnip driver ID 18, Qualcomm vendor 0x5143, a non-CPU device and three successful swapchain presentations. Failing hardware/device access is reported; it never silently calls Lavapipe accelerated. The DXVK HUD shows device/FPS/compiler activity. Logs retain device evidence, DXVK load evidence, previous Vulkan/DXVK output, native thread masks and both game startup logs. Shader caches live in the backed-up private prefix.
+
+Native package build succeeded in staging run35001126877. Full APK, runtime and presentation validation is pending. CI uses an explicitly separate Lavapipe runtime only to test Vulkan/Wine/Box64 plumbing and pixels; it cannot test the Thor's Adreno or establish a hardware speedup. Release provenance will be recorded in HANDOFF.md after all gates pass.
+
+---
+
 # New evidence and change: 0.3.10 (2026-09-15)
 
 Bundle `logs-5272698694105119380.zip` contains the user's Multithreaded-first / Single-thread-second 0.3.9 comparison. Actual Wine settings confirm `csmt=1` then `csmt=0`; native/system DirectInput, native D3DX30/35, patched graphics, Adreno 740 and PRoot acceleration remain active. The second client quits normally and is explicitly stopped. Startup Wine address-map retries and isolated graphics/audio/RpcSs warnings remain, without evidence of a new fatal client failure or log flood.
