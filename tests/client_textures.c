@@ -89,5 +89,9 @@ int WINAPI WinMain(HINSTANCE instance,HINSTANCE prev,LPSTR command,int show) {
             Sleep(30);
         }
     }
-    IDirect3DDevice9_Release(dev);IDirect3D9_Release(d3d);DestroyWindow(window);fflush(stdout);return result;
+    printf("TRASC EXIT pid=%lu tick=%lu stage=release-device result=%d\n",GetCurrentProcessId(),GetTickCount(),result);fflush(stdout);
+    IDirect3DDevice9_Release(dev);
+    printf("TRASC EXIT pid=%lu tick=%lu stage=release-d3d\n",GetCurrentProcessId(),GetTickCount());fflush(stdout);
+    IDirect3D9_Release(d3d);DestroyWindow(window);
+    printf("TRASC EXIT pid=%lu tick=%lu stage=return result=%d\n",GetCurrentProcessId(),GetTickCount(),result);fflush(stdout);return result;
 }

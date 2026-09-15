@@ -160,10 +160,7 @@ def main():
         check_models(env)
         if renderer!='turnip': check_graphics_threading(env)
         compatible=client_runner.Supervisor(dict(request,cpu_profile='compatibility')).env
-        with Path('/logs/compatibility-textures.log').open('wb') as out:
-            result=subprocess.run(['/usr/local/bin/box64','/opt/wine/bin/wine',r'D:\textures.exe'],cwd='/client',
-                env=dict(compatible,WINEDLLOVERRIDES=compatible['WINEDLLOVERRIDES']+';d3dx9_35=n,b'),stdout=out,stderr=out,timeout=90)
-        assert result.returncode==0,('Compatibility CPU profile texture/shader check',result.returncode)
+        check_compatibility_exit(compatible)
         print('PASS: ARM64 PE32 native proxy forwards to system DirectInput8, creates keyboard/mouse devices, renders Direct3D9 and receives private-display input')
     finally:
         Path('/session/stop').touch()
@@ -204,6 +201,39 @@ def main():
         Path('/session/stop').touch()
         try:runner.wait(timeout=25)
         except subprocess.TimeoutExpired:runner.kill();runner.wait();raise
+
+
+def check_compatibility_exit(env):
+    # A recurring CI-only SIGKILL follows successful pixels. Retain the strict
+    # exit assertion, but collect teardown stages, Wine process/module traces,
+    # native wait state and cgroup OOM counters instead of silently retrying.
+    def counters():
+        report={}
+        for name in ('/sys/fs/cgroup/memory.events','/sys/fs/cgroup/memory/memory.failcnt'):
+            try:report[name]=Path(name).read_text()[:4096]
+            except OSError:pass
+        return report
+    evidence={'before':counters(),'samples':[]}
+    started=time.monotonic()
+    with Path('/logs/compatibility-textures.log').open('wb') as out:
+        child=subprocess.Popen(['/usr/local/bin/box64','/opt/wine/bin/wine',r'D:\textures.exe'],cwd='/client',
+            env=dict(env,WINEDLLOVERRIDES=env['WINEDLLOVERRIDES']+';d3dx9_35=n,b',
+                     WINEDEBUG=env.get('WINEDEBUG','')+',trace+process,trace+module'),stdout=out,stderr=out)
+        try:
+            while child.poll() is None:
+                if time.monotonic()-started>90:raise subprocess.TimeoutExpired(child.args,90)
+                sample={'seconds':round(time.monotonic()-started,3),'pid':child.pid}
+                for name in ('stat','wchan','syscall'):
+                    try:sample[name]=Path('/proc',str(child.pid),name).read_text()[:4096]
+                    except OSError:pass
+                evidence['samples'].append(sample)
+                if len(evidence['samples'])>512:del evidence['samples'][0]
+                time.sleep(.025)
+        finally:
+            if child.poll() is None:child.kill();child.wait()
+            evidence.update(after=counters(),returncode=child.returncode,seconds=round(time.monotonic()-started,3))
+            Path('/logs/compatibility-exit.json').write_text(json.dumps(evidence,indent=2))
+    assert child.returncode==0,('Compatibility CPU profile texture/shader check',child.returncode)
 
 
 def check_graphics_threading(env):
