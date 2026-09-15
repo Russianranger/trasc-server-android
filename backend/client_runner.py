@@ -134,6 +134,7 @@ def validate_request(request):
     if request.get('resolution') not in ('640x480', '800x600', '960x540', '1024x768'): raise ValueError('Unsupported client resolution')
     if request.get('renderer', 'software') not in ('software', 'virgl'): raise ValueError('Unsupported graphics option')
     if request.get('cpu_profile', 'balanced') not in ('balanced', 'compatibility'): raise ValueError('Unsupported CPU profile')
+    if request.get('runtime_mode', 'auto') not in ('auto', 'compatibility'): raise ValueError('Unsupported runtime mode')
     if not isinstance(request.get('native_d3dx', False), bool): raise ValueError('Invalid model-library option')
     if not isinstance(request.get('diagnostic_logging', False), bool): raise ValueError('Invalid Wine diagnostic option')
     if request['mode'] == 'client':
@@ -284,6 +285,9 @@ class Supervisor:
                        'renderer': 'Checking graphics driver', 'graphics_backend': request.get('renderer','software'),
                        'graphics_acceleration': 'unknown', 'started_at': time.time()}
         self.status.update(cpu_profile=request.get('cpu_profile', 'balanced'), timings_seconds={})
+        self.status.update(runtime_mode=request.get('runtime_mode', 'auto'),
+                           runtime_acceleration=request.get('runtime_acceleration', 'unspecified'),
+                           storage=request.get('storage', {}))
         self.env = dict(os.environ, DISPLAY=':7', XAUTHORITY=str(SESSION / 'Xauthority'),
                         WINEPREFIX=str(PREFIX), WINEARCH='win64', WINEDEBUG=wine_debug(),
                         WINEDLLOVERRIDES='winemenubuilder,mscoree,mshtml,winegstreamer=',
@@ -424,6 +428,14 @@ class Supervisor:
         print(f"Client session started at {self.status['started_at']}: {self.request['mode']}", flush=True)
         for p in (SESSION, PREFIX, LOGS): p.mkdir(parents=True, exist_ok=True)
         self.configure_cpu()
+        native_log = LOGS / 'client-proot.log'
+        observed = False
+        if native_log.is_file():
+            with native_log.open('rb') as source:
+                observed = b'TRASC PRoot: seccomp acceleration observed' in source.read(4096)
+        self.update(runtime_acceleration_observed=observed)
+        if self.request.get('runtime_acceleration') == 'seccomp' and not observed:
+            raise RuntimeError('Runtime acceleration was not confirmed. Select Compatibility runtime mode and export Logs.')
         for name in ('client-wine.log', 'client-prefix.log', 'client-display.log', 'client-graphics.log'):
             archive_log(LOGS / name)
         (LOGS / 'client-wine.overflow.log').unlink(missing_ok=True)

@@ -1,3 +1,19 @@
+# New evidence and change: 0.3.8 (2026-09-15)
+
+Bundle `logs-2383206107737699672.zip` confirms the 0.3.7 repeat launch reused its Wine prefix: initial prefix update 102.731 seconds, repeat 15.697 seconds, total until launch requested 18.138 seconds. Global assets took 102 seconds (previous 121); in-zone UI initialization 48 seconds (previous 63). These stage reductions do not establish playable FPS. The user still reports unacceptable performance.
+
+Both `C:` (Wine prefix) and `D:` (imported client) are subdirectories of Android `Context.getFilesDir()`. `D:` maps `/client` to `files/work/client/current`, not `/sdcard`, `/storage/emulated` or a SAF stream. The ZIP's selected document is used only during import. Android documents [shared-storage FUSE overhead](https://source.android.com/docs/core/storage/scoped); the existing internal-storage layout avoids that layer. Merely changing the Wine drive letter would keep the same underlying files and PRoot overhead.
+
+The launcher was explicitly setting `PROOT_NO_SECCOMP=1`, forcing PRoot to stop on all syscalls. The pinned upstream [PRoot event loop](https://github.com/termux/proot/blob/7266fb3e8516535682f5a9c8f3a7e70f6506eddb/src/tracee/event.c) and [filter implementation](https://github.com/termux/proot/blob/7266fb3e8516535682f5a9c8f3a7e70f6506eddb/src/syscall/seccomp.c) provide an optional accelerator which traces calls needed for path/ABI handling while allowing other calls to proceed without tracer round trips. This enables an additional filter; it does not remove Android's security policy. Setting the variable to `0` still disables the feature because upstream checks its presence.
+
+0.3.8 adds Automatic/Compatibility runtime modes. Automatic tests the same installed runtime and bindings using a small temporary-file read/seek/stat, socket and child-process workload before Wine touches the prefix. Only a successful exit plus an actual PRoot acceleration event enables accelerated launching. Unsupported/failed checks fall back; a hung or unkillable preflight aborts rather than starting another runtime alongside it. Compatibility retains the old mode. The server is unchanged. A tiny native patch emits one opt-in acceleration observation, without verbose syscall tracing; it is included in corresponding launcher sources.
+
+New logs: `client-runtime-probe.log`, `client-proot.log` (and `.previous.log`), plus storage and accelerator fields in `client-state.json`. Native helper activation is checked independently of the selected option. No client files are moved or rewritten by the preflight. The latest inherited CPU mask is 0–5; this does not establish which cores the later Wine/game threads can use. No affinity or Android scheduling controls were changed.
+
+Pending: full CI/release verification and device comparison. Keep VirGL/800×600/Balanced constant and compare Automatic vs Runtime Compatibility. Turnip remains a separate graphics milestone below.
+
+---
+
 # Client performance and Turnip
 
 ## Device evidence: 0.3.6

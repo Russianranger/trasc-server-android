@@ -1,3 +1,13 @@
+TRASC Server Android **0.3.8** enables a verified PRoot syscall accelerator for the client.
+
+- **Runtime mode → Automatic** runs an isolated file/socket/child-process check and requires actual accelerator activation before starting Wine. An unsupported or failed check selects Compatibility. A hung check aborts startup and offers the manual Compatibility path.
+- **Runtime mode → Compatibility** uses the previous tracing mode. CPU profile and graphics selection remain independent.
+- Client files already live in app-private internal storage. `D:` is a Wine mapping to those files, not an SD card or shared-storage mount; no file migration or drive-letter workaround is needed.
+- Exported state records storage mapping and actual acceleration evidence. `client-runtime-probe.log` records the preflight; `client-proot.log` records the current launcher/session, with one previous log retained.
+- Existing prefix reuse, graphics fixes, native DLLs and controller settings are retained. Server runtime mode is unchanged.
+
+**Device test:** stop both runtimes, update in place, and retain all installed files. Use **VirGL / Balanced / Automatic**, 800×600, native DLL/model helpers on and verbose diagnostics off. After the first post-update launch, stop and launch again; enter the same zone and export Logs. If launch or behavior regresses, use **Runtime mode → Compatibility** and repeat with the other settings unchanged. No runtime download or server rebuild is needed. Device FPS remains unverified.
+
 TRASC Server Android **0.3.7** adds a Balanced CPU profile and reuses verified Wine prefixes to reduce repeated startup work.
 
 - **CPU profile → Balanced** uses larger Box64 translation blocks and default flag handling, retains x86 memory-order barriers, and reports the actual CPU count instead of the bundled 64-core Wine override. **Compatibility** restores the previous CPU settings. Neither option changes the graphics fixes.
@@ -106,7 +116,7 @@ All 0.2.0 management features remain included:
 - **Client:** ZIP import, private temporary-ZIP cleanup, DLL inventory, saved controller-to-keyboard/mouse bindings and a focused input diagnostic. The separate client runtime adds an experimental launch/display/DLL-loading path.
 - **Continuity:** implementation decisions, validation and remaining work are recorded in `docs/HANDOFF.md`.
 
-For the current device pass, use the 0.3.7 sequence at the top of these notes. Export Logs after the attempt.
+For the current device pass, use the 0.3.8 sequence at the top of these notes. Export Logs after the attempt.
 
 Backups contain accounts, credentials and client files and are not encrypted. Save them privately outside the app. Only the private temporary copy of an imported session/client ZIP is removed; the selected source document remains intact.
 

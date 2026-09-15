@@ -10,6 +10,7 @@ from unittest.mock import patch
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1] / 'backend'))
 import client_runner
+import runtime_probe
 from engine import Engine, CLIENT_FILES
 from managed_content import update_ini
 
@@ -25,6 +26,15 @@ class ClientTests(unittest.TestCase):
         (self.client/'trasc-client.json').write_text(json.dumps({'executable':'eqgame.exe','imported':True}))
 
     def tearDown(self): self.temp.cleanup()
+
+    def test_runtime_preflight_uses_only_temporary_files_and_verifies_io(self):
+        session=self.root/'runtime-preflight';session.mkdir()
+        report=runtime_probe.probe(session)
+        self.assertTrue(report['ok'])
+        self.assertEqual([p.name for p in session.iterdir()],['runtime-probe.json'])
+        self.assertGreaterEqual(report['timings_seconds']['seek_read_1024'],0)
+        request={'mode':'desktop','resolution':'800x600','runtime_mode':'unknown'}
+        with self.assertRaisesRegex(ValueError,'runtime mode'):client_runner.validate_request(request)
 
     def test_prefix_reuse_invalidates_on_changes_missing_files_or_failed_check(self):
         for folder in ('prefix', 'session', 'logs'): (self.root/folder).mkdir(exist_ok=True)

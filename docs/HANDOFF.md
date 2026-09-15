@@ -1,3 +1,13 @@
+# Active work: 0.3.8 runtime acceleration (2026-09-15)
+
+Latest user bundle `logs-2383206107737699672.zip` in `upload/performance-037`: 0.3.7 repeat prefix works (102.731 → 15.697 seconds), globals121→102s, UI63→48s; still unacceptable performance. Client already in internal `getFilesDir()/work/client/current`; D: is not shared storage. CPU inherited mask0–5 noted, no affinity changes.
+
+Implemented (pending CI/publication): Automatic/Compatibility runtime mode. Automatic removes the app's PROOT_NO_SECCOMP override only after a successful isolated file/socket/exec preflight with actual native acceleration evidence. Failed/unsupported probe falls back; timeout aborts and manual Compatibility is available. `native/proot-acceleration.patch` emits one opt-in event; same pinned PRoot revision. Server remains in old mode. New runtime_probe.py and ProotAcceleration.java, native/JVM/backend/UI regressions, accelerated Software/VirGL PRoot integration. Version0.3.8/code14. Preserve patched graphics, CPU choices, prefix, controller, native models, dinput8=n,b and patchme.
+
+49 Python tests and host JVM checks pass locally. CI and APK verification pending. See docs/client-performance.md for rationale and latest evidence. Finalize this handoff after release checks; do not call the APK published yet.
+
+---
+
 # Active handoff: 0.3.7 performance release (2026-09-15)
 
 User confirms 0.3.6 graphics correct but loading/in-game performance poor, asks about Turnip. Latest bundle `logs-810542259983773733.zip` extracted locally to `upload/performance-036`. See `docs/client-performance.md` for exact evidence, CI measurements and Vulkan implementation requirements.

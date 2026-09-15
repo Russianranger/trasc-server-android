@@ -11,6 +11,11 @@ echo 'dc46c40b9f46bb34dd97fe41f548b0e8b247b77a918576733c528e83abd854dd  talloc.t
 if [ ! -d talloc-2.4.3 ]; then tar -xzf talloc.tar.gz; fi
 if [ ! -d proot ]; then git clone https://github.com/termux/proot.git proot; fi
 git -C proot checkout 7266fb3e8516535682f5a9c8f3a7e70f6506eddb
+if git -C proot apply --check "$repo_root/native/proot-acceleration.patch"; then
+    git -C proot apply "$repo_root/native/proot-acceleration.patch"
+else
+    git -C proot apply --reverse --check "$repo_root/native/proot-acceleration.patch"
+fi
 # This pinned revision omits the declaration header needed by modern Clang.
 python3 - <<'PY'
 from pathlib import Path
