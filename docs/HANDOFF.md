@@ -6,6 +6,8 @@ Implementation candidate, **not yet published**. User finds 0.4.1 performance ac
 
 Local C plugin and Android Java compile; original backend suite and JVM protocol/input/archive tests pass. Native socket execution is blocked in local sandbox; ARM64 CI includes actual ALSA conversion/timing plus Windows waveOut/DirectSound through Wine/Box64 and PRoot, repeat launch, and all original rendering/normal-exit gates. Do not relax assertions or automatically retry failures. Candidate publication and APK verification pending. GitHub writes use exact tree comparison; no subagents unless explicitly requested.
 
+First candidate d014c86/run35042509174 passed Wine/database builds and compiled the audio plug, but the native conversion test rejected rate changes with EINVAL. Local tracing reproduced the exact failure before the endpoint callback for 22050/44100 Hz (48000 stereo reached it). ALSA's conversion plugins need an mmap-capable slave; the endpoint advertised only RW. Added MMAP_INTERLEAVED alongside RW, letting ALSA use its local ring and invoke the existing transfer callback at commit. All three rates now reach the endpoint setup locally (socket execution remains prohibited there). Also corrected drain's already-DRAINING state handling and reset counters after flush. Keep every sample, timing and exit assertion; full ARM64 retest pending.
+
 ---
 
 # Active handoff: 0.4.1 fullscreen and gear controls (2026-09-15)

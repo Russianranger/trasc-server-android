@@ -47,7 +47,9 @@ static int start(snd_pcm_ioplug_t *io) {
 static int stop(snd_pcm_ioplug_t *io) {
     uint32_t status; struct endpoint *p = io->private_data;
     if (p->fd < 0) return 0;
-    return command(p, 2, &status) < 0 || status ? -ENODEV : 0;
+    if (command(p, 2, &status) < 0 || status) return -ENODEV;
+    p->played = p->written = p->last = 0;
+    return 0;
 }
 static snd_pcm_sframes_t position(snd_pcm_ioplug_t *io) {
     struct endpoint *p = io->private_data; uint32_t head;
@@ -99,7 +101,8 @@ static int hw_params(snd_pcm_ioplug_t *io, snd_pcm_hw_params_t *params) {
 }
 static int drain(snd_pcm_ioplug_t *io) {
     struct endpoint *p = io->private_data;
-    if (io->state == SND_PCM_STATE_PREPARED && start(io) < 0) return -ENODEV;
+    /* ALSA changes PREPARED to DRAINING before invoking this callback. */
+    if (start(io) < 0) return -ENODEV;
     /* Maximum advertised buffer is one second. Bound a lost-device drain. */
     for (int i = 0; i < 400; i++) {
         if (position(io) < 0) return -ENODEV;
@@ -123,9 +126,13 @@ SND_PCM_PLUGIN_DEFINE_FUNC(trasc) {
     p->io.poll_fd = -1;
     int err = snd_pcm_ioplug_create(&p->io, name, stream, mode);
     if (err < 0) { free(p); return err; }
-    const unsigned access[] = {SND_PCM_ACCESS_RW_INTERLEAVED};
+    /* ALSA's rate/format conversion plugins require an mmap-capable slave.
+     * For MMAP access ALSA allocates a local ring and calls transfer at commit;
+     * ordinary RW access continues to call transfer directly (mmap_rw stays 0).
+     */
+    const unsigned access[] = {SND_PCM_ACCESS_RW_INTERLEAVED, SND_PCM_ACCESS_MMAP_INTERLEAVED};
     const unsigned format[] = {SND_PCM_FORMAT_S16_LE};
-    if ((err = snd_pcm_ioplug_set_param_list(&p->io, SND_PCM_IOPLUG_HW_ACCESS, 1, access)) < 0 ||
+    if ((err = snd_pcm_ioplug_set_param_list(&p->io, SND_PCM_IOPLUG_HW_ACCESS, 2, access)) < 0 ||
         (err = snd_pcm_ioplug_set_param_list(&p->io, SND_PCM_IOPLUG_HW_FORMAT, 1, format)) < 0 ||
         (err = snd_pcm_ioplug_set_param_minmax(&p->io, SND_PCM_IOPLUG_HW_CHANNELS, 2, 2)) < 0 ||
         (err = snd_pcm_ioplug_set_param_minmax(&p->io, SND_PCM_IOPLUG_HW_RATE, 48000, 48000)) < 0 ||

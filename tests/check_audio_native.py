@@ -25,11 +25,12 @@ with tempfile.TemporaryDirectory(prefix='trasc-audio-') as directory:
     os.environ.update(ALSA_CONFIG_PATH=str(config), TRASC_AUDIO_SOCKET=str(path/'audio.sock'))
     try:
         for rate, channels in ((48000, 2), (22050, 1), (44100, 2)):
+            print(f'Checking real ALSA playback: rate={rate} channels={channels}', flush=True)
             pcm = C.c_void_p(); assert alsa.snd_pcm_open(C.byref(pcm), b'default', 0, 1) == 0
             try:
                 # S16_LE, RW_INTERLEAVED; software conversion, 80 ms buffer.
                 result = alsa.snd_pcm_set_params(pcm, 2, 3, channels, rate, 1, 80000)
-                assert result == 0, ('parameters', result)
+                assert result == 0, ('parameters', rate, channels, result, receiver.snapshot())
                 count = rate//2; samples = (C.c_int16*(count*channels))()
                 for i in range(count):
                     for c in range(channels): samples[i*channels+c] = int(math.sin(i*2*math.pi*(440+c*220)/rate)*12000)
