@@ -1,3 +1,13 @@
+# Current investigation: 0.4.7 device follow-up (2026-09-16)
+
+User reports spell sounds and name corruption persist after0.4.7 and asks to proceed with troubleshooting. Read [diagnosis-047.md](diagnosis-047.md) before further changes. Latest input `logs-6881254485975500908.zip` proves the real exporter connected to local triune and copied fresh spell data to BOTH installed folders: source/root/Resources all SHA256 `4762679840e788b016d83b6651866690dd344b119ff49cc4d953b292e06d7110`. All40,922 rows, including50000–50007, remain; filtering is still paused. Export/copy failure is ruled out for this run, not content compatibility.
+
+No app/native changes or new APK in this investigation. Existing0.4.7 supports the next targeted test: native-dinput8 OFF only to character selection/creation, keep all graphics/CPU/model settings, observe label10–15s, stop/export logs, restore native DLL before normal play. This comparison is not yet done. Source hooks are candidates, not a proven defect. Need actual dinput8.dll/spellsnew.edd/spellsnew.eff/soundassets.txt from the imported client (or unchanged original ZIP) to inspect effect mappings and identify the installed add-on; current logs contain only asset presence/sizes. Keep uploaded proprietary bytes private. Do not repeat failed renderer/CPU/direct-mapping tests, re-enable filtering, or replace sound/particle assets speculatively. No new permission request is needed for this existing reversible diagnostic; actual on-device result/files are required to proceed beyond source/log analysis.
+
+The current published APK remains the verified0.4.7 below. This documentation-only update uses [skip ci].
+
+---
+
 # Active handoff: 0.4.7 automatic unfiltered client sync (2026-09-16)
 
 **Published and verified:** **0.4.7/code24**, tested source **546e1fca2dbd77d29dc52bb8d506b7a2cae49961**. All six jobs passed in [run35112375539](https://github.com/Russianranger/trasc-server-android/actions/runs/35112375539). Public APK, corresponding source archive and build manifest were downloaded and verified against the tested candidate and release digests; preview tag points to that source. This final handoff update skips CI.

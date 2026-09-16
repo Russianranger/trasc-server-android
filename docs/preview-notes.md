@@ -1,3 +1,5 @@
+**Latest device follow-up:** 0.4.7 export and both installed spell-file copies are now verified by matching hashes, but spell sounds and names still fail. No repeated export or reinstall is needed. Follow the [focused native-DLL comparison and four-file collection steps](diagnosis-047.md#next-device-evidence-using-existing047). Filtering remains paused.
+
 TRASC Server Android **0.4.7 — automatic local client data sync**
 
 **Server → Export & sync client data** generates `spells_us.txt`, `dbstr_us.txt`, `SkillCaps.txt` and `BaseData.txt`, then overwrites every file in **both the imported local client's root and its nested Resources folder**. Existing capitalization is respected, and each original is backed up. The ZIP also contains both sets of files.
