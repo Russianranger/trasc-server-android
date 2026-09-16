@@ -32,9 +32,10 @@ retains the baseline cache. A new driver may take longer on its first launch.
 ## Build and evidence
 
 The baseline recipe remains in `vulkan/Dockerfile`. `vulkan/Dockerfile.26`
-builds upstream Mesa 26.0.0 using the same Debian runtime ABI, with a pinned
-glslang 15.1.0 build because Debian bookworm's 12.0 compiler is too old for
-Mesa 26's shaders. No new runtime LLVM dependency is introduced.
+builds upstream Mesa 26.0.0 using the same Debian runtime ABI, with pinned
+glslang 15.1.0 and CMake 3.31.6 build tools. Debian bookworm's glslang12.0 is
+too old for Mesa26's shaders, and its CMake3.25 cannot configure glslang15.1.
+No new runtime LLVM dependency is introduced.
 
 - [Mesa 26.0.0 official release checksum](https://docs.mesa3d.org/relnotes/26.0.0.html):
   `2a44e98e64d5c36cec64633de2d0ec7eff64703ee25b35364ba8fcaa84f33f72`.
@@ -73,4 +74,7 @@ VirGL applicability. Existing graphics/audio/input/model gates remain strict.
 5. If labels or models regress, stop, select **24.3.4**, and relaunch. Export a
    separate log after that comparison. Keep the better driver selected.
 
-Build/publication status and exact artifact hashes are recorded in HANDOFF.md.
+Published from2276f3497e1062c37aae31a5c4308a50f8cd57ad after all six jobs passed
+in [run35148927421](https://github.com/Russianranger/trasc-server-android/actions/runs/35148927421).
+The public APK/source/build manifest match the verified candidate. Exact
+artifact hashes are recorded in HANDOFF.md. Physical-device acceptance is pending.
