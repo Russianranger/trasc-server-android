@@ -18,10 +18,10 @@ class VulkanTests(unittest.TestCase):
     def setUp(self):
         self.tmp=tempfile.TemporaryDirectory();self.root=Path(self.tmp.name)
         self.bundle=self.root/'bundle';self.bundle.mkdir()
-        elf=bytearray(64);elf[:5]=b'\x7fELF\x02';struct.pack_into('<H',elf,18,183)
-        for n in ('turnip.so','vulkan-probe'):(self.bundle/n).write_bytes(elf)
+        elf=bytearray(64);elf[:6]=b'\x7fELF\x02\x01';struct.pack_into('<H',elf,18,183)
+        for n in (*client_vulkan.DRIVERS.values(),'vulkan-probe'):(self.bundle/n).write_bytes(elf)
         (self.bundle/'dxvk-d3d9.dll').write_bytes(b'test DXVK')
-        manifest={'format':1,'mesa':'24.3.4','dxvk':'2.5.3','architecture':'arm64-glibc','kmd':'kgsl',
+        manifest={'format':2,'mesa':'24.3.4','dxvk':'2.5.3','architecture':'arm64-glibc','kmd':'kgsl','drivers':client_vulkan.DRIVERS,
                   'files':{n:hashlib.sha256((self.bundle/n).read_bytes()).hexdigest() for n in client_vulkan.FILES}}
         (self.bundle/'vulkan-bundle.json').write_text(json.dumps(manifest))
 
@@ -79,6 +79,54 @@ class VulkanTests(unittest.TestCase):
         capture=client_runner.WineLog(self.root/'wine.log')
         capture.observe(b'info: DXVK: v2.5.3\ntrace:loaddll:build_module Loaded L"C:\\windows\\syswow64\\d3d9.dll" at 00100000: native\n')
         fields,_=capture.snapshot();self.assertEqual(fields['dxvk_loaded'],'2.5.3');self.assertTrue(fields['native_d3d9_loaded'])
+
+    def test_driver_switch_selects_exact_icd_and_preserves_baseline_caches(self):
+        session=self.root/'session';session.mkdir();prefix=self.root/'prefix'
+        baseline_cache=prefix/'trasc-cache/mesa-turnip';baseline_cache.mkdir(parents=True)
+        (baseline_cache/'existing-cache').write_bytes(b'keep')
+        for version in ('24.3.4','26.0.0','24.3.4'):
+            with self.subTest(version=version),patch.dict(os.environ,{},clear=True):
+                env={'WINEDLLOVERRIDES':''}
+                client_vulkan.configure_environment(env,self.bundle,session,prefix,version)
+                manifest,args=client_vulkan.prepare_probe(self.bundle,session,prefix,env,version)
+                icd=json.loads((session/'turnip-icd.json').read_text())
+                self.assertEqual(icd['ICD']['library_path'],str(self.bundle/client_vulkan.DRIVERS[version]))
+                self.assertEqual(args,[str(self.bundle/'vulkan-probe')])
+                self.assertEqual(env['VK_DRIVER_FILES'],str(session/'turnip-icd.json'))
+                expected='mesa-turnip' if version=='24.3.4' else 'mesa-turnip-26.0.0'
+                self.assertEqual(env['MESA_SHADER_CACHE_DIR'],str(prefix/'trasc-cache'/expected))
+                self.assertTrue(Path(env['MESA_SHADER_CACHE_DIR']).is_dir())
+                self.assertEqual((baseline_cache/'existing-cache').read_bytes(),b'keep')
+        request={'mode':'desktop','resolution':'800x600','renderer':'turnip'}
+        with patch.dict(os.environ,{},clear=True):
+            default=client_runner.Supervisor(request)
+            comparison=client_runner.Supervisor(dict(request,turnip_driver='26.0.0'))
+            self.assertEqual(default.status['turnip_driver_requested'],'24.3.4')
+            self.assertEqual(comparison.status['turnip_driver_requested'],'26.0.0')
+            self.assertNotEqual(default.env['DXVK_STATE_CACHE_PATH'],comparison.env['DXVK_STATE_CACHE_PATH'])
+        for bad in ('../turnip.so','winlator.zip','',None,[]):
+            with self.assertRaisesRegex(ValueError,'Turnip driver'):
+                client_runner.validate_request(dict(request,turnip_driver=bad))
+
+    def test_selected_driver_must_match_observed_mesa_version(self):
+        report={'driver_id':18,'vendor_id':0x5143,'software':False,'api_version':(1<<22|3<<12),'presentation_frames':3,'driver_version':26<<22}
+        client_vulkan.parse_probe(json.dumps(report),expected_mesa='26.0.0')
+        with self.assertRaisesRegex(RuntimeError,'loaded Turnip version'):
+            client_vulkan.parse_probe(json.dumps(report),expected_mesa='24.3.4')
+        report.pop('driver_version')
+        with self.assertRaisesRegex(RuntimeError,'loaded Turnip version'):
+            client_vulkan.parse_probe(json.dumps(report),expected_mesa='26.0.0')
+
+    def test_added_driver_is_verified_before_icd_change(self):
+        session=self.root/'session';session.mkdir();icd=session/'turnip-icd.json';icd.write_text('old')
+        (self.bundle/'turnip-26.0.0.so').write_bytes(b'not a driver')
+        with self.assertRaisesRegex(RuntimeError,'checksum'):
+            client_vulkan.prepare_probe(self.bundle,session,self.root/'prefix',{},'26.0.0')
+        self.assertEqual(icd.read_text(),'old')
+        manifest=json.loads((self.bundle/'vulkan-bundle.json').read_text())
+        manifest['files']['turnip-26.0.0.so']=hashlib.sha256(b'not a driver').hexdigest()
+        (self.bundle/'vulkan-bundle.json').write_text(json.dumps(manifest))
+        with self.assertRaisesRegex(RuntimeError,'not ARM64'):client_vulkan.verify_bundle(self.bundle)
 
 
 if __name__=='__main__':unittest.main()

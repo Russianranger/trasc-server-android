@@ -30,7 +30,7 @@ for(const [name,type,value,min,max]of [['Character:RaidExpMultiplier','real','0.
     else if(op==='client_native_state')result=clientRuntime;
     else if(op==='client_directx_online'||(op==='pick'&&args.kind==='client-directx')){clientRuntime.directx_installed=true;result=clientRuntime;}
     else if(op==='client_runtime_online'){clientRuntime.installed=true;result=clientRuntime;}
-    else if(op==='client_start'){window.__clientStarts.push(args);clientRuntime={...clientRuntime,alive:true,display_ready:true,launch:{phase:'launch_requested',native_dinput8_requested:args.native_dinput8,native_loaded:false,native_d3dx_requested:args.native_d3dx,diagnostic_logging:args.diagnostic_logging}};result=clientRuntime;}
+    else if(op==='client_start'){window.__clientStarts.push(args);clientRuntime={...clientRuntime,alive:true,display_ready:true,launch_options:args.mode==='client'?args:clientRuntime.launch_options,launch:{phase:'launch_requested',turnip_driver_requested:args.renderer==='turnip'?args.turnip_driver:undefined,native_dinput8_requested:args.native_dinput8,native_loaded:false,native_d3dx_requested:args.native_d3dx,diagnostic_logging:args.diagnostic_logging}};result=clientRuntime;}
     else if(op==='client_view'){window.__clientViews++;result={};}
     else if(op==='client_stop'){clientRuntime.alive=false;result=clientRuntime;}
     else if(op==='state'){
@@ -97,7 +97,7 @@ for(const [name,type,value,min,max]of [['Character:RaidExpMultiplier','real','0.
   await page.waitForFunction(()=>window.__clientViews===1);
   assert(await page.locator('#spell-test-apply').isDisabled(),'Running client blocks file comparison');
   assert(await page.locator('#client-launch').isDisabled(),'A running desktop must be stopped before another launch');
-  assert.deepEqual(await page.evaluate(()=>window.__clientStarts[0]),{sound_diagnostics:false,audio:true,npc_rendering:'compatibility',mode:'desktop',resolution:'960x540',fullscreen:false,native_dinput8:true,diagnostic_logging:false,native_d3dx:false,renderer:'software',cpu_profile:'balanced',runtime_mode:'auto',graphics_threading:'multi',cpu_affinity:'available'});
+  assert.deepEqual(await page.evaluate(()=>window.__clientStarts[0]),{turnip_driver:'24.3.4',sound_diagnostics:false,audio:true,npc_rendering:'compatibility',mode:'desktop',resolution:'960x540',fullscreen:false,native_dinput8:true,diagnostic_logging:false,native_d3dx:false,renderer:'software',cpu_profile:'balanced',runtime_mode:'auto',graphics_threading:'multi',cpu_affinity:'available'});
   assert(!(await page.locator('#client-launch-status').textContent()).includes('load confirmed'),'File presence/request must not claim DLL loaded');
   await page.locator('#client-stop').click();await page.waitForFunction(()=>document.getElementById('client-launch-status').textContent.startsWith('Client stopped.'));
   await page.locator('#client-renderer').selectOption('virgl');
@@ -113,13 +113,16 @@ for(const [name,type,value,min,max]of [['Character:RaidExpMultiplier','real','0.
   await page.locator('#client-view').click();await page.waitForFunction(()=>window.__clientViews===3);
   await page.locator('#client-stop').click();await page.waitForFunction(()=>document.getElementById('client-launch-status').textContent.startsWith('Client stopped.'));
   await page.locator('#client-graphics-threading').selectOption('opengl_worker');await page.locator('#client-runtime-mode').selectOption('compatibility');await page.locator('#client-cpu-profile').selectOption('compatibility');await page.locator('#client-diagnostics').check();await page.locator('#client-prefix-repair').click();await page.waitForFunction(()=>window.__clientViews===4);
-  assert.deepEqual(await page.evaluate(()=>window.__clientStarts[2]),{sound_diagnostics:false,audio:true,npc_rendering:'compatibility',mode:'desktop',resolution:'960x540',fullscreen:false,native_dinput8:true,diagnostic_logging:true,native_d3dx:false,repair_prefix:true,renderer:'software',cpu_profile:'compatibility',runtime_mode:'compatibility',graphics_threading:'opengl_worker',cpu_affinity:'available'});
+  assert.deepEqual(await page.evaluate(()=>window.__clientStarts[2]),{turnip_driver:'24.3.4',sound_diagnostics:false,audio:true,npc_rendering:'compatibility',mode:'desktop',resolution:'960x540',fullscreen:false,native_dinput8:true,diagnostic_logging:true,native_d3dx:false,repair_prefix:true,renderer:'software',cpu_profile:'compatibility',runtime_mode:'compatibility',graphics_threading:'opengl_worker',cpu_affinity:'available'});
   assert((await page.locator('#client-launch-status').textContent()).includes('Verbose diagnostics enabled'));
   await page.locator('#client-stop').click();
   await page.waitForFunction(()=>document.getElementById('client-launch-status').textContent.startsWith('Client stopped.'));
   await page.locator('#client-resolution').selectOption('1280x720');
   await page.locator('#client-fullscreen').check();
   await page.locator('#client-renderer').selectOption('turnip');
+  assert.equal(await page.locator('#client-turnip-driver').inputValue(),'24.3.4');
+  await page.locator('#client-turnip-driver').selectOption('26.0.0');
+  await page.screenshot({path:'ui-reports/turnip-driver-mobile.png',fullPage:true});
   assert(await page.locator('#client-graphics-threading').isDisabled(),'WineD3D threading does not apply to DXVK');
   assert(!(await page.locator('#client-npc-rendering').isDisabled()));
   await page.locator('#client-npc-rendering').selectOption('standard');
@@ -133,13 +136,20 @@ for(const [name,type,value,min,max]of [['Character:RaidExpMultiplier','real','0.
   assert.equal(await page.evaluate(()=>window.__clientStarts[3].sound_diagnostics),true);
   assert.equal(await page.evaluate(()=>window.__clientStarts[3].npc_rendering),'standard');
   assert.equal(await page.evaluate(()=>window.__clientStarts[3].renderer),'turnip');
+  assert.equal(await page.evaluate(()=>window.__clientStarts[3].turnip_driver),'26.0.0');
+  assert(await page.locator('#client-turnip-driver').isDisabled(),'Stop before switching a running driver');
+  assert((await page.locator('#client-launch-status').textContent()).includes('Turnip 26.0.0'));
   assert.equal(await page.evaluate(()=>window.__clientStarts[3].resolution),'1280x720');
   assert.equal(await page.evaluate(()=>window.__clientStarts[3].fullscreen),true);
   assert.equal(await page.evaluate(()=>window.__clientStarts[3].cpu_affinity),'game');
   await page.locator('#client-stop').click();await page.waitForFunction(()=>document.getElementById('client-launch-status').textContent.startsWith('Client stopped.'));
+  await page.evaluate(async()=>{document.getElementById('client-turnip-driver').value='24.3.4';launchOptionsLoaded=false;await clientRuntimeState();});
+  assert.equal(await page.locator('#client-turnip-driver').inputValue(),'26.0.0','Saved driver survives settings reload');
+  await page.locator('#client-turnip-driver').selectOption('24.3.4');
   await page.locator('#client-fullscreen').uncheck();
   await page.locator('#client-renderer').selectOption('virgl');
   assert(!(await page.locator('#client-graphics-threading').isDisabled()),'WineD3D recovery restores threading controls');
+  assert(await page.locator('#client-turnip-driver').isDisabled(),'Turnip selection does not apply to VirGL');
   await page.locator('nav [data-tab=setup]').click();await page.waitForFunction(()=>document.getElementById('controller-focus').textContent==='Controller capture is off.');
   assert(!(await page.locator('#client-input-status').textContent()).includes('KeyT'),'Leaving tab releases input');
   assert(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth+1),'No horizontal page overflow on mobile');

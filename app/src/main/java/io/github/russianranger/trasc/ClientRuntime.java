@@ -120,6 +120,8 @@ final class ClientRuntime {
             String mode=options.optString("mode","client"),resolution=options.optString("resolution","800x600"),renderer=options.optString("renderer","software");
             String cpuProfile=options.optString("cpu_profile","balanced");
             String npcRendering=options.optString("npc_rendering","compatibility");
+            String turnipDriver=options.optString("turnip_driver","24.3.4");
+            if(!Arrays.asList("24.3.4","26.0.0").contains(turnipDriver))throw new IOException("Unsupported Turnip driver");
             if(!Arrays.asList("standard","compatibility","compatibility_042","direct_043").contains(npcRendering))throw new IOException("Unsupported NPC rendering mode");
             if(!Arrays.asList("balanced","compatibility","accurate").contains(cpuProfile))throw new IOException("Unsupported CPU profile");
             String runtimeMode=options.optString("runtime_mode","auto");
@@ -148,6 +150,7 @@ final class ClientRuntime {
                 .put("android_directory",client.getCanonicalPath()).put("windows_drive","D:").put("shared_storage",false));
             request.put("graphics_threading",graphicsThreading).put("cpu_affinity",cpuAffinity).put("fullscreen",mode.equals("client")&&options.optBoolean("fullscreen",true));
             request.put("npc_rendering",npcRendering).put("audio",options.optBoolean("audio",true)).put("sound_diagnostics",options.optBoolean("sound_diagnostics",false));
+            request.put("turnip_driver",turnipDriver);
             File spellJournal=new File(server.work,"backups/client-spell-test/current.json");
             if(spellJournal.exists())request.put("spell_test",json(spellJournal));
             RuntimeManager.write(new File(run,"request.json"),request.toString());
@@ -156,8 +159,8 @@ final class ClientRuntime {
                 try(InputStream in=context.getAssets().open(name)){RuntimeManager.copy(in,new File(backend,name));}
             if(!new File(backend,"wineserver").setExecutable(true,true))throw new IOException("Could not prepare bundled Wine server");
             if(renderer.equals("turnip")) {
-                status="Preparing bundled Turnip and DXVK…";
-                for(String name:new String[]{"turnip.so","vulkan-probe","dxvk-d3d9.dll","vulkan-bundle.json"})
+                status="Preparing Turnip "+turnipDriver+" and DXVK…";
+                for(String name:new String[]{"turnip.so","turnip-26.0.0.so","vulkan-probe","dxvk-d3d9.dll","vulkan-bundle.json"})
                     try(InputStream in=context.getAssets().open(name)){RuntimeManager.copy(in,new File(backend,name));}
                 if(!new File(backend,"vulkan-probe").setExecutable(true,true))throw new IOException("Could not prepare Vulkan preflight executable");
             }

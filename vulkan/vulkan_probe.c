@@ -102,6 +102,8 @@ int main(int argc, char **argv) {
     }
     CHECK(vkDeviceWaitIdle(device));
     printf("{\"device\":");json_string(properties.properties.deviceName);printf(",\"driver\":");json_string(driver.driverName);
+    printf(",\"driver_info\":");json_string(driver.driverInfo);
+    printf(",\"driver_version\":%u",properties.properties.driverVersion);
     printf(",\"driver_id\":%u,\"vendor_id\":%u,\"api_version\":%u,\"software\":%s,\"presentation_frames\":3}\n",driver.driverID,properties.properties.vendorID,properties.properties.apiVersion,properties.properties.deviceType==VK_PHYSICAL_DEVICE_TYPE_CPU?"true":"false");
     vkDestroyFence(device,fence,NULL);vkDestroyCommandPool(device,pool,NULL);vkDestroySwapchainKHR(device,swapchain,NULL);vkDestroyDevice(device,NULL);vkDestroySurfaceKHR(instance,surface,NULL);vkDestroyInstance(instance,NULL);XDestroyWindow(display,window);XCloseDisplay(display);return 0;
 }

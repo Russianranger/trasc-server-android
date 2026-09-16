@@ -1,0 +1,27 @@
+# Reuse the baseline's Debian/glibc toolchain and dependencies. The Android
+# bionic driver ZIPs used by Winlator are not compatible with this runtime.
+FROM trasc-vulkan:1
+RUN apt-get update && apt-get install -y --no-install-recommends cmake \
+ && apt-get clean && rm -rf /var/lib/apt/lists/*
+WORKDIR /build
+# Mesa 26's BVH shaders require glslang >=12.2; bookworm ships 12.0.
+# Build the shader compiler only; the APK driver has no new LLVM dependency.
+RUN curl -fL --retry 3 https://codeload.github.com/KhronosGroup/glslang/tar.gz/refs/tags/15.1.0 -o glslang-15.1.0.tar.gz \
+ && echo '4bdcd8cdb330313f0d4deed7be527b0ac1c115ff272e492853a6e98add61b4bc  glslang-15.1.0.tar.gz' | sha256sum -c - \
+ && tar -xf glslang-15.1.0.tar.gz \
+ && cmake -S glslang-15.1.0 -B glslang-build -G Ninja -DCMAKE_BUILD_TYPE=Release \
+    -DENABLE_OPT=OFF -DBUILD_TESTING=OFF -DGLSLANG_TESTS=OFF \
+ && cmake --build glslang-build --parallel 2 \
+ && cmake --install glslang-build
+RUN curl -fL --retry 3 https://archive.mesa3d.org/mesa-26.0.0.tar.xz -o mesa-26.0.0.tar.xz \
+ && echo '2a44e98e64d5c36cec64633de2d0ec7eff64703ee25b35364ba8fcaa84f33f72  mesa-26.0.0.tar.xz' | sha256sum -c - \
+ && tar -xf mesa-26.0.0.tar.xz \
+ && meson setup mesa26-build mesa-26.0.0 --buildtype=release \
+    -Dplatforms=x11 -Dvulkan-drivers=freedreno -Dfreedreno-kmds=kgsl \
+    -Dgallium-drivers= -Dglx=disabled -Degl=disabled -Dgbm=disabled \
+    -Dopengl=false -Dgles1=disabled -Dgles2=disabled -Dllvm=disabled \
+    -Dvideo-codecs= -Dbuild-tests=false \
+ && ninja -C mesa26-build -j2 \
+ && cp mesa26-build/src/freedreno/vulkan/libvulkan_freedreno.so /out/turnip-26.0.0.so \
+ && strip /out/turnip-26.0.0.so \
+ && ldd /out/turnip-26.0.0.so

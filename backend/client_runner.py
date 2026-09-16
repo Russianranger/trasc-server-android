@@ -200,6 +200,7 @@ def validate_request(request):
     if request.get('mode') not in ('desktop', 'client'): raise ValueError('Choose Wine desktop or ROF2 client')
     if request.get('resolution') not in RESOLUTIONS: raise ValueError('Unsupported client resolution')
     if request.get('renderer', 'software') not in ('software', 'virgl', 'turnip'): raise ValueError('Unsupported graphics option')
+    client_vulkan.driver_file(request.get('turnip_driver', client_vulkan.DEFAULT_DRIVER))
     if request.get('cpu_affinity', 'available') not in ('available', 'game'): raise ValueError('Unsupported CPU affinity')
     if request.get('cpu_profile', 'balanced') not in ('balanced', 'compatibility', 'accurate'): raise ValueError('Unsupported CPU profile')
     if request.get('runtime_mode', 'auto') not in ('auto', 'compatibility'): raise ValueError('Unsupported runtime mode')
@@ -397,7 +398,9 @@ class Supervisor:
                             BOX64_DYNAREC_FASTROUND='0', BOX64_SYNC_ROUNDING='1')
         self.status['cpu_affinity'] = request.get('cpu_affinity', 'available')
         if request.get('renderer') == 'turnip':
-            client_vulkan.configure_environment(self.env, Path(__file__).parent, SESSION, PREFIX)
+            version = request.get('turnip_driver', client_vulkan.DEFAULT_DRIVER)
+            self.status['turnip_driver_requested'] = version
+            client_vulkan.configure_environment(self.env, Path(__file__).parent, SESSION, PREFIX, version)
             self.env['DXVK_CONFIG'] = client_vulkan.npc_configuration(request.get('npc_rendering', 'compatibility'))
             self.status['npc_rendering'] = request.get('npc_rendering', 'compatibility')
             self.status['mesa_glthread_requested'] = False
@@ -515,16 +518,20 @@ class Supervisor:
     def check_graphics(self):
         self.update('checking_graphics')
         if self.request.get('renderer') == 'turnip':
-            manifest, command = client_vulkan.prepare_probe(Path(__file__).parent, SESSION, PREFIX, self.env)
+            version = self.request.get('turnip_driver', client_vulkan.DEFAULT_DRIVER)
+            manifest, command = client_vulkan.prepare_probe(Path(__file__).parent, SESSION, PREFIX, self.env, version)
+            self.update(turnip_driver={'version': version, 'file': client_vulkan.driver_file(version),
+                        'sha256': manifest['files'][client_vulkan.driver_file(version)]},
+                        vulkan_bundle=manifest)
             process = self.spawn(command, 'client-vulkan.log')
             deadline = time.monotonic()+30
             while process.poll() is None:
                 if self.stopping(): raise StopRequested()
-                if time.monotonic()>deadline: raise RuntimeError('Turnip Vulkan preflight timed out. Choose VirGL and export Logs.')
+                if time.monotonic()>deadline: raise RuntimeError('Turnip '+version+' preflight timed out. Stop, select Turnip 24.3.4 or VirGL, and export Logs.')
                 time.sleep(.1)
-            if process.returncode: raise RuntimeError('Turnip device/presentation check failed. See client-vulkan.log; choose VirGL to recover.')
+            if process.returncode: raise RuntimeError('Turnip '+version+' device/presentation check failed. See client-vulkan.log; select Turnip 24.3.4 or VirGL to recover.')
             report = client_vulkan.parse_probe((LOGS/'client-vulkan.log').read_text(errors='replace'),
-                allow_software=os.environ.get('TRASC_TEST_ALLOW_SOFTWARE_VULKAN') == '1')
+                allow_software=os.environ.get('TRASC_TEST_ALLOW_SOFTWARE_VULKAN') == '1', expected_mesa=version)
             self.update(renderer='DXVK / '+report['driver']+' ('+report['device']+')',
                         graphics_acceleration='software_test' if report['software'] else 'host_gpu',
                         vulkan=report, vulkan_bundle=manifest, presentation='Vulkan → X11 copy → in-app display')

@@ -1,3 +1,18 @@
+TRASC Server Android **0.4.9 — selectable Turnip drivers**
+
+Client now offers **Turnip driver: 24.3.4 (current / fallback)** or **26.0.0 (comparison)**. Both are bundled. The new option is an upstream Mesa build for TRASC, not the exact Winlator R5 package. Winlator driver ZIP import is not supported by this Linux runtime.
+
+1. Stop the client and runtime, update in place, then reopen the runtime/server.
+2. In **Client**, keep **Turnip + DXVK**, select **Turnip driver -> 26.0.0**, and launch. Retain Balanced, exact0.4.2 NPC compatibility, native helpers and your existing fullscreen settings.
+3. Watch the character-selection name for 30 seconds, inspect the same NPCs, and confirm spell sound/particles still work. **Keep the successful spell exclusion active.** Leave verbose diagnostics off.
+4. Stop and **Export Logs**. If it regresses or fails to launch, select **24.3.4** and relaunch. A first run with a new driver may compile shaders; compare a second run before judging performance.
+
+No runtime download, client reimport, prefix repair or export is needed. Driver selection is saved after launch. This is a driver comparison; physical-device name recovery remains unverified. [Details and validation boundaries](turnip-selection-049.md).
+
+---
+
+Historical release notes follow; the previous instruction to restore full spell files is superseded by keeping the confirmed working exclusion active for this driver test.
+
 TRASC Server Android **0.4.8 — reversible spell exclusion test**
 
 **Device result:** the user confirms spell recovery with the exclusion; the name glitch persists. The September14 upstream database still has this issue and contains15 high IDs. This build’s test is limited to the original8-ID table. [Investigation and deployment guidance](upstream-spells-048.md).

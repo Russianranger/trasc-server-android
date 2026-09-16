@@ -20,6 +20,7 @@ jobs:
             backend-assets/libasound_module_pcm_trasc.so
             backend-assets/audio-bundle.json
             backend-assets/turnip.so
+            backend-assets/turnip-26.0.0.so
             backend-assets/vulkan-probe
             backend-assets/dxvk-d3d9.dll
             backend-assets/vulkan-bundle.json

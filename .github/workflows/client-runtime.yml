@@ -26,7 +26,7 @@ jobs:
       - run: cp backend-assets/libasound_module_pcm_trasc.so backend-assets/audio-bundle.json backend/
       - run: cp backend-assets/wined3d-patch.json backend/
       - run: cp backend-assets/wineserver backend-assets/wineserver-patch.json backend/ && chmod +x backend/wineserver
-      - run: cp backend-assets/turnip.so backend-assets/vulkan-probe backend-assets/dxvk-d3d9.dll backend-assets/vulkan-bundle.json backend/ && chmod +x backend/vulkan-probe
+      - run: cp backend-assets/turnip.so backend-assets/turnip-26.0.0.so backend-assets/vulkan-probe backend-assets/dxvk-d3d9.dll backend-assets/vulkan-bundle.json backend/ && chmod +x backend/vulkan-probe
       - uses: actions/cache/restore@v4
         id: client-image
         with:

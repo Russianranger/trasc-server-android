@@ -1,10 +1,18 @@
-# Current investigation: Winlator character-selection labels confirmed working (2026-09-16)
+# Current work: 0.4.9 selectable Turnip comparison (2026-09-16)
+
+User correction: their ARM64EC Winlator cannot select Box64. **Withdraw the emulator-switch request below; do not ask again.** The user requests another Turnip driver or driver selection. 0.4.9/code26 adds bundled **24.3.4 (default/fallback)** and **26.0.0 (comparison)** choices. Read [turnip-selection-049.md](turnip-selection-049.md) for implementation, source pins and device instructions. Standard Winlator Android/bionic driver ZIPs cannot be dropped into this glibc runtime; arbitrary ZIP import is not implemented. The new driver is upstream Mesa26.0.0 built for TRASC, not Winlator R5.
+
+Local96 backend tests, host JVM checks and full Android Java compilation passed. Native builds, browser/Android CI and all existing runtime gates must pass before publication is claimed. The local browser initially lacked its executable; CI retains the required browser gate. No physical name-fix claim. Preserve signing cache/certificate, DXVK2.5.3, Wine/Box64, exact0.4.2 NPC settings and the successful spell exclusion. The new selector preserves baseline caches and logs the selected driver hash plus observed Vulkan version/info. Default is24.3.4. Final artifact record is pending.
+
+---
+
+# Previous investigation: Winlator character-selection labels confirmed working (2026-09-16)
 
 The user answers the previously outstanding comparison: **names work in Winlator**. The new `Winlator Ludashi_2026-09-16 14_43_44.mp4` visibly shows readable `Yehaos [1 Dru]` and `Greater Faydark` labels through character animation. Both settings screenshots were successfully inspected; do not ask to reattach them. Read [winlator-labels-048.md](winlator-labels-048.md).
 
 Working Winlator selects **DXVK2.4.1-fix / Turnip26.0.0-R5 / Vulkan1.3**, compared with our **DXVK2.5.3 / Turnip24.3.4 / Wine10.0 WoW64 / Box64 0.4.4**. **The follow-up 15:21 screenshots now identify Proton11.0-1 arm64ec and FEXCore2601 / Performance for the 32-bit client. The runtime-details request is satisfied; do not repeat it.** Both new images were inspected successfully. Selected settings are not independently verified loaded binaries. Names previously failed with both our Turnip and VirGL paths, so shared Wine/Box64/configuration differences remain relevant; this does not prove a particular graphics version or emulator is the cause.
 
-**Next focused comparison:** fully stop Winlator, change only shortcut Compatibility -> 32-bit Emulator from FEXCore to Box64 if offered, keep Proton/graphics/files unchanged, observe the same selection labels, then stop and restore FEXCore2601/Performance. Record the alternative's version/preset. Ludashi source confirms this selects `wowbox64.dll` instead of `libwow64fex.dll` in the same ARM64EC environment; it is not the same standalone Box64 integration as TRASC. Corruption only on that alternative would narrow the translation path; working labels on both or a launch failure require different follow-up. If absent, report that rather than install new components. See the linked report for exact source and limits. Porting FEX/ARM64EC into TRASC would require a compatible runtime and launcher integration, not copying a DLL into Wine10. No full runtime migration or speculative graphics upgrade was made.
+**Withdrawn comparison:** the source-based FEXCore -> WowBox64 suggestion is unavailable in the user's installed ARM64EC environment. Do not request it again or assume a result. The working Proton11.0-1/FEXCore2601/Performance configuration remains recorded, and the user has now chosen a Turnip comparison. Porting FEX/ARM64EC into TRASC would require a compatible runtime and launcher integration, not copying a DLL into Wine10.
 
 Preserve the confirmed spell exclusion and exact0.4.2 NPC/native-helper/Balanced settings. No code, native binaries, client data, or APK changed; published APK remains0.4.8. Do not repeat the failed broad renderer/CPU/native-DLL OFF comparisons. This documentation-only update uses [skip ci].
 

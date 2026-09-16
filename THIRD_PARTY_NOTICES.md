@@ -56,10 +56,12 @@ TRASC additionally patches the vtest worker lifecycle to terminate workers when 
 
 ## Turnip / DXVK Vulkan path
 
-The APK includes Mesa 24.3.4's ARM64 glibc Turnip driver, built for Qualcomm KGSL from the unmodified official release source (SHA256 `e641ae27191d387599219694560d221b7feaa91c900bcec46bf444218ed66025`). Mesa's source carries its component license notices, primarily MIT. No proprietary Qualcomm driver is included.
+The APK includes selectable Mesa 24.3.4 and 26.0.0 ARM64 glibc Turnip drivers, built for Qualcomm KGSL from the unmodified official release source (24.3.4 SHA256 `e641ae27191d387599219694560d221b7feaa91c900bcec46bf444218ed66025`; 26.0.0 SHA256 `2a44e98e64d5c36cec64633de2d0ec7eff64703ee25b35364ba8fcaa84f33f72`). Mesa's source carries its component license notices, primarily MIT. No proprietary Qualcomm driver is included.
 
-The x86 D3D9 DLL comes from upstream DXVK 2.5.3 (zlib license), release archive SHA256 `d8e6ef7d1168095165e1f8a98c7d5a4485b080467bb573d2a9ef3e3d79ea1eb8`. Its complete tagged source archive SHA256 is `e3d8c320f1cbd134ce176be81a0c156585a1a251fd004c78d78373adff37f1ce`. Both upstream source archives, licenses, exact Dockerfile/build script and the project's Vulkan preflight source accompany the APK in `vulkan-sources.tar.gz` inside `launcher-sources.tar.gz`. The existing client runtime supplies the Vulkan loader; the APK adds no EverQuest assets.
+The x86 D3D9 DLL comes from upstream DXVK 2.5.3 (zlib license), release archive SHA256 `d8e6ef7d1168095165e1f8a98c7d5a4485b080467bb573d2a9ef3e3d79ea1eb8`. Its complete tagged source archive SHA256 is `e3d8c320f1cbd134ce176be81a0c156585a1a251fd004c78d78373adff37f1ce`. The Mesa and DXVK source archives, licenses, exact Dockerfiles/build script and the project's Vulkan preflight source accompany the APK in `vulkan-sources.tar.gz` inside `launcher-sources.tar.gz`. The existing client runtime supplies the Vulkan loader; the APK adds no EverQuest assets.
 
 ## Android playback bridge
 
 The APK adds the original TRASC ALSA PCM endpoint (MIT; native/audio-LICENSE), dynamically using the client runtime's existing ALSA library. It calls Android AudioTrack through the launcher. Endpoint source, license, Bookworm Dockerfile and build-audio.sh accompany launcher-sources.tar.gz. No new libasound binary, proprietary game sound, or microphone recording is bundled.
+
+Mesa 26.0.0 is built using Khronos glslang 15.1.0 (source archive SHA256 `4bdcd8cdb330313f0d4deed7be527b0ac1c115ff272e492853a6e98add61b4bc`), retained in the Vulkan source bundle with its upstream license notices. This build tool is not installed into the client runtime. The comparison driver is upstream Mesa, not Winlator’s custom R5 binary.

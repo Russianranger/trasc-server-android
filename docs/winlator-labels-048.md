@@ -65,7 +65,12 @@ installed binary identity. Do not substitute stock 2.4.1 and describe it
 as the same custom build. No archive from that collection was installed
 or added to the app in this investigation.
 
-## Next evidence and preserved baseline
+## Historical proposed comparison (withdrawn)
+
+**User follow-up:** the installed ARM64EC Winlator cannot select Box64. The
+source-based procedure below does not apply to their build and is withdrawn;
+do not ask them to repeat it. The user instead requested selectable Turnip
+drivers; see [turnip-selection-049.md](turnip-selection-049.md).
 
 The previous request for Wine/emulator/container details is now satisfied.
 The next focused device comparison is available inside the working Winlator
