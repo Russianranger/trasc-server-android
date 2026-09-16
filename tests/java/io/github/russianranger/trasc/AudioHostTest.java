@@ -19,7 +19,41 @@ public final class AudioHostTest {
         for(int w:words)out.writeInt(Integer.reverseBytes(w));return data.toByteArray();
     }
     static void check(boolean value){if(!value)throw new AssertionError();}
+    // Android starts only once its watermark is met, including after an underrun.
+    // The producer cannot queue beyond its smaller ALSA ring while its head is frozen.
+    static class BufferedTrack implements AudioBufferPolicy.Track {
+        int size=8192,threshold=8192,queued,played;boolean flowing;
+        public int resize(int frames){size=frames;return size;}
+        public int startThreshold(int frames){threshold=frames;return threshold;}
+        void write(int frames){check(queued+frames<=size);queued+=frames;}
+        void advance(int frames){
+            if(queued>=Math.min(size,threshold))flowing=true;
+            if(flowing){int n=Math.min(queued,frames);played+=n;queued-=n;if(queued==0)flowing=false;}
+        }
+    }
+    static void checkStartup()throws Exception {
+        BufferedTrack old=new BufferedTrack();old.write(1920);old.advance(48000);
+        check(old.played==0); // Reproduces the observed one-buffer stalemate.
+        for(boolean modern:new boolean[]{false,true})for(int ring:new int[]{480,1920,3840}) {
+            BufferedTrack fixed=new BufferedTrack();AudioBufferPolicy.configure(fixed,ring,modern);
+            for(int restart=0;restart<3;restart++) {
+                // Begin with silence, then permit the caller to keep feeding real samples.
+                int before=fixed.played;fixed.write(ring);fixed.advance(48000);
+                check(fixed.played-before==ring&&fixed.queued==0);
+                for(int i=0;i<10;i++){fixed.write(ring);fixed.advance(48000);}
+                check(fixed.played-before==ring*11);
+            }
+        }
+        boolean rejected=false;
+        try{AudioBufferPolicy.configure(new AudioBufferPolicy.Track(){
+            public int resize(int frames){return 8192;}
+            public int startThreshold(int frames){return 8192;}
+        },1920,true);}catch(IOException expected){rejected=true;}
+        check(rejected);
+        System.out.println("PASS: old hardware watermark stalls a 1920-frame producer; configured buffers progress after startup and repeated underruns");
+    }
     public static void main(String[] args)throws Exception {
+        checkStartup();
         byte[] request=words(0x50414c54,1,48000,2,3840,5,1,4,2,0xfffe0001,0x12345678,3,2);
         Sink sink=new Sink();AudioPcmSession session=new AudioPcmSession();ByteArrayOutputStream response=new ByteArrayOutputStream();
         session.run(new ByteArrayInputStream(request),response,sink);

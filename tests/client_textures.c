@@ -69,6 +69,40 @@ static int specular_shader(const char *version) {
     IDirect3DDevice9_SetVertexShader(dev,NULL);IDirect3DVertexShader9_Release(shader);IDirect3DVertexDeclaration9_Release(decl);code->lpVtbl->Release(code);
     printf("%s: %s specular output and implicit fog\n",result?"FAIL":"PASS",version);return result;
 }
+static int live_vertex_updates(void) {
+    /* Open stand-in for legacy label geometry: update a DEFAULT dynamic buffer
+     * while it remains locked. Native D3D9/DXVK direct mapping sees these writes.
+     * Forcing staged mapping leaves the last uploaded geometry/color visible.
+     * Readback completes each draw before the CPU modifies that memory again.
+     */
+    struct V {float x,y,z,w;DWORD color;} quad[]={
+        {-.5f,-.5f,0,1,0xffff0000},{63.5f,-.5f,0,1,0xffff0000},
+        {-.5f,63.5f,0,1,0xffff0000},{63.5f,63.5f,0,1,0xffff0000}};
+    IDirect3DVertexBuffer9 *buffer=NULL;struct V *mapped=NULL;
+    HR(IDirect3DDevice9_SetVertexShader(dev,NULL));HR(IDirect3DDevice9_SetTexture(dev,0,NULL));
+    HR(IDirect3DDevice9_SetFVF(dev,D3DFVF_XYZRHW|D3DFVF_DIFFUSE));
+    HR(IDirect3DDevice9_SetTextureStageState(dev,0,D3DTSS_COLOROP,D3DTOP_SELECTARG1));
+    HR(IDirect3DDevice9_SetTextureStageState(dev,0,D3DTSS_COLORARG1,D3DTA_DIFFUSE));
+    HR(IDirect3DDevice9_CreateVertexBuffer(dev,sizeof(quad),D3DUSAGE_DYNAMIC|D3DUSAGE_WRITEONLY,
+        D3DFVF_XYZRHW|D3DFVF_DIFFUSE,D3DPOOL_DEFAULT,&buffer,NULL));
+    HR(IDirect3DVertexBuffer9_Lock(buffer,0,sizeof(quad),(void**)&mapped,D3DLOCK_DISCARD));
+    memcpy(mapped,quad,sizeof(quad));HR(IDirect3DVertexBuffer9_Unlock(buffer));
+    HR(IDirect3DDevice9_SetStreamSource(dev,0,buffer,0,sizeof(quad[0])));
+    HR(IDirect3DDevice9_Clear(dev,0,NULL,D3DCLEAR_TARGET,0xff000000,1,0));
+    HR(IDirect3DDevice9_BeginScene(dev));HR(IDirect3DDevice9_DrawPrimitive(dev,D3DPT_TRIANGLESTRIP,0,2));HR(IDirect3DDevice9_EndScene(dev));
+    int result=pixel(255,0,0);if(result)return result;
+    HR(IDirect3DVertexBuffer9_Lock(buffer,0,sizeof(quad),(void**)&mapped,D3DLOCK_NOOVERWRITE));
+    const DWORD colors[]={0xff00ff00,0xff0000ff,0xffffff00};
+    for(unsigned frame=0;frame<3;frame++) {
+        for(unsigned v=0;v<4;v++)mapped[v].color=colors[frame];
+        HR(IDirect3DDevice9_Clear(dev,0,NULL,D3DCLEAR_TARGET,0xff000000,1,0));
+        HR(IDirect3DDevice9_BeginScene(dev));HR(IDirect3DDevice9_DrawPrimitive(dev,D3DPT_TRIANGLESTRIP,0,2));HR(IDirect3DDevice9_EndScene(dev));
+        result=pixel((colors[frame]>>16)&255,(colors[frame]>>8)&255,colors[frame]&255);
+        if(result){puts("STALE: live dynamic label buffer did not reach the next draw");break;}
+    }
+    HR(IDirect3DVertexBuffer9_Unlock(buffer));IDirect3DDevice9_SetStreamSource(dev,0,NULL,0,0);IDirect3DVertexBuffer9_Release(buffer);
+    if(!result)puts("PASS: live dynamic label updates reach every draw");return result;
+}
 int WINAPI WinMain(HINSTANCE instance,HINSTANCE prev,LPSTR command,int show) {
     WNDCLASSA cls={0};cls.hInstance=instance;cls.lpszClassName="TrascTextures";cls.lpfnWndProc=DefWindowProcA;RegisterClassA(&cls);
     HWND window=CreateWindowA(cls.lpszClassName,"TRASC texture/shader probe",WS_OVERLAPPEDWINDOW|WS_VISIBLE,0,0,96,96,NULL,NULL,instance,NULL);
@@ -77,8 +111,10 @@ int WINAPI WinMain(HINSTANCE instance,HINSTANCE prev,LPSTR command,int show) {
     params.BackBufferWidth=64;params.BackBufferHeight=64;params.BackBufferFormat=D3DFMT_A8R8G8B8;
     HR(IDirect3D9_CreateDevice(d3d,0,D3DDEVTYPE_HAL,window,D3DCREATE_HARDWARE_VERTEXPROCESSING,&params,&dev));
     IDirect3DDevice9_SetRenderState(dev,D3DRS_LIGHTING,FALSE);IDirect3DDevice9_SetRenderState(dev,D3DRS_ZENABLE,FALSE);IDirect3DDevice9_SetRenderState(dev,D3DRS_CULLMODE,D3DCULL_NONE);
-    int result=0;if(!strstr(command,"--shader-only"))result=artwork();
-    if(!result)result=specular_shader("vs_1_1");if(!result)result=specular_shader("vs_2_0");
+    int result=0;
+    if(strstr(command,"--live-labels"))result=live_vertex_updates();
+    else {if(!strstr(command,"--shader-only"))result=artwork();
+        if(!result)result=specular_shader("vs_1_1");if(!result)result=specular_shader("vs_2_0");}
     if(!result&&strstr(command,"--present-telemetry")) {
         /* Exercise Wine's real aggregate fps channel, not a fabricated log.
          * Fixed idle work is intentionally NOT a ROF2 performance benchmark. */

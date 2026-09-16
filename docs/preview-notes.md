@@ -1,3 +1,21 @@
+TRASC Server Android **0.4.3** addresses audio startup and the animated character-name regression.
+
+- **Audio startup:** align Android's write buffer with Wine's queue and lower the startup threshold on Android 12+. This removes a concrete stall when Android waits for more frames than Wine can supply. New bounded diagnostics record actual buffer sizes, playback progress, nonzero samples and underruns.
+- **NPC + name compatibility:** retains strict shader math and sampler handling, but restores live dynamic vertex-buffer updates for animated labels. The exact **NPC compatibility (0.4.2)** mode remains available if the model issue returns; **Standard** also remains available.
+- The user confirmed that 0.4.2 NPC compatibility fixes models on the Thor. The audio/name changes still require a device check. Older MIDI music synthesis remains pending.
+- Fullscreen 1280×720, gear controls, the TL icon, top runtime controls, imported files and installed runtimes are retained.
+
+**Test on Thor:**
+1. Stop the client and server runtime; install 0.4.3 over the existing app. No runtime download, prefix repair, reimport or rebuild is needed.
+2. Start runtime from the top bar, then Server → Start server. Keep Turnip + DXVK /1280×720 /Fullscreen /Balanced CPU /Automatic runtime /available cores and native helpers. Keep verbose logging and shadows off. Select **NPC + name compatibility** and enable **Game audio**. Your last exported run was Standard, so explicitly select the new compatibility option.
+3. At character selection, watch the yellow character-name/class/zone labels for 30 seconds while the character animates. Then enter the world and check the same NPCs that previously flickered. Note FPS.
+4. Raise Android media volume and the game's sound sliders; test a spell, combat or other known sound effect. Test again after a complete client stop/relaunch. A silent MIDI music track alone does not test this audio path.
+5. Stop the client and export Logs immediately. Send a short video and state whether sound, names and NPC models are correct. If models regress, compare **NPC compatibility (0.4.2)** after a relaunch and export both sessions. If audio is still silent, the new log records whether PCM arrives and whether Android's playback head advances; avoid prefix repair before collecting it.
+
+[Implementation and evidence](audio-and-labels-043.md).
+
+---
+
 TRASC Server Android **0.4.2** adds **Android game audio**, an **NPC rendering comparison**, top runtime controls and a fantasy **TL** launcher icon.
 
 - **Start runtime / Stop runtime** and status stay near the top across all tabs. Stop uses the existing clean server/database shutdown.

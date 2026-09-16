@@ -175,7 +175,7 @@ def pe_machine(path):
 
 
 def validate_request(request):
-    if request.get('npc_rendering', 'compatibility') not in ('standard', 'compatibility'): raise ValueError('Invalid NPC rendering option')
+    if request.get('npc_rendering', 'compatibility') not in ('standard', 'compatibility', 'compatibility_042'): raise ValueError('Invalid NPC rendering option')
     if not isinstance(request.get('audio', False), bool): raise ValueError('Invalid audio option')
     if request.get('mode') not in ('desktop', 'client'): raise ValueError('Choose Wine desktop or ROF2 client')
     if request.get('resolution') not in RESOLUTIONS: raise ValueError('Unsupported client resolution')

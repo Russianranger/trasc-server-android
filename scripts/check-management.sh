@@ -6,6 +6,7 @@ compiler=(javac)
 if ! command -v javac >/dev/null; then compiler=(java -m jdk.compiler/com.sun.tools.javac.Main); fi
 "${compiler[@]}" -d "$classes" tests/java/android/system/Os.java \
     app/src/main/java/io/github/russianranger/trasc/AudioPcmSession.java \
+    app/src/main/java/io/github/russianranger/trasc/AudioBufferPolicy.java \
     tests/java/io/github/russianranger/trasc/AudioHostTest.java \
     app/src/main/java/io/github/russianranger/trasc/TarExtractor.java \
     app/src/main/java/io/github/russianranger/trasc/SessionArchive.java \

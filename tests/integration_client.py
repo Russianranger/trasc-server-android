@@ -11,6 +11,7 @@ import time
 
 sys.path.insert(0, '/opt/trasc-client')
 import client_runner
+import client_vulkan
 from audio_receiver import Receiver
 
 
@@ -184,6 +185,7 @@ def main():
                 env=dict(env,WINEDLLOVERRIDES=env['WINEDLLOVERRIDES']+';d3dx9_35=n,b'),stdout=out,stderr=out,timeout=90)
         assert result.returncode==0,('D3D texture/legacy shader regression', result.returncode,Path('/logs/texture-shaders.log').read_text(errors='replace')[-8000:])
         print('PASS: D3D compressed artwork and SM1/2 specular-fog shader pixels')
+        if renderer=='turnip': check_live_labels(env)
         check_models(env)
         if renderer!='turnip': check_graphics_threading(env)
         compatible=client_runner.Supervisor(dict(request,cpu_profile='compatibility')).env
@@ -271,6 +273,23 @@ def check_compatibility_exit(env):
             evidence.update(after=counters(),returncode=child.returncode,seconds=round(time.monotonic()-started,3))
             Path('/logs/compatibility-exit.json').write_text(json.dumps(evidence,indent=2))
     assert child.returncode==0,('Compatibility CPU profile texture/shader check',child.returncode)
+
+
+def check_live_labels(env):
+    evidence={}
+    for mode,expected in [('compatibility_042',42),('compatibility',0)]:
+        path=Path('/logs/live-labels-'+mode+'.log')
+        with path.open('wb') as out:
+            result=subprocess.run(['/usr/local/bin/box64','/opt/wine/bin/wine',r'D:\textures.exe','--live-labels'],
+                cwd='/client',env=dict(env,DXVK_CONFIG=client_vulkan.npc_configuration(mode)),stdout=out,stderr=out,timeout=90)
+        trace=path.read_text(errors='replace')
+        assert result.returncode==expected,(mode,result.returncode,trace[-4000:])
+        assert 'DXVK: v2.5.3' in trace,mode
+        assert ('STALE: live dynamic label buffer' in trace)==(expected==42),mode
+        if expected==0:assert 'PASS: live dynamic label updates reach every draw' in trace
+        evidence[mode]={'returncode':result.returncode,'expected':expected}
+    Path('/logs/live-labels-verification.json').write_text(json.dumps(evidence,indent=2))
+    print('PASS: 0.4.2 staged-buffer negative control reproduces stale label pixels; direct mapping preserves all live updates')
 
 
 def check_graphics_threading(env):

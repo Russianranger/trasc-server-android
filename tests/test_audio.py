@@ -39,6 +39,9 @@ class AudioTests(unittest.TestCase):
 
     def test_npc_comparison_is_explicit_and_shader_diagnostics_do_not_replace_assets(self):
         self.assertIn('floatEmulation = Strict',client_vulkan.npc_configuration('compatibility'))
+        self.assertIn('allowDirectBufferMapping = True',client_vulkan.npc_configuration('compatibility'))
+        self.assertEqual(client_vulkan.npc_configuration('compatibility_042'),client_vulkan.npc_configuration('compatibility').replace('Mapping = True','Mapping = False'))
+        client_runner.validate_request({'mode':'desktop','resolution':'1280x720','npc_rendering':'compatibility_042'})
         self.assertEqual(client_vulkan.npc_configuration('standard'),'')
         with self.assertRaises(ValueError):client_vulkan.npc_configuration('unknown')
         with tempfile.TemporaryDirectory() as directory:

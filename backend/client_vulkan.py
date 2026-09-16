@@ -11,12 +11,13 @@ FILES = ('turnip.so', 'vulkan-probe', 'dxvk-d3d9.dll')
 
 def npc_configuration(mode):
     # Separate from CPU profile. These are supported by the pinned DXVK 2.5.3.
-    # Strict D3D9 math, shader/bound texture agreement, and staged buffer writes
-    # provide a reversible comparison for intermittent legacy model corruption.
+    # Keep the model shader fixes, but preserve D3D9's live dynamic-buffer updates.
+    # Staging every DEFAULT buffer breaks draws that occur before Unlock.
     # Existing built-in EverQuest cachedDynamicBuffers remains in effect.
     if mode == 'standard': return ''
-    if mode != 'compatibility': raise ValueError('Invalid NPC rendering option')
-    return 'd3d9.floatEmulation = Strict; d3d9.forceSamplerTypeSpecConstants = True; d3d9.allowDirectBufferMapping = False'
+    if mode not in ('compatibility', 'compatibility_042'): raise ValueError('Invalid NPC rendering option')
+    direct = 'False' if mode == 'compatibility_042' else 'True'
+    return 'd3d9.floatEmulation = Strict; d3d9.forceSamplerTypeSpecConstants = True; d3d9.allowDirectBufferMapping = '+direct
 
 
 def skin_shader_status(client):

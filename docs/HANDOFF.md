@@ -1,3 +1,13 @@
+# Active handoff: 0.4.3 audio startup and character-label regression (2026-09-16)
+
+Implementation candidate, not yet published. User confirms 0.4.2 NPC compatibility fixes models, but sound remains silent and character-selection name labels twist/duplicate. New attachments are logs-3726963507059387515(1).zip and three September16 03:40/03:44/03:47 videos; analyzed in ../analysis-042. The last exported session is Standard, previous is compatibility. Do not classify the name issue as keyboard entry.
+
+See [audio-and-labels-043.md](audio-and-labels-043.md) for evidence and focused fixes, and [preview-notes.md](preview-notes.md) for the exact test steps. 0.4.3/code20 aligns AudioTrack write/start limits with the Wine ring and adds bounded actual-playback diagnostics. NPC + name compatibility retains strict math/sampler handling and restores live dynamic-buffer mapping; exact0.4.2 mode remains selectable as compatibility_042. Device root causes remain hypotheses supported by concrete API/source defects until the new Thor test. Do not claim audible sound or fixed ROF2 labels before device acceptance.
+
+JVM regression reproduces the old audio watermark stall and requires progress after configuring limits. New actual PE32/DXVK regression compares stale mapped-buffer pixels against correct live updates; all original tests remain mandatory. Preserve app ID, signing cache/certificate, wineserver exact-path overlay and user files. No reset/redownload/reimport/repair or proprietary asset replacement. No subagents unless explicitly requested. GitHub writes must match the locally staged tree before updating main. Candidate build/publication and verification are pending.
+
+---
+
 # Active handoff: 0.4.2 audio and NPC compatibility (2026-09-16)
 
 **Published and verified:** **0.4.2/code19**, source `b85246dbd2b255d9d4bb9e45cca647bb7ff9b4b1`. All six jobs passed in [run 35044510331](https://github.com/Russianranger/trasc-server-android/actions/runs/35044510331). Public APK, corresponding native sources and build manifest were downloaded and matched to the tested artifacts and GitHub asset digests. The preview tag points to this tested source; this handoff update uses `[skip ci]`.

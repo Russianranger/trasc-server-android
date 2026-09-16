@@ -120,7 +120,7 @@ final class ClientRuntime {
             String mode=options.optString("mode","client"),resolution=options.optString("resolution","800x600"),renderer=options.optString("renderer","software");
             String cpuProfile=options.optString("cpu_profile","balanced");
             String npcRendering=options.optString("npc_rendering","compatibility");
-            if(!Arrays.asList("standard","compatibility").contains(npcRendering))throw new IOException("Unsupported NPC rendering mode");
+            if(!Arrays.asList("standard","compatibility","compatibility_042").contains(npcRendering))throw new IOException("Unsupported NPC rendering mode");
             if(!Arrays.asList("balanced","compatibility").contains(cpuProfile))throw new IOException("Unsupported CPU profile");
             String runtimeMode=options.optString("runtime_mode","auto");
             if(!Arrays.asList("auto","compatibility").contains(runtimeMode))throw new IOException("Unsupported runtime mode");

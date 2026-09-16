@@ -5,6 +5,7 @@ import android.media.*;
 import android.net.*;
 import android.os.Handler;
 import android.os.Looper;
+import android.os.Build;
 import android.system.Os;
 import java.io.*;
 import java.nio.file.Files;
@@ -65,6 +66,7 @@ final class AudioBridge implements AutoCloseable {
     }
     private final class Connection implements Runnable,AudioPcmSession.Sink {
         final LocalSocket socket;AudioTrack track;int capacity;boolean ended;
+        long submitted,nonzero,nextReport;boolean firstSignal;
         Connection(LocalSocket socket){this.socket=socket;}
         public void run(){
             AudioPcmSession session=new AudioPcmSession();
@@ -82,14 +84,42 @@ final class AudioBridge implements AutoCloseable {
                 .setAudioFormat(new AudioFormat.Builder().setEncoding(AudioFormat.ENCODING_PCM_16BIT).setSampleRate(48000).setChannelMask(AudioFormat.CHANNEL_OUT_STEREO).build())
                 .setTransferMode(AudioTrack.MODE_STREAM).setBufferSizeInBytes(Math.max(minimum,capacity*4)).build();
             if(track.getState()!=AudioTrack.STATE_INITIALIZED)throw new IOException("Could not initialize Android audio");
+            configureBuffer();submitted=nonzero=nextReport=0;firstSignal=false;
             track.setVolume(volume);
+            record("stream_config producer_frames="+capacity+" minimum_bytes="+minimum+
+                " buffer_frames="+track.getBufferSizeInFrames()+" allocated_frames="+track.getBufferCapacityInFrames()+
+                " start_frames="+threshold());
         }
-        public synchronized void start(){if(track!=null)track.play();}
-        public synchronized void stop(){if(track!=null){track.pause();track.flush();}}
-        public synchronized int position()throws IOException{if(track==null)throw new IOException("Audio stream closed");return track.getPlaybackHeadPosition();}
-        public synchronized int write(byte[] bytes,int length)throws IOException{if(track==null)throw new IOException("Audio stream closed");return track.write(bytes,0,length,AudioTrack.WRITE_NON_BLOCKING);}
+        private int threshold(){return Build.VERSION.SDK_INT>=31?track.getStartThresholdInFrames():track.getBufferSizeInFrames();}
+        private void configureBuffer()throws IOException {
+            AudioBufferPolicy.configure(new AudioBufferPolicy.Track(){
+                public int resize(int frames){return track.setBufferSizeInFrames(frames);}
+                public int startThreshold(int frames){return Build.VERSION.SDK_INT>=31?track.setStartThresholdInFrames(frames):track.getBufferSizeInFrames();}
+            },capacity,Build.VERSION.SDK_INT>=31);
+        }
+        public synchronized void start()throws IOException{if(track!=null){configureBuffer();track.play();record("stream_start queued_frames="+submitted+" start_frames="+threshold());}}
+        public synchronized void stop(){if(track!=null){report("stream_stop");track.pause();track.flush();submitted=nonzero=0;}}
+        private void report(String event){record(event+" written="+submitted+" played="+Integer.toUnsignedLong(track.getPlaybackHeadPosition())+
+            " nonzero_samples="+nonzero+" underruns="+track.getUnderrunCount()+" state="+track.getPlayState()+" volume="+volume);}
+        public synchronized int position()throws IOException {
+            if(track==null)throw new IOException("Audio stream closed");
+            long now=android.os.SystemClock.elapsedRealtime();
+            if(now>=nextReport){
+                // Routing can enlarge Android's buffers after creation. Reapply the producer limit.
+                if(track.getBufferSizeInFrames()>capacity||threshold()>capacity)configureBuffer();
+                report("stream_progress");nextReport=now+5000;
+            }
+            return track.getPlaybackHeadPosition();
+        }
+        public synchronized int write(byte[] bytes,int length)throws IOException {
+            if(track==null)throw new IOException("Audio stream closed");
+            int accepted=track.write(bytes,0,length,AudioTrack.WRITE_NON_BLOCKING);
+            if(accepted>0){submitted+=accepted/4;for(int i=0;i+1<accepted;i+=2)if(bytes[i]!=0||bytes[i+1]!=0)nonzero++;
+                if(nonzero>0&&!firstSignal){firstSignal=true;record("stream_first_signal written="+submitted);}}
+            return accepted;
+        }
         synchronized void volume(float value){if(track!=null)track.setVolume(value);}
-        public synchronized void close(){ended=true;if(track!=null){track.release();track=null;}try{socket.close();}catch(IOException ignored){}}
+        public synchronized void close(){ended=true;if(track!=null){if(track.getState()==AudioTrack.STATE_INITIALIZED)report("stream_release");track.release();track=null;}try{socket.close();}catch(IOException ignored){}}
     }
     public void close() {
         if(closed)return;closed=true;
