@@ -2,7 +2,7 @@ TRASC Server Android **0.4.8 — reversible spell exclusion test**
 
 The Winlator comparison also has silent spells, according to the user. This build adds the authorized, explicit test of the eight high spell IDs. It does not claim that spell effects or names are fixed until tested on the device.
 
-1. Stop the embedded client. Install 0.4.8 over the existing app and open the server runtime. No runtime download, client reimport, prefix repair or repeated export is needed.
+1. Stop the embedded client and server runtime. Install 0.4.8 over the existing app and open the server runtime. No runtime download, client reimport, prefix repair or repeated export is needed.
 2. In **Client → Spell effects comparison**, press **Apply spell exclusion test**. Wait for **Test active · 8 IDs excluded · 40914 rows in each folder** for the currently captured table. This changes only `spells_us.txt` in the imported client's root and Resources, with original-file backups. It validates that the files match and that exactly IDs 50000–50007 are excluded; unexpected data stops the test without replacement.
 3. Keep **Turnip + DXVK / Balanced / NPC compatibility (0.4.2 exact) / native dinput8 / native model helpers / 1280×720 fullscreen**. Enable **Sound diagnostics**, leave general verbose diagnostics off, start the server if needed, and launch ROF2.
 4. Inspect the character-selection name, then cast **Skin Like Wood** and **Minor Healing**. Record particles and sound separately. Do not use the eight excluded high-ID abilities during this comparison.
@@ -14,7 +14,7 @@ The comparison journal and report are retained in `backups/client-spell-test` an
 
 ---
 
-**Latest device follow-up:** all four requested client files have been supplied and [inspected](client-assets-047.md). Both spell animations have effect and sound references; the actual add-on also contains spell lookups bounded below ID 45,001, strengthening the remaining high-ID compatibility hypothesis. A single backed-up client-only comparison is proposed, pending the user's lifting of the filtering pause. No new APK or verified fix yet. Keep **Load the imported native dinput8.dll** enabled; do not repeat the failed bypass, export or reinstall. No additional file upload is currently requested.
+**Historical 0.4.7 follow-up (superseded by the authorized 0.4.8 comparison above):** all four requested client files have been supplied and [inspected](client-assets-047.md). Both spell animations have effect and sound references; the actual add-on also contains spell lookups bounded below ID 45,001, strengthening the remaining high-ID compatibility hypothesis. A single backed-up client-only comparison is proposed, pending the user's lifting of the filtering pause. No new APK or verified fix yet. Keep **Load the imported native dinput8.dll** enabled; do not repeat the failed bypass, export or reinstall. No additional file upload is currently requested.
 
 TRASC Server Android **0.4.7 — automatic local client data sync**
 
