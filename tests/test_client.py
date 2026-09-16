@@ -320,7 +320,7 @@ class ClientTests(unittest.TestCase):
         self.assertEqual(client_runner.model_dll_status(trace.replace('native','builtin'))[0],{'d3dx9_35.dll':'builtin'})
         self.assertEqual(client_runner.model_dll_status('Installed d3dx9_35.dll; d3dx9_35=n,b')[0],{})
 
-    def export_fixture(self, _):
+    def export_fixture(self):
         folder=self.root/'server/export';folder.mkdir(parents=True,exist_ok=True)
         for name in CLIENT_FILES:(folder/name).write_text('generated '+name)
         return {}
@@ -330,7 +330,7 @@ class ClientTests(unittest.TestCase):
         (self.client/'EQHOST.TXT').write_text('old endpoint');(self.client/'resources').mkdir()
         (self.client/'resources/spells_us.txt').write_text('old spells')
         dll=(self.client/'dinput8.dll').read_bytes()
-        with patch.object(self.engine,'export_client',side_effect=self.export_fixture): result=self.engine.prepare_client({'resolution':'960x540'})
+        with patch.object(self.engine,'_export_client_data',side_effect=self.export_fixture): result=self.engine.prepare_client({'resolution':'960x540'})
         self.assertIn('Host=127.0.0.1:5999',(self.client/'EQHOST.TXT').read_text())
         self.assertFalse((self.client/'eqhost.txt').exists())
         ini=(self.client/'eqclient.ini').read_text();self.assertIn('Foo=untouched',ini);self.assertIn('Music=1',ini);self.assertIn('; keep comment',ini);self.assertIn('WindowedWidth=960',ini)
@@ -346,7 +346,7 @@ class ClientTests(unittest.TestCase):
             nonlocal calls
             calls+=1
             if calls==3: raise RuntimeError('test interruption')
-        with patch.object(self.engine,'export_client',side_effect=self.export_fixture),patch.object(self.engine,'check_cancel',side_effect=cancel):
+        with patch.object(self.engine,'_export_client_data',side_effect=self.export_fixture),patch.object(self.engine,'check_cancel',side_effect=cancel):
             with self.assertRaisesRegex(RuntimeError,'interruption'):self.engine.prepare_client({})
         self.assertEqual((self.client/first).read_text(),'original')
         self.assertFalse((self.client/'Resources'/first).exists())

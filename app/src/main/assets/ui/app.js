@@ -26,7 +26,12 @@ function render(s){lastState=s;$('free').textContent=bytes(s.free_bytes);$('badg
 }
 async function poll(){try{const n=await api('native_state');$('runtime-status').textContent=n.status;if(!busy){$('runtime-open').disabled=!n.installed||n.alive||n.installing||n.session_busy;$('runtime-close').disabled=!n.alive||n.installing||n.session_busy;}ready('runtime-ready',n.installed);if(!n.alive){$('free').textContent=bytes(n.free_bytes);$('badge').textContent=n.installing?'INSTALLING':'RUNTIME CLOSED';$('badge').classList.remove('online');}if(n.session_busy){$('activity').hidden=false;$('activity-title').textContent='Complete session transfer';$('activity-detail').textContent=n.status;$('cancel').hidden=true;}else if(n.installing){$('activity').hidden=false;$('activity-title').textContent='Runtime installation';$('activity-detail').textContent=n.status;$('cancel').hidden=true;}else if(n.alive){render(await api('state'));}else if(!busy)$('activity').hidden=true;}catch(e){$('runtime-status').textContent=e.message;}}
 async function scanDB(){const data=await api('databases');const select=$('db-candidate'),previous=select.value;select.replaceChildren();for(const c of data.candidates){const option=document.createElement('option');option.value=c.id;option.textContent=c.id+' · '+bytes(c.size);select.append(option);}if([...select.options].some(o=>o.value===previous))select.value=previous;if(!data.candidates.length){const o=document.createElement('option');o.value='';o.textContent='No SQL files found. Import source or a database file first.';select.append(o);}notice('Found '+data.candidates.length+' database candidates. Choose the full seed.');}
-async function exportResult(result){if(result.file)await api('export',{path:result.file});notice('File exported. A local copy is retained.');}
+async function exportResult(result){
+ const completed=result.message?result.message+' ':'';
+ try{if(result.file)await api('export',{path:result.file});}
+ catch(e){if(!result.local_client_synced)throw e;notice(completed+'ZIP not saved: '+e.message+'. The generated ZIP is retained in the app.',e.message!=='File selection cancelled');return;}
+ notice(completed+'File exported. A local copy is retained.');
+}
 action('runtime-online',async()=>{await api('runtime_install');await api('runtime_start');notice('Runtime ready. Import your server next.');});
 action('runtime-offline',async()=>{await api('pick',{kind:'runtime'});await api('runtime_start');notice('Offline runtime ready.');});
 action('runtime-open',async()=>{await api('runtime_start');notice('Runtime opened.');});

@@ -42,12 +42,13 @@ for(const [name,type,value,min,max]of [['Character:RaidExpMultiplier','real','0.
     }
     else if(op==='logs')result={text:args.name==='app.log'?'session_backup failed: simulated storage error':'Saved output: '+args.name,names:['app.log','runtime.log','control.log','operation.log','server/zones/cabeast.log','client/Logs/dbg.txt','client/dinput8.log']};
     else if(op==='export_logs')result={file:'exports/logs-native.zip'};
-    else if(op==='export'){window.__exports.push(args.path);result={message:'File exported'};}
+    else if(op==='export'){window.__exports.push(args.path);if(window.__cancelExport){window.nativeReply(id,{ok:false,error:'File selection cancelled'});return;}result={message:'File exported'};}
     else if(op==='controller_state')result=profile;
     else if(op==='controller_save'){profile={...profile,...args};result=profile;}
     else if(op==='controller_capture'){window.clientInputEvent?.({type:'capture',down:args.active});result={...profile,active:args.active};}
     else{
      let completed={};if(op==='gameplay')completed={...data,rulesets:[{id:1,name:'default'}],selected:1,active_name:'default'};
+     else if(op==='export_client')completed={file:'exports/client-data.zip',local_client_synced:true,copied_files:8,message:'All four client data files overwritten in the local client root and Resources folder. Originals saved in backups/client-setup/test.'};
      else if(op==='save_gameplay'){window.__saves.push(args);for(const [name,value]of Object.entries(args.values))data.values[name]={value,ruleset:1};}
      const job={id:String(++seq),operation:op,status:'done',result:completed};jobs=[job];result=job;
     }
@@ -131,7 +132,18 @@ for(const [name,type,value,min,max]of [['Character:RaidExpMultiplier','real','0.
   assert(!(await page.locator('#client-input-status').textContent()).includes('KeyT'),'Leaving tab releases input');
   assert(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth+1),'No horizontal page overflow on mobile');
   await page.setViewportSize({width:960,height:540});await page.screenshot({path:'ui-reports/setup-landscape.png',fullPage:true});
-  await page.locator('nav [data-tab=server]').click();await page.locator('#session-export').click();
+  await page.locator('nav [data-tab=server]').click();
+  await page.locator('#export-client').click();
+  await page.waitForFunction(()=>document.getElementById('notice').textContent.includes('File exported.'));
+  assert((await page.locator('#notice').textContent()).includes('root and Resources'));
+  assert.deepEqual(await page.evaluate(()=>window.__exports),['exports/client-data.zip']);
+  await page.evaluate(()=>{window.__cancelExport=true;});
+  await page.locator('#export-client').click();
+  await page.waitForFunction(()=>document.getElementById('notice').textContent.includes('File selection cancelled'));
+  assert((await page.locator('#notice').textContent()).includes('All four client data files overwritten'));
+  assert(!(await page.locator('#notice').evaluate(el=>el.classList.contains('error'))),'Cancelling ZIP save must preserve local sync success');
+  await page.evaluate(()=>{window.__cancelExport=false;window.__exports=[];});
+  await page.locator('#session-export').click();
   await page.waitForFunction(()=>document.getElementById('notice').textContent.includes('simulated storage error'));
   await page.waitForFunction(()=>document.getElementById('badge').textContent==='RUNTIME CLOSED');
   await page.evaluate(async()=>{await poll();window.__calls=[];});

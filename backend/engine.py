@@ -837,26 +837,46 @@ class Engine(ManagedContent):
         return {'output': result[:200000], 'truncated': len(result)>200000}
 
     def export_client(self, args):
+        client = self._local_client(required=False)
+        changes = self._client_data_changes(client) if client else None
+        result = self._export_client_data()
+        if client:
+            backup = self._apply_client_changes(client, changes)
+            result.update(local_client_synced=True, copied_files=8, backup=backup,
+                          message='All four client data files overwritten in the local client root and Resources folder. Originals saved in ' + backup + '.')
+        else:
+            result.update(local_client_synced=False, copied_files=0,
+                          message='Client data ZIP generated. No local client is imported, so no local files were copied.')
+        atomic_json(self.work / 'logs/client-data-sync.json', result)
+        self.log(result['message'])
+        return result
+
+    def _export_client_data(self):
+        """Generate the complete server data and ZIP; local installation is separate."""
         self.ensure_db()
         self.write_config()
         runtime = self.work / 'server'
         for name in CLIENT_FILES: (runtime / 'export' / name).unlink(missing_ok=True)
         self.run([runtime / 'bin/export_client_files'], cwd=runtime, timeout=600)
         for name in CLIENT_FILES:
-            if not (runtime / 'export' / name).exists(): raise ValueError('Exporter did not create ' + name)
-        from client_spells import prepare_export
-        spell_report = prepare_export(runtime / 'export/spells_us.txt')
+            source = runtime / 'export' / name
+            if source.is_symlink() or not source.is_file() or not source.stat().st_size:
+                raise ValueError('Exporter did not create a regular nonempty file: ' + name)
+        from managed_content import digest
+        file_hashes = {name: digest(runtime / 'export' / name) for name in CLIENT_FILES}
+        # Filtering is paused at the user's request. Both destinations receive
+        # the byte-exact full export, including any high spell IDs.
+        spell_report = {'filter_applied': False, 'sha256': file_hashes['spells_us.txt'],
+                        'message': 'Spell filtering is paused; all exported rows are retained.'}
         atomic_json(self.work / 'logs/client-spell-export.json', spell_report)
-        self.log('ROF2 client export: excluded ' + str(spell_report['removed_rows']) +
-                 ' unsupported spell IDs; server spell data is unchanged.')
-        target = self.work / 'exports' / ('client-data-' + time.strftime('%Y%m%d-%H%M%S') + '.zip')
+        target = self.work / 'exports' / ('client-data-' + time.strftime('%Y%m%d-%H%M%S') + '-' + secrets.token_hex(3) + '.zip')
         with zipfile.ZipFile(target,'w',zipfile.ZIP_DEFLATED) as z:
             for name in CLIENT_FILES:
                 z.write(runtime / 'export' / name, name)
                 z.write(runtime / 'export' / name, 'Resources/' + name)
-            z.writestr('rof2-spell-compatibility.json', json.dumps(spell_report, indent=2)+'\n')
+            z.writestr('client-data-export.json', json.dumps({'filter_applied': False, 'sha256': file_hashes}, indent=2)+'\n')
         return {'file': str(target.relative_to(self.work)), 'files': list(CLIENT_FILES),
-                'spell_compatibility': spell_report}
+                'filter_applied': False, 'sha256': file_hashes}
 
     def files(self, args):
         root = self.work

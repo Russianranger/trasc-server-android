@@ -113,8 +113,8 @@ final class ClientRuntime {
                 org.json.JSONArray jobs=response.getJSONObject("result").getJSONArray("jobs");
                 for(int i=0;i<jobs.length();i++) {
                     JSONObject job=jobs.getJSONObject(i);
-                    if(Arrays.asList("import_client_zip","prepare_client").contains(job.optString("operation"))&&Arrays.asList("queued","running").contains(job.optString("status")))
-                        throw new IOException("Wait for client import or preparation to finish before launching");
+                    if(Arrays.asList("import_client_zip","prepare_client","export_client").contains(job.optString("operation"))&&Arrays.asList("queued","running").contains(job.optString("status")))
+                        throw new IOException("Wait for client import, preparation or data export to finish before launching");
                 }
             }
             String mode=options.optString("mode","client"),resolution=options.optString("resolution","800x600"),renderer=options.optString("renderer","software");

@@ -1,4 +1,20 @@
-# Active handoff: 0.4.6 ROF2 spell-table compatibility (2026-09-16)
+# Active handoff: 0.4.7 automatic unfiltered client sync (2026-09-16)
+
+**User correction:** hold off on spell filtering; the client data may never have been copied into the imported local client. Export must automatically overwrite all four files in **both root and Resources**. This instruction supersedes the 0.4.6 filter/Prepare guidance below. Do not resume filtering without new authorization/evidence.
+
+0.4.7/code24 implements that request. `export_client` generates the full data ZIP and installs all eight local copies with original-file backups and rollback. Existing Windows-style filename capitalization is preserved; ambiguous paths, symlinks and non-file destinations fail before replacement. Exclusive temporary files protect staging. No imported client still produces a ZIP. The local transaction finishes before Android opens the ZIP picker, and cancelling that picker keeps a clear local-copy success message. Prepare uses the same transaction but also sets login/display; it does not copy twice.
+
+The native submission/launch interlock now includes export_client. The active export and Prepare paths never call the dormant `client_spells.prepare_export` filter. Read-only installed-table/particle diagnostics remain available; their hypothetical compatibility counts must not be described as rows actually removed. `client-spell-export.json` now explicitly records filtering disabled; `client-data-sync.json` retains file hashes, completed-copy status and backup path. No GPU/CPU/audio or game asset changes.
+
+Local validation: 86 backend tests and host-JVM management/audio/input checks pass. New regression coverage checks exact bytes (including high IDs), all eight overwrites/backups, case handling, missing Resources, absent client, rejected destinations, cancellation rollback and injected partial-copy failure. Existing Prepare and isolated Android helper-copy tests remain. CI's real-seed database gate now exercises the production export/sync/ZIP paths with all 40,922 serialized spell rows unchanged. Browser coverage tests normal ZIP save and cancellation after local sync. **Full CI/publication is pending at this source commit; verify before delivery.**
+
+Preserve app ID/certificate/signing cache from the release record below. No new backend module or native recipe. Keep exact 0.4.2 NPC settings and Balanced. Do not reset/reimport the client or runtime. No subagents unless explicitly requested. Publish only after all original CI gates pass; compare exact staged tree before GitHub write. Final handoff should record tested source/run/public asset hashes and use [skip ci].
+
+Next device test: stop client, install, open server runtime, **Server → Export & sync client data**, wait for both-folder overwrite confirmation, save or cancel ZIP, then launch and test spell particles/sound. No separate Prepare required. See [preview-notes.md](preview-notes.md). Name corruption remains unresolved; no physical effect fix is claimed.
+
+---
+
+# Release record: 0.4.6 ROF2 spell-table compatibility (superseded by 0.4.7)
 
 **Published and verified:** **0.4.6/code23**, corrected source **079de26e8a1df1d134d89eb9e9d8f9e975646c94**. All six jobs passed in [run35108416908](https://github.com/Russianranger/trasc-server-android/actions/runs/35108416908); public APK/source/manifest match the tested candidate byte-for-byte. Preview tag points to that source. This final documentation update skips CI.
 

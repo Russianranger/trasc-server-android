@@ -1,17 +1,19 @@
-TRASC Server Android **0.4.6 — ROF2 spell-effect data fix**
+TRASC Server Android **0.4.7 — automatic local client data sync**
 
-The user confirms **both particles and sounds are missing** for Skin Like Wood and Minor Healing. The original project database exports eight spell IDs above ROF2's supported range, a documented cause of this failure. This version filters those IDs from client exports, retains the complete export, and preserves all server spell data. [Evidence and implementation](spell-effects-046.md).
+**Server → Export & sync client data** generates `spells_us.txt`, `dbstr_us.txt`, `SkillCaps.txt` and `BaseData.txt`, then overwrites every file in **both the imported local client's root and its nested Resources folder**. Existing capitalization is respected, and each original is backed up. The ZIP also contains both sets of files.
 
-**Install, then Prepare once — installing the APK alone does not update the existing spell table.**
+Spell filtering is paused at the user's request. All generated data is copied byte-for-byte, including high spell IDs. This also replaces a previously filtered 0.4.6 table with a fresh complete export. The exact table installed during earlier device tests was not captured; this test checks whether synchronizing the files restores effects before pursuing filtering.
 
-1. Stop the client and server runtime. Install 0.4.6 over the existing app; confirm the version. Open the runtime using the top control.
-2. In **Client**, retain **Turnip + DXVK / Balanced / NPC compatibility (recommended or 0.4.2 exact) / 1280×720 / Fullscreen**, native dinput8 and DirectX model helpers. Press **Prepare client for this server** once. The completion message reports excluded spell IDs (eight for the original seed). Existing client files are backed up; no server rebuild is needed.
-3. Start the server. Enable **Sound diagnostics** for this short test, leave general verbose diagnostics off, and launch. Observe the character-selection name, then enter the world. With game sound audible, cast **Skin Like Wood** and **Minor Healing**; report **particles and sound separately** for each. Test one working sit/stand or swinging sound as a control.
-4. Stop the client and **export Logs immediately**. The bundle now includes the export summary, actual installed root/Resources spell-table checks and particle settings. Turn Sound diagnostics off for normal play.
+1. Stop the client and server runtime. Install 0.4.7 over the existing app, then open the server runtime using the top control.
+2. On **Server**, press **Export & sync client data**. Wait for the completion message confirming that both local folders were overwritten. Save the ZIP wherever you prefer, or cancel the ZIP picker: the local copy has already completed. **No manual extraction or additional Prepare step is needed.**
+3. Start the server and launch with your existing **Turnip + DXVK / Balanced / NPC compatibility (recommended or 0.4.2 exact) / 1280×720 / Fullscreen** settings. Enable **Sound diagnostics** for this short test; keep general verbose diagnostics off.
+4. Cast **Skin Like Wood** and **Minor Healing**, checking particles and sound separately. Check NPC models and the character-selection name. Stop the client, export Logs, then turn Sound diagnostics off for normal play.
 
-No runtime download, prefix repair, client reimport or database changes. Keep Turnip for the better observed performance. The name fault remains unresolved; avoid repeating the rejected renderer, direct-mapping and Legacy math comparisons. If the name remains corrupted after this data correction, the next separate check is the existing native-DLL bypass at selection only, restoring the add-on before play.
+Export copies only those four data files; existing login/display settings, native add-on, runtime, prefix and server database remain intact. **Prepare client for this server** still performs one backed-up transaction that also sets the login address and display settings. Export is blocked while the embedded client is running, and launch waits for a pending export to finish. Without an imported local client, export generates only the ZIP and says so.
 
-The export correction is validated with regression tests and the real seed. Physical Thor recovery of spell effects still requires this test; no name-rendering fix is claimed.
+Backups: `backups/client-setup/<timestamp>-<id>/`, with a manifest of original paths. Cancellation or copy failure restores files already replaced. `logs/client-data-sync.json` records the completed copy, export hashes and backup path; `logs/client-spell-export.json` explicitly records `filter_applied: false`. Opt-in sound diagnostics remains read-only. Its compatibility counts describe a hypothetical filter, not removed installed rows.
+
+This update implements automatic synchronization. Recovery of spell effects and the unresolved name glitch still require the device test above.
 
 ---
 

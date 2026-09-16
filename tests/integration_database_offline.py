@@ -10,10 +10,12 @@ from pathlib import Path
 import shutil
 import subprocess
 import sys
+import zipfile
+from unittest.mock import patch
 
 sys.path.insert(0, '/opt/trasc')
-from engine import Engine, atomic_json
-from client_spells import prepare_export, inspect_data, read_table
+from engine import Engine, atomic_json, CLIENT_FILES
+from client_spells import inspect_data
 
 
 def verify(seed, work):
@@ -49,18 +51,37 @@ def verify(seed, work):
         assert len(columns) == 237 and all(re.fullmatch(r'[A-Za-z0-9_]+', c) for c in columns)
         query = "SELECT CONCAT_WS('^', " + ','.join('`'+c+'`' for c in columns) + ') FROM spells_new ORDER BY id;'
         exported = engine.mysql(query, timeout=120).split('\n', 1)[1].encode()
-        spell_file = work/'run/spells_us.txt'; spell_file.write_bytes(exported)
-        spell_report = prepare_export(spell_file)
-        assert spell_report['rows'] == 40922
-        assert spell_report['removed_ids'] == list(range(50000, 50008))
-        assert spell_report['kept_rows'] == 40914 and spell_report['max_id_after'] == 43019
+        spell_report = inspect_data(exported)  # Read-only inspection, not a filter.
+        assert spell_report['rows'] == 40922 and spell_report['max_id_before'] == 50007
         assert spell_report['reported_spells']['26']['spell_animation'] == 216
         assert spell_report['reported_spells']['200']['spell_animation'] == 278
-        assert spell_file.with_name('spells_us.unfiltered.txt').read_bytes() == exported
-        assert inspect_data(read_table(spell_file))['removed_rows'] == 0
+        client = work/'client/current'; client.mkdir()
+        (client/'trasc-client.json').write_text('{"imported":true}')
+        (client/'Resources').mkdir()
+        (client/'spells_us.txt').write_bytes(b'previous root table')
+        (client/'Resources/spells_us.txt').write_bytes(b'previous resource table')
+        def exporter(*args, **kwargs):
+            # The database image has no compiled exporter. Use its real SQL
+            # serialization at this boundary, then exercise production export,
+            # ZIP, local overwrite and backup paths without mocking any copies.
+            folder = work/'server/export'; folder.mkdir(parents=True, exist_ok=True)
+            for name in CLIENT_FILES:
+                (folder/name).write_bytes(exported if name == 'spells_us.txt' else b'fixture '+name.encode())
+        with patch.object(engine, 'run', side_effect=exporter):
+            synced = engine.export_client({})
+        assert synced['local_client_synced'] and synced['copied_files'] == 8
+        assert synced['filter_applied'] is False
+        with zipfile.ZipFile(work/synced['file']) as archive:
+            for name in CLIENT_FILES:
+                full = (work/'server/export'/name).read_bytes()
+                for relative in (name, 'Resources/'+name):
+                    assert (client/relative).read_bytes() == full
+                    assert archive.read(relative) == full
+        assert (work/synced['backup']/'spells_us.txt').read_bytes() == b'previous root table'
+        assert (work/synced['backup']/'Resources/spells_us.txt').read_bytes() == b'previous resource table'
         assert int(engine.mysql('SELECT COUNT(*) FROM spells_new;').splitlines()[1]) == counts['spells_new']
         assert int(engine.mysql('SELECT MAX(id) FROM spells_new;').splitlines()[1]) == 50007
-        print('PASS: real seed ROF2 export excludes eight unsupported IDs; server rows and full export preserved', flush=True)
+        print('PASS: all 40922 real seed spell rows copied byte-exact to root, Resources and ZIP; originals backed up, server rows preserved', flush=True)
         rules = engine.gameplay({})
         assert rules['values'], 'Gameplay controls must read the imported rules'
         assert rules['selected'] == 1, 'This pinned seed uses default ruleset ID 1'
@@ -78,7 +99,8 @@ def verify(seed, work):
             'result': 'passed', 'offline': True, 'original_failure_reproduced': True,
             'selection': selection, 'table_count': len(tables), 'row_counts': counts,
             'active_ruleset': rules['selected'], 'restart_preserved_database': True,
-            'rof2_spell_export': spell_report,
+            'unfiltered_client_sync': synced,
+            'spell_table_inspection': spell_report,
         }
         atomic_json(work / 'database-verification.json', report)
         print(json.dumps(report, indent=2), flush=True)

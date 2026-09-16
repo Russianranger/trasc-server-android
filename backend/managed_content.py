@@ -6,6 +6,7 @@ import os
 from pathlib import Path
 import secrets
 import shutil
+import tempfile
 import time
 import zipfile
 from client_display import RESOLUTIONS, update_ini, display_ini
@@ -16,6 +17,29 @@ NEKTULOS = ('base/nektulos.map', 'nav/nektulos.nav')
 def digest(path):
     with Path(path).open('rb') as f:
         return hashlib.file_digest(f, 'sha256').hexdigest()
+
+
+def client_file(parent, name):
+    """Keep existing Windows-style casing, rejecting ambiguous or linked paths."""
+    matches = [p for p in parent.iterdir() if p.name.casefold() == name.casefold()] if parent.exists() else []
+    if len(matches) > 1: raise ValueError('Ambiguous client filename: ' + name)
+    path = matches[0] if matches else parent / name
+    if path.is_symlink(): raise ValueError('Client setup cannot replace symlinks: ' + name)
+    return path
+
+
+def replace_client_file(target, value):
+    # Exclusive staging prevents a leftover or imported .trasc-new symlink from
+    # redirecting writes. The destination changes only after the full copy.
+    fd, name = tempfile.mkstemp(prefix='.trasc-', dir=target.parent)
+    os.close(fd)
+    temp = Path(name)
+    try:
+        if isinstance(value, Path): shutil.copy2(value, temp)
+        else: temp.write_text(value, encoding='cp1252')
+        os.replace(temp, target)
+    finally:
+        temp.unlink(missing_ok=True)
 
 
 class ManagedContent:
@@ -133,33 +157,33 @@ class ManagedContent:
         marker = self.work / 'client/current/trasc-client.json'
         return json.loads(marker.read_text()) if marker.exists() else {'imported': False}
 
-    def prepare_client(self, args):
-        from engine import CLIENT_FILES, atomic_json, safe_path
+    def _local_client(self, required=True):
+        from engine import safe_path
         client = self.work / 'client/current'
-        if client.is_symlink() or not (client / 'trasc-client.json').is_file(): raise ValueError('Import a client ZIP first')
-        resolution = args.get('resolution', '800x600')
-        if resolution not in RESOLUTIONS: raise ValueError('Unsupported client resolution')
-        fullscreen = args.get('fullscreen', False)
-        if not isinstance(fullscreen, bool): raise ValueError('Invalid fullscreen option')
-        exported = self.export_client({})
-        backup = self.work / 'backups/client-setup' / (time.strftime('%Y%m%d-%H%M%S') + '-' + secrets.token_hex(3))
-        backup.mkdir(parents=True)
+        if client.parent.is_symlink() or client.is_symlink(): raise ValueError('Client setup cannot follow symlinks')
+        safe_path(self.work, 'client/current')
+        marker = client_file(client, 'trasc-client.json')
+        if not marker.is_file():
+            if required: raise ValueError('Import a client ZIP first')
+            return None
+        return client
+
+    def _client_data_changes(self, client):
+        from engine import CLIENT_FILES
         changes = {}
-        def existing(parent, name):
-            matches = [p for p in parent.iterdir() if p.name.casefold() == name.casefold()] if parent.exists() else []
-            if len(matches) > 1: raise ValueError('Ambiguous client filename: ' + name)
-            path = matches[0] if matches else parent / name
-            if path.is_symlink(): raise ValueError('Client setup cannot replace symlinks: ' + name)
-            return path
-        resources = existing(client, 'Resources')
+        resources = client_file(client, 'Resources')
         if resources.exists() and not resources.is_dir(): raise ValueError('Resources must be a directory')
         for name in CLIENT_FILES:
-            for parent in (client, resources): changes[existing(parent, name)] = self.work / 'server/export' / name
-        host = existing(client, 'eqhost.txt')
-        changes[host] = '[LoginServer]\r\nHost=' + self.config['ip'] + ':' + str(self.config['login_port']) + '\r\n'
-        ini = existing(client, 'eqclient.ini')
-        text = ini.read_text(encoding='cp1252') if ini.exists() else ''
-        changes[ini] = display_ini(text, resolution, fullscreen)
+            for parent in (client, resources):
+                target = client_file(parent, name)
+                if target.exists() and not target.is_file(): raise ValueError('Expected a client file: ' + name)
+                changes[target] = self.work / 'server/export' / name
+        return changes
+
+    def _apply_client_changes(self, client, changes):
+        from engine import atomic_json, safe_path
+        backup = self.work / 'backups/client-setup' / (time.strftime('%Y%m%d-%H%M%S') + '-' + secrets.token_hex(3))
+        backup.mkdir(parents=True)
         record = {'state':'prepared','files':{},'created':time.time()}
         for target in changes:
             relative = str(target.relative_to(client)); safe_path(client, relative)
@@ -169,27 +193,45 @@ class ManagedContent:
                 saved = backup / relative; saved.parent.mkdir(parents=True, exist_ok=True); shutil.copy2(target, saved)
         atomic_json(backup / 'manifest.json', record)
         applied = []
+        created_dirs = set()
         try:
             for target, value in changes.items():
-                self.check_cancel();target.parent.mkdir(parents=True, exist_ok=True)
-                temp = target.with_name(target.name + '.trasc-new')
-                if isinstance(value, Path): shutil.copy2(value, temp)
-                else: temp.write_text(value, encoding='cp1252')
-                applied.append(target);os.replace(temp, target)
+                self.check_cancel()
+                if not target.parent.exists():
+                    target.parent.mkdir(parents=True)
+                    created_dirs.add(target.parent)
+                replace_client_file(target, value)
+                applied.append(target)
             record['state'] = 'applied';atomic_json(backup / 'manifest.json', record)
         except Exception:
             for target in reversed(applied):
                 relative = str(target.relative_to(client))
-                if record['files'][relative]: shutil.copy2(backup / relative, target)
+                if record['files'][relative]: replace_client_file(target, backup / relative)
                 else: target.unlink(missing_ok=True)
+            for folder in created_dirs: folder.rmdir()
             record['state'] = 'rolled_back';atomic_json(backup / 'manifest.json', record)
             raise
-        finally:
-            for target in changes: target.with_name(target.name + '.trasc-new').unlink(missing_ok=True)
-        spell_report = exported.get('spell_compatibility', {})
-        excluded = spell_report.get('removed_rows', 0)
-        return {'message':'Client data, login address and display settings prepared. ROF2 spell IDs excluded: ' + str(excluded) + '. Existing files saved in ' + str(backup.relative_to(self.work)),
-                'backup':str(backup.relative_to(self.work)), 'spell_compatibility':spell_report}
+        return str(backup.relative_to(self.work))
+
+    def prepare_client(self, args):
+        from engine import atomic_json
+        client = self._local_client()
+        resolution = args.get('resolution', '800x600')
+        if resolution not in RESOLUTIONS: raise ValueError('Unsupported client resolution')
+        fullscreen = args.get('fullscreen', False)
+        if not isinstance(fullscreen, bool): raise ValueError('Invalid fullscreen option')
+        changes = self._client_data_changes(client)
+        host = client_file(client, 'eqhost.txt')
+        changes[host] = '[LoginServer]\r\nHost=' + self.config['ip'] + ':' + str(self.config['login_port']) + '\r\n'
+        ini = client_file(client, 'eqclient.ini')
+        text = ini.read_text(encoding='cp1252') if ini.exists() else ''
+        changes[ini] = display_ini(text, resolution, fullscreen)
+        result = self._export_client_data()
+        backup = self._apply_client_changes(client, changes)
+        result.update(local_client_synced=True, copied_files=8, backup=backup,
+                      message='All four client data files overwritten in the local client root and Resources folder; login address and display settings prepared. Originals saved in ' + backup + '.')
+        atomic_json(self.work / 'logs/client-data-sync.json', result)
+        return result
 
     def import_client_zip(self, args):
         from engine import atomic_json, safe_path, extract_archive

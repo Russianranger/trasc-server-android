@@ -92,7 +92,7 @@ public final class MainActivity extends Activity {
                         case "controller_capture": runOnUiThread(()->{try{controller.capture(args.optBoolean("active")&&hasWindowFocus());reply(id,controller.state(),null);}catch(Exception e){reply(id,null,e);}});return;
                         case "pick": runOnUiThread(()->pick(id,args.optString("kind","file"),args.optBoolean("replace")));return;
                         case "export": runOnUiThread(()->export(id,args.optString("path")));return;
-                        case "import_client_zip": case "prepare_client":
+                        case "import_client_zip": case "prepare_client": case "export_client":
                             // Serialize submission with native launch; start also checks queued/running jobs.
                             synchronized(clientRuntime) {
                                 if(clientRuntime.alive()||clientRuntime.busy)throw new IOException("Stop the embedded client before changing its files");

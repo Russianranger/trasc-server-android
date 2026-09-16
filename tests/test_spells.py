@@ -56,7 +56,8 @@ if sys.argv[2] == 'engine.py':
         for name in CLIENT_FILES: (folder/name).write_bytes(data if name=='spells_us.txt' else b'fixture')
     with patch.object(engine,'ensure_db'), patch.object(engine,'write_config'), patch.object(engine,'run',side_effect=exporter):
         result=engine.export_client({})
-    assert result['spell_compatibility']['removed_ids']==[50000]
+    assert result['filter_applied'] is False
+    assert (root/'server/export/spells_us.txt').read_bytes()==data
 else:
     import client_runner, client_audio
     client=root/'client';client.mkdir();logs=root/'logs';logs.mkdir()
@@ -124,7 +125,7 @@ else:
             with self.assertRaises(ValueError): client_spells.prepare_export(path)
             self.assertEqual(real.read_bytes(), row(26)+row(50000))
 
-    def test_real_export_and_prepare_paths_use_filtered_data_and_keep_originals(self):
+    def test_prepare_copies_full_unfiltered_data_once_and_keeps_originals(self):
         with tempfile.TemporaryDirectory() as temp:
             root = Path(temp); engine = Engine(root)
             client = root/'client/current'; client.mkdir()
@@ -141,19 +142,24 @@ else:
                  patch.object(engine, 'run', side_effect=exporter), patch.object(engine, 'mysql') as mysql:
                 result = engine.prepare_client({'resolution':'1280x720', 'fullscreen':True})
                 mysql.assert_not_called()
-            expected = row(26)+row(200)
+            expected = source
             for relative in ('spells_us.txt', 'Resources/spells_us.txt'):
                 self.assertEqual((client/relative).read_bytes(), expected)
             self.assertEqual((root/result['backup']/'spells_us.txt').read_bytes(), b'old root spells')
             self.assertEqual((root/result['backup']/'Resources/spells_us.txt').read_bytes(), b'old resource spells')
-            self.assertEqual((root/'server/export/spells_us.unfiltered.txt').read_bytes(), source)
+            self.assertEqual(len(list((root/'backups/client-setup').iterdir())), 1)
+            self.assertIn('Width=1280', (client/'eqclient.ini').read_text())
+            self.assertIn('Host=127.0.0.1:5999', (client/'eqhost.txt').read_text())
             report = json.loads((root/'logs/client-spell-export.json').read_text())
-            self.assertEqual(report['removed_ids'], [50000, 50007])
-            self.assertEqual(result['spell_compatibility'], report)
+            self.assertFalse(report['filter_applied'])
+            self.assertFalse(result['filter_applied'])
+            self.assertEqual(report['sha256'], hashlib.sha256(source).hexdigest())
             with zipfile.ZipFile(next((root/'exports').glob('client-data-*.zip'))) as archive:
                 self.assertEqual(archive.read('spells_us.txt'), expected)
                 self.assertEqual(archive.read('Resources/spells_us.txt'), expected)
-                self.assertEqual(json.loads(archive.read('rof2-spell-compatibility.json')), report)
+                manifest = json.loads(archive.read('client-data-export.json'))
+                self.assertFalse(manifest['filter_applied'])
+                self.assertEqual(manifest['sha256']['spells_us.txt'], report['sha256'])
                 self.assertNotIn('spells_us.unfiltered.txt', archive.namelist())
 
     def test_installed_inventory_reports_both_tables_and_particle_settings_read_only(self):

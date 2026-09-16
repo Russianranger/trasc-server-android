@@ -1,3 +1,5 @@
+> Historical investigation: **0.4.7 pauses spell filtering at the user’s request** and automatically copies the complete export into both local client folders. Follow [current testing instructions](preview-notes.md), not the earlier filtering/Prepare guidance below. The earlier installed table contents were not captured.
+
 # 0.4.5 device results: shared name fault and missing spell sounds
 
 ## Evidence and conclusions
