@@ -1,4 +1,16 @@
-# Current release: 0.4.9 selectable Turnip comparison (2026-09-16)
+# Current device result: names recover after restart on both drivers (2026-09-16)
+
+User reports the first 0.4.9 launch had corrupt names; fully exiting/relaunching the client fixed them, and they remained correct after exiting/reopening the app and switching back to 24.3.4. User prefers 26.0.0 performance. Both uploaded bundles were inspected, including their previous-session logs. Read [the device follow-up](turnip-selection-049.md#device-follow-up-2026-09-16).
+
+The logs independently verify real Adreno 740 rendering with Mesa26.0.0 and the later Mesa24.3.4 fallback, unchanged Balanced/exact0.4.2 NPC/native helpers, and the successful eight-ID spell exclusion in both folders. The first26 session creates a DXVK state cache; later26 sessions read22 then37 entries. The fallback reads its own7 then35 entries. Both DXVK and Mesa caches are separated by driver. This supports a cold/warm-state hypothesis, **not proof that shader compilation caused or permanently fixed the name corruption**. Shared Wine-prefix initialization is another changed condition: first launch updates it in43.958s, later launches reuse it in5.425–5.627s. Time until game launch request falls from47.792s to8.038–8.329s; these are not zone-loading times.
+
+One real Wine stack-overflow error occurs late in the first26 session, around21:31:39UTC during graphics reinitialization after camping/character selection; frame delivery then stops. It does not recur in the three later sessions. Do not describe the first session as error-free or link that late exception to the earlier name glitch without evidence. The old missing SkinMeshCBS1_VSB.fxo warning also persists in reportedly working runs and is not sufficient to explain the names. Different scenes/durations prevent a controlled FPS comparison.
+
+**Next:** stay on0.4.9 with26.0.0 selected, preserve caches/prefix and working settings, and check names after one full Thor reboot plus ordinary play/camp/relaunch. If the glitch or hang recurs, export Logs before more than one additional launch overwrites the previous-session evidence. No cache clearing, prefix repair, reimport, renderer/emulator retest, new APK or speculative runtime change is warranted by this result. Hardware driver selection is accepted on this device; long-term name stability and the isolated late stack overflow remain under observation. This is a documentation-only update using [skip ci].
+
+---
+
+# Release record: 0.4.9 selectable Turnip comparison (2026-09-16)
 
 **Published and verified:** **0.4.9/code26**, tested source **2276f3497e1062c37aae31a5c4308a50f8cd57ad**. All six jobs passed in [run35148927421](https://github.com/Russianranger/trasc-server-android/actions/runs/35148927421). The public APK, corresponding native sources and build manifest were downloaded and checked against the tested candidate and release digests; preview tag points to the tested source. This final documentation update uses [skip ci].
 
