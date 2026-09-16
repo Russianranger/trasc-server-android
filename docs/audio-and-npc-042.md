@@ -12,6 +12,10 @@ Runtime Start/Stop and status now occupy a sticky bar above all tabs. These cont
 
 Validation gates: existing backend/JVM/browser/Android and graphics suites; real native ALSA conversion and playback timing with a bounded real-time test sink; real 32-bit Windows waveOut and DirectSound through Wine/Box64, both direct and PRoot, with nonzero stereo samples; complete stop/relaunch playback; strict original exit and shader/model/framebuffer checks. The JVM protocol test checks partial writes, endian/PCM correctness, playback-head replies, malformed/truncated input, limits and sink cleanup. CI has no physical Android speaker or Adreno device: audible output and NPC appearance require the Thor acceptance test. Local sandbox blocks Unix socket creation, so native playback is tested on the ARM64 CI runner; local Java compilation and protocol tests still run.
 
+## Published validation
+
+Version 0.4.2/code19 was published from `b85246dbd2b255d9d4bb9e45cca647bb7ff9b4b1` after all six jobs passed in [run 35044510331](https://github.com/Russianranger/trasc-server-android/actions/runs/35044510331). The downloaded public APK and source archive match the tested artifacts, release hashes and preserved signing identity. Android compilation/lint, all 66 backend tests, JVM/browser checks and the full direct/PRoot client suites passed, including real Windows audio, complete stop/relaunch and the original graphics/input/exit gates. Native rate conversion also delivers complete stereo samples after a deliberate 120ms scheduling pause. The final adaptive icon uses a visually checked 20% inset so circular launchers retain the entire TL monogram. Audible Thor output and the specific NPC appearance still require device acceptance.
+
 ## Source references
 
 - [Wine 10 ALSA endpoint and stream implementation](https://github.com/wine-mirror/wine/blob/wine-10.0/dlls/winealsa.drv/alsa.c): default PCM detection and interleaved playback.
