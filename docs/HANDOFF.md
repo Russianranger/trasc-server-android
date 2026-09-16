@@ -1,4 +1,14 @@
-# Current investigation: spell exclusion succeeded; September 14 does not fix upstream data (2026-09-16)
+# Current investigation: Winlator character-selection labels confirmed working (2026-09-16)
+
+The user answers the previously outstanding comparison: **names work in Winlator**. The new `Winlator Ludashi_2026-09-16 14_43_44.mp4` visibly shows readable `Yehaos [1 Dru]` and `Greater Faydark` labels through character animation. Both settings screenshots were successfully inspected; do not ask to reattach them. Read [winlator-labels-048.md](winlator-labels-048.md).
+
+Working Winlator selects **DXVK2.4.1-fix / Turnip26.0.0-R5 / Vulkan1.3**, compared with our **DXVK2.5.3 / Turnip24.3.4 / Wine10.0 WoW64 / Box64 0.4.4**. Wine and Box64 version/preset and container architecture are not shown for Winlator. Request those details before selecting the next runtime comparison. Selected settings are not independently verified loaded binaries. Names previously failed with both our Turnip and VirGL paths, so shared Wine/Box64/configuration differences remain relevant; this does not prove a particular graphics version is the cause. The public 2.4.1-fix release note describes proprietary-driver compatibility, not an EverQuest-specific fix.
+
+Preserve the confirmed spell exclusion and exact0.4.2 NPC/native-helper/Balanced settings. No code, native binaries, client data, or APK changed; published APK remains0.4.8. Do not repeat the failed broad renderer/CPU/native-DLL OFF comparisons. This documentation-only update uses [skip ci].
+
+---
+
+# Previous investigation: spell exclusion succeeded; September 14 does not fix upstream data (2026-09-16)
 
 **Device success confirmed by user, with installed-file evidence:** `logs-7096767172731379028.zip` proves both spell tables contained40,914 rows, max43,019 and SHA256 `034b5635049a9ef6e549f3f7d5b32f265a386d82a3fd3e8286b04d44b58a5e77` during the successful 0.4.8 run. The journal excludes exactly50000–50007. Native dinput8 and both model helpers were restored/enabled, Turnip/Balanced/exact0.4.2 NPC settings retained. User says the name glitch persists. Read [upstream-spells-048.md](upstream-spells-048.md) for full findings and source links.
 
@@ -6,7 +16,7 @@
 
 **Deployment consequence:** keep/reapply the successful exclusion on the current eight-ID installation. The0.4.8 action deliberately accepts exactlyeight IDs; it will reject the newer fifteen-ID table without replacement. A durable compatibility policy must be implemented and validated before syncing a changed database. Exclusion leaves those custom abilities absent from the client; preserving them needs consistent remapping of all references into verified unused compatible IDs. No server rows, seed, source deployment, native code or app behavior changed in this investigation; APK remains0.4.8. Do not repeat the full unfiltered export as a proposed sound fix.
 
-**Names:** no corresponding fix found in the September14 client/character-selection changes. Supplied new and Winlator videos show in-world play, not a comparable character-selection screen. Ask whether the same name/class/zone labels glitch in Winlator with the same files; that missing comparison will narrow the next name investigation. Existing missing SkinMeshCBS1_VSB.fxo warning remains an unproven cause. Do not repeat the failed native-DLL OFF, broad renderer or CPU comparisons. Preserve backups, signing identity and all gates. This documentation-only update uses [skip ci].
+**Names:** no corresponding fix found in the September14 client/character-selection changes. The videos available at this point showed in-world play, not a comparable character-selection screen. **The later 14:43:44 Winlator video now supplies that comparison and confirms working labels; see the current investigation above.** Existing missing SkinMeshCBS1_VSB.fxo warning remains an unproven cause. Do not repeat the failed native-DLL OFF, broad renderer or CPU comparisons. Preserve backups, signing identity and all gates. This documentation-only update uses [skip ci].
 
 ---
 
