@@ -34,14 +34,22 @@ with tempfile.TemporaryDirectory(prefix='trasc-audio-') as directory:
                 count = rate//2; samples = (C.c_int16*(count*channels))()
                 for i in range(count):
                     for c in range(channels): samples[i*channels+c] = int(math.sin(i*2*math.pi*(440+c*220)/rate)*12000)
-                started = time.monotonic(); offset = 0
+                started = time.monotonic(); offset = 0; paused = False
                 while offset < count:
                     assert time.monotonic()-started < 4, 'PCM playback stalled'
                     n = alsa.snd_pcm_writei(pcm, C.byref(samples, offset*channels*2), min(512, count-offset))
                     if n == -11: time.sleep(.002); continue
                     assert n > 0, ('write', n); offset += n
+                    if not paused and offset >= rate//10:
+                        # Simulate a loading/scheduling pause long enough to empty
+                        # the entire ring; the next write must resume normally.
+                        time.sleep(.12); paused = True
                 # Nonblocking drain can return EAGAIN; our endpoint itself waits boundedly.
-                assert alsa.snd_pcm_drain(pcm) == 0
+                while True:
+                    drained=alsa.snd_pcm_drain(pcm)
+                    if drained==0: break
+                    assert drained==-11 and time.monotonic()-started<4, ('drain',drained)
+                    time.sleep(.002)
                 elapsed = time.monotonic()-started
                 assert .4 < elapsed < 2, ('unpaced or stalled audio', elapsed)
             finally: alsa.snd_pcm_close(pcm)

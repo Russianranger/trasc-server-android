@@ -4,7 +4,7 @@ set -euo pipefail
 cd "$(dirname "$0")/.."
 task_dir="$PWD/runtime-work/client-virgl"
 mkdir -p "$task_dir/tmp" "$task_dir/logs" "$task_dir/client"
-cp runtime-work/client-test/client/eqgame.exe runtime-work/client-test/client/dinput8.dll runtime-work/client-test/client/models.exe runtime-work/client-test/client/textures.exe "$task_dir/client/"
+cp runtime-work/client-test/client/audio.exe runtime-work/client-test/client/eqgame.exe runtime-work/client-test/client/dinput8.dll runtime-work/client-test/client/models.exe runtime-work/client-test/client/textures.exe "$task_dir/client/"
 LIBGL_ALWAYS_SOFTWARE=1 GALLIUM_DRIVER=llvmpipe runtime-work/native/virgl-host/out/vtest/virgl_test_server \
     --use-egl-surfaceless --use-gles --multi-clients --socket-path "$task_dir/tmp/.virgl_test" > "$task_dir/logs/client-gpu.log" 2>&1 &
 graphics_pid=$!

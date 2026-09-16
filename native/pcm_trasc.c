@@ -14,7 +14,7 @@
 #include <time.h>
 #include <unistd.h>
 
-struct endpoint { snd_pcm_ioplug_t io; int fd; uint64_t played, written; uint32_t last; };
+struct endpoint { snd_pcm_ioplug_t io; int fd; uint64_t played, written; uint32_t last; snd_pcm_uframes_t boundary; };
 
 static int send_bytes(int fd, const void *data, size_t size) {
     const char *p = data;
@@ -55,7 +55,10 @@ static snd_pcm_sframes_t position(snd_pcm_ioplug_t *io) {
     struct endpoint *p = io->private_data; uint32_t head;
     if (command(p, 3, &head) < 0) return -ENODEV;
     p->played += (uint32_t)(head - p->last); p->last = head;
-    return p->played % io->buffer_size;
+    /* Returning modulo the small ring loses a whole-buffer advance after a
+     * scheduling pause. Use ALSA's large boundary so an empty ring stays writable.
+     */
+    return p->played % p->boundary;
 }
 static snd_pcm_sframes_t transfer(snd_pcm_ioplug_t *io, const snd_pcm_channel_area_t *areas,
                                   snd_pcm_uframes_t offset, snd_pcm_uframes_t size) {
@@ -80,6 +83,10 @@ static int hw_free(snd_pcm_ioplug_t *io) {
     struct endpoint *p = io->private_data;
     if (p->fd >= 0) close(p->fd);
     p->fd = -1; return 0;
+}
+static int sw_params(snd_pcm_ioplug_t *io, snd_pcm_sw_params_t *params) {
+    struct endpoint *p = io->private_data;
+    return snd_pcm_sw_params_get_boundary(params, &p->boundary);
 }
 static int hw_params(snd_pcm_ioplug_t *io, snd_pcm_hw_params_t *params) {
     (void)params;
@@ -114,14 +121,15 @@ static int drain(snd_pcm_ioplug_t *io) {
 static int close_pcm(snd_pcm_ioplug_t *io) { hw_free(io); free(io->private_data); return 0; }
 static const snd_pcm_ioplug_callback_t callbacks = {
     .start = start, .stop = stop, .pointer = position, .transfer = transfer,
-    .prepare = prepare, .hw_params = hw_params, .hw_free = hw_free, .drain = drain, .close = close_pcm
+    .prepare = prepare, .hw_params = hw_params, .hw_free = hw_free, .sw_params = sw_params, .drain = drain, .close = close_pcm
 };
 SND_PCM_PLUGIN_DEFINE_FUNC(trasc) {
     (void)root; (void)conf;
     if (stream != SND_PCM_STREAM_PLAYBACK) return -ENODEV;
     struct endpoint *p = calloc(1, sizeof(*p));
     if (!p) return -ENOMEM;
-    p->fd = -1; p->io.version = SND_PCM_IOPLUG_VERSION;
+    p->fd = -1; p->boundary = 1; p->io.version = SND_PCM_IOPLUG_VERSION;
+    p->io.flags = SND_PCM_IOPLUG_FLAG_BOUNDARY_WA;
     p->io.name = "TRASC Android audio"; p->io.callback = &callbacks; p->io.private_data = p;
     p->io.poll_fd = -1;
     int err = snd_pcm_ioplug_create(&p->io, name, stream, mode);
