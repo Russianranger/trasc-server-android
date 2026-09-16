@@ -1,6 +1,9 @@
 import hashlib
 import io
 import json
+import re
+import shutil
+import subprocess
 from pathlib import Path
 import sys
 import tempfile
@@ -23,6 +26,49 @@ def row(spell_id, ending=b'\r\n'):
 
 
 class SpellCompatibilityTests(unittest.TestCase):
+    def test_android_copied_backends_execute_export_and_packed_inventory_in_isolation(self):
+        # APK presence alone is insufficient: Android copies explicit subsets
+        # into two separate runtimes. Execute from those actual copy lists,
+        # with neither the repository nor its other modules on sys.path.
+        repo = Path(__file__).resolve().parents[1]
+        for java, entry in (('RuntimeManager.java', 'engine.py'), ('ClientRuntime.java', 'client_runner.py')):
+            source = (repo/'app/src/main/java/io/github/russianranger/trasc'/java).read_text()
+            arrays = re.findall(r'new String\[\]\{([^}]+)\}', source)
+            names = next(re.findall(r'"([^"\n]+)"', a) for a in arrays if '"'+entry+'"' in a)
+            with tempfile.TemporaryDirectory() as temp:
+                stage = Path(temp)
+                for name in names:
+                    if name.endswith('.py'): shutil.copy2(repo/'backend'/name, stage/name)
+                script = '''import sys, pathlib, tempfile
+from unittest.mock import patch
+sys.path.insert(0, sys.argv[1])
+root = pathlib.Path(sys.argv[1])/'work'; root.mkdir()
+fields = [b'0']*237
+def row(i):
+    fields[0] = str(i).encode()
+    return b'^'.join(fields)+b'\\n'
+data = row(26)+row(50000)
+if sys.argv[2] == 'engine.py':
+    from engine import Engine, CLIENT_FILES
+    engine = Engine(root)
+    def exporter(*args, **kwargs):
+        folder = root/'server/export'; folder.mkdir(parents=True)
+        for name in CLIENT_FILES: (folder/name).write_bytes(data if name=='spells_us.txt' else b'fixture')
+    with patch.object(engine,'ensure_db'), patch.object(engine,'write_config'), patch.object(engine,'run',side_effect=exporter):
+        result=engine.export_client({})
+    assert result['spell_compatibility']['removed_ids']==[50000]
+else:
+    import client_runner, client_audio
+    client=root/'client';client.mkdir();logs=root/'logs';logs.mkdir()
+    (client/'spells_us.txt').write_bytes(data)
+    client_audio.inspect_client(client,logs,packed=True)
+    import json
+    assert json.loads((logs/'client-sound-assets.json').read_text())['spell_tables']['root']['removed_ids']==[50000]
+'''
+                result = subprocess.run([sys.executable, '-I', '-c', script, str(stage), entry],
+                                        cwd=stage, capture_output=True, text=True, timeout=30)
+                self.assertEqual(result.returncode, 0, java+'\n'+result.stdout+result.stderr)
+
     def test_filter_preserves_supported_rows_and_boundary_bytes(self):
         keep = b'\xef\xbb\xbf' + row(26) + b'\n' + row(200, b'\n') + row(44999, b'')
         data = b'\xef\xbb\xbf' + row(26) + row(50000) + b'\n' + row(200, b'\n') + row(45000) + row(44999, b'')
