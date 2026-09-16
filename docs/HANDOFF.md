@@ -1,12 +1,21 @@
 # Active handoff: 0.4.4 NPC recovery and effects/name diagnosis (2026-09-16)
 
-Implementation candidate; publication pending. New device test confirms **music works** with 0.4.3 but spell effects remain silent. Its direct-buffer mode regresses NPCs and does not fix the name glitch. **0.4.2 NPC mode is still confirmed working.** Do not carry forward the old UI/summary claim that labels were fixed. Read [audio-and-labels-044.md](audio-and-labels-044.md) and [preview-notes.md](preview-notes.md).
+**Published and verified: 0.4.4/code21**, tested source `aed9fa333bdded3b8affa42b0e0ba5404b8dcf5e`. All six jobs passed in [run 35089866735](https://github.com/Russianranger/trasc-server-android/actions/runs/35089866735). Public APK, corresponding sources and build manifest were downloaded and matched to the tested artifacts and GitHub asset digests. Preview tag points to this tested source; this final handoff commit uses `[skip ci]`.
+
+New device test confirms **music works** with 0.4.3 but spell effects remain silent. Its direct-buffer mode regresses NPCs and does not fix the name glitch. **0.4.2 NPC mode is still confirmed working.** Do not carry forward the old UI/summary claim that labels were fixed. Read [audio-and-labels-044.md](audio-and-labels-044.md) and [preview-notes.md](preview-notes.md).
 
 0.4.4/code21 restores `compatibility` to exact 0.4.2 settings and retains its explicit alias. `direct_043` is the rejected comparison, not recommended. Working AudioTrack changes are retained. New experimental `accurate` CPU math profile is independent of GPU settings. Add focused opt-in Windows sound tracing and bounded read-only sound inventory/settings reports; no asset replacement or prefix/runtime reset. Existing app ID/signing key must be preserved.
 
 New tests isolate mono/8-bit/22.05 kHz positional DirectSound output from preceding music and require nonzero PCM independently in both profiles; actual PE32 x87 precision test runs on the pinned ARM64 Box64. All original gates remain strict, including old synthetic live-buffer positive/negative controls. Local backend/JVM/Java compilation pass; CI browser/native/device boundaries documented. **Spell sounds and actual name geometry remain unconfirmed; call this a recovery/diagnostic build unless on-device evidence changes that.** Next device test is two matched short sessions (Balanced, Legacy math accuracy), NPC compatibility recommended, music 0/sound 100, focused sound tracing on and general verbose off; export after each.
 
-No subagents unless user explicitly asks. GitHub writes must match the local staged tree. Preserve signing cache `trasc-preview-signing-v2` and certificate `ff9c09cdc3e2404d1d7f72d61ce2f8651464f5e03dff340f70bd4df28c70e869`. Source/build IDs and downloaded-release verification will be recorded after all gates finish.
+No subagents unless user explicitly asks. GitHub writes must match the local staged tree. Preserve signing cache `trasc-preview-signing-v2` and certificate `ff9c09cdc3e2404d1d7f72d61ce2f8651464f5e03dff340f70bd4df28c70e869`.
+
+- [APK](https://github.com/Russianranger/trasc-server-android/releases/download/preview/trasc-server-android-preview.apk): **6,610,624 bytes**, SHA256 `60170918b06b893d8b52e38c24a6aecdf79381e1ce27928092f67531a5a4c1c5`.
+- [Corresponding native sources](https://github.com/Russianranger/trasc-server-android/releases/download/preview/launcher-sources.tar.gz): **66,973,618 bytes**, SHA256 `c3e071c244b34b13d4ff77d009e3171f0e0f94bb756d7dda209e302210917142`.
+- Build manifest SHA256 `c75d3bd2ac76da3b70d36cf1ce61d5eaa44c21445aba67aec324ffdb74ca3195`; application ID remains `io.github.russianranger.trasc.preview`.
+- Verified local copies: `runtime-work/trasc-server-android-0.4.4.apk`, `launcher-sources-0.4.4.tar.gz`, `preview-build-0.4.4.json`.
+
+Final validation: 69 backend tests; browser flows; JVM archive/controller/RFB/audio checks; Android compilation/lint and preserved signing; database backup/restore; native ALSA rate conversion/pause/reconnect; all direct/PRoot Software/VirGL/DXVK model/shader/pixels/fullscreen/input/CPU-affinity/quiet-log/warm-prefix/audio-restart/strict-exit gates. The new positional effects deliver independent PCM in both profiles on every runtime path; actual translated x87 precision passes. Downloaded Vulkan evidence gives nonzero deltas 143954/143965 (Balanced/Accurate direct), 143953/143966 (PRoot). Original staged/direct buffer controls still require exact 42/0 and pass; **they did not reproduce the user's actual name bug**. APK version/code, compiled option strings, all 15 backend/UI assets, icon, native checksums and source archive were checked. No assertion relaxed or test blindly retried. Physical Thor spell/name acceptance still pending.
 
 ---
 
