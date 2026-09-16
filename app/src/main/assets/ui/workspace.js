@@ -25,11 +25,11 @@ async function addonAction(fn){busy++;addonControls();try{await fn();}catch(e){n
 async function copyAddons(mode,paths=[]){if(!addonComparison)throw new Error('Compare files first.');const r=await job('client_addons_copy',{mode,paths,snapshot:addonComparison.snapshot});renderAddons(r.comparison);}
 action('addons-scan',async()=>renderAddons(await job('client_addons_scan')));
 action('addons-missing',()=>copyAddons('missing'));action('addons-all',()=>copyAddons('all'));
-async function dllStatus(){const r=await api('client_dll_status');$('dll-state').textContent='Compiler '+(r.compiler?'installed':'required')+' · Microsoft x86 SDK '+(r.sdk?'imported':'required')+(r.build?'\nStaged DLL: '+bytes(r.build.bytes)+' · '+r.build.sha256:'\nNo staged DLL.');}
+async function dllStatus(){const r=await api('client_dll_status');$('dll-state').textContent='Microsoft compiler '+(r.compiler?'imported':'required')+' · Wine runtime '+(r.runtime?'installed':'required')+' · x86 SDK '+(r.sdk?'imported':'required')+(r.build?'\nStaged DLL: '+bytes(r.build.bytes)+' · '+r.build.sha256:'\nNo staged DLL.');}
 action('dll-status',dllStatus);
-action('dll-tools',async()=>{await job('client_dll_tools');await dllStatus();});
+action('dll-tools',async()=>{await api('client_runtime_online');await dllStatus();});
 action('dll-sdk',async()=>{const f=await api('pick',{kind:'file'});await job('client_dll_sdk',{file:f.file});await dllStatus();});
-action('dll-build',async()=>{await job('client_dll_build');await dllStatus();});
+action('dll-build',async()=>{await api('controller_capture',{active:false});await api('client_start',{mode:'compiler',renderer:'software',resolution:'800x600',audio:false,runtime_mode:'compatibility'});notice('Compiling with Microsoft v142 in a separate Wine prefix. Check client-compiler.log in Logs. Stop client cancels.');await clientRuntimeState();});
 action('dll-deploy',()=>job('client_dll_deploy'));
 action('players-export',async()=>exportResult(await job('player_export')));
 function showPlayers(r){playerPreview=r;$('players-replace').checked=false;$('players-restore').disabled=true;$('players-preview').textContent=r.accounts+' accounts · '+r.characters+' characters · '+r.tables+' tables\n'+r.message+'\n'+[...(r.problems||[]),...(r.changes||[])].join('\n')+'\nTables: '+r.table_names.join(', ');}

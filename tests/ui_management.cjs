@@ -43,7 +43,7 @@ for(const [name,type,value,min,max]of [['Character:RaidExpMultiplier','real','0.
     else if(op==='logs')result={text:args.name==='app.log'?'session_backup failed: simulated storage error':'Saved output: '+args.name,names:['app.log','runtime.log','control.log','operation.log','server/zones/cabeast.log','client/Logs/dbg.txt','client/dinput8.log']};
     else if(op==='export_logs')result={file:'exports/logs-native.zip'};
     else if(op==='export'){window.__exports.push(args.path);if(window.__cancelExport){window.nativeReply(id,{ok:false,error:'File selection cancelled'});return;}result={message:'File exported'};}
-    else if(op==='client_dll_status')result={compiler:true,sdk:true,build:null};
+    else if(op==='client_dll_status')result={compiler:true,runtime:true,sdk:true,build:null};
     else if(op==='files')result={path:'backups',items:[{name:'players-test.zip',path:'backups/players-test.zip',size:100}]};
     else if(op==='controller_state')result=profile;
     else if(op==='controller_save'){profile={...profile,...args};result=profile;}

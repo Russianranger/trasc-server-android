@@ -1,8 +1,8 @@
 """Compile actual imported upstream source with the same recipe on Windows CI.
 
 The SDK is provided by the runner's licensed VS installation, never published.
-Android uses ARM Clang/LLD and the same x86 MSVC ABI recipe. Linux VFS path
-handling is covered separately; physical-device loading remains a device test.
+Android runs the same compiler EXEs through its Wine/Box64 runtime.
+Physical-device execution and loading remain device tests.
 """
 import sys
 import tempfile
@@ -20,7 +20,7 @@ with tempfile.TemporaryDirectory() as temp:
     try:
         result=client_dll.build_dll(engine,{})
         assert result['build']['bytes']>100000
-        print('PASS: actual Triptych source compiled with Clang16/LLD16 as an x86 PE32 DLL; installed client untouched')
+        print('PASS: actual Triptych source compiled with the original Microsoft v142 toolset as an x86 PE32 DLL; installed client untouched')
     except Exception:
         print((work/'logs/operation.log').read_text(errors='replace')[-30000:])
         raise

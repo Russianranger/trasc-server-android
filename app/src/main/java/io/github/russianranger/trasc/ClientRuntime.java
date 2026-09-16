@@ -37,7 +37,7 @@ final class ClientRuntime {
     JSONObject state()throws Exception {
         JSONObject result=new JSONObject().put("installed",installed()).put("alive",alive()).put("busy",busy).put("status",status);
         File report=new File(run,"status.json");
-        if(report.isFile())try{result.put("launch",json(report));}catch(Exception ignored){}
+        if(report.isFile())try{JSONObject info=json(report);result.put("launch",info);if(info.optBoolean("compiler"))result.put("status",info.optString("message",status));}catch(Exception ignored){}
         File options=new File(server.work,"client/launch-options.json");
         if(options.isFile())try{result.put("launch_options",json(options));}catch(Exception ignored){}
         result.put("directx_installed",DirectXInstaller.installed(directx));
@@ -100,7 +100,7 @@ final class ClientRuntime {
         finally {busy=false;if(offline==null)archive.delete();}
     }
     synchronized JSONObject start(JSONObject options)throws Exception {
-        begin();boolean started=false;
+        begin();boolean started=false,compilerLease=false;
         try {
             if(alive())throw new IOException("Client is already open. View it or stop it before another launch.");
             if(graphics!=null){graphics.stop();graphics=null;}
@@ -131,7 +131,18 @@ final class ClientRuntime {
             String cpuAffinity=options.optString("cpu_affinity","available");
             if(!Arrays.asList("available","game").contains(cpuAffinity))throw new IOException("Unsupported CPU affinity");
             if(!Arrays.asList("software","virgl","turnip").contains(renderer))throw new IOException("Unsupported graphics option");
-            if(!Arrays.asList("desktop","client").contains(mode)||!Arrays.asList("640x480","800x600","960x540","1024x768","1280x720").contains(resolution))throw new IOException("Unsupported client launch option");
+            if(!Arrays.asList("desktop","client","compiler").contains(mode)||!Arrays.asList("640x480","800x600","960x540","1024x768","1280x720").contains(resolution))throw new IOException("Unsupported client launch option");
+            if(mode.equals("compiler")) {
+                if(!server.alive())throw new IOException("Open the server runtime before compiling");
+                JSONObject state=server.request("state",new JSONObject()).getJSONObject("result");
+                if(state.optBoolean("running"))throw new IOException("Stop the server before compiling the DLL");
+                org.json.JSONArray jobs=state.getJSONArray("jobs");
+                for(int i=0;i<jobs.length();i++)if(Arrays.asList("queued","running").contains(jobs.getJSONObject(i).optString("status")))
+                    throw new IOException("Finish the current server operation before compiling");
+                if(!new File(server.work,"client/toolchain/bin/cl.exe").isFile())throw new IOException("Import the Microsoft compiler/SDK ZIP first");
+                RuntimeManager.write(new File(server.work,"run/client-dll-building.json"),new JSONObject().put("pid",android.os.Process.myPid()).toString());compilerLease=true;
+            }
+            File sessionPrefix=mode.equals("compiler")?new File(server.work,"client/compiler-prefix"):prefix;
             if(mode.equals("client")&&options.optBoolean("native_d3dx",true)&&!DirectXInstaller.installed(directx))throw new IOException("Install DirectX model helpers in the Client tab first, or disable model helpers for a Wine comparison");
             if(mode.equals("client")&&!new File(client,"trasc-client.json").isFile())throw new IOException("Import your ROF2 client ZIP first");
             String executable=mode.equals("client")?json(new File(client,"trasc-client.json")).getString("executable"):"";
@@ -141,7 +152,7 @@ final class ClientRuntime {
                 File saved=ClientPrefix.preserve(prefix);
                 RuntimeManager.write(new File(server.work,"logs/client-prefix-repair.json"),new JSONObject().put("created_utc",java.time.Instant.now().toString()).put("previous_prefix",saved==null?"none":server.work.toPath().relativize(saved.toPath()).toString()).toString(2));
             }
-            TarExtractor.remove(run);TarExtractor.remove(tmp);run.mkdirs();tmp.mkdirs();prefix.mkdirs();client.mkdirs();
+            TarExtractor.remove(run);TarExtractor.remove(tmp);run.mkdirs();tmp.mkdirs();sessionPrefix.mkdirs();client.mkdirs();
             File presentationLog=new File(server.work,"logs/client-presentation.log");
             if(presentationLog.exists())Files.move(presentationLog.toPath(),new File(server.work,"logs/client-presentation.previous.log").toPath(),StandardCopyOption.REPLACE_EXISTING);
             JSONObject request=new JSONObject().put("mode",mode).put("resolution",resolution).put("executable",executable).put("native_dinput8",options.optBoolean("native_dinput8",true))
@@ -170,10 +181,11 @@ final class ClientRuntime {
             File nativeDir=new File(context.getApplicationInfo().nativeLibraryDir);
             List<String> command=new ArrayList<>(Arrays.asList(new File(nativeDir,"libproot.so").getPath(),"--kill-on-exit","-0","-r",root.getPath(),
                 "-b",new File(backend,"wineserver").getPath()+":/opt/wine/bin/wineserver",
-                "-b",new File(backend,"wined3d.dll").getPath()+":/opt/wine/lib/wine/i386-windows/wined3d.dll","-b","/dev","-b","/proc","-b","/sys","-b",directx.getPath()+":/directx","-b",client.getPath()+":/client","-b",prefix.getPath()+":/prefix","-b",run.getPath()+":/session",
+                "-b",new File(backend,"wined3d.dll").getPath()+":/opt/wine/lib/wine/i386-windows/wined3d.dll","-b","/dev","-b","/proc","-b","/sys","-b",directx.getPath()+":/directx","-b",client.getPath()+":/client","-b",sessionPrefix.getPath()+":/prefix","-b",run.getPath()+":/session",
                 "-b",new File(server.work,"logs").getPath()+":/logs","-b",backend.getPath()+":/opt/trasc-client","-b",tmp.getPath()+":/tmp",
                 "-w","/client","/usr/bin/env","-i","HOME=/root","USER=root","PATH=/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin",
-                "LANG=C.UTF-8","TMPDIR=/tmp","PYTHONUNBUFFERED=1","/usr/bin/python3","/opt/trasc-client/client_runner.py"));
+                "LANG=C.UTF-8","TMPDIR=/tmp","PYTHONUNBUFFERED=1","/usr/bin/python3",mode.equals("compiler")?"/opt/trasc/client_compile_runner.py":"/opt/trasc-client/client_runner.py"));
+            if(mode.equals("compiler"))command.addAll(1,Arrays.asList("-b",server.work.getPath()+":/work","-b",new File(server.home,"backend").getPath()+":/opt/trasc"));
             ProcessBuilder builder=new ProcessBuilder(command);builder.environment().put("PROOT_LOADER",new File(nativeDir,"libproot-loader.so").getPath());
             builder.environment().put("PROOT_TMP_DIR",tmp.getPath());
             boolean accelerated=false;
@@ -215,11 +227,11 @@ final class ClientRuntime {
                 File report=new File(run,"status.json");
                 if(report.isFile()){JSONObject info=json(report);if(info.optString("phase").equals("error"))throw new IOException(info.optString("error"));}
                 if(!process.isAlive())throw new IOException("Client runtime exited. See client-runtime.log and client-wine.log.");
-                if(displaySocket().exists()){status="Client display open. Wine may take a minute to prepare its first prefix.";return state();}
+                if(displaySocket().exists()){status=mode.equals("compiler")?"Microsoft DLL compilation running. See client-compiler.log; Stop client cancels.":"Client display open. Wine may take a minute to prepare its first prefix.";return state();}
                 Thread.sleep(100);
             }
             throw new IOException("Client display startup timed out; export Logs");
-        } catch(Exception e){server.recordFailure("client_start",e);if(started&&alive())stop();else if(graphics!=null){graphics.stop();graphics=null;}if(audio!=null){audio.close();audio=null;}status=e.getMessage();throw e;}
+        } catch(Exception e){server.recordFailure("client_start",e);if(started&&alive())stop();else if(graphics!=null){graphics.stop();graphics=null;}if(audio!=null){audio.close();audio=null;}status=e.getMessage();if(compilerLease)new File(server.work,"run/client-dll-building.json").delete();throw e;}
         finally {busy=false;}
     }
     synchronized void stop()throws Exception {
@@ -230,6 +242,7 @@ final class ClientRuntime {
         }
         if(graphics!=null){graphics.stop();graphics=null;}
         if(audio!=null){audio.close();audio=null;}
+        new File(server.work,"run/client-dll-building.json").delete();
         process=null;status="Client stopped. Server runtime is managed separately.";
     }
 }

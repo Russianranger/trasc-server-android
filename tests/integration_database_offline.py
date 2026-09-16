@@ -16,6 +16,7 @@ from unittest.mock import patch
 sys.path.insert(0, '/opt/trasc')
 from engine import Engine, atomic_json, CLIENT_FILES
 from client_spells import inspect_data
+import player_data
 
 
 def verify(seed, work):
@@ -104,6 +105,13 @@ def verify(seed, work):
         for relative in ('spells_us.txt', 'Resources/spells_us.txt'):
             assert (client/relative).read_bytes() == exported
         print('PASS: real seed compatibility persists across export, excludes eight IDs in root/Resources/ZIP, restores complete tables, and preserves server rows', flush=True)
+        players = player_data.export_players(engine,{})
+        player_preview = player_data.preview_players(engine,{'file':players['file']})
+        assert player_preview['compatible'], player_preview['problems']
+        player_data.restore_players(engine,{'file':players['file'],'sha256':player_preview['sha256'],'replace':True})
+        assert int(engine.mysql('SELECT COUNT(*) FROM items;').splitlines()[1]) == counts['items']
+        assert int(engine.mysql('SELECT COUNT(*) FROM spells_new;').splitlines()[1]) == counts['spells_new']
+        print('PASS: all selected player/account tables in the real pinned seed export, stage and restore while preserving world content',flush=True)
         rules = engine.gameplay({})
         assert rules['values'], 'Gameplay controls must read the imported rules'
         assert rules['selected'] == 1, 'This pinned seed uses default ruleset ID 1'

@@ -74,6 +74,7 @@ async function clientRuntimeState(){
  }
  for(const id of ['client-desktop','client-launch','client-prefix-repair','client-runtime-online','client-runtime-offline','client-prepare','client-import','client-directx-online','client-directx-offline'])$(id).disabled=!!(s.alive||s.busy);
  clientFileBusy=!!(s.alive||s.busy);spellTestControls();
+ if(s.launch?.compiler)$('dll-state').textContent=s.launch.message||s.launch.phase;
  $('client-view').disabled=!(s.alive&&s.display_ready);
  $('client-runtime-status').textContent=(s.installed?'Installed · ':'Not installed · ')+s.status;
  $('client-directx-status').textContent=s.directx_installed?'DirectX model helpers installed.':'Install the DirectX helpers to enable the legacy character animation and model functions.';

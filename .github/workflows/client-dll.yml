@@ -13,15 +13,9 @@ jobs:
           ref: 4c653ca2d16aaede33b7011d07254c520ac5f5df
           path: dll-upstream
           sparse-checkout: Release-NMS-Client
-      - name: Install LLVM16 and prepare private runner SDK
+      - name: Prepare private Microsoft compiler and SDK from the runner
         shell: pwsh
-        run: |
-          Invoke-WebRequest 'https://github.com/llvm/llvm-project/releases/download/llvmorg-16.0.6/LLVM-16.0.6-win64.exe' -OutFile "$env:RUNNER_TEMP\llvm.exe"
-          Start-Process -FilePath "$env:RUNNER_TEMP\llvm.exe" -ArgumentList '/S', '/D=C:\trasc-llvm16' -Wait
-          Copy-Item C:\trasc-llvm16\bin\clang-cl.exe C:\trasc-llvm16\bin\clang-cl-16.exe
-          Copy-Item C:\trasc-llvm16\bin\lld-link.exe C:\trasc-llvm16\bin\lld-link-16.exe
-          'C:\trasc-llvm16\bin' | Out-File -FilePath $env:GITHUB_PATH -Append
-          ./tools/pack-client-sdk.ps1 -Output "$env:RUNNER_TEMP\trasc-sdk.zip"
+        run: ./tools/pack-client-sdk.ps1 -Output "$env:RUNNER_TEMP\trasc-sdk.zip"
       - name: Compile real upstream ROF2 add-on using production recipe
         shell: pwsh
         run: python tests/integration_client_dll.py dll-upstream "$env:RUNNER_TEMP\trasc-sdk.zip"

@@ -50,6 +50,7 @@ def row(i):
 data = row(26)+row(50000)
 if sys.argv[2] == 'engine.py':
     from engine import Engine, CLIENT_FILES
+    import client_compile_runner
     engine = Engine(root)
     def exporter(*args, **kwargs):
         folder = root/'server/export'; folder.mkdir(parents=True)

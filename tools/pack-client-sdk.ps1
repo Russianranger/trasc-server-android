@@ -12,6 +12,10 @@ if (!$sdk) { throw 'Install the Windows 10 SDK in Visual Studio Installer.' }
 $stage = Join-Path $env:TEMP ('trasc-sdk-' + [guid]::NewGuid())
 New-Item -ItemType Directory -Path "$stage\include", "$stage\lib" | Out-Null
 try {
+    Copy-Item "$($vc.FullName)\bin\Hostx64\x86" "$stage\bin" -Recurse
+    $redist = Get-Item "$vs\VC\Redist\MSVC\14.29.*\x64\Microsoft.VC142.CRT" -ErrorAction SilentlyContinue | Select-Object -First 1
+    if (!$redist) { $redist = Get-Item "$vs\VC\Redist\MSVC\*\x64\Microsoft.VC*.CRT" -ErrorAction SilentlyContinue | Sort-Object FullName -Descending | Select-Object -First 1 }
+    if ($redist) { Copy-Item "$($redist.FullName)\*.dll" "$stage\bin" -Force }
     Copy-Item "$($vc.FullName)\include" "$stage\include\msvc" -Recurse
     Copy-Item "$($vc.FullName)\lib\x86" "$stage\lib\msvc" -Recurse
     foreach ($name in @('ucrt','shared','um','winrt')) { Copy-Item "$($sdk.FullName)\$name" "$stage\include\$name" -Recurse }

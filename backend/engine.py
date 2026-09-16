@@ -194,6 +194,14 @@ class Engine(ManagedContent):
                 f.write(time.strftime('%Y-%m-%d %H:%M:%S ') + str(text) + '\n')
 
     def enqueue(self, op, args):
+        lease=self.work/'run/client-dll-building.json'
+        if lease.is_file():
+            try:
+                pid=int(json.loads(lease.read_text())['pid'])
+                if pid>0 and Path('/proc',str(pid)).exists():
+                    raise ValueError('Stop the client DLL compiler before changing the server workspace')
+            except (KeyError, TypeError, json.JSONDecodeError):
+                raise ValueError('Invalid compiler state; stop the client runtime before continuing')
         with self.process_lock:
             if any(j['status'] in ('queued', 'running') for j in self.jobs):
                 raise ValueError('Another operation is running. Wait for it or cancel it first.')
@@ -956,8 +964,8 @@ class Engine(ManagedContent):
     def dispatch(self,op,args):
         methods={'client_addons_scan':lambda a:client_addons.scan(self,a),
             'client_addons_lock':lambda a:client_addons.set_lock(self,a),'client_addons_copy':lambda a:client_addons.copy_files(self,a),
-            'client_dll_status':lambda a:client_dll.compiler_status(self,a),'client_dll_tools':lambda a:client_dll.install_compiler(self,a),
-            'client_dll_sdk':lambda a:client_dll.import_sdk(self,a),'client_dll_build':lambda a:client_dll.build_dll(self,a),
+            'client_dll_status':lambda a:client_dll.compiler_status(self,a),
+            'client_dll_sdk':lambda a:client_dll.import_sdk(self,a),
             'client_dll_deploy':lambda a:client_dll.deploy_dll(self,a),
             'player_export':lambda a:player_data.export_players(self,a),'player_preview':lambda a:player_data.preview_players(self,a),
             'player_restore':lambda a:player_data.restore_players(self,a),
