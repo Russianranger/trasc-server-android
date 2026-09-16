@@ -1,5 +1,7 @@
 import hashlib
 import json
+import io
+import zlib
 import os
 from pathlib import Path
 import struct
@@ -82,6 +84,72 @@ class AudioTests(unittest.TestCase):
             result=client_audio.inspect_client(client,logs)
             self.assertEqual(result['loose_wav_count'],0);self.assertEqual(result['settings'],{})
             self.assertTrue(json.loads((logs/'client-sound-assets.json').read_text())['soundassets_unreadable'])
+
+    def test_packed_spell_headers_resolve_by_crc_without_extracting_assets(self):
+        with tempfile.TemporaryDirectory() as directory:
+            root=Path(directory);client=root/'client';client.mkdir();logs=root/'logs';logs.mkdir()
+            pcm=b'RIFF'+struct.pack('<I',36)+b'WAVEfmt '+struct.pack('<IHHIIHH',16,1,1,22050,44100,2,16)+b'data'+struct.pack('<I',0)
+            floating=bytearray(pcm);struct.pack_into('<H',floating,20,3);struct.pack_into('<H',floating,34,32)
+            # CRC constants obtained with the independent upstream table algorithm.
+            entries=[('spelcast.wav',0x6e733495,pcm),('spell_1.wav',0xe89a263b,bytes(floating))]
+            data=bytearray(struct.pack('<I4sI',0,b'PFS ',0x20000));records=[]
+            def append_block(raw):
+                offset=len(data);compressed=zlib.compress(raw)
+                data.extend(struct.pack('<II',len(compressed),len(raw))+compressed)
+                return offset,len(raw)
+            for name,crc,raw in entries: records.append((crc,*append_block(raw)))
+            names=struct.pack('<I',2)+b''.join(struct.pack('<I',len(n)+1)+n.encode()+b'\0' for n,_,_ in entries)
+            records.append((0x61580ac9,*append_block(names)))
+            struct.pack_into('<I',data,0,len(data));data.extend(struct.pack('<I',len(records)))
+            # PFS directory order differs from name-table order.
+            for record in reversed(records): data.extend(struct.pack('<III',*record))
+            archive=client/'SnD2.PFS';archive.write_bytes(data)
+            (client/'soundassets.txt').write_text('108^100^SpelCast.WAV\n103^spell_1.wav\n105^spell_3.wav\n')
+            before={f.name:f.read_bytes() for f in client.iterdir()}
+            client_audio.inspect_client(client,logs,packed=True)
+            report=json.loads((logs/'client-sound-assets.json').read_text())
+            self.assertTrue(report['packed_scan_complete'])
+            self.assertEqual(report['resolved_packed'],2);self.assertEqual(report['unresolved_after_packed'],1)
+            self.assertEqual(report['archives']['snd2.pfs']['wav_count'],2)
+            self.assertEqual(report['spell_files']['spelcast.wav']['packed'],[{'archive':'snd2.pfs','format':'tag=1,channels=1,rate=22050,bits=16'}])
+            self.assertEqual(report['spell_files']['spell_1.wav']['packed'][0]['format'],'tag=3,channels=1,rate=22050,bits=32')
+            self.assertEqual({f.name:f.read_bytes() for f in client.iterdir()},before)
+            self.assertEqual(client_audio.pfs_crc('SpelCast.WAV'),0x6e733495)
+            with self.assertRaisesRegex(ValueError,'read_budget'):client_audio.inspect_pfs(archive,set(),[11])
+            # Oversized blocks and dishonest inflate lengths are rejected before extraction.
+            bad=bytearray(data);struct.pack_into('<I',bad,records[-1][1]+4,0xffffffff);archive.write_bytes(bad)
+            with self.assertRaisesRegex(ValueError,'block_limit'):client_audio.inspect_pfs(archive,set(),[100000])
+            client_audio.inspect_client(client,logs,packed=True)
+            failed=json.loads((logs/'client-sound-assets.json').read_text())
+            self.assertFalse(failed['packed_scan_complete']);self.assertEqual(failed['archives']['snd2.pfs']['status'],'unreadable')
+            # Unscanned archives are not represented as successfully checked.
+            client_audio.inspect_client(client,logs)
+            self.assertFalse(json.loads((logs/'client-sound-assets.json').read_text())['packed_scan_complete'])
+
+    def test_sound_lifecycle_survives_mixer_rotation_and_is_bounded(self):
+        with tempfile.TemporaryDirectory() as directory:
+            root=Path(directory);path=root/'client-wine.log'
+            create=b'100.000:0120:0124:trace:dsound:IDirectSoundImpl_CreateSoundBuffer flags=0x10 bytes=4096\n'
+            mix=b'100.020:0120:0124:trace:dsound:DSOUND_MixOne mixing buffer\n'
+            warning=b'110.000:0120:0124:warn:dsound:DSOUND_Create invalid format 0x0003\n'
+            stop=b'120.000:0120:0124:trace:dsound:IDirectSoundBufferImpl_Stop buffer stopped'
+            capture=client_runner.WineLog(path,1024)
+            capture.pump(io.BufferedReader(io.BytesIO(create+mix*1000+warning+stop),buffer_size=17))
+            self.assertNotIn(create,path.read_bytes());self.assertNotIn(create,path.with_suffix('.overflow.log').read_bytes())
+            report=json.loads(path.with_suffix('.sound.json').read_text())
+            self.assertEqual(report['filtered_mixer_lines'],1000)
+            self.assertEqual(report['events']['trace:dsound:IDirectSoundImpl_CreateSoundBuffer']['count'],1)
+            self.assertIn('warn:dsound:DSOUND_Create',report['events'])
+            self.assertIn('trace:dsound:IDirectSoundBufferImpl_Stop',report['events'])
+            collector=client_audio.SoundTrace()
+            for i in range(5000): collector.observe(f'1:trace:dsound:Unique{i} '+'x'*4096)
+            self.assertEqual(len(collector.events),96);self.assertEqual(collector.dropped,4904)
+            for i in range(10000):collector.observe(f'1:trace:dsound:Unique0 index={i}')
+            self.assertEqual(collector.events['trace:dsound:Unique0']['count'],10001)
+            self.assertIn('index=9999',collector.events['trace:dsound:Unique0']['last'][-1])
+            self.assertLess(len(json.dumps(collector.report())),100000)
+            collector.observe('1:trace:file:CreateFileW PRIVATE_ACCOUNT_CHAT')
+            self.assertNotIn('PRIVATE',json.dumps(collector.report()))
 
     def test_sound_trace_is_opt_in_and_independent_of_verbose_graphics_logging(self):
         quiet=client_runner.wine_debug();focused=client_runner.wine_debug(sound=True)

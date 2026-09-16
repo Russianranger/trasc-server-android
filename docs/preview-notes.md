@@ -1,3 +1,21 @@
+TRASC Server Android **0.4.5 — diagnostic preview**
+
+The latest Thor test confirms music, sit/stand and swinging effects. Spells remain silent; character-selection names still glitch. Legacy math accuracy did not fix either and reduced FPS. Use **Balanced + NPC compatibility (recommended)**.
+
+This APK improves the evidence collection, not the rendering/audio implementation. Sound diagnostics now indexes `snd*.pfs` archives, identifies named casting/spell WAVs and their header formats, and keeps audio lifecycle calls separately from repetitive mixer output. Existing game files are read only. A missing loose file is not called missing when it exists in a checked archive. Unreadable/unscanned archives are explicitly reported.
+
+**One spell test and one brief name comparison:**
+
+1. Stop the client/runtime and install 0.4.5 over the current app. No runtime download, reimport, prefix repair or server rebuild.
+2. Use **Turnip + DXVK / 1280×720 / Fullscreen / Balanced / NPC compatibility (recommended)**, Game audio on, **Sound diagnostics on**, general Verbose Wine diagnostics off. Keep native DLL/model helpers and available cores enabled.
+3. Observe the name at character selection. Enter the world; set **Music Volume 0, Sound Volume 100**. Cast **Skin Like Wood**, then a different known spell if available. Test sit/stand or swinging once as the audible control. Stop and **export Logs immediately**. Report which spell(s) were silent.
+4. Change only Graphics to **Android GPU / VirGL**. Relaunch only as far as character selection; record the name for about 10 seconds. Stop and export Logs. This is a correctness check, not a performance benchmark; no need to play through a slow VirGL session.
+5. Restore **Turnip + DXVK**, keep **Balanced**, and turn **Sound diagnostics off** for normal play. Do not repeat the rejected Legacy math or direct-mapping comparisons.
+
+The spell/name root causes remain unconfirmed. The renderer comparison narrows the name fault to the DXVK path or shared client/Wine behavior; archive/lifecycle evidence narrows the spell path. No physical-device fix is claimed by this release.
+
+---
+
 TRASC Server Android **0.4.4** restores the confirmed NPC rendering settings and improves the next sound/name investigation.
 
 - **NPC compatibility (recommended)** again uses the exact 0.4.2 settings. Existing `compatibility` selections recover automatically; the explicitly named 0.4.2 option remains identical. The failed 0.4.3 experiment is labeled **Direct mapping (0.4.3 comparison)**.

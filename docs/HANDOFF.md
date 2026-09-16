@@ -1,3 +1,13 @@
+# Active handoff: 0.4.5 diagnostic follow-up (2026-09-16)
+
+**In progress; not yet published.** Source/version0.4.5/code22. Latest user tests reject Legacy math accuracy: sit/stand/swing work, spells do not, names still corrupt, FPS worse. Use Balanced + exact0.4.2 NPC compatibility. Do not repeat failed CPU/direct-mapping tests or claim synthetic API fixtures reproduce the game.
+
+Read [audio-and-labels-045.md](audio-and-labels-045.md) for uploaded evidence and exact changes. This release fixes evidence collection: bounded PFS spell-asset inspection and separately retained audio lifecycle samples that mixer-log rotation previously erased. It does not change rendering/playback or claim a spell/name fix. New plan: one Turnip spell test, then a short VirGL character-selection comparison, export each and return to Turnip/quiet logging. No prefix repair, runtime download, reimport or server rebuild.
+
+71 backend tests pass locally. Full CI and downloadable APK/source/signing verification remain required. Preserve app ID `io.github.russianranger.trasc.preview`, certificate `ff9c09cdc3e2404d1d7f72d61ce2f8651464f5e03dff340f70bd4df28c70e869` and signing cache `trasc-preview-signing-v2`; never regenerate. No subagents unless explicitly requested. Compare the exact staged tree before GitHub writes. Last verified release remains0.4.4 below until the new run is complete.
+
+---
+
 # Active handoff: 0.4.4 NPC recovery and effects/name diagnosis (2026-09-16)
 
 **Published and verified: 0.4.4/code21**, tested source `aed9fa333bdded3b8affa42b0e0ba5404b8dcf5e`. All six jobs passed in [run 35089866735](https://github.com/Russianranger/trasc-server-android/actions/runs/35089866735). Public APK, corresponding sources and build manifest were downloaded and matched to the tested artifacts and GitHub asset digests. Preview tag points to this tested source; this final handoff commit uses `[skip ci]`.

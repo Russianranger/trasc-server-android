@@ -4,19 +4,158 @@ import json
 from pathlib import Path
 import struct
 import re
+import zlib
 from itertools import islice
 
 
-def inspect_client(client, logs):
+# These readers inspect metadata only; they never extract or modify game files.
+# PFS layout/CRC: EQEmu/zone-utilities src/common/pfs.cpp and pfs_crc.cpp.
+PFS_NAME_CRC = 0x61580ac9
+SPELL_WAVS = ('spelcast.wav', 'spell_1.wav', 'spell_2.wav', 'spell_3.wav',
+              'spell_4.wav', 'spell_5.wav')
+
+
+def wav_format(data):
+    if data[:4] != b'RIFF' or data[8:12] != b'WAVE': return 'unrecognized'
+    offset = 12
+    while offset + 8 <= len(data):
+        size = struct.unpack_from('<I', data, offset+4)[0]
+        if data[offset:offset+4] == b'fmt ' and size >= 16 and offset+24 <= len(data):
+            tag, channels, rate = struct.unpack_from('<HHI', data, offset+8)
+            bits = struct.unpack_from('<H', data, offset+22)[0]
+            return f'tag={tag},channels={channels},rate={rate},bits={bits}'
+        offset += 8 + size + (size & 1)
+    return 'unrecognized'
+
+
+def pfs_crc(name):
+    crc = 0
+    for byte in name.lower().encode('ascii') + b'\0':
+        crc ^= byte << 24
+        for _ in range(8):
+            crc = ((crc << 1) ^ (0x04c11db7 if crc & 0x80000000 else 0)) & 0xffffffff
+    return crc
+
+
+def inspect_pfs(path, wanted, budget):
+    """Read the index and selected WAV headers, with a shared I/O budget.
+
+    Match entries by CRC, not directory order. Never trust archive paths,
+    advertised inflate sizes, duplicate names/CRCs, or symlinks.
+    """
+    if path.is_symlink(): raise ValueError('symlink')
+    size = path.stat().st_size
+    if not 12 <= size <= 512*1024*1024: raise ValueError('archive_size')
+    with path.open('rb') as source:
+        def read(offset, count):
+            if offset < 0 or count < 0 or offset+count > size: raise ValueError('bounds')
+            if count > budget[0]: raise ValueError('read_budget')
+            budget[0] -= count
+            source.seek(offset); data = source.read(count)
+            if len(data) != count: raise ValueError('short_read')
+            return data
+
+        header = read(0, 12)
+        if header[4:8] != b'PFS ': raise ValueError('signature')
+        directory = struct.unpack_from('<I', header)[0]
+        if directory < 12: raise ValueError('directory')
+        count = struct.unpack('<I', read(directory, 4))[0]
+        if not 1 <= count <= 8193: raise ValueError('entry_limit')
+        entries = {}
+        for crc, offset, length in struct.iter_unpack('<III', read(directory+4, count*12)):
+            if crc in entries: raise ValueError('duplicate_crc')
+            if not 12 <= offset < directory or not 0 < length <= 64*1024*1024:
+                raise ValueError('entry_bounds')
+            entries[crc] = (offset, length)
+
+        def inflate(entry, prefix=None):
+            offset, length = entry
+            need = min(length, prefix) if prefix else length
+            if need > 512*1024: raise ValueError('inflate_limit')
+            result = bytearray()
+            while len(result) < need:
+                if offset+8 > directory: raise ValueError('block_bounds')
+                compressed, expanded = struct.unpack('<II', read(offset, 8)); offset += 8
+                if not 0 < compressed <= 65536 or not 0 < expanded <= 65536:
+                    raise ValueError('block_limit')
+                if expanded > length-len(result) or offset+compressed > directory:
+                    raise ValueError('block_bounds')
+                decoder = zlib.decompressobj()
+                block = decoder.decompress(read(offset, compressed), expanded+1)
+                if len(block) != expanded or not decoder.eof or decoder.unused_data or decoder.unconsumed_tail:
+                    raise ValueError('block_size')
+                result.extend(block); offset += compressed
+            return bytes(result[:need])
+
+        table = entries.pop(PFS_NAME_CRC, None)
+        if not table: raise ValueError('filename_table')
+        data = inflate(table)
+        if len(data) < 4: raise ValueError('filename_table')
+        names_count = struct.unpack_from('<I', data)[0]
+        if names_count != len(entries): raise ValueError('filename_count')
+        offset = 4; names = {}; seen = set()
+        for _ in range(names_count):
+            if offset+4 > len(data): raise ValueError('filename_bounds')
+            length = struct.unpack_from('<I', data, offset)[0]; offset += 4
+            if not 2 <= length <= 256 or offset+length > len(data): raise ValueError('filename_bounds')
+            raw = data[offset:offset+length]; offset += length
+            if raw[-1:] != b'\0': raise ValueError('filename_terminator')
+            name = raw[:-1].decode('ascii').lower()
+            if not re.fullmatch(r'[a-z0-9_ .-]{1,251}', name) or '..' in name:
+                raise ValueError('unsafe_filename')
+            crc = pfs_crc(name)
+            if name in names or crc in seen or crc not in entries: raise ValueError('ambiguous_filename')
+            seen.add(crc); names[name] = entries[crc]
+        if offset != len(data): raise ValueError('filename_trailing_data')
+        headers = {name: wav_format(inflate(names[name], 4096)) for name in wanted if name in names}
+        return set(names), headers
+
+
+class SoundTrace:
+    """Retain bounded lifecycle evidence independently of rotating Wine text."""
+    hot = frozenset(('IDirectSoundBufferImpl_Lock', 'IDirectSoundBufferImpl_Unlock',
+        'IDirectSoundBufferImpl_GetCurrentPosition', 'IDirectSoundBufferImpl_GetStatus',
+        'DSOUND_MixOne', 'DSOUND_MixToPrimary', 'DSOUND_PerformMix', 'DSOUND_MixInBuffer',
+        'DSOUND_MixerVol', 'mixieee32', 'client_GetCurrentPadding', 'render_GetBuffer',
+        'render_ReleaseBuffer', 'clock_GetPosition', 'clock_GetFrequency'))
+
+    def __init__(self):
+        self.events = {}; self.filtered = 0; self.dropped = 0
+
+    def observe(self, line):
+        # No general file tracing: do not collect arbitrary paths/chat/settings.
+        if ':dsound:' not in line and ':mmdevapi:' not in line and ':wave:' not in line: return
+        match = re.search(r':(trace|warn|err|fixme):(dsound|mmdevapi|wave):([A-Za-z0-9_]{1,96}) ', line)
+        if not match: return
+        level, channel, function = match.groups()
+        if level == 'trace' and function in self.hot:
+            self.filtered += 1; return
+        key = ':'.join(match.groups())
+        if key not in self.events:
+            if len(self.events) >= 96: self.dropped += 1; return
+            self.events[key] = {'count': 0, 'first': [], 'last': []}
+        item = self.events[key]; item['count'] += 1
+        sample = line[:512]
+        if len(item['first']) < 3: item['first'].append(sample)
+        else: item['last'] = (item['last'] + [sample])[-3:]
+
+    def report(self):
+        return {'format': 1, 'filtered_mixer_lines': self.filtered,
+                'dropped_event_types': self.dropped, 'events': self.events}
+
+
+def inspect_client(client, logs, packed=False):
     """Bounded, read-only inventory. Never export INIs, PCM or arbitrary paths.
 
     Missing loose files may be packed in an archive; report that distinction
     instead of declaring the user's installation broken. Wine resolves case.
     """
-    report = {'format': 1, 'settings': {}, 'files': {}, 'loose_wav_count': 0,
+    report = {'format': 2, 'settings': {}, 'files': {}, 'loose_wav_count': 0,
               'wav_formats': {}, 'wav_references': 0, 'resolved_loose': 0,
               'unresolved_loose': [], 'unresolved_count': 0, 'unsafe_references': 0,
-              'inventory_truncated': False,
+              'inventory_truncated': False, 'packed_scan_requested': packed,
+              'archives': {}, 'spell_files': {}, 'resolved_packed': 0,
+              'unresolved_after_packed': None,
               'note': 'Unresolved loose sounds may be packed; this is not proof of missing assets.'}
 
     def directory(path, limit):
@@ -36,7 +175,8 @@ def inspect_client(client, logs):
         sounds = root.get('sounds')
         sound_files = directory(sounds, 20000) if sounds else {}
         for name in ('soundassets.txt', 'sounds.eff', 'mss32.dll', 'msssoft.m3d',
-                     'mssds3d.m3d', 'mssdx7.m3d', 'mssmp3.asi', 'spelleffects.eff'):
+                     'mssds3d.m3d', 'mssdx7.m3d', 'mssmp3.asi', 'spelleffects.eff',
+                     'spellsnew.edd', 'spellsnew.eff', 'spells_us.txt', 'eqgraphicsdx9.dll'):
             path = root.get(name)
             report['files'][name] = {'present': bool(path and path.is_file())}
             if path and path.is_file(): report['files'][name]['bytes'] = path.stat().st_size
@@ -61,21 +201,11 @@ def inspect_client(client, logs):
         report['wav_headers_checked'] = min(len(wave_paths), 256)
         for path in sorted(wave_paths)[:256]:
             with path.open('rb') as f: data = f.read(4096)
-            fmt = 'unrecognized'
-            if data[:4] == b'RIFF' and data[8:12] == b'WAVE':
-                offset = 12
-                while offset + 8 <= len(data):
-                    size = struct.unpack_from('<I', data, offset+4)[0]
-                    if data[offset:offset+4] == b'fmt ' and size >= 16 and offset+24 <= len(data):
-                        tag, channels, rate = struct.unpack_from('<HHI', data, offset+8)
-                        bits = struct.unpack_from('<H', data, offset+22)[0]
-                        fmt = f'tag={tag},channels={channels},rate={rate},bits={bits}'
-                        break
-                    offset += 8 + size + (size & 1)
+            fmt = wav_format(data)
             report['wav_formats'][fmt] = report['wav_formats'].get(fmt, 0) + 1
+        references = set()
         table = root.get('soundassets.txt')
         if table and table.is_file() and table.stat().st_size <= 2*1024*1024:
-            references = set()
             for line in table.read_bytes().decode('latin-1').splitlines():
                 if line.lstrip().startswith(('#', '//', ';')): continue
                 for field in line.split('^'):
@@ -93,6 +223,43 @@ def inspect_client(client, logs):
                     report['unresolved_count'] += 1
                     if len(report['unresolved_loose']) < 24: report['unresolved_loose'].append(name)
         elif table: report['soundassets_unreadable'] = True
+        # Probe known classic casting/effect filenames, even if absent from the
+        # table. Also include bounded spell-prefixed references from this client.
+        wanted = set(SPELL_WAVS)
+        wanted.update(sorted(n.removeprefix('sounds/') for n in references
+                             if n.removeprefix('sounds/').startswith(('spell', 'spelcast')))[:58])
+        packed_names = set(); packed_headers = {}; budget = [8*1024*1024]
+        archives = sorted((n, p) for n, p in root.items() if re.fullmatch(r'snd[0-9]{1,3}\.pfs', n))
+        if len(archives) > 64: report['inventory_truncated'] = True
+        for name, path in archives[:64]:
+            record = {'status': 'not_scanned'}; report['archives'][name] = record
+            if not path or not path.is_file(): record['status'] = 'ambiguous'; continue
+            record['bytes'] = path.stat().st_size
+            if not packed: continue
+            try:
+                names, headers = inspect_pfs(path, wanted, budget)
+                record.update(status='indexed', wav_count=sum(n.endswith('.wav') for n in names))
+                packed_names.update(names)
+                for n, fmt in headers.items(): packed_headers.setdefault(n, []).append({'archive': name, 'format': fmt})
+            except (OSError, ValueError, zlib.error) as error:
+                # Fixed reason codes only; never export exceptions with paths.
+                record.update(status='unreadable', reason=type(error).__name__)
+        for name in sorted(wanted):
+            entry = {'loose': [], 'packed': packed_headers.get(name, [])}
+            for location, mapping in (('root', root), ('sounds', sound_files)):
+                path = mapping.get(name)
+                if path and path.is_file():
+                    with path.open('rb') as f: fmt = wav_format(f.read(4096))
+                    entry['loose'].append({'location': location, 'bytes': path.stat().st_size, 'format': fmt})
+            report['spell_files'][name] = entry
+        if packed:
+            loose_missing = {n for n in references if not any(p and p.is_file() for p in
+                ([sound_files.get(n.removeprefix('sounds/'))] if n.startswith('sounds/') else [root.get(n), sound_files.get(n)]))}
+            report['resolved_packed'] = sum(n.removeprefix('sounds/') in packed_names for n in loose_missing)
+            report['unresolved_after_packed'] = len(loose_missing)-report['resolved_packed']
+        report['packed_scan_complete'] = packed and not report['inventory_truncated'] and all(
+            r['status'] == 'indexed' for r in report['archives'].values())
+
     except OSError as error:
         # A diagnostic must not stop a working game launch. Do not export an
         # exception string that may contain unrelated imported filenames.

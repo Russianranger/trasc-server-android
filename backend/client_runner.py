@@ -96,6 +96,8 @@ class WineLog:
         self.pending = b''
         self.trace = ''
         self.fps_streams = set()
+        self.sound_trace = client_audio.SoundTrace()
+        self.sound_saved_at = 0.0
 
     def observe(self, chunk):
         self.pending += chunk
@@ -107,6 +109,7 @@ class WineLog:
         models, model_evidence = model_dll_status(text)
         with self.lock:
             for line in text.splitlines():
+                self.sound_trace.observe(line)
                 if re.search(r'Loaded L".*\\+d3d9\.dll".*: native\s*$', line, re.I):
                     self.fields['native_d3d9_loaded'] = True
                 if re.search(r'DXVK: v?2\.5\.3\b', line): self.fields['dxvk_loaded'] = '2.5.3'
@@ -129,6 +132,18 @@ class WineLog:
                 self.fields['dll_evidence'] = list(dict.fromkeys(self.fields['dll_evidence'] + observed['evidence']))[-8:]
             self.error = self.error or fatal_launch_error(self.trace)
 
+    def save_sound_trace(self, final=False):
+        if not final and time.monotonic()-self.sound_saved_at < 5: return
+        self.sound_saved_at = time.monotonic()
+        target = self.path.with_suffix('.sound.json')
+        temporary = target.with_suffix('.new')
+        try:
+            with self.lock: report = json.dumps(self.sound_trace.report(), indent=2)
+            temporary.write_text(report+'\n'); os.replace(temporary, target)
+        except OSError:
+            # Optional diagnostics must not turn a working client into a failure.
+            with self.lock: self.fields['sound_trace_write_failed'] = True
+
     def snapshot(self):
         with self.lock: return dict(self.fields), self.error
 
@@ -138,6 +153,7 @@ class WineLog:
             output = self.path.open('wb'); written = 0
             while chunk := stream.read1(min(64*1024, self.limit)):
                 self.observe(chunk)
+                self.save_sound_trace()
                 if written + len(chunk) > self.limit:
                     output.close()
                     os.replace(self.path, self.path.with_suffix('.overflow.log'))
@@ -152,6 +168,7 @@ class WineLog:
         except OSError as error:
             with self.lock: self.error = 'Could not capture Wine output: ' + str(error)
         finally:
+            self.save_sound_trace(final=True)
             if output: output.close()
             stream.close()
 
@@ -549,6 +566,8 @@ class Supervisor:
             raise RuntimeError('Runtime acceleration was not confirmed. Select Compatibility runtime mode and export Logs.')
         for name in ('client-wine.log', 'client-prefix.log', 'client-display.log', 'client-graphics.log', 'client-threads.log', 'client-vulkan.log', 'eqgame_d3d9.log'):
             archive_log(LOGS / name)
+        sound_report = LOGS / 'client-wine.sound.json'
+        if sound_report.is_file(): sound_report.replace(LOGS / 'client-wine.sound.previous.json')
         (LOGS / 'client-wine.overflow.log').unlink(missing_ok=True)
         # The RFB display has no TCP listener. X11 requires an unpredictable cookie.
         cookie = secrets.token_hex(16)
@@ -586,7 +605,7 @@ class Supervisor:
         if self.request['mode'] == 'client':
             preserve_game_log()
             self.update(sound_diagnostics=self.request.get('sound_diagnostics', False),
-                        sound_assets=client_audio.inspect_client(CLIENT, LOGS))
+                        sound_assets=client_audio.inspect_client(CLIENT, LOGS, packed=self.request.get('sound_diagnostics', False)))
             self.update(skin_shader=client_vulkan.skin_shader_status(CLIENT))
             if 'fullscreen' in self.request:
                 self.update(display_settings=apply_display(CLIENT, PREFIX, self.request['resolution'], self.request['fullscreen']))
