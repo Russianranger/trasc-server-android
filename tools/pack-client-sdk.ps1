@@ -13,6 +13,8 @@ $stage = Join-Path $env:TEMP ('trasc-sdk-' + [guid]::NewGuid())
 New-Item -ItemType Directory -Path "$stage\include", "$stage\lib" | Out-Null
 try {
     Copy-Item "$($vc.FullName)\bin\Hostx64\x86" "$stage\bin" -Recurse
+    # Optional compiler telemetry helper is not needed by cl/link and remains resident.
+    Remove-Item "$stage\bin\vctip.exe" -ErrorAction SilentlyContinue
     $redist = Get-Item "$vs\VC\Redist\MSVC\14.29.*\x64\Microsoft.VC142.CRT" -ErrorAction SilentlyContinue | Select-Object -First 1
     if (!$redist) { $redist = Get-Item "$vs\VC\Redist\MSVC\*\x64\Microsoft.VC*.CRT" -ErrorAction SilentlyContinue | Sort-Object FullName -Descending | Select-Object -First 1 }
     if ($redist) { Copy-Item "$($redist.FullName)\*.dll" "$stage\bin" -Force }

@@ -128,6 +128,29 @@ def read_snapshot(engine, filename):
     return path,manifest,digest(path)
 
 
+def foreign_keys(engine, selected):
+    """Read current relationships; only a complete player-only graph can swap."""
+    db=engine.config['database']; ident(db)
+    query="""SELECT k.TABLE_SCHEMA,k.TABLE_NAME,k.CONSTRAINT_NAME,k.COLUMN_NAME,
+k.REFERENCED_TABLE_SCHEMA,k.REFERENCED_TABLE_NAME,k.REFERENCED_COLUMN_NAME,r.UPDATE_RULE,r.DELETE_RULE
+FROM information_schema.KEY_COLUMN_USAGE k
+JOIN information_schema.REFERENTIAL_CONSTRAINTS r
+ON r.CONSTRAINT_SCHEMA=k.CONSTRAINT_SCHEMA AND r.TABLE_NAME=k.TABLE_NAME AND r.CONSTRAINT_NAME=k.CONSTRAINT_NAME
+WHERE k.REFERENCED_TABLE_NAME IS NOT NULL AND (k.TABLE_SCHEMA='"""+db+"' OR k.REFERENCED_TABLE_SCHEMA='"+db+"') ORDER BY k.TABLE_SCHEMA,k.TABLE_NAME,k.CONSTRAINT_NAME,k.ORDINAL_POSITION;"
+    grouped={};problems=[]
+    for schema_name,table,name,column,ref_schema,parent,ref_column,update,delete in rows(engine,query):
+        if not ((schema_name==db and table in selected) or (ref_schema==db and parent in selected)): continue
+        if schema_name!=db or ref_schema!=db or table not in selected or parent not in selected:
+            problems.append('Foreign key crosses the player snapshot boundary: '+table+' -> '+parent);continue
+        if update not in ('RESTRICT','NO ACTION','CASCADE','SET NULL') or delete not in ('RESTRICT','NO ACTION','CASCADE','SET NULL'):
+            problems.append('Unsupported foreign-key action: '+table);continue
+        for value in (table,parent,column,ref_column): ident(value)
+        key=(table,name)
+        item=grouped.setdefault(key,{'table':table,'parent':parent,'columns':[],'references':[],'update':update,'delete':delete})
+        item['columns'].append(column);item['references'].append(ref_column)
+    return list(grouped.values()),sorted(set(problems))
+
+
 def preview_players(engine,args):
     stopped(engine)
     path,manifest,sha=read_snapshot(engine,args['file'])
@@ -146,15 +169,14 @@ def preview_players(engine,args):
             else: changes.append(name+': new column '+col+' uses current default')
         for col in old.keys() & new.keys():
             if old[col]['type'] != new[col]['type']: changes.append(name+'.'+col+': type changed; strict staged validation required')
-    # Swapping tables with relational constraints/triggers needs a dedicated migration.
+    # Relationships inside the complete snapshot are rebuilt against staging tables.
     db=engine.config['database']
-    for table,referenced in rows(engine,"SELECT TABLE_NAME,REFERENCED_TABLE_NAME FROM information_schema.KEY_COLUMN_USAGE WHERE TABLE_SCHEMA='"+db+"' AND REFERENCED_TABLE_NAME IS NOT NULL;"):
-        if table in manifest['tables'] or referenced in manifest['tables']: problems.append('Foreign-key migration required: '+table)
+    relationships,key_problems=foreign_keys(engine,manifest['tables']);problems.extend(key_problems)
     for (table,) in rows(engine,"SELECT EVENT_OBJECT_TABLE FROM information_schema.TRIGGERS WHERE TRIGGER_SCHEMA='"+db+"';"):
         if table in manifest['tables']: problems.append('Trigger migration required: '+table)
     return {'file':str(path.relative_to(engine.work)),'sha256':sha,'accounts':manifest['tables']['account']['rows'],
             'characters':manifest['tables']['character_data']['rows'],'tables':len(manifest['tables']),
-            'table_names':sorted(manifest['tables']),'compatible':not problems,'problems':problems,'changes':changes,
+            'table_names':sorted(manifest['tables']),'foreign_keys':relationships,'compatible':not problems,'problems':problems,'changes':changes,
             'message':'Ready to stage and validate player restore.' if not problems else 'Restore blocked: schema changes need review.'}
 
 
@@ -202,6 +224,14 @@ def restore_players(engine,args):
                 if count!=item['rows'] or hasher.hexdigest()!=item['sha256']: raise ValueError('Player snapshot checksum or row count failed')
                 engine.run(['mariadb','--defaults-extra-file='+str(engine.mysql_options),engine.config['database']],input_file=script,private=True)
                 if int(rows(engine,'SELECT COUNT(*) FROM '+ident(stage)+';')[0][0])!=count: raise ValueError('Staged player row count mismatch')
+        # LIKE does not retain foreign keys. Rebuild them after loading every
+        # table, with checks enabled, so orphaned data never reaches live tables.
+        for i,key in enumerate(preview['foreign_keys']):
+            engine.check_cancel()
+            child=record['tables'][key['table']]['staged'];parent=record['tables'][key['parent']]['staged']
+            engine.mysql('SET SESSION foreign_key_checks=1; ALTER TABLE '+ident(child)+' ADD CONSTRAINT '+ident('_trascf_'+token+'_'+str(i))+
+                         ' FOREIGN KEY ('+','.join(ident(c) for c in key['columns'])+') REFERENCES '+ident(parent)+
+                         ' ('+','.join(ident(c) for c in key['references'])+') ON UPDATE '+key['update']+' ON DELETE '+key['delete']+';',timeout=120)
         engine.check_cancel()
         record['state']='ready';atomic_json(journal,record)
         renames=[]
@@ -210,10 +240,10 @@ def restore_players(engine,args):
         # One atomic multi-table rename: no partial account/character replacement.
         engine.mysql('RENAME TABLE '+','.join(renames)+';',timeout=120); swapped=True
         record['state']='restored';atomic_json(journal,record)
-        engine.mysql('DROP TABLE '+','.join(ident(x['previous']) for x in record['tables'].values())+';',timeout=120)
+        engine.mysql('SET SESSION foreign_key_checks=0; DROP TABLE '+','.join(ident(x['previous']) for x in record['tables'].values())+';',timeout=120)
         return {'message':'Player/account data restored against the current schema. World content retained. Recovery backup: '+backup+'.',
                 'database_backup':backup,'accounts':preview['accounts'],'characters':preview['characters'],'tables':preview['tables']}
     except Exception:
-        if not swapped and staged: engine.mysql('DROP TABLE IF EXISTS '+','.join(ident(x) for x in staged)+';',timeout=120)
+        if not swapped and staged: engine.mysql('SET SESSION foreign_key_checks=0; DROP TABLE IF EXISTS '+','.join(ident(x) for x in staged)+';',timeout=120)
         raise
     finally: script.unlink(missing_ok=True)
