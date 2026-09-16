@@ -120,8 +120,8 @@ final class ClientRuntime {
             String mode=options.optString("mode","client"),resolution=options.optString("resolution","800x600"),renderer=options.optString("renderer","software");
             String cpuProfile=options.optString("cpu_profile","balanced");
             String npcRendering=options.optString("npc_rendering","compatibility");
-            if(!Arrays.asList("standard","compatibility","compatibility_042").contains(npcRendering))throw new IOException("Unsupported NPC rendering mode");
-            if(!Arrays.asList("balanced","compatibility").contains(cpuProfile))throw new IOException("Unsupported CPU profile");
+            if(!Arrays.asList("standard","compatibility","compatibility_042","direct_043").contains(npcRendering))throw new IOException("Unsupported NPC rendering mode");
+            if(!Arrays.asList("balanced","compatibility","accurate").contains(cpuProfile))throw new IOException("Unsupported CPU profile");
             String runtimeMode=options.optString("runtime_mode","auto");
             if(!Arrays.asList("auto","compatibility").contains(runtimeMode))throw new IOException("Unsupported runtime mode");
             String graphicsThreading=options.optString("graphics_threading","multi");
@@ -147,7 +147,7 @@ final class ClientRuntime {
             request.put("runtime_mode",runtimeMode).put("storage",new JSONObject().put("kind","app_private_internal")
                 .put("android_directory",client.getCanonicalPath()).put("windows_drive","D:").put("shared_storage",false));
             request.put("graphics_threading",graphicsThreading).put("cpu_affinity",cpuAffinity).put("fullscreen",mode.equals("client")&&options.optBoolean("fullscreen",true));
-            request.put("npc_rendering",npcRendering).put("audio",options.optBoolean("audio",true));
+            request.put("npc_rendering",npcRendering).put("audio",options.optBoolean("audio",true)).put("sound_diagnostics",options.optBoolean("sound_diagnostics",false));
             RuntimeManager.write(new File(run,"request.json"),request.toString());
             File backend=new File(server.home,"client-backend");backend.mkdirs();
             for(String name:new String[]{"client_runner.py","client_display.py","client_metrics.py","client_vulkan.py","client_audio.py","libasound_module_pcm_trasc.so","audio-bundle.json","graphics_probe.py","runtime_probe.py","wined3d.dll","wined3d-patch.json","wineserver","wineserver-patch.json"})

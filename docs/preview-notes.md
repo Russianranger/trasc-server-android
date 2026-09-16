@@ -1,3 +1,24 @@
+TRASC Server Android **0.4.4** restores the confirmed NPC rendering settings and improves the next sound/name investigation.
+
+- **NPC compatibility (recommended)** again uses the exact 0.4.2 settings. Existing `compatibility` selections recover automatically; the explicitly named 0.4.2 option remains identical. The failed 0.4.3 experiment is labeled **Direct mapping (0.4.3 comparison)**.
+- The working 0.4.3 Android audio bridge is retained. User testing confirms music; missing spell effects are still unresolved.
+- **Legacy math accuracy (test)** is a reversible CPU comparison that preserves double-precision x87 intermediates and x86 rounding behavior. It may cost performance; the actual ROF2 name/sound result is unverified.
+- **Sound diagnostics (short tests)** traces Windows sound calls without enabling the much heavier general Wine exception traces. Logs remain bounded. Each client launch also records selected sound settings, sound-library presence, loose WAV counts/header formats and unresolved sound references. A file may be packed, so an unresolved loose reference does not automatically mean it is missing.
+- Fullscreen/gear controls, TL icon, runtime controls, signing identity and installed files remain intact.
+
+**Two short Thor tests:**
+1. Stop the client/runtime and install 0.4.4 over the existing app. No runtime download, prefix repair, reimport or server rebuild.
+2. Select **NPC compatibility (recommended)**, **Balanced** CPU, Game audio on and **Sound diagnostics** on. Keep Turnip/1280×720/Fullscreen/Automatic/available cores/native helpers. Leave general Verbose Wine diagnostics off.
+3. Watch the character-selection name for 20–30 seconds, then check the same NPCs. In game, turn **Music Volume to 0** and **Sound Volume to 100** to isolate effects. Cast **Skin Like Wood** several times, and test one UI/combat sound. Note whether all effects or only spells are silent. Stop and export Logs immediately.
+4. Change only CPU profile to **Legacy math accuracy (test)**. Repeat the same name/NPC/spell test and export a second log bundle. Compare correctness and FPS. Return to Balanced if it makes no difference or slows play.
+5. If effects remain silent, try the game's **Sound Realism at 0** once, and report whether that changes anything. This is a separate attenuation test, not a claimed fix. Restore preferred music/realism settings afterward and turn Sound diagnostics off for normal play.
+
+Send the two short videos/logs labeled **Balanced** and **Legacy math accuracy**. The new evidence should distinguish missing/disabled sound resources, Windows 3D buffer failures, and CPU translation behavior. Audible spell effects and the real ROF2 label remain device acceptance items.
+
+[Evidence and implementation](audio-and-labels-044.md).
+
+---
+
 TRASC Server Android **0.4.3** addresses audio startup and the animated character-name regression.
 
 - **Audio startup:** align Android's write buffer with Wine's queue and lower the startup threshold on Android 12+. This removes a concrete stall when Android waits for more frames than Wine can supply. New bounded diagnostics record actual buffer sizes, playback progress, nonzero samples and underruns.

@@ -63,6 +63,14 @@ class ClientTests(unittest.TestCase):
         self.assertEqual(balanced['BOX64_DYNAREC_SAFEFLAGS'],'1')
         self.assertEqual(compatible['BOX64_DYNAREC_SAFEFLAGS'],'2')
         self.assertEqual(compatible['BOX64_DYNAREC_BIGBLOCK'],'0')
+        accurate=client_runner.Supervisor(dict(request,cpu_profile='accurate')).env
+        client_runner.validate_request(dict(request,cpu_profile='accurate'))
+        self.assertEqual(accurate['BOX64_DYNAREC_X87DOUBLE'],'1')
+        self.assertEqual(accurate['BOX64_DYNAREC_FASTROUND'],'0')
+        self.assertEqual(accurate['BOX64_DYNAREC_FASTNAN'],'0')
+        self.assertEqual(accurate['BOX64_SYNC_ROUNDING'],'1')
+        self.assertEqual(accurate['BOX64_DYNAREC_BIGBLOCK'],balanced['BOX64_DYNAREC_BIGBLOCK'])
+        self.assertNotIn('BOX64_DYNAREC_X87DOUBLE',balanced)
         with self.assertRaisesRegex(ValueError,'CPU profile'):client_runner.validate_request(dict(request,cpu_profile='unknown'))
 
     def test_graphics_identity_requires_actual_virgl_and_host_driver(self):
@@ -94,7 +102,7 @@ class ClientTests(unittest.TestCase):
 
     def test_normal_launch_disables_hot_traces_but_keeps_errors_and_dll_proof(self):
         normal=client_runner.Supervisor({'mode':'client','resolution':'800x600'}).env['WINEDEBUG']
-        self.assertEqual(normal,'-all,+timestamp,+pid,err+all,trace+loaddll,trace+fps')
+        self.assertEqual(normal,'-all,+timestamp,+pid,err+all,trace+loaddll,trace+fps,warn+dsound,warn+wave,warn+mmdevapi')
         self.assertNotIn('trace+frametime',normal)
         self.assertNotIn('trace+seh',normal)
         self.assertIn('trace+seh',client_runner.wine_debug(True))

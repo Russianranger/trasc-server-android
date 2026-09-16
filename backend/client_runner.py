@@ -28,13 +28,13 @@ stop_reason = None
 WINE_LOG_LIMIT = 8 * 1024 * 1024
 
 
-def wine_debug(verbose=False):
+def wine_debug(verbose=False, sound=False):
     # +seh expands each routine OutputDebugString exception into dozens of
     # lines. ROF2 generated 1.06 GB of this in one session through PRoot.
     # Wine's fps channel emits one aggregate per swapchain every 1.5 seconds,
     # unlike per-frame frametime / d3d traces. Keep the latter disabled.
     normal = '-all,+timestamp,+pid,err+all,trace+loaddll,trace+fps'
-    return normal + (',warn+all,fixme+all,trace+module,trace+seh' if verbose else '')
+    return normal + ',warn+dsound,warn+wave,warn+mmdevapi' + (',warn+all,fixme+all,trace+module,trace+seh' if verbose else '') + (',trace+dsound,trace+mmdevapi' if sound else '')
 
 
 def archive_log(path, limit=WINE_LOG_LIMIT):
@@ -175,13 +175,14 @@ def pe_machine(path):
 
 
 def validate_request(request):
-    if request.get('npc_rendering', 'compatibility') not in ('standard', 'compatibility', 'compatibility_042'): raise ValueError('Invalid NPC rendering option')
+    if request.get('npc_rendering', 'compatibility') not in ('standard', 'compatibility', 'compatibility_042', 'direct_043'): raise ValueError('Invalid NPC rendering option')
     if not isinstance(request.get('audio', False), bool): raise ValueError('Invalid audio option')
+    if not isinstance(request.get('sound_diagnostics', False), bool): raise ValueError('Invalid sound diagnostic option')
     if request.get('mode') not in ('desktop', 'client'): raise ValueError('Choose Wine desktop or ROF2 client')
     if request.get('resolution') not in RESOLUTIONS: raise ValueError('Unsupported client resolution')
     if request.get('renderer', 'software') not in ('software', 'virgl', 'turnip'): raise ValueError('Unsupported graphics option')
     if request.get('cpu_affinity', 'available') not in ('available', 'game'): raise ValueError('Unsupported CPU affinity')
-    if request.get('cpu_profile', 'balanced') not in ('balanced', 'compatibility'): raise ValueError('Unsupported CPU profile')
+    if request.get('cpu_profile', 'balanced') not in ('balanced', 'compatibility', 'accurate'): raise ValueError('Unsupported CPU profile')
     if request.get('runtime_mode', 'auto') not in ('auto', 'compatibility'): raise ValueError('Unsupported runtime mode')
     if request.get('graphics_threading', 'multi') not in ('multi', 'single', 'opengl_worker'): raise ValueError('Unsupported graphics threading')
     if not isinstance(request.get('fullscreen', False), bool): raise ValueError('Invalid fullscreen option')
@@ -365,9 +366,15 @@ class Supervisor:
             # server. LIBGL_ALWAYS_SOFTWARE selects that headless DRI loader;
             # it does not select llvmpipe when GALLIUM_DRIVER is virpipe.
             self.env.update(GALLIUM_DRIVER='virpipe', VTEST_SOCKET_NAME='/tmp/.virgl_test')
-        if request.get('cpu_profile', 'balanced') == 'balanced':
+        if request.get('cpu_profile', 'balanced') in ('balanced', 'accurate'):
             self.env.update(BOX64_DYNAREC_BIGBLOCK='2', BOX64_DYNAREC_SAFEFLAGS='1',
                             BOX64_MAXCPU='0', BOX64_RCFILE=str(SESSION / 'box64.rc'))
+        if request.get('cpu_profile') == 'accurate':
+            # Independent of GPU mapping. The pinned Box64 documents single
+            # precision x87 and fast rounding/NaN defaults. This comparison
+            # preserves double intermediates and x86 rounding semantics.
+            self.env.update(BOX64_DYNAREC_X87DOUBLE='1', BOX64_DYNAREC_FASTNAN='0',
+                            BOX64_DYNAREC_FASTROUND='0', BOX64_SYNC_ROUNDING='1')
         self.status['cpu_affinity'] = request.get('cpu_affinity', 'available')
         if request.get('renderer') == 'turnip':
             client_vulkan.configure_environment(self.env, Path(__file__).parent, SESSION, PREFIX)
@@ -382,7 +389,7 @@ class Supervisor:
         else: self.env['WINEDLLOVERRIDES'] += ';winepulse.drv=d;winealsa.drv=d'
 
     def configure_cpu(self):
-        if self.request.get('cpu_profile', 'balanced') == 'balanced':
+        if self.request.get('cpu_profile', 'balanced') in ('balanced', 'accurate'):
             # This runtime only launches our Wine desktop and the imported ROF2.
             # Box64's stock [wine] entry overrides the environment with 64 CPUs.
             # Use a private rcfile so the real CPU count and selected flags win;
@@ -575,9 +582,11 @@ class Supervisor:
         drive.symlink_to(CLIENT)
         args = ['/usr/local/bin/box64', '/opt/wine/bin/wine', 'explorer', '/desktop=TRASC,' + self.request['resolution']]
         env = dict(self.env)
-        env['WINEDEBUG'] = wine_debug(self.request.get('diagnostic_logging', False))
+        env['WINEDEBUG'] = wine_debug(self.request.get('diagnostic_logging', False), self.request.get('sound_diagnostics', False))
         if self.request['mode'] == 'client':
             preserve_game_log()
+            self.update(sound_diagnostics=self.request.get('sound_diagnostics', False),
+                        sound_assets=client_audio.inspect_client(CLIENT, LOGS))
             self.update(skin_shader=client_vulkan.skin_shader_status(CLIENT))
             if 'fullscreen' in self.request:
                 self.update(display_settings=apply_display(CLIENT, PREFIX, self.request['resolution'], self.request['fullscreen']))

@@ -39,8 +39,9 @@ class AudioTests(unittest.TestCase):
 
     def test_npc_comparison_is_explicit_and_shader_diagnostics_do_not_replace_assets(self):
         self.assertIn('floatEmulation = Strict',client_vulkan.npc_configuration('compatibility'))
-        self.assertIn('allowDirectBufferMapping = True',client_vulkan.npc_configuration('compatibility'))
-        self.assertEqual(client_vulkan.npc_configuration('compatibility_042'),client_vulkan.npc_configuration('compatibility').replace('Mapping = True','Mapping = False'))
+        self.assertIn('allowDirectBufferMapping = False',client_vulkan.npc_configuration('compatibility'))
+        self.assertEqual(client_vulkan.npc_configuration('compatibility_042'),client_vulkan.npc_configuration('compatibility'))
+        self.assertEqual(client_vulkan.npc_configuration('direct_043'),client_vulkan.npc_configuration('compatibility').replace('Mapping = False','Mapping = True'))
         client_runner.validate_request({'mode':'desktop','resolution':'1280x720','npc_rendering':'compatibility_042'})
         self.assertEqual(client_vulkan.npc_configuration('standard'),'')
         with self.assertRaises(ValueError):client_vulkan.npc_configuration('unknown')
@@ -50,6 +51,43 @@ class AudioTests(unittest.TestCase):
             shader=root/'rendereffects/spl/skinmeshcbs1_vsb.FXO';shader.parent.mkdir(parents=True);shader.write_bytes(b'fixture')
             self.assertEqual(client_vulkan.skin_shader_status(root)['sha256'],hashlib.sha256(b'fixture').hexdigest())
             self.assertEqual(shader.read_bytes(),b'fixture')
+
+    def test_inventory_finds_case_insensitive_effects_without_exporting_private_settings(self):
+        with tempfile.TemporaryDirectory() as directory:
+            root=Path(directory); client=root/'client';client.mkdir();logs=root/'logs';logs.mkdir()
+            (client/'SoUnDs').mkdir()
+            wave=b'RIFF'+struct.pack('<I',36)+b'WAVEfmt '+struct.pack('<IHHIIHH',16,1,1,22050,22050,1,8)+b'data'+struct.pack('<I',0)
+            (client/'SoUnDs/SPELL.WAV').write_bytes(wave)
+            (client/'SoundAssets.TXT').write_text('1^100^spell.wav\n2^sounds\\SPELL.WAV\n3^missing.wav\n4^../private.wav\n5^/outside.wav\n')
+            ini=b'[Defaults]\nSound=TRUE\nSoundVolume=100\nAccount=PRIVATE_ACCOUNT\n[Other]\nSound=PRIVATE_SOUND\n'
+            (client/'EQCLIENT.INI').write_bytes(ini)
+            report=client_audio.inspect_client(client,logs)
+            self.assertEqual(report['resolved_loose'],2);self.assertEqual(report['unresolved_count'],1)
+            saved=(logs/'client-sound-assets.json').read_text()
+            self.assertNotIn('PRIVATE',saved);self.assertNotIn('outside',saved)
+            full=json.loads(saved);self.assertEqual(full['unsafe_references'],2)
+            self.assertEqual(full['wav_formats'],{'tag=1,channels=1,rate=22050,bits=8':1})
+            self.assertEqual(full['settings'],{'sound':'TRUE','soundvolume':'100'})
+            self.assertEqual((client/'EQCLIENT.INI').read_bytes(),ini)
+            client_audio.inspect_client(client,logs)
+            self.assertEqual((logs/'client-sound-assets.previous.json').read_text(),saved)
+
+    def test_inventory_does_not_follow_imported_symlinks_or_read_oversized_tables(self):
+        with tempfile.TemporaryDirectory() as directory:
+            root=Path(directory);client=root/'client';client.mkdir();logs=root/'logs';logs.mkdir()
+            outside=root/'outside';outside.mkdir();(outside/'private.wav').write_bytes(b'PRIVATE')
+            (client/'sounds').symlink_to(outside,target_is_directory=True)
+            (client/'eqclient.ini').symlink_to(outside/'private.wav')
+            (client/'soundassets.txt').write_bytes(b'A'*(2*1024*1024+1))
+            result=client_audio.inspect_client(client,logs)
+            self.assertEqual(result['loose_wav_count'],0);self.assertEqual(result['settings'],{})
+            self.assertTrue(json.loads((logs/'client-sound-assets.json').read_text())['soundassets_unreadable'])
+
+    def test_sound_trace_is_opt_in_and_independent_of_verbose_graphics_logging(self):
+        quiet=client_runner.wine_debug();focused=client_runner.wine_debug(sound=True)
+        self.assertIn('warn+dsound',quiet);self.assertNotIn('trace+dsound',quiet)
+        self.assertIn('trace+dsound',focused);self.assertNotIn('trace+seh',focused)
+        with self.assertRaisesRegex(ValueError,'sound diagnostic'):client_runner.validate_request({'sound_diagnostics':'yes'})
 
 
 if __name__=='__main__':unittest.main()

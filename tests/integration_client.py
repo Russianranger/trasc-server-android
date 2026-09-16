@@ -162,6 +162,23 @@ def main():
         assert sum(s['left_nonzero'] for s in audio_report['streams'])>20000,audio_report
         assert sum(s['right_nonzero'] for s in audio_report['streams'])>20000,audio_report
         print('PASS: real Wine waveOut and DirectSound deliver nonzero stereo PCM through bundled ALSA endpoint')
+        # Music/stereo success must not conceal a silent positional effect.
+        for profile in ('balanced', 'accurate'):
+            selected=client_runner.Supervisor(dict(request,cpu_profile=profile)).env
+            selected['WINEDEBUG']=client_runner.wine_debug(sound=True)
+            before_signal=sum(s['nonzero_samples'] for s in audio_receiver.reports)
+            with Path('/logs/audio-spatial-'+profile+'.log').open('wb') as output:
+                effect=subprocess.run(['/usr/local/bin/box64','/opt/wine/bin/wine',r'D:\audio.exe','--spatial'],
+                    cwd='/client',env=selected,stdout=output,stderr=output,timeout=30)
+            delta=sum(s['nonzero_samples'] for s in audio_receiver.reports)-before_signal
+            assert effect.returncode==0 and delta>20000,(profile,effect.returncode,delta)
+            assert not audio_receiver.errors,audio_receiver.errors
+            Path('/logs/audio-spatial-'+profile+'.json').write_text(json.dumps({'profile':profile,'returncode':effect.returncode,'nonzero_delta':delta}))
+        with Path('/logs/legacy-math.log').open('wb') as output:
+            math_result=subprocess.run(['/usr/local/bin/box64','/opt/wine/bin/wine',r'D:\audio.exe','--legacy-math'],
+                cwd='/client',env=selected,stdout=output,stderr=output,timeout=30)
+        assert math_result.returncode==0,('Accurate x87 arithmetic',math_result.returncode)
+        print('PASS: positional effects produce independent PCM in both profiles; accurate x87 intermediates verified')
         timings={}
         for verbose in (False,True):
             label='verbose' if verbose else 'normal'
@@ -277,7 +294,7 @@ def check_compatibility_exit(env):
 
 def check_live_labels(env):
     evidence={}
-    for mode,expected in [('compatibility_042',42),('compatibility',0)]:
+    for mode,expected in [('compatibility_042',42),('direct_043',0)]:
         path=Path('/logs/live-labels-'+mode+'.log')
         with path.open('wb') as out:
             result=subprocess.run(['/usr/local/bin/box64','/opt/wine/bin/wine',r'D:\textures.exe','--live-labels'],

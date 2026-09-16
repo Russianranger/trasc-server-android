@@ -6,7 +6,7 @@ A standalone Android control app for [Russianranger/Triptych-Triumvirate](https:
 
 ## Downloads and first setup
 
-**App 0.4.3:** corrects Android audio startup buffer limits and adds NPC + name compatibility, retaining strict model shaders while restoring live vertex-buffer updates. The exact 0.4.2 NPC mode remains selectable. Keep **Turnip + DXVK / 1280×720 / Fullscreen game / Balanced CPU / Automatic runtime**. Update in place without replacing your runtime or prefix. The user confirmed that 0.4.2 NPC compatibility fixes models; audio and the new name correction require Thor acceptance. [Update and test details](docs/preview-notes.md).
+**App 0.4.4:** restores the exact 0.4.2 NPC settings as the recommended mode. The user confirms music works with the 0.4.3 audio startup correction, but spell sounds and animated character names remain unresolved. This build adds an experimental **Legacy math accuracy** comparison and focused sound/settings/asset diagnostics. It does not claim those remaining issues are fixed. Keep **Turnip + DXVK / 1280×720 / Fullscreen / Automatic runtime**; update in place without replacing the runtime or prefix. [Test details](docs/preview-notes.md).
 
 **Runtime 1.1 update:** fixes the missing `uuid/uuid.h` compilation error by including `uuid-dev`. Existing users can select **Setup → Shut down runtime → Download runtime**, then retry **Build imported source**. This preserves imported files and the build cache; no APK reinstall is needed. [Runtime update details](docs/runtime-release-notes.md).
 

@@ -53,7 +53,7 @@ jobs:
           cc -shared -fPIC -O2 -Wall -Wextra -Werror tests/client_exit_delay.c -ldl -o runtime-work/client-test/client/exit-delay.so
           i686-w64-mingw32-gcc tests/client_probe.c -o runtime-work/client-test/client/eqgame.exe -mwindows -ld3d9
           i686-w64-mingw32-gcc tests/client_textures.c -o runtime-work/client-test/client/textures.exe -mwindows -ld3d9
-          i686-w64-mingw32-gcc tests/client_audio.c -o runtime-work/client-test/client/audio.exe -lwinmm -ldsound -lm
+          i686-w64-mingw32-gcc tests/client_audio.c -o runtime-work/client-test/client/audio.exe -lwinmm -ldsound -ldxguid -lm
           i686-w64-mingw32-gcc tests/client_models.c -o runtime-work/client-test/client/models.exe -mwindows -ld3d9
           i686-w64-mingw32-gcc tests/client_probe_dll.c -shared -o runtime-work/client-test/client/dinput8.dll -ldxguid
           python3 - <<'PYPE'

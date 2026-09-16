@@ -84,7 +84,7 @@ for(const [name,type,value,min,max]of [['Character:RaidExpMultiplier','real','0.
   await page.locator('#client-resolution').selectOption('960x540');await page.locator('#client-desktop').click();
   await page.waitForFunction(()=>window.__clientViews===1);
   assert(await page.locator('#client-launch').isDisabled(),'A running desktop must be stopped before another launch');
-  assert.deepEqual(await page.evaluate(()=>window.__clientStarts[0]),{audio:true,npc_rendering:'compatibility',mode:'desktop',resolution:'960x540',fullscreen:false,native_dinput8:true,diagnostic_logging:false,native_d3dx:false,renderer:'software',cpu_profile:'balanced',runtime_mode:'auto',graphics_threading:'multi',cpu_affinity:'available'});
+  assert.deepEqual(await page.evaluate(()=>window.__clientStarts[0]),{sound_diagnostics:false,audio:true,npc_rendering:'compatibility',mode:'desktop',resolution:'960x540',fullscreen:false,native_dinput8:true,diagnostic_logging:false,native_d3dx:false,renderer:'software',cpu_profile:'balanced',runtime_mode:'auto',graphics_threading:'multi',cpu_affinity:'available'});
   assert(!(await page.locator('#client-launch-status').textContent()).includes('load confirmed'),'File presence/request must not claim DLL loaded');
   await page.locator('#client-stop').click();await page.waitForFunction(()=>document.getElementById('client-launch-status').textContent.startsWith('Client stopped.'));
   await page.locator('#client-renderer').selectOption('virgl');
@@ -100,7 +100,7 @@ for(const [name,type,value,min,max]of [['Character:RaidExpMultiplier','real','0.
   await page.locator('#client-view').click();await page.waitForFunction(()=>window.__clientViews===3);
   await page.locator('#client-stop').click();await page.waitForFunction(()=>document.getElementById('client-launch-status').textContent.startsWith('Client stopped.'));
   await page.locator('#client-graphics-threading').selectOption('opengl_worker');await page.locator('#client-runtime-mode').selectOption('compatibility');await page.locator('#client-cpu-profile').selectOption('compatibility');await page.locator('#client-diagnostics').check();await page.locator('#client-prefix-repair').click();await page.waitForFunction(()=>window.__clientViews===4);
-  assert.deepEqual(await page.evaluate(()=>window.__clientStarts[2]),{audio:true,npc_rendering:'compatibility',mode:'desktop',resolution:'960x540',fullscreen:false,native_dinput8:true,diagnostic_logging:true,native_d3dx:false,repair_prefix:true,renderer:'software',cpu_profile:'compatibility',runtime_mode:'compatibility',graphics_threading:'opengl_worker',cpu_affinity:'available'});
+  assert.deepEqual(await page.evaluate(()=>window.__clientStarts[2]),{sound_diagnostics:false,audio:true,npc_rendering:'compatibility',mode:'desktop',resolution:'960x540',fullscreen:false,native_dinput8:true,diagnostic_logging:true,native_d3dx:false,repair_prefix:true,renderer:'software',cpu_profile:'compatibility',runtime_mode:'compatibility',graphics_threading:'opengl_worker',cpu_affinity:'available'});
   assert((await page.locator('#client-launch-status').textContent()).includes('Verbose diagnostics enabled'));
   await page.locator('#client-stop').click();
   await page.waitForFunction(()=>document.getElementById('client-launch-status').textContent.startsWith('Client stopped.'));
@@ -110,10 +110,14 @@ for(const [name,type,value,min,max]of [['Character:RaidExpMultiplier','real','0.
   assert(await page.locator('#client-graphics-threading').isDisabled(),'WineD3D threading does not apply to DXVK');
   assert(!(await page.locator('#client-npc-rendering').isDisabled()));
   await page.locator('#client-npc-rendering').selectOption('standard');
+  await page.locator('#client-cpu-profile').selectOption('accurate');
+  await page.locator('#client-sound-diagnostics').check();
   await page.locator('#client-audio').uncheck();
   await page.locator('#client-cpu-affinity').selectOption('game');
   await page.locator('#client-launch').click();await page.waitForFunction(()=>window.__clientViews===5);
   assert.equal(await page.evaluate(()=>window.__clientStarts[3].audio),false);
+  assert.equal(await page.evaluate(()=>window.__clientStarts[3].cpu_profile),'accurate');
+  assert.equal(await page.evaluate(()=>window.__clientStarts[3].sound_diagnostics),true);
   assert.equal(await page.evaluate(()=>window.__clientStarts[3].npc_rendering),'standard');
   assert.equal(await page.evaluate(()=>window.__clientStarts[3].renderer),'turnip');
   assert.equal(await page.evaluate(()=>window.__clientStarts[3].resolution),'1280x720');

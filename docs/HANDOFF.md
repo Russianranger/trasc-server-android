@@ -1,3 +1,15 @@
+# Active handoff: 0.4.4 NPC recovery and effects/name diagnosis (2026-09-16)
+
+Implementation candidate; publication pending. New device test confirms **music works** with 0.4.3 but spell effects remain silent. Its direct-buffer mode regresses NPCs and does not fix the name glitch. **0.4.2 NPC mode is still confirmed working.** Do not carry forward the old UI/summary claim that labels were fixed. Read [audio-and-labels-044.md](audio-and-labels-044.md) and [preview-notes.md](preview-notes.md).
+
+0.4.4/code21 restores `compatibility` to exact 0.4.2 settings and retains its explicit alias. `direct_043` is the rejected comparison, not recommended. Working AudioTrack changes are retained. New experimental `accurate` CPU math profile is independent of GPU settings. Add focused opt-in Windows sound tracing and bounded read-only sound inventory/settings reports; no asset replacement or prefix/runtime reset. Existing app ID/signing key must be preserved.
+
+New tests isolate mono/8-bit/22.05 kHz positional DirectSound output from preceding music and require nonzero PCM independently in both profiles; actual PE32 x87 precision test runs on the pinned ARM64 Box64. All original gates remain strict, including old synthetic live-buffer positive/negative controls. Local backend/JVM/Java compilation pass; CI browser/native/device boundaries documented. **Spell sounds and actual name geometry remain unconfirmed; call this a recovery/diagnostic build unless on-device evidence changes that.** Next device test is two matched short sessions (Balanced, Legacy math accuracy), NPC compatibility recommended, music 0/sound 100, focused sound tracing on and general verbose off; export after each.
+
+No subagents unless user explicitly asks. GitHub writes must match the local staged tree. Preserve signing cache `trasc-preview-signing-v2` and certificate `ff9c09cdc3e2404d1d7f72d61ce2f8651464f5e03dff340f70bd4df28c70e869`. Source/build IDs and downloaded-release verification will be recorded after all gates finish.
+
+---
+
 # Active handoff: 0.4.3 audio startup and character-label regression (2026-09-16)
 
 **Published and verified: 0.4.3/code20**, source `5dfcae27403df33f26f928f9a56d7ce3457e3cea`. All six jobs passed in [run 35080301081](https://github.com/Russianranger/trasc-server-android/actions/runs/35080301081). Downloaded public APK, native-source archive and build manifest match the tested artifacts and GitHub digests. Preview tag remains on the tested source; this final handoff commit uses `[skip ci]`.

@@ -1,0 +1,31 @@
+# 0.4.4: restore the confirmed NPC mode; isolate effects and legacy math
+
+## September 16 device evidence
+
+User reports music now works, spell effects do not, NPC models regress with the new mode, and character names still glitch. 0.4.2 NPC compatibility still fixes models. New inputs: logs-7651361252569504106.zip and videos 05_58_36 / 06_00_13. Local analysis is in ../analysis-043. The earlier 0.4.3 label hypothesis failed device acceptance; its synthetic retained-pointer test is valid but did not reproduce this game's bug.
+
+The previous session uses `compatibility` with DXVK direct mapping True; the final session uses `compatibility_042` with False. Both use verified Adreno 740 / Turnip 24.3.4 / DXVK 2.5.3, Balanced CPU, 1280x720 fullscreen and native model helpers. This is not a forgotten-setting diagnosis. The first video still shows extruded/duplicated yellow name geometry at character selection. The second shows Skin Like Wood attempts and all sound sliders at 100; the user reports silence. No claim that sampled stills capture every NPC glitch.
+
+Both audio logs confirm the 0.4.3 startup correction on real hardware: producer/write buffer 1920 frames, allocation 3844 frames, minimum 15376 bytes, start threshold 1. Playback advances continuously. First session reaches 11,447,520 submitted frames and 9,389,063 nonzero samples; second reaches 7,954,272 submitted / 7,952,352 played and 5,428,622 nonzero samples. Final session underruns remain at 4 after early startup. Long intervals continue playing entirely silent PCM; the bridge cannot synthesize a spell sample the game never sends. Music and effects are mixed upstream, so counts alone do not identify their source. Missing MIDI synthesizer is separate from working streamed music. The game loads 3245 sound filenames and 15 animation sounds, but that does not prove the referenced WAVs exist or that Miles creates effect buffers. Existing logs omit sound settings, WAV availability and DirectSound warnings/traces.
+
+## Changes and boundaries
+
+- Restore `compatibility` to byte-for-byte 0.4.2 DXVK configuration: strict float emulation, sampler specialization, direct buffer mapping False. `compatibility_042` remains identical; `direct_043` preserves the former experiment for regression reproduction. Remove the UI claim that animated names are fixed. This recovers the confirmed NPC baseline without throwing away the audio fix.
+- Add an explicitly experimental `accurate` CPU profile. It retains Balanced block size, safe flags, core count and memory ordering, while setting X87DOUBLE=1, FASTNAN=0, FASTROUND=0 and SYNC_ROUNDING=1. This addresses a different, CPU-side hypothesis for legacy transform/positional calculations. It is not an established root cause. No GPU mapping/shader/prefix/client-INI changes are hidden in this comparison.
+- Keep the AudioTrack/ALSA bridge unchanged. Add normal warning-only DirectSound/wave/MMDevice channels. Optional sound diagnostics enables only DirectSound/MMDevice traces; general noisy SEH tracing stays independent/off. Existing two 8 MiB segment limit and previous-session handling remain.
+- Add bounded read-only `client-sound-assets.json` plus previous session: allowlisted Defaults sound settings, known library/resource presence, loose WAV counts, at most 256 headers/4 KiB each, reference counts and at most 24 unresolved filenames. Directory/table limits, case-insensitive resolution, symlink/collision/path-traversal rejection, and no raw INI/audio/chat/credentials. Unresolved loose files may be packed. Imported assets are never replaced.
+
+## Validation
+
+69 backend tests cover profile selection, restored rendering modes, read-only inventory, case resolution, WAV format recognition, private-setting exclusion, oversized/symlink handling, and focused trace selection. JVM archive/input/audio gates and Android Java compilation pass locally. Local browser test could not run because its matching Chromium installation is absent; full CI browser test is mandatory.
+
+The actual PE32 audio fixture now has an independent `--spatial` path: three mono unsigned-8-bit 22050 Hz DirectSound3D effects, buffer/listener position changes and deferred commits. Every API result is checked. The integration test requires a new nonzero PCM delta greater than 20,000 samples independently for Balanced and Accurate; preceding stereo/music samples cannot satisfy it. `--legacy-math` explicitly retains a double x87 intermediate across (16777216 + 1) - 16777216, repeatedly exercising translated code. Accurate must produce 1. These are API/math contracts, not proof that proprietary Miles/ROF2 is repaired. Existing pixel/model/input/720p/prefix/audio-restart/strict-exit gates stay mandatory; 0.4.3 synthetic buffer negative/positive controls remain and are accurately labeled.
+
+CI publication and physical-device acceptance pending at implementation time. Version 0.4.4/code21. Preserve app ID and certificate, existing wineserver fix, native bundles, runtime/prefix and all user assets. Follow [preview-notes.md](preview-notes.md) for the two comparable device sessions. Do not claim spell/name fixes without that result.
+
+## Primary references
+
+- [Pinned Box64 runtime options](https://github.com/ptitSeb/box64/blob/2f130fab1d6e1a4ee8a71dc60cfdfcc839ad192a/docs/USAGE.md): x87 precision, NaN and rounding choices; actual installed revision, not a newer runtime.
+- [Wine 10 DirectSound configuration/source](https://github.com/wine-mirror/wine/blob/wine-10.0/dlls/dsound/dsound_main.c): do not invent obsolete HardwareAcceleration registry workarounds; current setup reads HelBuflen only.
+- [DXVK 2.5.3 buffer mapping](https://github.com/doitsujin/dxvk/blob/v2.5.3/src/d3d9/d3d9_common_buffer.cpp): isolated retained-pointer behavior does not establish a proprietary game's cause.
+- [Open EQ sound-table reader](https://github.com/wcassis/willeq/blob/main/src/client/audio/sound_assets.cpp): caret-separated sound filename references. The inventory does not copy game assets or assume this community implementation proves ROF2's internal behavior.

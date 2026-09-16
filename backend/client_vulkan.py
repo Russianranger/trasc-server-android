@@ -11,12 +11,12 @@ FILES = ('turnip.so', 'vulkan-probe', 'dxvk-d3d9.dll')
 
 def npc_configuration(mode):
     # Separate from CPU profile. These are supported by the pinned DXVK 2.5.3.
-    # Keep the model shader fixes, but preserve D3D9's live dynamic-buffer updates.
-    # Staging every DEFAULT buffer breaks draws that occur before Unlock.
-    # Existing built-in EverQuest cachedDynamicBuffers remains in effect.
+    # Thor testing rejected the 0.4.3 direct-mapping experiment: names still
+    # glitch and NPCs regress. Restore the exact confirmed 0.4.2 baseline.
+    # Keep direct mapping explicitly named for reproducing the isolated test.
     if mode == 'standard': return ''
-    if mode not in ('compatibility', 'compatibility_042'): raise ValueError('Invalid NPC rendering option')
-    direct = 'False' if mode == 'compatibility_042' else 'True'
+    if mode not in ('compatibility', 'compatibility_042', 'direct_043'): raise ValueError('Invalid NPC rendering option')
+    direct = 'True' if mode == 'direct_043' else 'False'
     return 'd3d9.floatEmulation = Strict; d3d9.forceSamplerTypeSpecConstants = True; d3d9.allowDirectBufferMapping = '+direct
 
 
