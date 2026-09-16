@@ -1,4 +1,16 @@
-# Active handoff: 0.4.8 reversible spell exclusion test (2026-09-16)
+# Current investigation: spell exclusion succeeded; September 14 does not fix upstream data (2026-09-16)
+
+**Device success confirmed by user, with installed-file evidence:** `logs-7096767172731379028.zip` proves both spell tables contained40,914 rows, max43,019 and SHA256 `034b5635049a9ef6e549f3f7d5b32f265a386d82a3fd3e8286b04d44b58a5e77` during the successful 0.4.8 run. The journal excludes exactly50000–50007. Native dinput8 and both model helpers were restored/enabled, Turnip/Balanced/exact0.4.2 NPC settings retained. User says the name glitch persists. Read [upstream-spells-048.md](upstream-spells-048.md) for full findings and source links.
+
+**Upstream history:** inspected all five database snapshots. August4 has no IDs >=45000; August31 UTC first publishes50001–50007 (Edict of Command); September3 adds50000 (Dire Charm); September9 retains the same eight. September14 keeps every existing spell row byte-identical and adds50008–50014, for40,929 total rows and15 high IDs. No exporter range filter, client spell-capacity expansion, or remapping migration was added. The source imported on-device is18141ae; the undeployed merged fork is4c653ca, upstream content commitb14a1e7 (committed September14; author timestamp September13). Source merge/rebuild and live content deployment are distinct.
+
+**Deployment consequence:** keep/reapply the successful exclusion on the current eight-ID installation. The0.4.8 action deliberately accepts exactlyeight IDs; it will reject the newer fifteen-ID table without replacement. A durable compatibility policy must be implemented and validated before syncing a changed database. Exclusion leaves those custom abilities absent from the client; preserving them needs consistent remapping of all references into verified unused compatible IDs. No server rows, seed, source deployment, native code or app behavior changed in this investigation; APK remains0.4.8. Do not repeat the full unfiltered export as a proposed sound fix.
+
+**Names:** no corresponding fix found in the September14 client/character-selection changes. Supplied new and Winlator videos show in-world play, not a comparable character-selection screen. Ask whether the same name/class/zone labels glitch in Winlator with the same files; that missing comparison will narrow the next name investigation. Existing missing SkinMeshCBS1_VSB.fxo warning remains an unproven cause. Do not repeat the failed native-DLL OFF, broad renderer or CPU comparisons. Preserve backups, signing identity and all gates. This documentation-only update uses [skip ci].
+
+---
+
+# Release record: 0.4.8 reversible spell exclusion test (2026-09-16)
 
 **Published and verified:** **0.4.8/code25**, tested source **1b5016604e163f40d8bef5a0370c646c053aea91**. All six jobs passed in [run35135626719](https://github.com/Russianranger/trasc-server-android/actions/runs/35135626719). Public APK, corresponding native source archive and build manifest were downloaded and verified against the tested candidate and release digests; preview tag points to that source. This final documentation commit uses [skip ci].
 

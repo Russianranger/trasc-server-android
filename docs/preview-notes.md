@@ -1,5 +1,7 @@
 TRASC Server Android **0.4.8 — reversible spell exclusion test**
 
+**Device result:** the user confirms spell recovery with the exclusion; the name glitch persists. The September14 upstream database still has this issue and contains15 high IDs. This build’s test is limited to the original8-ID table. [Investigation and deployment guidance](upstream-spells-048.md).
+
 The Winlator comparison also has silent spells, according to the user. This build adds the authorized, explicit test of the eight high spell IDs. It does not claim that spell effects or names are fixed until tested on the device.
 
 1. Stop the embedded client and server runtime. Install 0.4.8 over the existing app and open the server runtime. No runtime download, client reimport, prefix repair or repeated export is needed.
