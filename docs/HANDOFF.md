@@ -1,4 +1,14 @@
-# Current investigation: native-DLL bypass did not fix names (2026-09-16)
+# Current investigation: supplied assets inspected; filtering still paused (2026-09-16)
+
+User supplied **all four requested files** in `trasc_launcher.zip`. Read [client-assets-047.md](client-assets-047.md) before continuing. Do not request them again or import this ZIP as a whole client. Read-only inspection found 675 complete EFF records, 2,577 EDD records, all 2,928 nonzero emitter references in range, and all nonzero sound IDs mapped. Animations 216/278 both specify casting `SpelCast.WAV` and landing `SpelGdHt.WAV`, with emitter minimum levels zero. The earlier device inventory proves the casting WAV is packed in snd2.pfs; it does not specifically inventory the landing WAV or the referenced DDS textures.
+
+Actual uploaded DLL SHA256 `0a59be5dbd0c746ecd4168d3628b056dc490e0eabbaa6050c3d533802b13465b` has x86 PE metadata dated August 12, imports D3DX9_35, and contains nine spell lookup helpers bounded below 45,001, indexing the expected SPELLMGR table. This strengthens the high-ID hypothesis using actual binary evidence; it does not prove effect-loader failure or a fix. The supplied DLL is not verified against the current source revision. No client/game bytes, app code or native binaries changed; published APK remains 0.4.7. Proprietary uploads and disassembly stay outside the repository.
+
+Next proposed action is a **single backed-up client-only spell-table comparison**, omitting the eight installed IDs 50000-50007 from root/Resources test copies, keeping all 40,914 supported rows byte-exact and the full export/server DB intact, then restoring the full copies. The user explicitly paused filtering; request lifting that pause before implementation/application. The detailed scope, expected hashes and acceptance checks are in the new report. No more files or broad renderer/CPU/audio changes are needed before deciding on that test. Name rendering remains unresolved. Keep native dinput8 enabled and do not repeat the failed bypass. This documentation-only update uses [skip ci].
+
+---
+
+# Previous investigation: native-DLL bypass did not fix names (2026-09-16)
 
 Latest input `logs-8247054629101021827.zip` and `TRASC Server Preview_2026-09-16 11_00_54.mp4` completes the proposed bypass test. User reports it is worse. The video shows continued repeated/extruded yellow selection labels and a shortened `Ye` character-list entry. Full Wine trace proves `D:\\DINPUT8.dll` loaded as **builtin**, so the imported native add-on was bypassed. The state summary missed this because its builtin matcher requires a Windows system-folder path; do not mistake `system_dinput8_loaded:false` for no builtin load. Details and the diagnostic follow-up are in [diagnosis-047.md](diagnosis-047.md#completed-native-dll-bypass-comparison).
 

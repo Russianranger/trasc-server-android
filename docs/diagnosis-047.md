@@ -1,5 +1,7 @@
 # 0.4.7 device follow-up: verified export, unresolved spell effects and labels
 
+**Subsequent evidence:** the user supplied all four requested files in `trasc_launcher.zip`; they have now been inspected. See [client-assets-047.md](client-assets-047.md). The file-request language below is historical, not an outstanding request. Filtering remains paused.
+
 Inputs: `logs-6881254485975500908.zip`, followed by `logs-8247054629101021827.zip` and `TRASC Server Preview_2026-09-16 11_00_54.mp4`, uploaded September 16, 2026. The user confirms spell sounds and the name fault still fail after automatic local export, and disabling the native add-on makes the result worse. Filtering remains paused. No launcher/native code or client files were changed during this investigation; the current APK remains 0.4.7.
 
 ## Completed native-DLL bypass comparison
