@@ -323,7 +323,7 @@ class ClientTests(unittest.TestCase):
     def export_fixture(self):
         folder=self.root/'server/export';folder.mkdir(parents=True,exist_ok=True)
         for name in CLIENT_FILES:(folder/name).write_text('generated '+name)
-        return {}
+        return {'filter_applied':False}
 
     def test_prepare_keeps_other_settings_and_dll_and_backs_up_handshake_files(self):
         (self.client/'eqclient.ini').write_text('; keep comment\n[Defaults]\nWindowedMode=FALSE\nFoo=untouched\n[Other]\nMusic=1\n')

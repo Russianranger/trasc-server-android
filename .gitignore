@@ -11,3 +11,7 @@ dist/
 runtime-work/
 app/src/main/jniLibs/
 app/src/main/assets/runtime.tar.gz
+
+node_modules/
+
+ui-reports/

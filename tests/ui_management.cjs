@@ -4,7 +4,7 @@ const root=path.resolve('app/src/main/assets/ui');
 const server=http.createServer((req,res)=>{
  const name=req.url==='/'?'index.html':req.url.slice(1);
  if(!/^[\w.-]+$/.test(name)){res.writeHead(404);res.end();return;}
- try{res.setHeader('Content-Type',name.endsWith('.js')?'text/javascript':name.endsWith('.css')?'text/css':'text/html');res.end(fs.readFileSync(path.join(root,name)));}catch{res.writeHead(404);res.end();}
+ try{res.setHeader('Content-Type',name.endsWith('.js')?'text/javascript':name.endsWith('.css')?'text/css':name.endsWith('.webp')?'image/webp':name.endsWith('.ttf')?'font/ttf':'text/html');res.end(fs.readFileSync(path.join(root,name)));}catch{res.writeHead(404);res.end();}
 });
 const fixture={values:{},metadata:{}};
 for(let i=0;i<1100;i++){const name='Category'+(i%47)+':Rule'+i;fixture.metadata[name]={type:'int',min:'-2147483648',max:'2147483647',max_length:128,description:'A test rule '+i};fixture.values[name]={value:String(i),ruleset:1};}
@@ -16,7 +16,7 @@ for(const [name,type,value,min,max]of [['Character:RaidExpMultiplier','real','0.
  try{
   const page=await browser.newPage({viewport:{width:412,height:915}}),errors=[];page.on('pageerror',e=>errors.push(e.message));
   await page.addInitScript(data=>{
-   let seq=0,jobs=[],spellTest={};const actions=['None','MouseLeft','MouseRight','PointerUp','PointerDown','PointerLeft','PointerRight','KeyW','KeyT','Space','Escape'];
+   let seq=0,jobs=[],spellTest={};let addonLocked=false,addonCopied=false;const addonData=()=>({snapshot:'fixture',counts:{missing:addonCopied?0:1,different:0,same:addonCopied?1:0},entries:[{path:'uifiles/default/NMS_Test.xml',status:addonCopied?'same':'missing',locked:addonLocked,protected:false}]});const actions=['None','MouseLeft','MouseRight','PointerUp','PointerDown','PointerLeft','PointerRight','KeyW','KeyT','Space','Escape'];
    let profile={sources:['A','B','RightUp','RightDown','RightLeft','RightRight'],actions,bindings:{A:'Space',B:'Escape',RightUp:'PointerUp',RightDown:'PointerDown',RightLeft:'PointerLeft',RightRight:'PointerRight'},deadzone:.2,sensitivity:700};
    window.__saves=[];window.__alive=true;window.__calls=[];window.__exports=[];window.__clientStarts=[];window.__clientViews=0;
    let clientRuntime={installed:true,alive:false,busy:false,status:'Client runtime installed',directx_installed:false};
@@ -43,6 +43,8 @@ for(const [name,type,value,min,max]of [['Character:RaidExpMultiplier','real','0.
     else if(op==='logs')result={text:args.name==='app.log'?'session_backup failed: simulated storage error':'Saved output: '+args.name,names:['app.log','runtime.log','control.log','operation.log','server/zones/cabeast.log','client/Logs/dbg.txt','client/dinput8.log']};
     else if(op==='export_logs')result={file:'exports/logs-native.zip'};
     else if(op==='export'){window.__exports.push(args.path);if(window.__cancelExport){window.nativeReply(id,{ok:false,error:'File selection cancelled'});return;}result={message:'File exported'};}
+    else if(op==='client_dll_status')result={compiler:true,sdk:true,build:null};
+    else if(op==='files')result={path:'backups',items:[{name:'players-test.zip',path:'backups/players-test.zip',size:100}]};
     else if(op==='controller_state')result=profile;
     else if(op==='controller_save'){profile={...profile,...args};result=profile;}
     else if(op==='controller_capture'){window.clientInputEvent?.({type:'capture',down:args.active});result={...profile,active:args.active};}
@@ -51,6 +53,11 @@ for(const [name,type,value,min,max]of [['Character:RaidExpMultiplier','real','0.
      else if(op==='export_client')completed={file:'exports/client-data.zip',local_client_synced:true,copied_files:8,message:'All four client data files overwritten in the local client root and Resources folder. Originals saved in backups/client-setup/test.'};
      else if(op==='apply_spell_test'){spellTest={state:'applied',excluded_ids:[50000,50001,50002,50003,50004,50005,50006,50007],filtered_rows:40914};completed={message:'Spell test applied: 8 high-ID entries excluded.'};}
      else if(op==='restore_spell_test'){spellTest={state:'restored'};completed={message:'Full spell files restored and verified in root and Resources.'};}
+     else if(op==='client_addons_scan')completed=addonData();
+     else if(op==='client_addons_lock'){addonLocked=args.locked;completed=addonData();}
+     else if(op==='client_addons_copy'){if(!addonLocked)addonCopied=true;completed={comparison:addonData(),message:'Add-ons copied.'};}
+     else if(op==='player_preview')completed={file:args.file,sha256:'fixture',accounts:1,characters:2,tables:3,table_names:['account','character_data','inventory'],compatible:true,problems:[],changes:[],message:'Ready to stage and validate player restore.'};
+     else if(op==='player_restore')completed={message:'Player/account data restored.'};
      else if(op==='save_gameplay'){window.__saves.push(args);for(const [name,value]of Object.entries(args.values))data.values[name]={value,ruleset:1};}
      const job={id:String(++seq),operation:op,status:'done',result:completed};jobs=[job];result=job;
     }
@@ -75,17 +82,35 @@ for(const [name,type,value,min,max]of [['Character:RaidExpMultiplier','real','0.
   await page.waitForFunction(()=>document.getElementById('notice').textContent.includes('Settings saved. Restart'));
   assert.deepEqual(await page.evaluate(()=>window.__saves[0].values),{'Character:RaidExpMultiplier':'0.4'},'Only edited values saved');
   await page.locator('#rule-search').fill('MaxClientsPerIP');assert.equal(await page.locator('#rule-World-MaxClientsPerIP').inputValue(),'-1');
-  await page.locator('nav [data-tab=client]').click();await page.locator('#binding-A').selectOption('KeyT');await page.locator('#controller-save').click();
+  await page.locator('nav [data-tab=client]').click();
+  assert(await page.locator('#client-launch').isVisible(),'Launch is visible without opening settings');
+  assert(!(await page.locator('#client-resolution').isVisible()),'Settings start collapsed');
+  await page.screenshot({path:'ui-reports/client-collapsed-mobile.png',fullPage:true});
+  await page.locator('#client details').evaluateAll(ds=>ds.forEach(d=>d.open=true));
+  await page.locator('#binding-A').selectOption('KeyT');await page.locator('#controller-save').click();
   await page.waitForFunction(()=>document.getElementById('notice').textContent==='Controller bindings saved.');
   await page.locator('#controller-capture').click();await page.waitForFunction(()=>document.getElementById('controller-focus').textContent.includes('captured'));
   await page.evaluate(()=>{window.clientInputEvent({type:'button',action:'KeyT',down:true});window.clientInputEvent({type:'pointer',x:90,y:20});});
   assert((await page.locator('#client-input-status').textContent()).includes('KeyT'));
   const toolbar=await page.locator('.runtime-toolbar').boundingBox();assert(toolbar.y>=0&&toolbar.y+toolbar.height<915,'Runtime controls remain in the viewport while scrolled');
   await page.screenshot({path:'ui-reports/client-mobile.png',fullPage:true});
+  await page.locator('#addons-scan').click();
+  await page.waitForFunction(()=>document.getElementById('addons-status').textContent.includes('1 missing'));
+  await page.locator('#addons-list button', {hasText:'Lock'}).click();
+  await page.waitForFunction(()=>document.getElementById('addons-list').textContent.includes('locked'));
+  assert.equal(await page.locator('#addons-list button[data-copy]').count(),0,'Locked files cannot be individually copied');
+  await page.locator('#addons-list button', {hasText:'Unlock'}).click();
+  await page.waitForFunction(()=>document.querySelector('#addons-list button[data-copy]'));
+  await page.locator('#addons-list button[data-copy]').click();
+  await page.waitForFunction(()=>document.getElementById('addons-status').textContent.includes('0 missing'));
+  await page.locator('#dll-status').click();
+  await page.waitForFunction(()=>document.getElementById('dll-state').textContent.includes('SDK imported'));
   await page.locator('#spell-test-apply').click();
   await page.waitForFunction(()=>document.getElementById('spell-test-status').textContent.includes('40914 rows'));
   await page.waitForFunction(()=>!document.getElementById('spell-test-restore').disabled);
-  for(const id of ['spell-test-apply','client-prepare','client-import','export-client'])assert(await page.locator('#'+id).isDisabled(),'Active comparison protects '+id);
+  for(const id of ['spell-test-apply','client-import'])assert(await page.locator('#'+id).isDisabled(),'Active compatibility protects '+id);
+  for(const id of ['client-prepare','export-client'])assert(!(await page.locator('#'+id).isDisabled()),'Active compatibility allows '+id);
+  assert((await page.locator('#spell-excluded-list').textContent()).includes('50007'));
   await page.screenshot({path:'ui-reports/spell-comparison-mobile.png',fullPage:true});
   await page.locator('#spell-test-restore').click();
   await page.waitForFunction(()=>document.getElementById('spell-test-status').textContent.includes('restored and verified'));
@@ -154,6 +179,15 @@ for(const [name,type,value,min,max]of [['Character:RaidExpMultiplier','real','0.
   assert(!(await page.locator('#client-input-status').textContent()).includes('KeyT'),'Leaving tab releases input');
   assert(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth+1),'No horizontal page overflow on mobile');
   await page.setViewportSize({width:960,height:540});await page.screenshot({path:'ui-reports/setup-landscape.png',fullPage:true});
+  await page.locator('nav [data-tab=database]').click();
+  await page.locator('#players-local').click();
+  await page.locator('#players-review').click();
+  await page.waitForFunction(()=>document.getElementById('players-preview').textContent.includes('2 characters'));
+  assert(await page.locator('#players-restore').isDisabled(),'Player restore requires reviewed replacement selection');
+  await page.locator('#players-replace').check();
+  await page.locator('#players-restore').click();
+  await page.waitForFunction(()=>document.getElementById('notice').textContent.includes('Player/account data restored'));
+  await page.screenshot({path:'ui-reports/player-data-mobile.png',fullPage:true});
   await page.locator('nav [data-tab=server]').click();
   await page.locator('#export-client').click();
   await page.waitForFunction(()=>document.getElementById('notice').textContent.includes('File exported.'));

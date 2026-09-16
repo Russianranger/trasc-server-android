@@ -65,3 +65,9 @@ The x86 D3D9 DLL comes from upstream DXVK 2.5.3 (zlib license), release archive 
 The APK adds the original TRASC ALSA PCM endpoint (MIT; native/audio-LICENSE), dynamically using the client runtime's existing ALSA library. It calls Android AudioTrack through the launcher. Endpoint source, license, Bookworm Dockerfile and build-audio.sh accompany launcher-sources.tar.gz. No new libasound binary, proprietary game sound, or microphone recording is bundled.
 
 Mesa 26.0.0 is built using Khronos glslang 15.1.0 (source archive SHA256 `4bdcd8cdb330313f0d4deed7be527b0ac1c115ff272e492853a6e98add61b4bc`), retained in the Vulkan source bundle with its upstream license notices. This build tool is not installed into the client runtime. The comparison driver is upstream Mesa, not Winlator’s custom R5 binary.
+
+## Launcher fonts (0.4.10)
+
+Cinzel and Crimson Pro from https://github.com/google/fonts, distributed under the SIL Open Font License 1.1. Font files and their complete OFL/copyright notices are included in app/src/main/assets/ui. The fantasy backdrop is original AI-generated artwork commissioned for this launcher.
+
+Clang/LLD compiler packages are installed from Debian into the user’s runtime, not bundled in the APK. Microsoft Visual C++ and Windows SDK headers/libraries are user-supplied and are not distributed by this project.

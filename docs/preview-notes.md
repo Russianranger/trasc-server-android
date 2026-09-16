@@ -1,3 +1,19 @@
+TRASC Server Android **0.4.10 — client workspace and player preservation**
+
+- Persistent, reversible **Spell compatibility** filters client spell IDs >=45000 on Enable, Export and Prepare. Existing eight-ID tests remain enabled. New high IDs are caught automatically. Both root and Resources, plus the export ZIP, receive the filtered table. Complete generations remain backed up; Restore disables filtering and restores the latest complete table. The server database retains every spell.
+- **Client add-ons from source** compares the imported `Release-NMS-Client/ClientFiles` overlay by hash. Copy individual files, all missing files, or all unlocked changes. Locks persist across source updates. Managed generated data is protected; replaced add-ons are backed up.
+- **Player/account snapshots** export data separately from world content. Database replacement now saves a player snapshot first. Review/restore checks the current schema, fills new defaulted columns and stages all rows before an atomic table swap. Removed required data, unsupported constraints, invalid values and damaged snapshots block replacement. A full database recovery snapshot precedes restoration.
+- **Start ROF2** is near the top; client settings are collapsible. Original fantasy scenery, bundled Cinzel/Crimson fonts and fantasy card styling work offline.
+- **Experimental on-device dinput8 compilation** uses native ARM Clang16/LLD16 targeting Windows x86. Install compiler tools, then import Microsoft headers/libraries packed on your Windows PC with `tools/pack-client-sdk.ps1` (VS v142 14.29 + Windows10 SDK). Successful DLLs are staged; deploy separately with an original-file backup. Microsoft SDK files are not distributed with the app.
+
+Update in place with client and runtime stopped. No client reimport, Wine prefix repair or driver reset is needed. Keep Turnip26 if preferred, Balanced and the exact0.4.2 NPC compatibility setting. Existing shader caches remain in place.
+
+**First checks:** open the runtime, confirm Spell compatibility is on, Export & sync, then test Skin Like Wood/Minor Healing with both particles and sounds. Compare add-ons and try one unlocked file before bulk copying. Export a player snapshot and save it outside the app before replacing your database. Review/restore that snapshot after importing the new seed. A DLL compiling successfully is not proof of game-hook compatibility; test a newly deployed DLL on-device and retain its previous backup.
+
+**Excluded abilities:** the Sept9 seed has Dire Charm50000 and custom/tome Edict of Command50001–50007. The Sept14 seed adds Sunrise Hills Key Echo50008 and six top-rank Drakkin breath spells50009–50014. Filtering can leave these abilities unavailable or unreliable in the client. This is the temporary option5; full ID remapping (option1) remains future work.
+
+---
+
 TRASC Server Android **0.4.9 — selectable Turnip drivers**
 
 Client now offers **Turnip driver: 24.3.4 (current / fallback)** or **26.0.0 (comparison)**. Both are bundled. The new option is an upstream Mesa build for TRASC, not the exact Winlator R5 package. Winlator driver ZIP import is not supported by this Linux runtime.

@@ -228,9 +228,9 @@ class ManagedContent:
 
     def prepare_client(self, args):
         from engine import atomic_json
-        from client_spells import require_no_test
-        require_no_test(self.work)
+        from client_spells import require_export_ready, install_export
         client = self._local_client()
+        require_export_ready(self.work, client)
         resolution = args.get('resolution', '800x600')
         if resolution not in RESOLUTIONS: raise ValueError('Unsupported client resolution')
         fullscreen = args.get('fullscreen', False)
@@ -242,9 +242,11 @@ class ManagedContent:
         text = ini.read_text(encoding='cp1252') if ini.exists() else ''
         changes[ini] = display_ini(text, resolution, fullscreen)
         result = self._export_client_data()
-        backup = self._apply_client_changes(client, changes)
+        backup = install_export(self.work, client, lambda: self._apply_client_changes(client, changes))
         result.update(local_client_synced=True, copied_files=8, backup=backup,
                       message='All four client data files overwritten in the local client root and Resources folder; login address and display settings prepared. Originals saved in ' + backup + '.')
+        if result['filter_applied']:
+            result['message'] += ' Spell compatibility remains on: ' + str(result['spell_filter']['removed_rows']) + ' high IDs excluded. Latest full spell export retained for Restore.'
         atomic_json(self.work / 'logs/client-data-sync.json', result)
         return result
 

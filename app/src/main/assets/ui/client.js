@@ -3,18 +3,23 @@ let controllerLoaded=false,controllerOptions=null,captureActive=false;
 const clientPressed=new Set();let pointerX=450,pointerY=160,wheelTotal=0;
 let clientFileBusy=false, spellComparison={}, clientImported=false;
 function spellTestControls(){
+ if(typeof addonControls==='function')addonControls();
  const active=!!spellComparison.state&&spellComparison.state!=='restored';
+ const incomplete=active&&spellComparison.state!=='applied';
  $('spell-test-apply').disabled=!!(busy||clientFileBusy||active||!clientImported);
  $('spell-test-restore').disabled=!!(busy||clientFileBusy||!active);
- for(const id of ['client-prepare','client-import','export-client'])$(id).disabled=!!(busy||clientFileBusy||active);
+ $('client-import').disabled=!!(busy||clientFileBusy||active);
+ for(const id of ['client-prepare','export-client'])$(id).disabled=!!(busy||clientFileBusy||incomplete);
 }
 function renderClientStatus(client){
  clientImported=!!client?.imported;spellComparison=client?.spell_test||{};
  $('client-status').textContent=clientImported?client.files+' entries · '+bytes(client.bytes)+' extracted. '+(client.dinput8_present?'dinput8.dll is present.':'dinput8.dll was not found beside eqgame.exe.'):'No client imported.';
  $('spell-test-status').textContent=spellComparison.error|| (spellComparison.state==='applied'?
-  'Test active · '+spellComparison.excluded_ids.length+' IDs excluded · '+spellComparison.filtered_rows+' rows in each folder. Originals retained for Restore.':
+  'Compatibility on · '+(spellComparison.excluded_count??spellComparison.excluded_ids.length)+' IDs excluded · '+spellComparison.filtered_rows+' rows in each folder. Future exports stay filtered. Latest full table retained for Restore.':
   ['applying','restoring'].includes(spellComparison.state)?'File update incomplete. Use Restore full spell files before launching.':
-  spellComparison.state==='restored'?'Full spell files restored and verified in both folders.':'No spell exclusion test active.');
+  spellComparison.state==='restored'?'Full spell files restored and verified in both folders. Compatibility off.':'Compatibility off. Full exports include all spell IDs.');
+ const excluded=spellComparison.excluded_spells||[];
+ $('spell-excluded-list').textContent=spellComparison.state==='applied'?(excluded.length?excluded.map(s=>s.id+' — '+s.name).join('\n'):(spellComparison.excluded_ids||[]).join(', '))+(spellComparison.excluded_ids_truncated?'\nList limited to first 64; total shown above.':''):'';
  spellTestControls();
 }
 function renderController(profile){

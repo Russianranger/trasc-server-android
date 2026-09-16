@@ -91,10 +91,19 @@ def verify(seed, work):
         assert (work/'server/export/spells_us.txt').read_bytes() == exported
         assert int(engine.mysql('SELECT COUNT(*) FROM spells_new;').splitlines()[1]) == 40922
         assert int(engine.mysql('SELECT MAX(id) FROM spells_new;').splitlines()[1]) == 50007
+        with patch.object(engine, 'run', side_effect=exporter):
+            filtered_sync = engine.export_client({})
+        assert filtered_sync['filter_applied'] and filtered_sync['spell_filter']['removed_rows'] == 8
+        with zipfile.ZipFile(work/filtered_sync['file']) as archive:
+            for relative in ('spells_us.txt', 'Resources/spells_us.txt'):
+                assert archive.read(relative) == expected
+                assert (client/relative).read_bytes() == expected
+        assert (work/'server/export/spells_us.unfiltered.txt').read_bytes() == exported
+        assert int(engine.mysql('SELECT COUNT(*) FROM spells_new;').splitlines()[1]) == 40922
         engine.restore_spell_test({})
         for relative in ('spells_us.txt', 'Resources/spells_us.txt'):
             assert (client/relative).read_bytes() == exported
-        print('PASS: real seed spell comparison excludes exactly eight IDs in both copies, restores exact originals, and preserves server/export data', flush=True)
+        print('PASS: real seed compatibility persists across export, excludes eight IDs in root/Resources/ZIP, restores complete tables, and preserves server rows', flush=True)
         rules = engine.gameplay({})
         assert rules['values'], 'Gameplay controls must read the imported rules'
         assert rules['selected'] == 1, 'This pinned seed uses default ruleset ID 1'

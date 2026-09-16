@@ -10,6 +10,8 @@ concurrency:
   group: android-${{ github.ref }}
   cancel-in-progress: true
 jobs:
+  client-dll:
+    uses: ./.github/workflows/client-dll.yml
   wined3d:
     uses: ./.github/workflows/wined3d.yml
   vulkan:
@@ -63,6 +65,9 @@ jobs:
             -v "$PWD/database-test/fixtures/resolv.conf:/etc/resolv.conf:ro" \
             -v "$PWD/backend:/opt/trasc:ro" -v "$PWD/tests:/tests:ro" \
             trasc-database-test:1 python3 /tests/integration_runtime.py
+          docker run --rm --network none --hostname localhost \
+            -v "$PWD/backend:/opt/trasc:ro" -v "$PWD/tests:/tests:ro" \
+            trasc-database-test:1 python3 /tests/integration_players.py
       - uses: actions/upload-artifact@v4
         if: always()
         with:
@@ -163,7 +168,7 @@ jobs:
           path: app/build/reports/
   preview:
     if: github.ref == 'refs/heads/main' && github.event_name != 'pull_request'
-    needs: [apk, database, client-runtime]
+    needs: [apk, database, client-runtime, client-dll]
     runs-on: ubuntu-latest
     permissions:
       contents: write

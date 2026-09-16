@@ -18,11 +18,11 @@ EFFECT_FIELDS = {120: 'casting_animation', 121: 'target_animation',
                  122: 'travel_type', 123: 'spell_affect_index', 145: 'spell_animation'}
 
 
-def inspect_data(data, output=None):
+def inspect_data(data, output=None, include_names=False):
     """Validate every row before publication; preserve retained bytes exactly.
 
-    Only IDs and numeric effect fields for the two reported spells enter the
-    summary. No arbitrary spell descriptions or client settings are exported.
+    Diagnostics omit names by default. Compatibility reports may include a
+    bounded list of excluded names, never spell descriptions/client settings.
     """
     if not data or len(data) > MAX_TABLE_BYTES or b'\0' in data:
         raise ValueError('Invalid or oversized spell table')
@@ -30,6 +30,7 @@ def inspect_data(data, output=None):
               'kept_rows': 0, 'removed_rows': 0, 'removed_ids': [],
               'max_id_before': None, 'max_id_after': None, 'reported_spells': {},
               'source_sha256': hashlib.sha256(data).hexdigest()}
+    if include_names: report['removed_spells'] = []
     bom = data.startswith(b'\xef\xbb\xbf')
     if bom:
         if output is not None: output.write(data[:3])
@@ -60,7 +61,11 @@ def inspect_data(data, output=None):
             report['reported_spells'][str(spell_id)] = selected
         if spell_id >= ROF2_SPELL_LIMIT:
             report['removed_rows'] += 1
-            if len(report['removed_ids']) < 64: report['removed_ids'].append(spell_id)
+            if len(report['removed_ids']) < 64:
+                report['removed_ids'].append(spell_id)
+                if include_names:
+                    name = fields[1][:96].decode('cp1252', errors='replace')
+                    report['removed_spells'].append({'id': spell_id, 'name': ''.join(c for c in name if c.isprintable())})
         else:
             report['kept_rows'] += 1
             report['max_id_after'] = max(spell_id, report['max_id_after'] or 0)
@@ -85,7 +90,7 @@ def prepare_export(path):
     path = Path(path)
     original = read_table(path)
     output = io.BytesIO()
-    report = inspect_data(original, output)
+    report = inspect_data(original, output, include_names=True)
     full = path.with_name('spells_us.unfiltered.txt')
     if full.is_symlink() or (full.exists() and not full.is_file()):
         raise ValueError('Unfiltered spell export must be a regular file')
@@ -94,8 +99,8 @@ def prepare_export(path):
     return report
 
 
-# Explicit diagnostic only. Normal export/Prepare continue to copy full data.
-TEST_IDS = list(range(50000, 50008))
+# Keep the journal path and operation names for upgrades from the eight-ID
+# comparison. An existing applied record opts into the persistent policy.
 
 
 def test_record(work):
@@ -115,7 +120,15 @@ def test_active(work):
 
 def require_no_test(work):
     if test_active(work):
-        raise ValueError('Restore full spell files in Client before exporting, preparing or replacing the client')
+        raise ValueError('Restore full spell files in Client before replacing the client')
+
+
+def require_export_ready(work, client):
+    record = test_record(work)
+    if record and record['state'] != 'restored':
+        if client is None: raise ValueError('Active spell compatibility mode requires its imported client')
+        verify_installed_test(client, record)
+    return record
 
 
 def _spell_paths(client):
@@ -157,7 +170,8 @@ def verify_installed_test(client, record):
             raise ValueError('Spell test files changed. Restore full spell files before launching')
         reports.append({'path': str(target.relative_to(client)), 'rows': report['rows'],
                         'max_id': report['max_id_before'], 'sha256': report['source_sha256']})
-    return {'state': 'applied', 'excluded_ids': record['excluded_ids'], 'installed': reports}
+    return {'state': 'applied', 'excluded_ids': record['excluded_ids'],
+            'excluded_count': record.get('excluded_count', len(record['excluded_ids'])), 'installed': reports}
 
 
 def _save_test(work, record):
@@ -170,7 +184,7 @@ def restore_test(work, client):
     from managed_content import replace_client_file
     record = test_record(work)
     if not record or record['state'] == 'restored':
-        return {'message': 'No spell exclusion test is active.'}
+        return {'message': 'No spell exclusion mode is active.'}
     if not re.fullmatch(r'[0-9]{8}-[0-9]{6}-[0-9a-f]{12}', record.get('backup_id', '')):
         raise ValueError('Invalid spell test backup location')
     backup = Path(work) / 'backups/client-spell-test' / record['backup_id']
@@ -181,7 +195,10 @@ def restore_test(work, client):
     for target, data in zip(targets, originals):
         if hashlib.sha256(data).hexdigest() != record['original_sha256']:
             raise ValueError('Spell backup checksum failed; files were not restored')
-        if hashlib.sha256(read_table(target)).hexdigest() not in (record['original_sha256'], record['filtered_sha256']):
+        allowed = {record['original_sha256'], record['filtered_sha256']}
+        if record['state'] in ('applying', 'restoring'):
+            allowed.add(record.get('previous_filtered_sha256'))
+        if hashlib.sha256(read_table(target)).hexdigest() not in allowed:
             raise ValueError('Spell files changed outside the test; backups retained, restore refused')
     record['state'] = 'restoring'; _save_test(work, record)
     # No cancellation once restoring: finish both originals or leave a journal
@@ -192,7 +209,60 @@ def restore_test(work, client):
             raise ValueError('Spell restore verification failed')
     record.update(state='restored', restored_at=time.time())
     _save_test(work, record)
-    return {'message': 'Full spell files restored and verified in root and Resources.', 'spell_test': record}
+    return {'message': 'Full spell files restored and verified in root and Resources. Compatibility mode is off.', 'spell_test': record}
+
+
+def _new_record(work, client, targets, original, report):
+    """Retain each complete generation before publishing any replacement."""
+    from managed_content import replace_client_file
+    backup_id = time.strftime('%Y%m%d-%H%M%S') + '-' + secrets.token_hex(6)
+    backup = Path(work) / 'backups/client-spell-test' / backup_id
+    backup.mkdir(parents=True)
+    for name in ('root.txt', 'resources.txt'):
+        replace_client_file(backup / name, original)
+        if read_table(backup / name) != original: raise ValueError('Spell backup verification failed')
+    return {'format': 1, 'policy': 'rof2-limit-v1', 'limit_exclusive': ROF2_SPELL_LIMIT,
+            'state': 'applying', 'created_at': time.time(), 'backup_id': backup_id,
+            'client_identity': _identity(client), 'paths': [str(p.relative_to(client)) for p in targets],
+            'original_sha256': report['source_sha256'], 'filtered_sha256': report['compatible_sha256'],
+            'original_rows': report['rows'], 'filtered_rows': report['kept_rows'],
+            'excluded_count': report['removed_rows'], 'excluded_ids': report['removed_ids'],
+            'excluded_ids_truncated': report['removed_ids_truncated'],
+            'excluded_spells': report['removed_spells'], 'reported_spells': report['reported_spells']}
+
+
+def install_export(work, client, install):
+    """Wrap the existing multi-file transaction with a recoverable spell journal.
+
+    Restore always selects the latest full generation after a successful sync.
+    A normal transaction failure returns to the previous journal; process death
+    leaves an applying journal that accepts either old or new filtered bytes.
+    """
+    previous = require_export_ready(work, client)
+    if not previous or previous['state'] == 'restored': return install()
+    targets = _test_targets(client, previous)
+    folder = Path(work) / 'server/export'
+    original = read_table(folder / 'spells_us.unfiltered.txt')
+    report = inspect_data(original, include_names=True)
+    if hashlib.sha256(read_table(folder / 'spells_us.txt')).hexdigest() != report['compatible_sha256']:
+        raise ValueError('Filtered export checksum failed; no client files changed')
+    record = _new_record(work, client, targets, original, report)
+    record['previous_filtered_sha256'] = previous['filtered_sha256']
+    record['previous_backup_id'] = previous['backup_id']
+    _save_test(work, record)
+    try:
+        result = install()
+        record['state'] = 'applied'
+        verify_installed_test(client, record)
+        _save_test(work, record)
+        return result
+    except Exception:
+        # The existing transaction rolls back its writes on cancellation/I/O
+        # errors. Only reinstate the old journal if its installed bytes verify.
+        try: verify_installed_test(client, previous)
+        except (ValueError, OSError): pass
+        else: _save_test(work, previous)
+        raise
 
 
 def apply_test(work, client, check_cancel=lambda: None):
@@ -200,27 +270,14 @@ def apply_test(work, client, check_cancel=lambda: None):
     record = test_record(work)
     if record.get('state') == 'applied':
         verify_installed_test(client, record)
-        return {'message': 'Spell exclusion test is already active; original backups are retained.', 'spell_test': record}
+        return {'message': 'Spell compatibility mode is already active; complete backups are retained.', 'spell_test': record}
     require_no_test(work)
     targets = _spell_paths(client)
     data = [read_table(p) for p in targets]
-    if data[0] != data[1]: raise ValueError('Root and Resources spell files differ. Export & sync client data before this test')
-    output = io.BytesIO(); report = inspect_data(data[0], output)
-    if report['removed_ids'] != TEST_IDS or report['removed_rows'] != len(TEST_IDS):
-        raise ValueError('This comparison requires exactly spell IDs 50000–50007 above the ROF2 limit; no files changed')
+    if data[0] != data[1]: raise ValueError('Root and Resources spell files differ. Export & sync client data before enabling compatibility')
+    output = io.BytesIO(); report = inspect_data(data[0], output, include_names=True)
     filtered = output.getvalue()
-    identity = _identity(client)
-    backup_id = time.strftime('%Y%m%d-%H%M%S') + '-' + secrets.token_hex(6)
-    backup = Path(work) / 'backups/client-spell-test' / backup_id
-    backup.mkdir(parents=True)
-    for name, original in zip(('root.txt', 'resources.txt'), data):
-        replace_client_file(backup / name, original)
-        if read_table(backup / name) != original: raise ValueError('Spell backup verification failed')
-    record = {'format': 1, 'state': 'applying', 'created_at': time.time(), 'backup_id': backup_id,
-              'client_identity': identity, 'paths': [str(p.relative_to(client)) for p in targets],
-              'original_sha256': report['source_sha256'], 'filtered_sha256': report['compatible_sha256'],
-              'original_rows': report['rows'], 'filtered_rows': report['kept_rows'],
-              'excluded_ids': report['removed_ids'], 'reported_spells': report['reported_spells']}
+    record = _new_record(work, client, targets, data[0], report)
     _save_test(work, record)  # Durable originals and journal precede replacement.
     try:
         for target in targets:
@@ -231,6 +288,7 @@ def apply_test(work, client, check_cancel=lambda: None):
     except Exception:
         restore_test(work, client)
         raise
-    return {'message': 'Spell test applied: 8 high-ID entries excluded from both folders; ' +
-            str(report['kept_rows']) + ' rows retained. Originals backed up. Use Restore full spell files after testing.',
+    return {'message': 'Spell compatibility mode enabled: ' + str(report['removed_rows']) +
+            ' high-ID entries excluded from both folders; ' + str(report['kept_rows']) +
+            ' rows retained. Future exports stay filtered. Restore full spell files turns the mode off.',
             'spell_test': record}

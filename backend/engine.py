@@ -30,6 +30,9 @@ import zipfile
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from rule_catalog import KNOWN, metadata, parse_source, validate_value
 from managed_content import ManagedContent
+import client_addons
+import client_dll
+import player_data
 
 VERSION = '0.3.4'
 DEFAULT_REPO = 'https://github.com/Russianranger/Triptych-Triumvirate'
@@ -443,7 +446,10 @@ class Engine(ManagedContent):
         self.ensure_db()
         if self.config['database_imported']:
             if not args.get('replace'): raise ValueError('Database exists. Enable replacement; a backup will be made first.')
+            player_backup = player_data.export_players(self, {})['file']
             self.backup_database({})
+        else:
+            player_backup = None
         dump = self.work / 'run' / ('selected-database-' + secrets.token_hex(4) + '.sql')
         file_name, sep, member = selection.partition('!')
         source = safe_path(self.work, file_name, True)
@@ -484,7 +490,7 @@ class Engine(ManagedContent):
                 raise ValueError('Import finished but required server tables are missing. Choose the full database seed.')
             self.config.update(database_imported=True, database_source=selection)
             self.save()
-            return {'imported': selection}
+            return {'imported': selection, 'player_backup':player_backup, 'message':'Database imported.' + (' Player/account snapshot retained at '+player_backup+'. Restore it from Database → Player data when ready.' if player_backup else '')}
         finally:
             stack.close()
             dump.unlink(missing_ok=True)
@@ -837,15 +843,17 @@ class Engine(ManagedContent):
         return {'output': result[:200000], 'truncated': len(result)>200000}
 
     def export_client(self, args):
-        from client_spells import require_no_test
-        require_no_test(self.work)
+        from client_spells import require_export_ready, install_export
         client = self._local_client(required=False)
+        require_export_ready(self.work, client)
         changes = self._client_data_changes(client) if client else None
         result = self._export_client_data()
         if client:
-            backup = self._apply_client_changes(client, changes)
+            backup = install_export(self.work, client, lambda: self._apply_client_changes(client, changes))
             result.update(local_client_synced=True, copied_files=8, backup=backup,
                           message='All four client data files overwritten in the local client root and Resources folder. Originals saved in ' + backup + '.')
+            if result['filter_applied']:
+                result['message'] += ' Spell compatibility remains on: ' + str(result['spell_filter']['removed_rows']) + ' high IDs excluded. Latest full spell export retained for Restore.'
         else:
             result.update(local_client_synced=False, copied_files=0,
                           message='Client data ZIP generated. No local client is imported, so no local files were copied.')
@@ -854,7 +862,7 @@ class Engine(ManagedContent):
         return result
 
     def _export_client_data(self):
-        """Generate the complete server data and ZIP; local installation is separate."""
+        """Run the real database exporter, then apply the saved client policy."""
         self.ensure_db()
         self.write_config()
         runtime = self.work / 'server'
@@ -865,19 +873,25 @@ class Engine(ManagedContent):
             if source.is_symlink() or not source.is_file() or not source.stat().st_size:
                 raise ValueError('Exporter did not create a regular nonempty file: ' + name)
         from managed_content import digest
+        from client_spells import test_record, prepare_export
+        record = test_record(self.work)
+        if record and record['state'] not in ('applied', 'restored'):
+            raise ValueError('Spell file update incomplete. Use Restore full spell files before exporting')
+        filtering = record.get('state') == 'applied'
+        compatibility = prepare_export(runtime / 'export/spells_us.txt') if filtering else None
         file_hashes = {name: digest(runtime / 'export' / name) for name in CLIENT_FILES}
-        # The separate opt-in comparison never changes normal full exports.
-        spell_report = {'filter_applied': False, 'sha256': file_hashes['spells_us.txt'],
-                        'message': 'Full export; all spell rows retained. Exclusion is a separate client test.'}
+        spell_report = {'filter_applied': filtering, 'sha256': file_hashes['spells_us.txt'],
+                        'spell_filter': compatibility,
+                        'message': 'ROF2 compatibility export; complete original retained.' if filtering else 'Full export; all spell rows retained.'}
         atomic_json(self.work / 'logs/client-spell-export.json', spell_report)
         target = self.work / 'exports' / ('client-data-' + time.strftime('%Y%m%d-%H%M%S') + '-' + secrets.token_hex(3) + '.zip')
         with zipfile.ZipFile(target,'w',zipfile.ZIP_DEFLATED) as z:
             for name in CLIENT_FILES:
                 z.write(runtime / 'export' / name, name)
                 z.write(runtime / 'export' / name, 'Resources/' + name)
-            z.writestr('client-data-export.json', json.dumps({'filter_applied': False, 'sha256': file_hashes}, indent=2)+'\n')
+            z.writestr('client-data-export.json', json.dumps({'filter_applied': filtering, 'sha256': file_hashes, 'spell_filter': compatibility}, indent=2)+'\n')
         return {'file': str(target.relative_to(self.work)), 'files': list(CLIENT_FILES),
-                'filter_applied': False, 'sha256': file_hashes}
+                'filter_applied': filtering, 'sha256': file_hashes, 'spell_filter': compatibility}
 
     def files(self, args):
         root = self.work
@@ -940,7 +954,14 @@ class Engine(ManagedContent):
             'nektulos':self.nektulos_status(), 'client':self.client_status()}
 
     def dispatch(self,op,args):
-        methods={'import_source':self.import_source,'import_maps':self.import_maps,'import_database':self.import_database,
+        methods={'client_addons_scan':lambda a:client_addons.scan(self,a),
+            'client_addons_lock':lambda a:client_addons.set_lock(self,a),'client_addons_copy':lambda a:client_addons.copy_files(self,a),
+            'client_dll_status':lambda a:client_dll.compiler_status(self,a),'client_dll_tools':lambda a:client_dll.install_compiler(self,a),
+            'client_dll_sdk':lambda a:client_dll.import_sdk(self,a),'client_dll_build':lambda a:client_dll.build_dll(self,a),
+            'client_dll_deploy':lambda a:client_dll.deploy_dll(self,a),
+            'player_export':lambda a:player_data.export_players(self,a),'player_preview':lambda a:player_data.preview_players(self,a),
+            'player_restore':lambda a:player_data.restore_players(self,a),
+            'import_source':self.import_source,'import_maps':self.import_maps,'import_database':self.import_database,
             'build':self.build,'deploy':self.deploy,'rollback':self.rollback,'start':self.start,'stop':self.stop,
             'backup_database':self.backup_database,'restore_database':self.restore_database,'export_client':self.export_client,
             'gameplay':self.gameplay,'save_gameplay':self.save_gameplay,'network':self.network,'sql':self.sql,
@@ -972,7 +993,7 @@ def serve(work, port, token):
                     threading.Thread(target=server.shutdown,daemon=True).start()
                     result={'message':'Stopping all processes and database'}
                 elif op=='cancel': engine.cancel.set(); result={'message':'Cancellation requested'}
-                elif op in ('state','files','logs','databases'): result=engine.dispatch(op,args)
+                elif op in ('state','files','logs','databases','client_dll_status'): result=engine.dispatch(op,args)
                 else: result=engine.enqueue(op,args)
                 payload=json.dumps({'ok':True,'result':result}).encode()
             except Exception as e:

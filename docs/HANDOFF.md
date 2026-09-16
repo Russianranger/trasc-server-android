@@ -1,3 +1,9 @@
+# 0.4.10 implementation in progress: compatibility and workspace tools
+
+Current user authorization includes reversible persistent option5 filtering, source client-overlay comparison/copy/locks, in-app DLL compilation, player/account snapshot migration, and collapsible fantasy UI. See [release notes](preview-notes.md) and [workspace implementation](workspace-0410.md). Build and device acceptance must be recorded after validation; do not call an unverified candidate published.
+
+---
+
 # Current device result: names recover after restart on both drivers (2026-09-16)
 
 User reports the first 0.4.9 launch had corrupt names; fully exiting/relaunching the client fixed them, and they remained correct after exiting/reopening the app and switching back to 24.3.4. User prefers 26.0.0 performance. Both uploaded bundles were inspected, including their previous-session logs. Read [the device follow-up](turnip-selection-049.md#device-follow-up-2026-09-16).

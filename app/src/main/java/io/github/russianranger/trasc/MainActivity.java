@@ -40,10 +40,10 @@ public final class MainActivity extends Activity {
                 if("https".equals(uri.getScheme())&&"app.trasc.local".equals(uri.getHost())){
                     String path=uri.getPath();if(path==null||path.equals("/"))path="/index.html";
                     if(!path.matches("/[a-zA-Z0-9_.-]+"))return blocked();
-                    try {String mime=path.endsWith(".js")?"application/javascript":path.endsWith(".css")?"text/css":"text/html";
+                    try {String mime=path.endsWith(".js")?"application/javascript":path.endsWith(".css")?"text/css":path.endsWith(".webp")?"image/webp":path.endsWith(".ttf")?"font/ttf":"text/html";
                         WebResourceResponse response=new WebResourceResponse(mime,"UTF-8",getAssets().open("ui"+path));
                         java.util.Map<String,String> headers=new java.util.HashMap<>();
-                        headers.put("Content-Security-Policy","default-src 'none'; script-src 'self'; style-src 'self'; img-src 'self' data:; connect-src 'none'; base-uri 'none'; form-action 'none'");
+                        headers.put("Content-Security-Policy","default-src 'none'; script-src 'self'; style-src 'self'; font-src 'self'; img-src 'self' data:; connect-src 'none'; base-uri 'none'; form-action 'none'");
                         response.setResponseHeaders(headers);return response;
                     }catch(IOException e){return blocked();}
                 }
@@ -94,6 +94,7 @@ public final class MainActivity extends Activity {
                         case "export": runOnUiThread(()->export(id,args.optString("path")));return;
                         case "import_client_zip": case "prepare_client": case "export_client":
                         case "apply_spell_test": case "restore_spell_test":
+                        case "client_addons_copy": case "client_dll_deploy":
                             // Serialize submission with native launch; start also checks queued/running jobs.
                             synchronized(clientRuntime) {
                                 if(clientRuntime.alive()||clientRuntime.busy)throw new IOException("Stop the embedded client before changing its files");
