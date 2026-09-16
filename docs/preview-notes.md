@@ -1,4 +1,4 @@
-**Latest device follow-up:** 0.4.7 export and both installed spell-file copies are now verified by matching hashes, but spell sounds and names still fail. No repeated export or reinstall is needed. Follow the [focused native-DLL comparison and four-file collection steps](diagnosis-047.md#next-device-evidence-using-existing047). Filtering remains paused.
+**Latest device follow-up:** the native-DLL OFF comparison is complete and did not fix the name fault; the user reports a worse result. Re-enable **Load the imported native dinput8.dll** for normal play. Both installed spell-file copies still match the verified 0.4.7 export; no repeated comparison, export or reinstall is needed. Next, provide the [four actual client files](diagnosis-047.md#next-evidence-four-client-files) for effect-mapping/add-on inspection. Filtering remains paused. No new APK or fix is claimed from this diagnostic result.
 
 TRASC Server Android **0.4.7 — automatic local client data sync**
 
