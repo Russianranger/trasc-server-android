@@ -844,12 +844,19 @@ class Engine(ManagedContent):
         self.run([runtime / 'bin/export_client_files'], cwd=runtime, timeout=600)
         for name in CLIENT_FILES:
             if not (runtime / 'export' / name).exists(): raise ValueError('Exporter did not create ' + name)
+        from client_spells import prepare_export
+        spell_report = prepare_export(runtime / 'export/spells_us.txt')
+        atomic_json(self.work / 'logs/client-spell-export.json', spell_report)
+        self.log('ROF2 client export: excluded ' + str(spell_report['removed_rows']) +
+                 ' unsupported spell IDs; server spell data is unchanged.')
         target = self.work / 'exports' / ('client-data-' + time.strftime('%Y%m%d-%H%M%S') + '.zip')
         with zipfile.ZipFile(target,'w',zipfile.ZIP_DEFLATED) as z:
             for name in CLIENT_FILES:
                 z.write(runtime / 'export' / name, name)
                 z.write(runtime / 'export' / name, 'Resources/' + name)
-        return {'file': str(target.relative_to(self.work)), 'files': list(CLIENT_FILES)}
+            z.writestr('rof2-spell-compatibility.json', json.dumps(spell_report, indent=2)+'\n')
+        return {'file': str(target.relative_to(self.work)), 'files': list(CLIENT_FILES),
+                'spell_compatibility': spell_report}
 
     def files(self, args):
         root = self.work

@@ -141,7 +141,7 @@ class ManagedContent:
         if resolution not in RESOLUTIONS: raise ValueError('Unsupported client resolution')
         fullscreen = args.get('fullscreen', False)
         if not isinstance(fullscreen, bool): raise ValueError('Invalid fullscreen option')
-        self.export_client({})
+        exported = self.export_client({})
         backup = self.work / 'backups/client-setup' / (time.strftime('%Y%m%d-%H%M%S') + '-' + secrets.token_hex(3))
         backup.mkdir(parents=True)
         changes = {}
@@ -186,7 +186,10 @@ class ManagedContent:
             raise
         finally:
             for target in changes: target.with_name(target.name + '.trasc-new').unlink(missing_ok=True)
-        return {'message':'Client data, login address and display settings prepared. Existing files saved in ' + str(backup.relative_to(self.work)), 'backup':str(backup.relative_to(self.work))}
+        spell_report = exported.get('spell_compatibility', {})
+        excluded = spell_report.get('removed_rows', 0)
+        return {'message':'Client data, login address and display settings prepared. ROF2 spell IDs excluded: ' + str(excluded) + '. Existing files saved in ' + str(backup.relative_to(self.work)),
+                'backup':str(backup.relative_to(self.work)), 'spell_compatibility':spell_report}
 
     def import_client_zip(self, args):
         from engine import atomic_json, safe_path, extract_archive

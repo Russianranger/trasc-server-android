@@ -1,4 +1,16 @@
-# Active handoff: 0.4.5 diagnostic follow-up (2026-09-16)
+# Active handoff: 0.4.6 ROF2 spell-table compatibility (2026-09-16)
+
+**Implemented; publication pending full CI.** Version **0.4.6/code23** addresses a concrete client-data defect after the user clarified that Skin Like Wood and Minor Healing have **neither particles nor sounds**. The original pinned seed has exactly 40,922 spell rows (matching the device export log), including eight IDs 50000–50007. ROF2's effect loader has a developer-confirmed failure with out-of-range IDs. Read [spell-effects-046.md](spell-effects-046.md) and [device-followup-045.md](device-followup-045.md).
+
+The new `client_spells.py` validates the complete generated table and filters IDs >=45000 **only in client exports**. Every supported row remains byte-exact. The complete export remains in `server/export/spells_us.unfiltered.txt`; server database rows are untouched. `Prepare client for this server` uses the filtered table in root and Resources with the existing original-file backups/rollback. Logs retain counts, IDs, hashes and numeric effect fields for spells26/200. Opt-in sound diagnostics also check both installed tables and allowlisted particle settings. No game/DLL/sound asset replacements or GPU/CPU/audio engine changes.
+
+**Applying the fix requires Prepare once after installing.** Keep the existing native add-on/model helpers, Turnip + Balanced + exact0.4.2 NPC compatibility, 1280×720 fullscreen. Stop client, open the server runtime, Prepare, then launch and test both particles and sounds for the two spells. Observe character-selection names without changing other settings. No runtime download, prefix repair, reimport or server rebuild. Name corruption persists across both previous renderers; this build does not claim its root cause is fixed. If it persists after the spell-table correction, the next independent isolation is a brief native-dinput8-disabled selection-only test, restoring it before play.
+
+77 local backend tests pass. A seed-derived table with 40,922 rows validates:8 excluded,40,914 retained,max43019; spells26/200 animation216/278 preserved. CI now additionally requires actual MariaDB serialization of the pinned full seed to give those exact results and preserve all server rows. Full Android/browser/signing/database/native/runtime gates are still required before release. Preserve app ID/certificate/signing cache; no subagents unless explicitly requested. GitHub writes require exact staged-tree comparison. Public release still0.4.5 until CI and downloaded-artifact verification finish.
+
+---
+
+# Release record: 0.4.5 diagnostic follow-up (2026-09-16)
 
 **Published and verified:** **0.4.5/code22**, source `49e26507c6b04968bdcf2b4fd999f8b5f5717a3f`. All six jobs passed in [run35095063228](https://github.com/Russianranger/trasc-server-android/actions/runs/35095063228), including browser/Android lint/signing, database, native audio, direct/PRoot Software/VirGL/DXVK, original pixel/model/input/shader/720p/prefix/restart and strict-exit gates. Public APK, matching sources and build manifest were downloaded and verified against candidate artifacts/release digests. Preview tag points to the tested source; this documentation update skips CI.
 

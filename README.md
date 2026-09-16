@@ -6,7 +6,7 @@ A standalone Android control app for [Russianranger/Triptych-Triumvirate](https:
 
 ## Downloads and first setup
 
-**App 0.4.5 — diagnostic preview:** user testing confirms music, sit/stand and swinging sounds; spells remain silent and character-selection names still glitch. Legacy math accuracy did not help and reduced FPS. Keep **Balanced CPU + NPC compatibility (recommended)**. This build checks packed spell assets and preserves audio lifecycle evidence that repetitive mixer logs previously displaced. It does **not** claim a spell or name fix. Update in place; no runtime/prefix replacement. [Focused tests](docs/preview-notes.md).
+**App 0.4.6 — ROF2 spell-data compatibility:** the user confirms missing spell particles as well as sounds. The original server seed contains eight spell IDs above ROF2's supported range; the old exporter copied all of them into the client. This build filters generated client spell tables while preserving the full export and server database. **After installing, stop the client and run Client → Prepare client for this server once.** Keep **Turnip + Balanced + NPC compatibility (recommended)**. The character-selection name fault remains unresolved. [Testing instructions](docs/preview-notes.md).
 
 **Runtime 1.1 update:** fixes the missing `uuid/uuid.h` compilation error by including `uuid-dev`. Existing users can select **Setup → Shut down runtime → Download runtime**, then retry **Build imported source**. This preserves imported files and the build cache; no APK reinstall is needed. [Runtime update details](docs/runtime-release-notes.md).
 

@@ -1,18 +1,17 @@
-TRASC Server Android **0.4.5 — diagnostic preview**
+TRASC Server Android **0.4.6 — ROF2 spell-effect data fix**
 
-The latest Thor test confirms music, sit/stand and swinging effects. Spells remain silent; character-selection names still glitch. Legacy math accuracy did not fix either and reduced FPS. Use **Balanced + NPC compatibility (recommended)**.
+The user confirms **both particles and sounds are missing** for Skin Like Wood and Minor Healing. The original project database exports eight spell IDs above ROF2's supported range, a documented cause of this failure. This version filters those IDs from client exports, retains the complete export, and preserves all server spell data. [Evidence and implementation](spell-effects-046.md).
 
-This APK improves the evidence collection, not the rendering/audio implementation. Sound diagnostics now indexes `snd*.pfs` archives, identifies named casting/spell WAVs and their header formats, and keeps audio lifecycle calls separately from repetitive mixer output. Existing game files are read only. A missing loose file is not called missing when it exists in a checked archive. Unreadable/unscanned archives are explicitly reported.
+**Install, then Prepare once — installing the APK alone does not update the existing spell table.**
 
-**One spell test and one brief name comparison:**
+1. Stop the client and server runtime. Install 0.4.6 over the existing app; confirm the version. Open the runtime using the top control.
+2. In **Client**, retain **Turnip + DXVK / Balanced / NPC compatibility (recommended or 0.4.2 exact) / 1280×720 / Fullscreen**, native dinput8 and DirectX model helpers. Press **Prepare client for this server** once. The completion message reports excluded spell IDs (eight for the original seed). Existing client files are backed up; no server rebuild is needed.
+3. Start the server. Enable **Sound diagnostics** for this short test, leave general verbose diagnostics off, and launch. Observe the character-selection name, then enter the world. With game sound audible, cast **Skin Like Wood** and **Minor Healing**; report **particles and sound separately** for each. Test one working sit/stand or swinging sound as a control.
+4. Stop the client and **export Logs immediately**. The bundle now includes the export summary, actual installed root/Resources spell-table checks and particle settings. Turn Sound diagnostics off for normal play.
 
-1. Stop the client/runtime and install 0.4.5 over the current app. No runtime download, reimport, prefix repair or server rebuild.
-2. Use **Turnip + DXVK / 1280×720 / Fullscreen / Balanced / NPC compatibility (recommended)**, Game audio on, **Sound diagnostics on**, general Verbose Wine diagnostics off. Keep native DLL/model helpers and available cores enabled.
-3. Observe the name at character selection. Enter the world; set **Music Volume 0, Sound Volume 100**. Cast **Skin Like Wood**, then a different known spell if available. Test sit/stand or swinging once as the audible control. Stop and **export Logs immediately**. Report which spell(s) were silent.
-4. Change only Graphics to **Android GPU / VirGL**. Relaunch only as far as character selection; record the name for about 10 seconds. Stop and export Logs. This is a correctness check, not a performance benchmark; no need to play through a slow VirGL session.
-5. Restore **Turnip + DXVK**, keep **Balanced**, and turn **Sound diagnostics off** for normal play. Do not repeat the rejected Legacy math or direct-mapping comparisons.
+No runtime download, prefix repair, client reimport or database changes. Keep Turnip for the better observed performance. The name fault remains unresolved; avoid repeating the rejected renderer, direct-mapping and Legacy math comparisons. If the name remains corrupted after this data correction, the next separate check is the existing native-DLL bypass at selection only, restoring the add-on before play.
 
-The spell/name root causes remain unconfirmed. The renderer comparison narrows the name fault to the DXVK path or shared client/Wine behavior; archive/lifecycle evidence narrows the spell path. No physical-device fix is claimed by this release.
+The export correction is validated with regression tests and the real seed. Physical Thor recovery of spell effects still requires this test; no name-rendering fix is claimed.
 
 ---
 

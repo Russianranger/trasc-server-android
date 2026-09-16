@@ -183,7 +183,9 @@ def inspect_client(client, logs, packed=False):
         ini = root.get('eqclient.ini')
         allowed = {'sound', 'music', 'soundvolume', 'musicvolume', 'soundrealism',
                    'envsounds', 'combatmusic', 'speakertype', 'sound44k', 'sound16bit',
-                   'usethreepointlighting', 'shownameslevel'}
+                   'usethreepointlighting', 'shownameslevel', 'showspelleffects',
+                   'spellparticleopacity', 'spellparticledensity',
+                   'spellparticlenearclipplane', 'spellparticlecastfilter'}
         if ini and ini.is_file() and ini.stat().st_size <= 2*1024*1024:
             active = False
             for line in ini.read_bytes().decode('latin-1').lstrip('\xef\xbb\xbf').splitlines():
@@ -193,6 +195,20 @@ def inspect_client(client, logs, packed=False):
                     key, value = (v.strip() for v in line.split('=', 1))
                     if key.casefold() in allowed and re.fullmatch(r'[-+0-9A-Za-z. ]{1,32}', value):
                         report['settings'][key.casefold()] = value
+        if packed:
+            from client_spells import inspect_data, read_table
+            resources = root.get('resources')
+            resource_files = directory(resources, 20000) if resources else {}
+            report['spell_tables'] = {}
+            for location, mapping in (('root', root), ('resources', resource_files)):
+                path = mapping.get('spells_us.txt')
+                if path is None:
+                    report['spell_tables'][location] = {'status': 'missing_or_ambiguous'}
+                    continue
+                try:
+                    report['spell_tables'][location] = dict(status='inspected', **inspect_data(read_table(path)))
+                except (ValueError, OSError):
+                    report['spell_tables'][location] = {'status': 'unreadable_or_invalid'}
         # Inspect headers only, at most 256 files and 4 KiB each. A format
         # count is enough to separate PCM from compressed WAV codecs.
         wave_paths = [p for mapping in (root, sound_files) for key, p in mapping.items()
