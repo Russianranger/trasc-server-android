@@ -60,7 +60,19 @@ if sys.argv[2] == 'engine.py':
     assert (root/'server/export/spells_us.txt').read_bytes()==data
 else:
     import client_runner, client_audio
+    import client_spells
+    assert client_spells.verify_installed_test(root, {}) == {'state': 'inactive'}
     client=root/'client';client.mkdir();logs=root/'logs';logs.mkdir()
+    (client/'spells_us.txt').write_bytes(data)
+    (client/'Resources').mkdir()
+    (client/'Resources/spells_us.txt').write_bytes(row(26))
+    (client/'trasc-client.json').write_text('{"imported":true}')
+    (client/'spells_us.txt').write_bytes(row(26))
+    import hashlib
+    proof={'state':'applied','client_identity':client_spells._identity(client),
+      'paths':['spells_us.txt','Resources/spells_us.txt'],
+      'filtered_sha256':hashlib.sha256(row(26)).hexdigest(),'excluded_ids':[50000]}
+    assert client_spells.verify_installed_test(client,proof)['installed'][0]['rows']==1
     (client/'spells_us.txt').write_bytes(data)
     client_audio.inspect_client(client,logs,packed=True)
     import json

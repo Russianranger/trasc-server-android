@@ -837,6 +837,8 @@ class Engine(ManagedContent):
         return {'output': result[:200000], 'truncated': len(result)>200000}
 
     def export_client(self, args):
+        from client_spells import require_no_test
+        require_no_test(self.work)
         client = self._local_client(required=False)
         changes = self._client_data_changes(client) if client else None
         result = self._export_client_data()
@@ -864,10 +866,9 @@ class Engine(ManagedContent):
                 raise ValueError('Exporter did not create a regular nonempty file: ' + name)
         from managed_content import digest
         file_hashes = {name: digest(runtime / 'export' / name) for name in CLIENT_FILES}
-        # Filtering is paused at the user's request. Both destinations receive
-        # the byte-exact full export, including any high spell IDs.
+        # The separate opt-in comparison never changes normal full exports.
         spell_report = {'filter_applied': False, 'sha256': file_hashes['spells_us.txt'],
-                        'message': 'Spell filtering is paused; all exported rows are retained.'}
+                        'message': 'Full export; all spell rows retained. Exclusion is a separate client test.'}
         atomic_json(self.work / 'logs/client-spell-export.json', spell_report)
         target = self.work / 'exports' / ('client-data-' + time.strftime('%Y%m%d-%H%M%S') + '-' + secrets.token_hex(3) + '.zip')
         with zipfile.ZipFile(target,'w',zipfile.ZIP_DEFLATED) as z:
@@ -947,6 +948,7 @@ class Engine(ManagedContent):
             'fix_nektulos':self.fix_nektulos,'revert_nektulos':self.revert_nektulos,
             'import_client_zip':self.import_client_zip,
             'prepare_client':self.prepare_client,
+            'apply_spell_test':self.apply_spell_test,'restore_spell_test':self.restore_spell_test,
             'files':self.files,'edit_file':self.edit_file,'export_logs':self.export_logs,'logs':self.logs,
             'databases':lambda a:{'candidates':self.database_candidates()},'state':lambda a:self.state()}
         if op not in methods: raise ValueError('Unknown operation')

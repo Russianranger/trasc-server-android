@@ -1,3 +1,13 @@
+# Active work: 0.4.8 authorized spell exclusion comparison (2026-09-16)
+
+**User lifted the filtering pause:** Winlator also has no spell sound; “Lets go ahead and try that exclusion.” New input `Winlator Ludashi_2026-09-16 13_26_28.mp4` is 10.8 seconds. Sampled frames show in-world play and Sound Volume100%; the user's sound report is accepted. No Winlator file hashes/logs accompanied the clip, and it does not establish the character-selection name result or independently verify identical installed data. Do not claim it proves the cause.
+
+0.4.8/code25 adds **Client → Apply spell exclusion test / Restore full spell files**. Explicit actions affect only both installed spell tables; full export and server DB stay untouched. The two current originals must match, and unsupported IDs must be exactly50000–50007. Backups/journal precede replacements; cancellation/failure rolls back; interrupted changes block launch and permit Restore to finish. Both installed hashes/counts are verified at launch and captured in client-state.json. Restore verifies backups and refuses unrelated intervening edits. Export/Prepare/import are blocked while active. Existing Android submission/launch interlock covers both actions. All helper code stays in already-deployed client_spells.py/managed_content.py; no new backend copy-list entry. Native dinput8, model helpers, exact0.4.2 NPC settings, Balanced and all graphics/audio recipes are unchanged.
+
+Local backend and JVM checks passed; CI/public APK verification is pending at this checkpoint. Preserve all original gates/signing identity. Do not mark publication or device recovery complete until verified. Follow [preview-notes.md](preview-notes.md) for Apply → test both effects and names → stop/export logs → Restore. The older pause/file-request instructions below are superseded. No subagents. Final handoff commit must wait for CI completion and use [skip ci].
+
+---
+
 # Current investigation: supplied assets inspected; filtering still paused (2026-09-16)
 
 User supplied **all four requested files** in `trasc_launcher.zip`. Read [client-assets-047.md](client-assets-047.md) before continuing. Do not request them again or import this ZIP as a whole client. Read-only inspection found 675 complete EFF records, 2,577 EDD records, all 2,928 nonzero emitter references in range, and all nonzero sound IDs mapped. Animations 216/278 both specify casting `SpelCast.WAV` and landing `SpelGdHt.WAV`, with emitter minimum levels zero. The earlier device inventory proves the casting WAV is packed in snd2.pfs; it does not specifically inventory the landing WAV or the referenced DDS textures.

@@ -1,7 +1,10 @@
 """ROF2 client spell-table compatibility; never changes server database rows."""
 import hashlib
 import io
+import json
 import re
+import secrets
+import time
 from pathlib import Path
 from client_display import atomic_bytes
 
@@ -89,3 +92,145 @@ def prepare_export(path):
     atomic_bytes(full, original)
     if report['removed_rows']: atomic_bytes(path, output.getvalue())
     return report
+
+
+# Explicit diagnostic only. Normal export/Prepare continue to copy full data.
+TEST_IDS = list(range(50000, 50008))
+
+
+def test_record(work):
+    marker = Path(work) / 'backups/client-spell-test/current.json'
+    if not marker.exists(): return {}
+    if marker.is_symlink() or marker.stat().st_size > 65536:
+        raise ValueError('Invalid spell test journal')
+    record = json.loads(marker.read_text())
+    if record.get('format') != 1 or record.get('state') not in ('applying', 'applied', 'restoring', 'restored'):
+        raise ValueError('Invalid spell test journal')
+    return record
+
+
+def test_active(work):
+    return test_record(work).get('state') in ('applying', 'applied', 'restoring')
+
+
+def require_no_test(work):
+    if test_active(work):
+        raise ValueError('Restore full spell files in Client before exporting, preparing or replacing the client')
+
+
+def _spell_paths(client):
+    def unique(parent, name):
+        matches = [p for p in parent.iterdir() if p.name.casefold() == name.casefold()]
+        if len(matches) != 1 or matches[0].is_symlink():
+            raise ValueError('Missing, ambiguous or linked client path: ' + name)
+        return matches[0]
+    client = Path(client)
+    if client.is_symlink(): raise ValueError('Client cannot be a symlink')
+    resources = unique(client, 'Resources')
+    if not resources.is_dir(): raise ValueError('Resources must be a directory')
+    return [unique(client, 'spells_us.txt'), unique(resources, 'spells_us.txt')]
+
+
+def _identity(client):
+    marker = Path(client) / 'trasc-client.json'
+    if marker.is_symlink() or not marker.is_file() or marker.stat().st_size > 65536:
+        raise ValueError('Invalid imported client identity')
+    return hashlib.sha256(marker.read_bytes()).hexdigest()
+
+
+def _test_targets(client, record):
+    paths = _spell_paths(client)
+    if _identity(client) != record['client_identity'] or [str(p.relative_to(client)) for p in paths] != record['paths']:
+        raise ValueError('The imported client changed after the spell test; original backups are retained')
+    return paths
+
+
+def verify_installed_test(client, record):
+    """Runs in the client runtime too; no server-only module imports here."""
+    if not record or record.get('state') == 'restored': return {'state': 'inactive'}
+    if record.get('state') != 'applied':
+        raise ValueError('Spell test was interrupted. Use Restore full spell files before launching')
+    reports = []
+    for target in _test_targets(client, record):
+        report = inspect_data(read_table(target))
+        if report['source_sha256'] != record['filtered_sha256'] or report['removed_rows']:
+            raise ValueError('Spell test files changed. Restore full spell files before launching')
+        reports.append({'path': str(target.relative_to(client)), 'rows': report['rows'],
+                        'max_id': report['max_id_before'], 'sha256': report['source_sha256']})
+    return {'state': 'applied', 'excluded_ids': record['excluded_ids'], 'installed': reports}
+
+
+def _save_test(work, record):
+    from engine import atomic_json
+    atomic_json(Path(work) / 'backups/client-spell-test/current.json', record)
+    atomic_json(Path(work) / 'logs/client-spell-test.json', record)
+
+
+def restore_test(work, client):
+    from managed_content import replace_client_file
+    record = test_record(work)
+    if not record or record['state'] == 'restored':
+        return {'message': 'No spell exclusion test is active.'}
+    if not re.fullmatch(r'[0-9]{8}-[0-9]{6}-[0-9a-f]{12}', record.get('backup_id', '')):
+        raise ValueError('Invalid spell test backup location')
+    backup = Path(work) / 'backups/client-spell-test' / record['backup_id']
+    if backup.is_symlink(): raise ValueError('Spell backup cannot be a symlink')
+    targets = _test_targets(client, record)
+    originals = [read_table(backup / name) for name in ('root.txt', 'resources.txt')]
+    # Validate every original and destination before changing either copy.
+    for target, data in zip(targets, originals):
+        if hashlib.sha256(data).hexdigest() != record['original_sha256']:
+            raise ValueError('Spell backup checksum failed; files were not restored')
+        if hashlib.sha256(read_table(target)).hexdigest() not in (record['original_sha256'], record['filtered_sha256']):
+            raise ValueError('Spell files changed outside the test; backups retained, restore refused')
+    record['state'] = 'restoring'; _save_test(work, record)
+    # No cancellation once restoring: finish both originals or leave a journal
+    # that blocks launch and permits a subsequent Restore to finish safely.
+    for target, data in zip(targets, originals): replace_client_file(target, data)
+    for target in targets:
+        if hashlib.sha256(read_table(target)).hexdigest() != record['original_sha256']:
+            raise ValueError('Spell restore verification failed')
+    record.update(state='restored', restored_at=time.time())
+    _save_test(work, record)
+    return {'message': 'Full spell files restored and verified in root and Resources.', 'spell_test': record}
+
+
+def apply_test(work, client, check_cancel=lambda: None):
+    from managed_content import replace_client_file
+    record = test_record(work)
+    if record.get('state') == 'applied':
+        verify_installed_test(client, record)
+        return {'message': 'Spell exclusion test is already active; original backups are retained.', 'spell_test': record}
+    require_no_test(work)
+    targets = _spell_paths(client)
+    data = [read_table(p) for p in targets]
+    if data[0] != data[1]: raise ValueError('Root and Resources spell files differ. Export & sync client data before this test')
+    output = io.BytesIO(); report = inspect_data(data[0], output)
+    if report['removed_ids'] != TEST_IDS or report['removed_rows'] != len(TEST_IDS):
+        raise ValueError('This comparison requires exactly spell IDs 50000–50007 above the ROF2 limit; no files changed')
+    filtered = output.getvalue()
+    identity = _identity(client)
+    backup_id = time.strftime('%Y%m%d-%H%M%S') + '-' + secrets.token_hex(6)
+    backup = Path(work) / 'backups/client-spell-test' / backup_id
+    backup.mkdir(parents=True)
+    for name, original in zip(('root.txt', 'resources.txt'), data):
+        replace_client_file(backup / name, original)
+        if read_table(backup / name) != original: raise ValueError('Spell backup verification failed')
+    record = {'format': 1, 'state': 'applying', 'created_at': time.time(), 'backup_id': backup_id,
+              'client_identity': identity, 'paths': [str(p.relative_to(client)) for p in targets],
+              'original_sha256': report['source_sha256'], 'filtered_sha256': report['compatible_sha256'],
+              'original_rows': report['rows'], 'filtered_rows': report['kept_rows'],
+              'excluded_ids': report['removed_ids'], 'reported_spells': report['reported_spells']}
+    _save_test(work, record)  # Durable originals and journal precede replacement.
+    try:
+        for target in targets:
+            check_cancel(); replace_client_file(target, filtered)
+        record['state'] = 'applied'
+        verify_installed_test(client, record)
+        _save_test(work, record)
+    except Exception:
+        restore_test(work, client)
+        raise
+    return {'message': 'Spell test applied: 8 high-ID entries excluded from both folders; ' +
+            str(report['kept_rows']) + ' rows retained. Originals backed up. Use Restore full spell files after testing.',
+            'spell_test': record}

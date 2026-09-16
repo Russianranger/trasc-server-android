@@ -16,12 +16,12 @@ for(const [name,type,value,min,max]of [['Character:RaidExpMultiplier','real','0.
  try{
   const page=await browser.newPage({viewport:{width:412,height:915}}),errors=[];page.on('pageerror',e=>errors.push(e.message));
   await page.addInitScript(data=>{
-   let seq=0,jobs=[];const actions=['None','MouseLeft','MouseRight','PointerUp','PointerDown','PointerLeft','PointerRight','KeyW','KeyT','Space','Escape'];
+   let seq=0,jobs=[],spellTest={};const actions=['None','MouseLeft','MouseRight','PointerUp','PointerDown','PointerLeft','PointerRight','KeyW','KeyT','Space','Escape'];
    let profile={sources:['A','B','RightUp','RightDown','RightLeft','RightRight'],actions,bindings:{A:'Space',B:'Escape',RightUp:'PointerUp',RightDown:'PointerDown',RightLeft:'PointerLeft',RightRight:'PointerRight'},deadzone:.2,sensitivity:700};
    window.__saves=[];window.__alive=true;window.__calls=[];window.__exports=[];window.__clientStarts=[];window.__clientViews=0;
    let clientRuntime={installed:true,alive:false,busy:false,status:'Client runtime installed',directx_installed:false};
    window.__clientEvidence=value=>Object.assign(clientRuntime.launch,value);
-   const state=()=>({version:'0.2.1',running:false,settings:{ip:'127.0.0.1',login_port:5999,repo:'https://github.com/Russianranger/Triptych-Triumvirate',ref:'main',workers:3,jobs:2},source:{commit:'test'},maps_ready:true,database_imported:true,binaries_ready:true,processes:{},jobs,free_bytes:50e9,nektulos:{legacy_ready:true},client:{imported:false}});
+   const state=()=>({version:'0.2.1',running:false,settings:{ip:'127.0.0.1',login_port:5999,repo:'https://github.com/Russianranger/Triptych-Triumvirate',ref:'main',workers:3,jobs:2},source:{commit:'test'},maps_ready:true,database_imported:true,binaries_ready:true,processes:{},jobs,free_bytes:50e9,nektulos:{legacy_ready:true},client:{imported:true,files:10,bytes:1000,spell_test:spellTest}});
    window.Trasc={call(id,op,input){setTimeout(()=>{
     const args=JSON.parse(input);let result;window.__calls.push(op);
     if(op==='native_state')result={installed:true,alive:window.__alive,status:window.__alive?'Runtime ready':'Runtime stopped. Logs are still available.',free_bytes:50e9};
@@ -49,6 +49,8 @@ for(const [name,type,value,min,max]of [['Character:RaidExpMultiplier','real','0.
     else{
      let completed={};if(op==='gameplay')completed={...data,rulesets:[{id:1,name:'default'}],selected:1,active_name:'default'};
      else if(op==='export_client')completed={file:'exports/client-data.zip',local_client_synced:true,copied_files:8,message:'All four client data files overwritten in the local client root and Resources folder. Originals saved in backups/client-setup/test.'};
+     else if(op==='apply_spell_test'){spellTest={state:'applied',excluded_ids:[50000,50001,50002,50003,50004,50005,50006,50007],filtered_rows:40914};completed={message:'Spell test applied: 8 high-ID entries excluded.'};}
+     else if(op==='restore_spell_test'){spellTest={state:'restored'};completed={message:'Full spell files restored and verified in root and Resources.'};}
      else if(op==='save_gameplay'){window.__saves.push(args);for(const [name,value]of Object.entries(args.values))data.values[name]={value,ruleset:1};}
      const job={id:String(++seq),operation:op,status:'done',result:completed};jobs=[job];result=job;
     }
@@ -80,10 +82,20 @@ for(const [name,type,value,min,max]of [['Character:RaidExpMultiplier','real','0.
   assert((await page.locator('#client-input-status').textContent()).includes('KeyT'));
   const toolbar=await page.locator('.runtime-toolbar').boundingBox();assert(toolbar.y>=0&&toolbar.y+toolbar.height<915,'Runtime controls remain in the viewport while scrolled');
   await page.screenshot({path:'ui-reports/client-mobile.png',fullPage:true});
+  await page.locator('#spell-test-apply').click();
+  await page.waitForFunction(()=>document.getElementById('spell-test-status').textContent.includes('40914 rows'));
+  await page.waitForFunction(()=>!document.getElementById('spell-test-restore').disabled);
+  for(const id of ['spell-test-apply','client-prepare','client-import','export-client'])assert(await page.locator('#'+id).isDisabled(),'Active comparison protects '+id);
+  await page.screenshot({path:'ui-reports/spell-comparison-mobile.png',fullPage:true});
+  await page.locator('#spell-test-restore').click();
+  await page.waitForFunction(()=>document.getElementById('spell-test-status').textContent.includes('restored and verified'));
+  await page.waitForFunction(()=>!document.getElementById('spell-test-apply').disabled);
+  assert(await page.locator('#spell-test-restore').isDisabled());
   await page.locator('#client-directx-online').click();await page.waitForFunction(()=>document.getElementById('client-directx-status').textContent.includes('installed'));
   await page.locator('#client-directx-offline').click();await page.waitForFunction(()=>document.getElementById('notice').textContent==='DirectX model helpers installed.');
   await page.locator('#client-resolution').selectOption('960x540');await page.locator('#client-desktop').click();
   await page.waitForFunction(()=>window.__clientViews===1);
+  assert(await page.locator('#spell-test-apply').isDisabled(),'Running client blocks file comparison');
   assert(await page.locator('#client-launch').isDisabled(),'A running desktop must be stopped before another launch');
   assert.deepEqual(await page.evaluate(()=>window.__clientStarts[0]),{sound_diagnostics:false,audio:true,npc_rendering:'compatibility',mode:'desktop',resolution:'960x540',fullscreen:false,native_dinput8:true,diagnostic_logging:false,native_d3dx:false,renderer:'software',cpu_profile:'balanced',runtime_mode:'auto',graphics_threading:'multi',cpu_affinity:'available'});
   assert(!(await page.locator('#client-launch-status').textContent()).includes('load confirmed'),'File presence/request must not claim DLL loaded');

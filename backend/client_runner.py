@@ -17,6 +17,7 @@ from contextlib import contextmanager
 from client_metrics import process_threads, allow_game_cpus
 import client_vulkan
 import client_audio
+import client_spells
 from client_display import RESOLUTIONS, apply_display
 
 SESSION = Path('/session')
@@ -192,6 +193,7 @@ def pe_machine(path):
 
 
 def validate_request(request):
+    spell_test = client_spells.verify_installed_test(CLIENT, request.get('spell_test', {}))
     if request.get('npc_rendering', 'compatibility') not in ('standard', 'compatibility', 'compatibility_042', 'direct_043'): raise ValueError('Invalid NPC rendering option')
     if not isinstance(request.get('audio', False), bool): raise ValueError('Invalid audio option')
     if not isinstance(request.get('sound_diagnostics', False), bool): raise ValueError('Invalid sound diagnostic option')
@@ -216,6 +218,7 @@ def validate_request(request):
             dlls = [p for p in CLIENT.iterdir() if p.name.lower() == 'dinput8.dll' and p.is_file() and not p.is_symlink()]
             if len(dlls) != 1: raise ValueError('dinput8.dll must be beside eqgame.exe; import the modified client or disable the native DLL diagnostic option')
             if pe_machine(dlls[0]) != machine: raise ValueError('dinput8.dll must be 32-bit x86 to match ROF2')
+    return spell_test
 
 
 def dll_status(log):
@@ -540,7 +543,7 @@ class Supervisor:
         self.update(**report)
 
     def start(self):
-        validate_request(self.request)
+        self.status['spell_test'] = validate_request(self.request)
         print(f"Client session started at {self.status['started_at']}: {self.request['mode']}", flush=True)
         for p in (SESSION, PREFIX, LOGS): p.mkdir(parents=True, exist_ok=True)
         previous_state = LOGS/'client-state.json'

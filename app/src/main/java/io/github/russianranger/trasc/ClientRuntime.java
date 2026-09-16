@@ -113,8 +113,8 @@ final class ClientRuntime {
                 org.json.JSONArray jobs=response.getJSONObject("result").getJSONArray("jobs");
                 for(int i=0;i<jobs.length();i++) {
                     JSONObject job=jobs.getJSONObject(i);
-                    if(Arrays.asList("import_client_zip","prepare_client","export_client").contains(job.optString("operation"))&&Arrays.asList("queued","running").contains(job.optString("status")))
-                        throw new IOException("Wait for client import, preparation or data export to finish before launching");
+                    if(Arrays.asList("import_client_zip","prepare_client","export_client","apply_spell_test","restore_spell_test").contains(job.optString("operation"))&&Arrays.asList("queued","running").contains(job.optString("status")))
+                        throw new IOException("Wait for client file changes to finish before launching");
                 }
             }
             String mode=options.optString("mode","client"),resolution=options.optString("resolution","800x600"),renderer=options.optString("renderer","software");
@@ -148,6 +148,8 @@ final class ClientRuntime {
                 .put("android_directory",client.getCanonicalPath()).put("windows_drive","D:").put("shared_storage",false));
             request.put("graphics_threading",graphicsThreading).put("cpu_affinity",cpuAffinity).put("fullscreen",mode.equals("client")&&options.optBoolean("fullscreen",true));
             request.put("npc_rendering",npcRendering).put("audio",options.optBoolean("audio",true)).put("sound_diagnostics",options.optBoolean("sound_diagnostics",false));
+            File spellJournal=new File(server.work,"backups/client-spell-test/current.json");
+            if(spellJournal.exists())request.put("spell_test",json(spellJournal));
             RuntimeManager.write(new File(run,"request.json"),request.toString());
             File backend=new File(server.home,"client-backend");backend.mkdirs();
             for(String name:new String[]{"client_runner.py","client_display.py","client_metrics.py","client_spells.py","client_vulkan.py","client_audio.py","libasound_module_pcm_trasc.so","audio-bundle.json","graphics_probe.py","runtime_probe.py","wined3d.dll","wined3d-patch.json","wineserver","wineserver-patch.json"})

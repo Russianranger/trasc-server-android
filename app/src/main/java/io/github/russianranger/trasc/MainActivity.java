@@ -93,6 +93,7 @@ public final class MainActivity extends Activity {
                         case "pick": runOnUiThread(()->pick(id,args.optString("kind","file"),args.optBoolean("replace")));return;
                         case "export": runOnUiThread(()->export(id,args.optString("path")));return;
                         case "import_client_zip": case "prepare_client": case "export_client":
+                        case "apply_spell_test": case "restore_spell_test":
                             // Serialize submission with native launch; start also checks queued/running jobs.
                             synchronized(clientRuntime) {
                                 if(clientRuntime.alive()||clientRuntime.busy)throw new IOException("Stop the embedded client before changing its files");

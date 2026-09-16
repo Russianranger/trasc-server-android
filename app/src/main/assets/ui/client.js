@@ -1,7 +1,22 @@
 'use strict';
 let controllerLoaded=false,controllerOptions=null,captureActive=false;
 const clientPressed=new Set();let pointerX=450,pointerY=160,wheelTotal=0;
-function renderClientStatus(client){$('client-status').textContent=client?.imported?client.files+' entries · '+bytes(client.bytes)+' extracted. '+(client.dinput8_present?'dinput8.dll is present.':'dinput8.dll was not found beside eqgame.exe.'):'No client imported.';}
+let clientFileBusy=false, spellComparison={}, clientImported=false;
+function spellTestControls(){
+ const active=!!spellComparison.state&&spellComparison.state!=='restored';
+ $('spell-test-apply').disabled=!!(busy||clientFileBusy||active||!clientImported);
+ $('spell-test-restore').disabled=!!(busy||clientFileBusy||!active);
+ for(const id of ['client-prepare','client-import','export-client'])$(id).disabled=!!(busy||clientFileBusy||active);
+}
+function renderClientStatus(client){
+ clientImported=!!client?.imported;spellComparison=client?.spell_test||{};
+ $('client-status').textContent=clientImported?client.files+' entries · '+bytes(client.bytes)+' extracted. '+(client.dinput8_present?'dinput8.dll is present.':'dinput8.dll was not found beside eqgame.exe.'):'No client imported.';
+ $('spell-test-status').textContent=spellComparison.error|| (spellComparison.state==='applied'?
+  'Test active · '+spellComparison.excluded_ids.length+' IDs excluded · '+spellComparison.filtered_rows+' rows in each folder. Originals retained for Restore.':
+  ['applying','restoring'].includes(spellComparison.state)?'File update incomplete. Use Restore full spell files before launching.':
+  spellComparison.state==='restored'?'Full spell files restored and verified in both folders.':'No spell exclusion test active.');
+ spellTestControls();
+}
 function renderController(profile){
  controllerOptions=profile;controllerLoaded=true;$('controller-deadzone').value=profile.deadzone;$('controller-speed').value=profile.sensitivity;$('controller-bindings').replaceChildren();
  for(const source of profile.sources){const field=document.createElement('div'),label=document.createElement('label'),select=document.createElement('select');label.htmlFor='binding-'+source;label.textContent=source.replace(/([a-z])([A-Z])/g,'$1 $2');select.id='binding-'+source;
@@ -53,6 +68,7 @@ async function clientRuntimeState(){
   for(const [id,key] of [['client-sound-diagnostics','sound_diagnostics'],['client-audio','audio'],['client-fullscreen','fullscreen'],['client-native-dll','native_dinput8'],['client-native-models','native_d3dx'],['client-diagnostics','diagnostic_logging']])if(typeof saved[key]==='boolean')$(id).checked=saved[key];
  }
  for(const id of ['client-desktop','client-launch','client-prefix-repair','client-runtime-online','client-runtime-offline','client-prepare','client-import','client-directx-online','client-directx-offline'])$(id).disabled=!!(s.alive||s.busy);
+ clientFileBusy=!!(s.alive||s.busy);spellTestControls();
  $('client-view').disabled=!(s.alive&&s.display_ready);
  $('client-runtime-status').textContent=(s.installed?'Installed · ':'Not installed · ')+s.status;
  $('client-directx-status').textContent=s.directx_installed?'DirectX model helpers installed.':'Install the DirectX helpers to enable the legacy character animation and model functions.';
@@ -70,6 +86,8 @@ action('client-runtime-online',async()=>{notice('Downloading the client runtime�
 action('client-runtime-offline',async()=>{await api('pick',{kind:'client-runtime'});await clientRuntimeState();notice('Client runtime installed.');});
 action('client-directx-online',async()=>{notice('Downloading Microsoft DirectX model helpers…');await api('client_directx_online');await clientRuntimeState();notice('DirectX model helpers installed. Launch ROF2.');});
 action('client-directx-offline',async()=>{await api('pick',{kind:'client-directx'});await clientRuntimeState();notice('DirectX model helpers installed.');});
+action('spell-test-apply',()=>job('apply_spell_test'));
+action('spell-test-restore',()=>job('restore_spell_test'));
 action('client-prepare',async()=>{await job('prepare_client',{resolution:$('client-resolution').value,fullscreen:$('client-fullscreen').checked});});
 for(const [id,mode] of [['client-desktop','desktop'],['client-launch','client']])action(id,async()=>{
  await api('controller_capture',{active:false});notice('Opening the client display. First-time Wine setup can take a minute…');

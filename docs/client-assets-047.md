@@ -1,5 +1,7 @@
 # 0.4.7 supplied client assets: spell definitions and actual add-on
 
+**Update:** the subsequent Winlator test also has silent spells, and the user explicitly authorized the eight-ID exclusion comparison. Follow the 0.4.8 instructions in [preview-notes.md](preview-notes.md); the pause below is historical.
+
 Input: `trasc_launcher.zip`, supplied September 16, 2026 after the completed native-DLL bypass. It contains exactly the four requested files. Analysis was read-only. No client asset, database, launcher or native runtime was modified; no new APK was built. The user's pause on filtering remains in force.
 
 ## File identities

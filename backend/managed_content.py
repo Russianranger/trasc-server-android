@@ -36,6 +36,7 @@ def replace_client_file(target, value):
     temp = Path(name)
     try:
         if isinstance(value, Path): shutil.copy2(value, temp)
+        elif isinstance(value, bytes): temp.write_bytes(value)
         else: temp.write_text(value, encoding='cp1252')
         os.replace(temp, target)
     finally:
@@ -154,8 +155,20 @@ class ManagedContent:
         return {'message': 'Original Nektulos map pair restored. Start the server to load it.'}
 
     def client_status(self, args=None):
+        from client_spells import test_record
         marker = self.work / 'client/current/trasc-client.json'
-        return json.loads(marker.read_text()) if marker.exists() else {'imported': False}
+        result = json.loads(marker.read_text()) if marker.exists() else {'imported': False}
+        try: result['spell_test'] = test_record(self.work)
+        except (ValueError, OSError) as e: result['spell_test'] = {'state': 'error', 'error': str(e)}
+        return result
+
+    def apply_spell_test(self, args):
+        from client_spells import apply_test
+        return apply_test(self.work, self._local_client(), self.check_cancel)
+
+    def restore_spell_test(self, args):
+        from client_spells import restore_test
+        return restore_test(self.work, self._local_client())
 
     def _local_client(self, required=True):
         from engine import safe_path
@@ -215,6 +228,8 @@ class ManagedContent:
 
     def prepare_client(self, args):
         from engine import atomic_json
+        from client_spells import require_no_test
+        require_no_test(self.work)
         client = self._local_client()
         resolution = args.get('resolution', '800x600')
         if resolution not in RESOLUTIONS: raise ValueError('Unsupported client resolution')
@@ -235,6 +250,8 @@ class ManagedContent:
 
     def import_client_zip(self, args):
         from engine import atomic_json, safe_path, extract_archive
+        from client_spells import require_no_test
+        require_no_test(self.work)
         archive = safe_path(self.work / 'incoming', args['file'], True)
         if not archive.is_file() or archive.parent != self.work / 'incoming':
             raise ValueError('Choose a client ZIP through the Android file picker')

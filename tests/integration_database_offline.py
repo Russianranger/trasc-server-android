@@ -82,6 +82,19 @@ def verify(seed, work):
         assert int(engine.mysql('SELECT COUNT(*) FROM spells_new;').splitlines()[1]) == counts['spells_new']
         assert int(engine.mysql('SELECT MAX(id) FROM spells_new;').splitlines()[1]) == 50007
         print('PASS: all 40922 real seed spell rows copied byte-exact to root, Resources and ZIP; originals backed up, server rows preserved', flush=True)
+        comparison = engine.apply_spell_test({})['spell_test']
+        assert comparison['excluded_ids'] == list(range(50000, 50008))
+        assert comparison['original_rows'] == 40922 and comparison['filtered_rows'] == 40914
+        expected = b''.join(line for line in exported.splitlines(keepends=True) if int(line.split(b'^',1)[0]) < 45000)
+        for relative in ('spells_us.txt', 'Resources/spells_us.txt'):
+            assert (client/relative).read_bytes() == expected
+        assert (work/'server/export/spells_us.txt').read_bytes() == exported
+        assert int(engine.mysql('SELECT COUNT(*) FROM spells_new;').splitlines()[1]) == 40922
+        assert int(engine.mysql('SELECT MAX(id) FROM spells_new;').splitlines()[1]) == 50007
+        engine.restore_spell_test({})
+        for relative in ('spells_us.txt', 'Resources/spells_us.txt'):
+            assert (client/relative).read_bytes() == exported
+        print('PASS: real seed spell comparison excludes exactly eight IDs in both copies, restores exact originals, and preserves server/export data', flush=True)
         rules = engine.gameplay({})
         assert rules['values'], 'Gameplay controls must read the imported rules'
         assert rules['selected'] == 1, 'This pinned seed uses default ruleset ID 1'
@@ -100,7 +113,7 @@ def verify(seed, work):
             'selection': selection, 'table_count': len(tables), 'row_counts': counts,
             'active_ruleset': rules['selected'], 'restart_preserved_database': True,
             'unfiltered_client_sync': synced,
-            'spell_table_inspection': spell_report,
+            'spell_table_inspection': spell_report, 'spell_comparison': comparison,
         }
         atomic_json(work / 'database-verification.json', report)
         print(json.dumps(report, indent=2), flush=True)
