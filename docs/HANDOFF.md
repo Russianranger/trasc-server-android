@@ -1,3 +1,13 @@
+# Active handoff: 0.4.2 audio and NPC compatibility (2026-09-16)
+
+Implementation candidate, **not yet published**. User finds 0.4.1 performance acceptable; new requests are NPC texture glitches, missing sound, accessible runtime controls and fantasy TL icon. Latest attachments: logs-1971474319175552093.zip and September 15 19:31:50 video, analyzed in ../analysis-041. See [audio-and-npc-042.md](audio-and-npc-042.md) for source-based findings, protocol, boundaries and icon prompt. [preview-notes.md](preview-notes.md) has the concrete device acceptance sequence.
+
+0.4.2/code19 adds a bounded private ALSA→AudioTrack PCM bridge and audio toggle, selectable strict DXVK NPC compatibility, missing-effect presence/hash diagnostics, sticky top runtime controls and TL adaptive launcher icon. Native ALSA is built in Bookworm and bundled in the APK; no runtime replacement or data reset. Keep the previous wineserver cleanup patch and its exact-path overlay. Preserve app ID and signing cache/certificate below. No claim of a confirmed NPC fix or audible physical-device sound before Thor testing.
+
+Local C plugin and Android Java compile; original backend suite and JVM protocol/input/archive tests pass. Native socket execution is blocked in local sandbox; ARM64 CI includes actual ALSA conversion/timing plus Windows waveOut/DirectSound through Wine/Box64 and PRoot, repeat launch, and all original rendering/normal-exit gates. Do not relax assertions or automatically retry failures. Candidate publication and APK verification pending. GitHub writes use exact tree comparison; no subagents unless explicitly requested.
+
+---
+
 # Active handoff: 0.4.1 fullscreen and gear controls (2026-09-15)
 
 **Published and verified:** **0.4.1/code18**, source `8c9a9526b6761f4e62d6224784080cf2d3f45c3f`. All six jobs passed in [run 35026495250](https://github.com/Russianranger/trasc-server-android/actions/runs/35026495250). Public APK, matching source archive and build manifest were downloaded and verified against the tested artifacts and release digests. The preview tag points to that tested source; this final handoff update uses `[skip ci]`.

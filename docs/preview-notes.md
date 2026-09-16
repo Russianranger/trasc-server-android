@@ -1,3 +1,21 @@
+TRASC Server Android **0.4.2** adds **Android game audio**, an **NPC rendering comparison**, top runtime controls and a fantasy **TL** launcher icon.
+
+- **Start runtime / Stop runtime** and status stay near the top across all tabs. Stop uses the existing clean server/database shutdown.
+- **Game audio** is enabled by default and routes Wine PCM/DirectSound playback to Android media output. Use the device volume buttons. Legacy MIDI music synthesis is still pending.
+- **NPC rendering → NPC compatibility** enables stricter legacy shader and buffer handling for Turnip. **Standard (0.4.1 behavior)** remains available. The exact NPC flicker is not yet confirmed fixed on the Thor.
+- The 1280×720 fullscreen display and gear menu are retained, along with the installed runtime, client files, Wine prefix, DirectX helpers and server data.
+
+**Test on Thor:**
+1. Stop the client and server runtime; install this APK over the existing app. No runtime download, prefix repair, reimport or server rebuild is needed.
+2. Use the new top controls to Start runtime, then Server → Start server. In Client keep Turnip + DXVK, 1280×720, Fullscreen game, Balanced CPU, Automatic runtime, available cores and native helpers. Leave verbose logging and shadows off. Enable Game audio and select NPC compatibility.
+3. Check a UI click, spell or combat sound with Android media volume raised and the game's sound sliders enabled. Try speakers and headphones. A silent MIDI zone track alone does not test PCM effects.
+4. Revisit Guard Sunblaze for 30–60 seconds; watch hair, arms, legs and armor while turning. Note FPS. Stop the client, select Standard and repeat the same route to compare. Return to Compatibility if it improves the NPCs.
+5. Stop/relaunch once to check sound again; test gear Keyboard/Esc and Back/Return. Stop the client, then export Logs immediately so both runs and audio counters are retained. Include a short video and say which NPC mode each run used. If audio causes a launch problem, disable Game audio before relaunching and preserve the failed logs.
+
+Physical-device audio and the NPC comparison remain the acceptance test. [Implementation and evidence](audio-and-npc-042.md).
+
+---
+
 TRASC Server Android **0.4.1** adds **1280×720 fullscreen** and a compact in-game controls menu.
 
 - The Android display fills the screen in landscape. System bars hide during play and can be revealed with an edge swipe. The permanent toolbar is replaced by a translucent gear at the top right.

@@ -6,7 +6,7 @@ A standalone Android control app for [Russianranger/Triptych-Triumvirate](https:
 
 ## Downloads and first setup
 
-**App 0.4.0:** choose **Client → Graphics → Turnip + DXVK (experimental)** with **CPU profile → Balanced** and **Runtime mode → Automatic**. VirGL and Software remain recovery options. Set CPU affinity to Allow available cores; Compatibility restores the previous CPU translation settings. Stop both runtimes and update in place; retain the existing client runtime, Wine prefix and installed model helpers. Launch at 800×600 with native dinput8 and model helpers enabled, verbose diagnostics off. [Update and test details](docs/preview-notes.md).
+**App 0.4.2:** adds Android game audio, a selectable NPC compatibility mode, runtime controls at the top and a fantasy TL icon. Keep **Turnip + DXVK / 1280×720 / Fullscreen game / Balanced CPU / Automatic runtime**. Update in place without replacing your runtime or prefix. The user reports acceptable FPS/loading; audible playback and the NPC fix still need Thor acceptance. [Update and test details](docs/preview-notes.md).
 
 **Runtime 1.1 update:** fixes the missing `uuid/uuid.h` compilation error by including `uuid-dev`. Existing users can select **Setup → Shut down runtime → Download runtime**, then retry **Build imported source**. This preserves imported files and the build cache; no APK reinstall is needed. [Runtime update details](docs/runtime-release-notes.md).
 

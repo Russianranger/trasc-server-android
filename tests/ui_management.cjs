@@ -25,6 +25,8 @@ for(const [name,type,value,min,max]of [['Character:RaidExpMultiplier','real','0.
    window.Trasc={call(id,op,input){setTimeout(()=>{
     const args=JSON.parse(input);let result;window.__calls.push(op);
     if(op==='native_state')result={installed:true,alive:window.__alive,status:window.__alive?'Runtime ready':'Runtime stopped. Logs are still available.',free_bytes:50e9};
+    else if(op==='runtime_start'){window.__alive=true;result={};}
+    else if(op==='runtime_stop'){window.__alive=false;result={};}
     else if(op==='client_native_state')result=clientRuntime;
     else if(op==='client_directx_online'||(op==='pick'&&args.kind==='client-directx')){clientRuntime.directx_installed=true;result=clientRuntime;}
     else if(op==='client_runtime_online'){clientRuntime.installed=true;result=clientRuntime;}
@@ -53,6 +55,9 @@ for(const [name,type,value,min,max]of [['Character:RaidExpMultiplier','real','0.
    },5);}};
   },fixture);
   await page.goto('http://127.0.0.1:'+server.address().port);
+  await page.locator('#runtime-close').click();await page.waitForFunction(()=>!window.__alive);
+  await page.locator('#runtime-open').click();await page.waitForFunction(()=>window.__alive);
+  assert.equal(await page.locator('#setup #runtime-open').count(),0,'Runtime controls are outside Setup');
   await page.locator('nav [data-tab=gameplay]').click();await page.locator('#load-rules').click();
   await page.waitForFunction(()=>document.getElementById('rules-count').textContent.includes('1105'));
   assert.equal(await page.locator('.rule-category[open]').count(),0,'Categories start collapsed');
@@ -72,13 +77,14 @@ for(const [name,type,value,min,max]of [['Character:RaidExpMultiplier','real','0.
   await page.locator('#controller-capture').click();await page.waitForFunction(()=>document.getElementById('controller-focus').textContent.includes('captured'));
   await page.evaluate(()=>{window.clientInputEvent({type:'button',action:'KeyT',down:true});window.clientInputEvent({type:'pointer',x:90,y:20});});
   assert((await page.locator('#client-input-status').textContent()).includes('KeyT'));
+  const toolbar=await page.locator('.runtime-toolbar').boundingBox();assert(toolbar.y>=0&&toolbar.y+toolbar.height<915,'Runtime controls remain in the viewport while scrolled');
   await page.screenshot({path:'ui-reports/client-mobile.png',fullPage:true});
   await page.locator('#client-directx-online').click();await page.waitForFunction(()=>document.getElementById('client-directx-status').textContent.includes('installed'));
   await page.locator('#client-directx-offline').click();await page.waitForFunction(()=>document.getElementById('notice').textContent==='DirectX model helpers installed.');
   await page.locator('#client-resolution').selectOption('960x540');await page.locator('#client-desktop').click();
   await page.waitForFunction(()=>window.__clientViews===1);
   assert(await page.locator('#client-launch').isDisabled(),'A running desktop must be stopped before another launch');
-  assert.deepEqual(await page.evaluate(()=>window.__clientStarts[0]),{mode:'desktop',resolution:'960x540',fullscreen:false,native_dinput8:true,diagnostic_logging:false,native_d3dx:false,renderer:'software',cpu_profile:'balanced',runtime_mode:'auto',graphics_threading:'multi',cpu_affinity:'available'});
+  assert.deepEqual(await page.evaluate(()=>window.__clientStarts[0]),{audio:true,npc_rendering:'compatibility',mode:'desktop',resolution:'960x540',fullscreen:false,native_dinput8:true,diagnostic_logging:false,native_d3dx:false,renderer:'software',cpu_profile:'balanced',runtime_mode:'auto',graphics_threading:'multi',cpu_affinity:'available'});
   assert(!(await page.locator('#client-launch-status').textContent()).includes('load confirmed'),'File presence/request must not claim DLL loaded');
   await page.locator('#client-stop').click();await page.waitForFunction(()=>document.getElementById('client-launch-status').textContent.startsWith('Client stopped.'));
   await page.locator('#client-renderer').selectOption('virgl');
@@ -94,7 +100,7 @@ for(const [name,type,value,min,max]of [['Character:RaidExpMultiplier','real','0.
   await page.locator('#client-view').click();await page.waitForFunction(()=>window.__clientViews===3);
   await page.locator('#client-stop').click();await page.waitForFunction(()=>document.getElementById('client-launch-status').textContent.startsWith('Client stopped.'));
   await page.locator('#client-graphics-threading').selectOption('opengl_worker');await page.locator('#client-runtime-mode').selectOption('compatibility');await page.locator('#client-cpu-profile').selectOption('compatibility');await page.locator('#client-diagnostics').check();await page.locator('#client-prefix-repair').click();await page.waitForFunction(()=>window.__clientViews===4);
-  assert.deepEqual(await page.evaluate(()=>window.__clientStarts[2]),{mode:'desktop',resolution:'960x540',fullscreen:false,native_dinput8:true,diagnostic_logging:true,native_d3dx:false,repair_prefix:true,renderer:'software',cpu_profile:'compatibility',runtime_mode:'compatibility',graphics_threading:'opengl_worker',cpu_affinity:'available'});
+  assert.deepEqual(await page.evaluate(()=>window.__clientStarts[2]),{audio:true,npc_rendering:'compatibility',mode:'desktop',resolution:'960x540',fullscreen:false,native_dinput8:true,diagnostic_logging:true,native_d3dx:false,repair_prefix:true,renderer:'software',cpu_profile:'compatibility',runtime_mode:'compatibility',graphics_threading:'opengl_worker',cpu_affinity:'available'});
   assert((await page.locator('#client-launch-status').textContent()).includes('Verbose diagnostics enabled'));
   await page.locator('#client-stop').click();
   await page.waitForFunction(()=>document.getElementById('client-launch-status').textContent.startsWith('Client stopped.'));
@@ -102,8 +108,13 @@ for(const [name,type,value,min,max]of [['Character:RaidExpMultiplier','real','0.
   await page.locator('#client-fullscreen').check();
   await page.locator('#client-renderer').selectOption('turnip');
   assert(await page.locator('#client-graphics-threading').isDisabled(),'WineD3D threading does not apply to DXVK');
+  assert(!(await page.locator('#client-npc-rendering').isDisabled()));
+  await page.locator('#client-npc-rendering').selectOption('standard');
+  await page.locator('#client-audio').uncheck();
   await page.locator('#client-cpu-affinity').selectOption('game');
   await page.locator('#client-launch').click();await page.waitForFunction(()=>window.__clientViews===5);
+  assert.equal(await page.evaluate(()=>window.__clientStarts[3].audio),false);
+  assert.equal(await page.evaluate(()=>window.__clientStarts[3].npc_rendering),'standard');
   assert.equal(await page.evaluate(()=>window.__clientStarts[3].renderer),'turnip');
   assert.equal(await page.evaluate(()=>window.__clientStarts[3].resolution),'1280x720');
   assert.equal(await page.evaluate(()=>window.__clientStarts[3].fullscreen),true);

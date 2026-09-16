@@ -59,3 +59,7 @@ TRASC additionally patches the vtest worker lifecycle to terminate workers when 
 The APK includes Mesa 24.3.4's ARM64 glibc Turnip driver, built for Qualcomm KGSL from the unmodified official release source (SHA256 `e641ae27191d387599219694560d221b7feaa91c900bcec46bf444218ed66025`). Mesa's source carries its component license notices, primarily MIT. No proprietary Qualcomm driver is included.
 
 The x86 D3D9 DLL comes from upstream DXVK 2.5.3 (zlib license), release archive SHA256 `d8e6ef7d1168095165e1f8a98c7d5a4485b080467bb573d2a9ef3e3d79ea1eb8`. Its complete tagged source archive SHA256 is `e3d8c320f1cbd134ce176be81a0c156585a1a251fd004c78d78373adff37f1ce`. Both upstream source archives, licenses, exact Dockerfile/build script and the project's Vulkan preflight source accompany the APK in `vulkan-sources.tar.gz` inside `launcher-sources.tar.gz`. The existing client runtime supplies the Vulkan loader; the APK adds no EverQuest assets.
+
+## Android playback bridge
+
+The APK adds the original TRASC ALSA PCM endpoint (MIT; native/audio-LICENSE), dynamically using the client runtime's existing ALSA library. It calls Android AudioTrack through the launcher. Endpoint source, license, Bookworm Dockerfile and build-audio.sh accompany launcher-sources.tar.gz. No new libasound binary, proprietary game sound, or microphone recording is bundled.

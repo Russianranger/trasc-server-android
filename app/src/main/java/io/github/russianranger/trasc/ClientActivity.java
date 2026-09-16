@@ -43,7 +43,7 @@ public final class ClientActivity extends Activity {
         handler.postDelayed(this,1000);
     }};
     @Override public void onCreate(Bundle saved) {
-        super.onCreate(saved);runtime=ClientRuntime.get(this);
+        super.onCreate(saved);setVolumeControlStream(android.media.AudioManager.STREAM_MUSIC);runtime=ClientRuntime.get(this);
         getWindow().addFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON);
         FrameLayout layout=new FrameLayout(this);layout.setBackgroundColor(Color.BLACK);
         display=new ClientView();layout.addView(display,new FrameLayout.LayoutParams(-1,-1));

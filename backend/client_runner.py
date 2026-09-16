@@ -16,6 +16,7 @@ import time
 from contextlib import contextmanager
 from client_metrics import process_threads, allow_game_cpus
 import client_vulkan
+import client_audio
 from client_display import RESOLUTIONS, apply_display
 
 SESSION = Path('/session')
@@ -174,6 +175,8 @@ def pe_machine(path):
 
 
 def validate_request(request):
+    if request.get('npc_rendering', 'compatibility') not in ('standard', 'compatibility'): raise ValueError('Invalid NPC rendering option')
+    if not isinstance(request.get('audio', False), bool): raise ValueError('Invalid audio option')
     if request.get('mode') not in ('desktop', 'client'): raise ValueError('Choose Wine desktop or ROF2 client')
     if request.get('resolution') not in RESOLUTIONS: raise ValueError('Unsupported client resolution')
     if request.get('renderer', 'software') not in ('software', 'virgl', 'turnip'): raise ValueError('Unsupported graphics option')
@@ -368,11 +371,15 @@ class Supervisor:
         self.status['cpu_affinity'] = request.get('cpu_affinity', 'available')
         if request.get('renderer') == 'turnip':
             client_vulkan.configure_environment(self.env, Path(__file__).parent, SESSION, PREFIX)
+            self.env['DXVK_CONFIG'] = client_vulkan.npc_configuration(request.get('npc_rendering', 'compatibility'))
+            self.status['npc_rendering'] = request.get('npc_rendering', 'compatibility')
             self.status['mesa_glthread_requested'] = False
         else:
             # Built-in WineD3D ignores a previously installed DXVK copy. This
             # makes switching back work without a prefix repair or registry edit.
             self.env['WINEDLLOVERRIDES'] += ';d3d9=b'
+        if request.get('audio', False): client_audio.configure_environment(self.env, SESSION)
+        else: self.env['WINEDLLOVERRIDES'] += ';winepulse.drv=d;winealsa.drv=d'
 
     def configure_cpu(self):
         if self.request.get('cpu_profile', 'balanced') == 'balanced':
@@ -516,6 +523,9 @@ class Supervisor:
         if previous_state.is_file() and not previous_state.is_symlink() and previous_state.stat().st_size <= 131072:
             shutil.copyfile(previous_state, LOGS/'client-state.previous.json')
         self.configure_cpu()
+        if self.request.get('audio', False):
+            self.update(audio=client_audio.prepare(Path(__file__).parent, SESSION))
+        else: self.update(audio={'backend': 'disabled'})
         if 'WINESERVER' in self.env:
             patch = json.loads(Path(__file__).with_name('wineserver-patch.json').read_text())
             binary = Path(self.env['WINESERVER'])
@@ -568,6 +578,7 @@ class Supervisor:
         env['WINEDEBUG'] = wine_debug(self.request.get('diagnostic_logging', False))
         if self.request['mode'] == 'client':
             preserve_game_log()
+            self.update(skin_shader=client_vulkan.skin_shader_status(CLIENT))
             if 'fullscreen' in self.request:
                 self.update(display_settings=apply_display(CLIENT, PREFIX, self.request['resolution'], self.request['fullscreen']))
             args += ['D:\\' + self.request['executable'], 'patchme']

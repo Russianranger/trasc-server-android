@@ -7,7 +7,7 @@ FROM trasc-client:1
 RUN apt-get update && apt-get install -y --no-install-recommends mesa-vulkan-drivers && apt-get clean && rm -rf /var/lib/apt/lists/*
 DOCKER
 mkdir -p runtime-work/client-vulkan/client runtime-work/client-vulkan/logs
-cp runtime-work/client-test/client/{eqgame.exe,dinput8.dll,textures.exe,models.exe} runtime-work/client-vulkan/client/
+cp runtime-work/client-test/client/{eqgame.exe,dinput8.dll,textures.exe,models.exe,audio.exe} runtime-work/client-vulkan/client/
 # Check dependency loading separately so a missing library cannot masquerade as
 # the intended rejection of a host with no Qualcomm KGSL device.
 docker run --rm --network none -v "$PWD/backend:/opt/trasc-client:ro" trasc-client:1 python3 -c '

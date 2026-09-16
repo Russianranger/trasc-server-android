@@ -9,6 +9,31 @@ import struct
 FILES = ('turnip.so', 'vulkan-probe', 'dxvk-d3d9.dll')
 
 
+def npc_configuration(mode):
+    # Separate from CPU profile. These are supported by the pinned DXVK 2.5.3.
+    # Strict D3D9 math, shader/bound texture agreement, and staged buffer writes
+    # provide a reversible comparison for intermittent legacy model corruption.
+    # Existing built-in EverQuest cachedDynamicBuffers remains in effect.
+    if mode == 'standard': return ''
+    if mode != 'compatibility': raise ValueError('Invalid NPC rendering option')
+    return 'd3d9.floatEmulation = Strict; d3d9.forceSamplerTypeSpecConstants = True; d3d9.allowDirectBufferMapping = False'
+
+
+def skin_shader_status(client):
+    # The uploaded log names this one failing effect. Record presence/hash,
+    # never invent a replacement shader or include proprietary bytes in logs.
+    current = client
+    for part in ('RenderEffects', 'SPL', 'SkinMeshCBS1_VSB.fxo'):
+        if not current.is_dir(): return {'present': False}
+        matches = [p for p in current.iterdir() if p.name.lower() == part.lower()]
+        if len(matches) != 1 or matches[0].is_symlink(): return {'present': False, 'reason': 'missing_or_ambiguous'}
+        current = matches[0]
+    if not current.is_file(): return {'present': False}
+    size = current.stat().st_size
+    return {'present': True, 'bytes': size,
+            'sha256': hashlib.sha256(current.read_bytes()).hexdigest() if size <= 1024*1024 else 'oversize'}
+
+
 def verify_bundle(folder):
     manifest = json.loads((folder/'vulkan-bundle.json').read_text())
     if (manifest.get('format'), manifest.get('mesa'), manifest.get('dxvk'), manifest.get('architecture'), manifest.get('kmd')) != (1, '24.3.4', '2.5.3', 'arm64-glibc', 'kgsl'):

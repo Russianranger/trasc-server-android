@@ -20,6 +20,7 @@ final class ClientRuntime {
     volatile String status="Install the client runtime to try Wine and ROF2.";
     private volatile Process process;
     private volatile GraphicsBridge graphics;
+    private volatile AudioBridge audio;
     ClientRuntime(Context context) {
         this.context=context;server=RuntimeManager.get(context);
         root=new File(server.work,"client/runtime");client=new File(server.work,"client/current");prefix=new File(server.work,"client/prefix");
@@ -103,6 +104,7 @@ final class ClientRuntime {
         try {
             if(alive())throw new IOException("Client is already open. View it or stop it before another launch.");
             if(graphics!=null){graphics.stop();graphics=null;}
+            if(audio!=null){audio.close();audio=null;}
             if(!installed())throw new IOException("Install the separate client runtime first");
             DirectXInstaller.recover(directx);
             if(server.alive()) {
@@ -117,6 +119,8 @@ final class ClientRuntime {
             }
             String mode=options.optString("mode","client"),resolution=options.optString("resolution","800x600"),renderer=options.optString("renderer","software");
             String cpuProfile=options.optString("cpu_profile","balanced");
+            String npcRendering=options.optString("npc_rendering","compatibility");
+            if(!Arrays.asList("standard","compatibility").contains(npcRendering))throw new IOException("Unsupported NPC rendering mode");
             if(!Arrays.asList("balanced","compatibility").contains(cpuProfile))throw new IOException("Unsupported CPU profile");
             String runtimeMode=options.optString("runtime_mode","auto");
             if(!Arrays.asList("auto","compatibility").contains(runtimeMode))throw new IOException("Unsupported runtime mode");
@@ -143,9 +147,10 @@ final class ClientRuntime {
             request.put("runtime_mode",runtimeMode).put("storage",new JSONObject().put("kind","app_private_internal")
                 .put("android_directory",client.getCanonicalPath()).put("windows_drive","D:").put("shared_storage",false));
             request.put("graphics_threading",graphicsThreading).put("cpu_affinity",cpuAffinity).put("fullscreen",mode.equals("client")&&options.optBoolean("fullscreen",true));
+            request.put("npc_rendering",npcRendering).put("audio",options.optBoolean("audio",true));
             RuntimeManager.write(new File(run,"request.json"),request.toString());
             File backend=new File(server.home,"client-backend");backend.mkdirs();
-            for(String name:new String[]{"client_runner.py","client_display.py","client_metrics.py","client_vulkan.py","graphics_probe.py","runtime_probe.py","wined3d.dll","wined3d-patch.json","wineserver","wineserver-patch.json"})
+            for(String name:new String[]{"client_runner.py","client_display.py","client_metrics.py","client_vulkan.py","client_audio.py","libasound_module_pcm_trasc.so","audio-bundle.json","graphics_probe.py","runtime_probe.py","wined3d.dll","wined3d-patch.json","wineserver","wineserver-patch.json"})
                 try(InputStream in=context.getAssets().open(name)){RuntimeManager.copy(in,new File(backend,name));}
             if(!new File(backend,"wineserver").setExecutable(true,true))throw new IOException("Could not prepare bundled Wine server");
             if(renderer.equals("turnip")) {
@@ -180,12 +185,13 @@ final class ClientRuntime {
                 status="Opening Android GPU driver…";
                 graphics=GraphicsBridge.start(new File(nativeDir,"libvirgl-server.so"),new File(tmp,".virgl_test"),new File(server.work,"logs/client-gpu.log"));
             }
+            if(request.getBoolean("audio"))audio=AudioBridge.start(context,new File(run,"audio.sock"),new File(server.work,"logs/client-audio.log"));
             File prootLog=new File(server.work,"logs/client-proot.log");
             if(prootLog.exists())Files.move(prootLog.toPath(),new File(server.work,"logs/client-proot.previous.log").toPath(),StandardCopyOption.REPLACE_EXISTING);
             builder.redirectErrorStream(true);builder.redirectOutput(prootLog);
             process=builder.start();started=true;status="Starting client display and Wine…";
             if(mode.equals("client"))RuntimeManager.write(new File(server.work,"client/launch-options.json"),request.toString());
-            final Process active=process;final GraphicsBridge bridge=graphics;
+            final Process active=process;final GraphicsBridge bridge=graphics;final AudioBridge playback=audio;
             Thread monitor=new Thread(()->{
                 try {
                     while(active.isAlive()) {
@@ -197,7 +203,7 @@ final class ClientRuntime {
                         if(active.waitFor(1,TimeUnit.SECONDS))break;
                     }
                     active.waitFor();
-                    synchronized(ClientRuntime.this){if(bridge!=null&&graphics==bridge){bridge.stop();graphics=null;}}
+                    synchronized(ClientRuntime.this){if(bridge!=null&&graphics==bridge){bridge.stop();graphics=null;}if(playback!=null&&audio==playback){playback.close();audio=null;}}
                 } catch(Exception e){server.recordFailure("client_gpu_cleanup",e);}
             },"client-graphics-lifecycle");monitor.setDaemon(true);monitor.start();
             for(int i=0;i<200;i++) {
@@ -208,7 +214,7 @@ final class ClientRuntime {
                 Thread.sleep(100);
             }
             throw new IOException("Client display startup timed out; export Logs");
-        } catch(Exception e){server.recordFailure("client_start",e);if(started&&alive())stop();else if(graphics!=null){graphics.stop();graphics=null;}status=e.getMessage();throw e;}
+        } catch(Exception e){server.recordFailure("client_start",e);if(started&&alive())stop();else if(graphics!=null){graphics.stop();graphics=null;}if(audio!=null){audio.close();audio=null;}status=e.getMessage();throw e;}
         finally {busy=false;}
     }
     synchronized void stop()throws Exception {
@@ -218,6 +224,7 @@ final class ClientRuntime {
             if(!active.waitFor(25,TimeUnit.SECONDS)){active.destroy();if(!active.waitFor(5,TimeUnit.SECONDS)){active.destroyForcibly();if(!active.waitFor(5,TimeUnit.SECONDS))throw new IOException("Client runtime did not stop; wait before backing up");}}
         }
         if(graphics!=null){graphics.stop();graphics=null;}
+        if(audio!=null){audio.close();audio=null;}
         process=null;status="Client stopped. Server runtime is managed separately.";
     }
 }

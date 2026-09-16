@@ -11,6 +11,7 @@ import time
 
 sys.path.insert(0, '/opt/trasc-client')
 import client_runner
+from audio_receiver import Receiver
 
 
 def wait_for(check, message, timeout=240):
@@ -33,9 +34,10 @@ def recv(stream, size):
 def main():
     for name in ('/session','/prefix','/logs'): Path(name).mkdir(exist_ok=True)
     renderer=os.environ.get('TRASC_TEST_RENDERER','software')
-    request={'mode':'client','resolution':'800x600','executable':'eqgame.exe','native_dinput8':True,'native_d3dx':True,'renderer':renderer,'graphics_threading':'single' if renderer=='turnip' else 'opengl_worker','cpu_affinity':'available'}
+    request={'audio':True,'npc_rendering':'compatibility','mode':'client','resolution':'800x600','executable':'eqgame.exe','native_dinput8':True,'native_d3dx':True,'renderer':renderer,'graphics_threading':'single' if renderer=='turnip' else 'opengl_worker','cpu_affinity':'available'}
     if renderer=='turnip': request.update(resolution='1280x720',fullscreen=True)
     Path('/session/request.json').write_text(json.dumps(request))
+    audio_receiver = Receiver('/session/audio.sock')
     runner = subprocess.Popen(['python3','/tests/client_runner_diagnostics.py'])
     try:
         def ready():
@@ -147,6 +149,18 @@ def main():
                                       stdin=subprocess.DEVNULL,stdout=output,stderr=output,timeout=60)
                 assert result.returncode==expected,(override,result.returncode,expected)
                 print(f'PASS: system DirectInput forwarding with override {override}: exit {result.returncode}')
+        # Exercise actual 32-bit Windows APIs through Box64 and the native ALSA plug.
+        with Path('/logs/audio-windows.log').open('wb') as output:
+            audio_result=subprocess.run(['/usr/local/bin/box64','/opt/wine/bin/wine',r'D:\audio.exe'],
+                cwd='/client',env=production_env,stdout=output,stderr=output,timeout=30)
+        audio_report=audio_receiver.snapshot()
+        Path('/logs/audio-verification.json').write_text(json.dumps(audio_report,indent=2))
+        assert audio_result.returncode==0,('Windows audio',audio_result.returncode)
+        assert not audio_report['errors'],audio_report
+        assert sum(s['nonzero_samples'] for s in audio_report['streams'])>50000,audio_report
+        assert sum(s['left_nonzero'] for s in audio_report['streams'])>20000,audio_report
+        assert sum(s['right_nonzero'] for s in audio_report['streams'])>20000,audio_report
+        print('PASS: real Wine waveOut and DirectSound deliver nonzero stereo PCM through bundled ALSA endpoint')
         timings={}
         for verbose in (False,True):
             label='verbose' if verbose else 'normal'
@@ -197,8 +211,16 @@ def main():
         wait_for(warm_ready,'Warm Wine startup failed or did not reuse prefix')
         warm=json.loads(Path('/session/status.json').read_text())
         assert warm['wine32_ready'],warm
+        before_audio=sum(s['nonzero_samples'] for s in audio_receiver.reports)
+        with Path('/logs/audio-warm.log').open('wb') as output:
+            result=subprocess.run(['/usr/local/bin/box64','/opt/wine/bin/wine',r'D:\audio.exe'],cwd='/client',env=client_runner.Supervisor(warm_request).env,stdout=output,stderr=output,timeout=30)
+        assert result.returncode==0,('Warm Windows audio',result.returncode)
+        assert sum(s['nonzero_samples'] for s in audio_receiver.reports)>before_audio+50000
+        assert not audio_receiver.errors,audio_receiver.errors
+        print('PASS: audio plays again after complete Wine supervisor stop and relaunch')
         assert system.stat().st_mtime_ns==original_mtime,'Warm boot rewrote Wine system files'
         if renderer=='turnip':
+            assert warm['audio']['backend']=='alsa-audiotrack',warm
             fallback=client_runner.Supervisor(warm_request).env
             fallback=dict(fallback,BOX64_LOG='1',WINEDEBUG=fallback.get('WINEDEBUG','')+',trace+process,trace+thread,trace+module')
             with Path('/logs/vulkan-fallback.log').open('wb') as out:
@@ -216,6 +238,7 @@ def main():
         try:runner.wait(timeout=25)
         except subprocess.TimeoutExpired:runner.kill();runner.wait();raise
 
+    audio_receiver.close()
 
 def check_compatibility_exit(env):
     # A recurring CI-only SIGKILL follows successful pixels. Retain the strict

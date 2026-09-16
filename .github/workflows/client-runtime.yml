@@ -23,6 +23,7 @@ jobs:
       - uses: actions/download-artifact@v4
         with:
           name: client-vulkan
+      - run: cp backend-assets/libasound_module_pcm_trasc.so backend-assets/audio-bundle.json backend/
       - run: cp backend-assets/wined3d-patch.json backend/
       - run: cp backend-assets/wineserver backend-assets/wineserver-patch.json backend/ && chmod +x backend/wineserver
       - run: cp backend-assets/turnip.so backend-assets/vulkan-probe backend-assets/dxvk-d3d9.dll backend-assets/vulkan-bundle.json backend/ && chmod +x backend/vulkan-probe
@@ -52,6 +53,7 @@ jobs:
           cc -shared -fPIC -O2 -Wall -Wextra -Werror tests/client_exit_delay.c -ldl -o runtime-work/client-test/client/exit-delay.so
           i686-w64-mingw32-gcc tests/client_probe.c -o runtime-work/client-test/client/eqgame.exe -mwindows -ld3d9
           i686-w64-mingw32-gcc tests/client_textures.c -o runtime-work/client-test/client/textures.exe -mwindows -ld3d9
+          i686-w64-mingw32-gcc tests/client_audio.c -o runtime-work/client-test/client/audio.exe -lwinmm -ldsound -lm
           i686-w64-mingw32-gcc tests/client_models.c -o runtime-work/client-test/client/models.exe -mwindows -ld3d9
           i686-w64-mingw32-gcc tests/client_probe_dll.c -shared -o runtime-work/client-test/client/dinput8.dll -ldxguid
           python3 - <<'PYPE'

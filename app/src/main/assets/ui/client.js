@@ -47,10 +47,10 @@ async function clientRuntimeState(){
  const s=await api('client_native_state');
  if(!launchOptionsLoaded){
   launchOptionsLoaded=true;const saved=s.launch_options||{};
-  for(const [id,key] of [['client-renderer','renderer'],['client-cpu-affinity','cpu_affinity'],['client-graphics-threading','graphics_threading'],['client-cpu-profile','cpu_profile'],['client-runtime-mode','runtime_mode'],['client-resolution','resolution']]){
+  for(const [id,key] of [['client-npc-rendering','npc_rendering'],['client-renderer','renderer'],['client-cpu-affinity','cpu_affinity'],['client-graphics-threading','graphics_threading'],['client-cpu-profile','cpu_profile'],['client-runtime-mode','runtime_mode'],['client-resolution','resolution']]){
    const select=$(id);if([...select.options].some(o=>o.value===saved[key]))select.value=saved[key];
   }
-  for(const [id,key] of [['client-fullscreen','fullscreen'],['client-native-dll','native_dinput8'],['client-native-models','native_d3dx'],['client-diagnostics','diagnostic_logging']])if(typeof saved[key]==='boolean')$(id).checked=saved[key];
+  for(const [id,key] of [['client-audio','audio'],['client-fullscreen','fullscreen'],['client-native-dll','native_dinput8'],['client-native-models','native_d3dx'],['client-diagnostics','diagnostic_logging']])if(typeof saved[key]==='boolean')$(id).checked=saved[key];
  }
  for(const id of ['client-desktop','client-launch','client-prefix-repair','client-runtime-online','client-runtime-offline','client-prepare','client-import','client-directx-online','client-directx-offline'])$(id).disabled=!!(s.alive||s.busy);
  $('client-view').disabled=!(s.alive&&s.display_ready);
@@ -65,7 +65,7 @@ async function clientRuntimeState(){
   'Client stopped. '+(launch?.native_loaded?'Last session confirmed native dinput8.dll loading.':'');
  return s;
 }
-const launchOptions=mode=>({mode,renderer:$('client-renderer').value,cpu_affinity:$('client-cpu-affinity').value,graphics_threading:$('client-graphics-threading').value,cpu_profile:$('client-cpu-profile').value,runtime_mode:$('client-runtime-mode').value,resolution:$('client-resolution').value,fullscreen:mode==='client'&&$('client-fullscreen').checked,native_dinput8:$('client-native-dll').checked,diagnostic_logging:$('client-diagnostics').checked,native_d3dx:mode==='client'&&$('client-native-models').checked});
+const launchOptions=mode=>({mode,audio:$('client-audio').checked,npc_rendering:$('client-npc-rendering').value,renderer:$('client-renderer').value,cpu_affinity:$('client-cpu-affinity').value,graphics_threading:$('client-graphics-threading').value,cpu_profile:$('client-cpu-profile').value,runtime_mode:$('client-runtime-mode').value,resolution:$('client-resolution').value,fullscreen:mode==='client'&&$('client-fullscreen').checked,native_dinput8:$('client-native-dll').checked,diagnostic_logging:$('client-diagnostics').checked,native_d3dx:mode==='client'&&$('client-native-models').checked});
 action('client-runtime-online',async()=>{notice('Downloading the client runtime…');await api('client_runtime_online');await clientRuntimeState();notice('Client runtime installed. Try Wine desktop first.');});
 action('client-runtime-offline',async()=>{await api('pick',{kind:'client-runtime'});await clientRuntimeState();notice('Client runtime installed.');});
 action('client-directx-online',async()=>{notice('Downloading Microsoft DirectX model helpers…');await api('client_directx_online');await clientRuntimeState();notice('DirectX model helpers installed. Launch ROF2.');});
@@ -84,5 +84,5 @@ action('client-stop',async()=>{await api('client_stop');await clientRuntimeState
 setInterval(()=>{if(currentTab==='client')clientRuntimeState().catch(e=>{$('client-runtime-status').textContent=e.message;});},1500);
 clientRuntimeState().catch(()=>{});
 
-function graphicsControls(){ $('client-graphics-threading').disabled=$('client-renderer').value==='turnip'; }
+function graphicsControls(){ $('client-npc-rendering').disabled=$('client-renderer').value!=='turnip'; $('client-graphics-threading').disabled=$('client-renderer').value==='turnip'; }
 $('client-renderer').addEventListener('change',graphicsControls);
