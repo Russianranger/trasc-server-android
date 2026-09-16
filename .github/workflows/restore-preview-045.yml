@@ -1,0 +1,45 @@
+name: Restore verified 0.4.5 preview
+on:
+  push:
+    branches: [codex/restore-preview-045]
+permissions:
+  contents: write
+  actions: read
+concurrency:
+  group: restore-verified-preview-045
+  cancel-in-progress: false
+jobs:
+  restore:
+    runs-on: ubuntu-latest
+    env:
+      GH_TOKEN: ${{ github.token }}
+    steps:
+      - name: Restore only the previously verified release bytes
+        run: |
+          set -euo pipefail
+          gh run download 35095063228 -R "$GITHUB_REPOSITORY" -n trasc-server-android-debug -D candidate
+          gh release download preview -R "$GITHUB_REPOSITORY" -p preview-build.json -D before
+          mkdir out
+          python3 - <<'PY'
+          import pathlib,json,hashlib,shutil
+          root=pathlib.Path('candidate')
+          current=json.loads(pathlib.Path('before/preview-build.json').read_text())
+          assert current['commit'] in ('86dc3d7fe8cad69a4b550c85311094df6a422dc0','49e26507c6b04968bdcf2b4fd999f8b5f5717a3f'), 'A newer preview exists; refuse to replace it'
+          pairs=[
+            ('app/build/outputs/apk/debug/app-debug.apk','trasc-server-android-preview.apk','93f29605c371309d0ce61643542145fca83385d98c2f8945dc71d3c02ba319fb'),
+            ('dist/launcher-sources.tar.gz','launcher-sources.tar.gz','9b930f7f2ff56a743e2bfb90741d667457ddb938d50b0848601f9436db46ae6d')]
+          for source,name,digest in pairs:
+              data=(root/source).read_bytes()
+              assert hashlib.sha256(data).hexdigest()==digest, name
+              pathlib.Path('out',name).write_bytes(data)
+          cert='ff9c09cdc3e2404d1d7f72d61ce2f8651464f5e03dff340f70bd4df28c70e869'
+          assert (root/'dist/preview-signing.sha256').read_text().strip()==cert
+          manifest={'commit':'49e26507c6b04968bdcf2b4fd999f8b5f5717a3f','sha256':pairs[0][2],'file':pairs[0][1],'version':'0.4.5','application_id':'io.github.russianranger.trasc.preview','signing_certificate_sha256':cert}
+          data=json.dumps(manifest,indent=2).encode()
+          assert hashlib.sha256(data).hexdigest()=='b7caad843ac8969c5abeb4e32b13bde742c85ab3960b301f0cdf3b4b8b6ddae1'
+          pathlib.Path('out/preview-build.json').write_bytes(data)
+          PY
+          gh api "repos/$GITHUB_REPOSITORY/contents/docs/preview-notes.md?ref=49e26507c6b04968bdcf2b4fd999f8b5f5717a3f" --jq .content | base64 --decode > out/notes.md
+          gh release upload preview -R "$GITHUB_REPOSITORY" out/trasc-server-android-preview.apk out/launcher-sources.tar.gz out/preview-build.json --clobber
+          gh api --method PATCH "repos/$GITHUB_REPOSITORY/git/refs/tags/preview" -f sha=49e26507c6b04968bdcf2b4fd999f8b5f5717a3f -F force=true
+          gh release edit preview -R "$GITHUB_REPOSITORY" --notes-file out/notes.md
