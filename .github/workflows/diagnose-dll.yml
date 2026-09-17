@@ -1,0 +1,53 @@
+name: Diagnose client DLL addresses
+on:
+  push:
+    branches: [codex/dll-reconnect-diagnosis]
+permissions:
+  contents: read
+jobs:
+  symbols:
+    runs-on: windows-2022
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/checkout@v4
+        with:
+          repository: Russianranger/Triptych-Triumvirate
+          ref: 4c653ca2d16aaede33b7011d07254c520ac5f5df
+          path: dll-upstream
+          sparse-checkout: Release-NMS-Client
+      - name: Prepare compiler
+        shell: pwsh
+        run: ./tools/pack-client-sdk.ps1 -Output "$env:RUNNER_TEMP\trasc-sdk.zip"
+      - name: Compile unchanged source with link map
+        shell: python
+        run: |
+          import os,sys,tempfile,shutil,json,hashlib,subprocess
+          from pathlib import Path
+          sys.path.insert(0,str(Path('backend').resolve()))
+          from engine import Engine
+          import client_dll
+          output=Path('diagnosis').resolve();output.mkdir()
+          with tempfile.TemporaryDirectory() as temp:
+              work=Path(temp);engine=Engine(work)
+              shutil.copy2(Path(os.environ['RUNNER_TEMP'])/'trasc-sdk.zip',work/'incoming/sdk.zip')
+              client_dll.import_sdk(engine,{'file':'sdk.zip'})
+              shutil.copytree('dll-upstream/Release-NMS-Client',work/'sources/current/Release-NMS-Client')
+              original_run=engine.run
+              def run(args,**kwargs):
+                  if Path(args[0]).name=='link.exe': args=[*args,'/MAP:'+str(output/'dinput8.map')]
+                  return original_run(args,**kwargs)
+              engine.run=run
+              result=client_dll.build_dll(engine,{})
+              dll=work/result['build']['file']
+              shutil.copy2(dll,output/'dinput8.dll')
+              shutil.copy2(work/'client/toolchain/sdk.json',output/'sdk-version.json')
+              (output/'build.json').write_text(json.dumps(result,indent=2))
+              with (output/'disassembly.txt').open('w') as log:
+                  subprocess.run([str(work/'client/toolchain/bin/dumpbin.exe'),'/DISASM',str(dll)],stdout=log,check=True)
+              hashes={str(p.relative_to(work/'sources/current')):hashlib.sha256(p.read_bytes()).hexdigest() for p in (work/'sources/current').rglob('*') if p.is_file()}
+              (output/'source-hashes.json').write_text(json.dumps(hashes,indent=2))
+      - uses: actions/upload-artifact@v4
+        with:
+          name: client-dll-diagnosis
+          path: diagnosis/
