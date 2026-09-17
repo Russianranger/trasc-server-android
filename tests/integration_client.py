@@ -56,7 +56,8 @@ def check_unshared_frames(env,width,height):
         try:
             wait_for(lambda:path.exists() or helper.poll() is not None,'Non-SHM frame helper did not start',10)
             assert helper.poll() is None,log.read_text()
-            assert path.stat().st_mode&0o777==0o600,'Native socket must remain private'
+            permissions=path.stat().st_mode&0o777
+            assert permissions&0o077==0 and permissions&0o600==0o600,('Native socket must remain owner-only',oct(permissions))
             check_native_frames(path,width,height,'native-no-shm',True)
             wait_for(lambda:sum(json.loads(l)['frames'] for l in log.read_text().splitlines() if l.startswith('{'))>=8,'Transfer statistics not recorded after reconnect',5)
             reports=[json.loads(l) for l in log.read_text().splitlines() if l.startswith('{')]
