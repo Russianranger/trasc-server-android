@@ -32,6 +32,7 @@ final class NativePresentation extends SurfaceView implements SurfaceHolder.Call
             // Never run two frame readers when Android recreates the Surface.
             if(old!=null)try{old.join(5500);}catch(InterruptedException e){Thread.currentThread().interrupt();return;}
             if(worker!=Thread.currentThread()||closed)return;
+            if(old!=null&&old.isAlive()){Thread waiting=Thread.currentThread();post(()->{if(worker==waiting&&!closed)events.failed("Previous Surface reader did not stop");});return;}
             try{
                 System.loadLibrary("trasc-presentation");
                 try(LocalSocket local=new LocalSocket()){

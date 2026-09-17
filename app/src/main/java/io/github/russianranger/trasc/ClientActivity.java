@@ -193,8 +193,10 @@ public final class ClientActivity extends Activity {
                 if(closed)return;
                 local.connect(new LocalSocketAddress(runtime.displaySocket().getPath(),LocalSocketAddress.Namespace.FILESYSTEM));
                 local.setSoTimeout(15000);
-                RfbConnection r=new RfbConnection(local.getInputStream(),local.getOutputStream(),this);r.handshake(!nativeActive);
+                RfbConnection r=new RfbConnection(local.getInputStream(),local.getOutputStream(),this);boolean frames=!nativeActive;r.handshake(frames);
                 local.setSoTimeout(0);connection=r;
+                // A native failure can happen during the input-only handshake.
+                if(!frames&&!nativeActive){resize(r.width,r.height);r.request(false);}
                 while(!closed)r.readUpdate();
             }catch(IOException e){if(!closed)failure(e);}
             finally {try{if(socket!=null)socket.close();}catch(IOException ignored){}connection=null;}

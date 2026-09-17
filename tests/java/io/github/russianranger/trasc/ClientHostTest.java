@@ -20,6 +20,10 @@ public final class ClientHostTest {
         int[] pixels=new int[6];ByteArrayOutputStream wire=new ByteArrayOutputStream();
         RfbConnection.Screen screen=new RfbConnection.Screen(){public void resize(int w,int h){check(w==3&&h==2,"Display dimensions");}public void pixels(int x,int y,int w,int h,int[] colors){System.arraycopy(colors,0,pixels,0,6);}public void copy(int x,int y,int w,int h,int sx,int sy){}public void updated(){}};
         RfbConnection r=new RfbConnection(new ByteArrayInputStream(server(false)),wire,screen);r.handshake();r.readUpdate();
+        ByteArrayOutputStream inputOnly=new ByteArrayOutputStream();RfbConnection noFrames=new RfbConnection(new ByteArrayInputStream(server(false)),inputOnly,screen);noFrames.handshake(false);
+        check(inputOnly.size()==wire.size()-20,"Native presentation handshake sends no initial or incremental pixel request");
+        int inputStart=inputOnly.size();noFrames.key('t',true);check(inputOnly.size()==inputStart+8,"Input-only connection still transmits keys");
+        noFrames.request(false);check(inputOnly.size()==inputStart+18,"Fallback can explicitly resume full RFB pixel delivery");
         check(pixels[0]==0xff184860&&pixels[5]==0xff184860,"RFB little-endian RGB must render correct ARGB pixels");
         int start=wire.size();r.key('t',true);r.key('t',false);r.pointer(99,-1,4);
         byte[] events=Arrays.copyOfRange(wire.toByteArray(),start,wire.size());
