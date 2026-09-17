@@ -1,3 +1,11 @@
+# Latest Thor feedback: keep recentering off; reconnect DLL fault captured (2026-09-17)
+
+Read [reconnect-0415-device.md](reconnect-0415-device.md) before the historical release notes below. The user confirms gear `#tim` works in EQ. Forced mouse recentering crashes during graphics startup; keep it off. With recentering subsequently reset to default, character select → server select → Play produces `c00000fd` first at native DINPUT8.dll RVA `0x9EE4`, followed by a secondary Wine exception-handler overflow. Android exit history also identifies the earlier 21:44 stop-time app closure as Chromium's unhandled WebView renderer crash; it predates the 0.4.15 recovery handler.
+
+An isolated Windows symbol build succeeded (run35287847157, diagnostic branch25ae5b5), but its binary layout does not match the device fault. Do not infer a function from that map. The installed DLL identity is not in this bundle; only a staged-build record is present. Next request the actual `client/current/DINPUT8.dll` and tiny `client/toolchain/sdk.json` through the app's Files → Export file. No Mac tools or full-session upload needed. Published app remains verified0.4.15/09e5e0b. No product code, runtime, prefix, database or client files changed during this investigation. Keep the working #tim sequence and shared-memory path; restart the client before re-entering the server as the temporary reconnect workaround.
+
+---
+
 # Released: 0.4.15 input follow-up and crash diagnostics (2026-09-17)
 
 Read [input-crashes-0415.md](input-crashes-0415.md). The new device bundle confirms MIT-SHM capture at about0.95ms, with idle/duplicate skips, but contains no usable Android crash or reconnect stack trace. Gear #tim now uses paced keys without Ctrl+A; optional Client → Recenter mouse for camera look enables Wine's own per-application warp handling after relaunch. It is off by default and requires camera/inventory acceptance on the Thor. Android exit history/uncaught-Java capture, WebView recovery and notification shutdown lifecycle handling are added. **Neither the reconnect overflow nor the reported stop crash has a proven root cause or confirmed device fix.**
