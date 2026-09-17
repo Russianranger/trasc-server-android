@@ -43,7 +43,7 @@ The helper records capture, send and pacing time, actual send-call count and byt
 
 The real Wine integration gate now tests both capture modes, color correctness, 1280×720 fullscreen coverage, private socket permissions and reconnect, including direct and PRoot Software/DXVK/VirGL runs. The forced XGetImage case checks transfer statistics and batched send calls. DXVK integration also launches with the HUD off. These CI software-rendering checks cannot prove Android Surface appearance, Thor performance, heat or controller feel.
 
-Local validation: 119 Python tests; host JVM controller/RFB/management checks; strict C frame/color and transfer tests including padded rows, short writes, EINTR and EPIPE; JavaScript syntax checks. Full Android/browser/native integration and release validation are pending until recorded in HANDOFF.
+Local validation: 119 Python tests; host JVM controller/RFB/management checks; strict C frame/color and transfer tests including padded rows, short writes, EINTR and EPIPE; JavaScript syntax checks. Android compilation/lint/signing, browser validation and all direct/PRoot native integration gates also passed on run35249900083. Final public-release verification is recorded in HANDOFF; Thor acceptance remains pending.
 
 ## Device check
 

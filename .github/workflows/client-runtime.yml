@@ -196,4 +196,18 @@ jobs:
             gh release create client-runtime-v1 --prerelease --title 'Embedded client runtime 1.0' --notes 'App-private ARM64 Debian, Wine 10.0 WoW64, Box64 0.4.4 and software graphics. No EverQuest files included. Native Windows DLL, Direct3D9, keyboard and mouse verified with an open test program; ROF2 device testing remains required.'
           fi
           gh api --method PATCH "repos/$GITHUB_REPOSITORY/git/refs/tags/client-runtime-v1" -f sha="$GITHUB_SHA" -F force=true
-          gh release upload client-runtime-v1 dist/client-runtime-arm64.tar.gz dist/client-runtime-manifest.json dist/client-runtime-sources.tar.gz --clobber
+          # Upload serially so each archive has its own bounded retry. Publish
+          # the manifest last, after both payload and corresponding sources.
+          for asset in dist/client-runtime-arm64.tar.gz dist/client-runtime-sources.tar.gz dist/client-runtime-manifest.json; do
+            for attempt in 1 2; do
+              echo "Uploading $asset (attempt $attempt/2)"
+              if timeout --kill-after=15s 10m gh release upload client-runtime-v1 "$asset" --clobber; then
+                break
+              fi
+              if [ "$attempt" -eq 2 ]; then
+                echo "::error::Release asset upload failed: $asset"
+                exit 1
+              fi
+              echo "::warning::Retrying interrupted release upload: $asset"
+            done
+          done
