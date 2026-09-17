@@ -918,12 +918,29 @@ class Engine(ManagedContent):
         root = self.work
         p = safe_path(root, args.get('path',''),True)
         if not p.is_dir(): raise ValueError('Select a folder')
+        query = args.get('query', '')
+        offset, limit = args.get('offset', 0), args.get('limit', 2000)
+        if not isinstance(query, str) or len(query) > 256: raise ValueError('Search must be at most 256 characters')
+        if type(offset) is not int or offset < 0: raise ValueError('Invalid file page offset')
+        if type(limit) is not int or not 1 <= limit <= 2000: raise ValueError('Invalid file page size')
+        query = query.strip().casefold()
         items=[]
         for entry in p.iterdir():
             if entry.is_symlink(): continue
             if entry.name in ('settings.json','mysql.cnf','mysql.sock','mysql.pid'): continue
-            items.append({'name':entry.name,'path':str(entry.relative_to(root)), 'directory':entry.is_dir(),'size':entry.stat().st_size if entry.is_file() else 0})
-        return {'path':str(p.relative_to(root)), 'items':sorted(items,key=lambda x:(not x['directory'],x['name'].lower()))[:2000]}
+            # Filter the whole directory before pagination, including names past
+            # the former 2,000-entry cutoff. Never descend into subdirectories.
+            if query not in entry.name.casefold(): continue
+            try:
+                items.append({'name':entry.name,'path':str(entry.relative_to(root)), 'directory':entry.is_dir(),'size':entry.stat().st_size if entry.is_file() else 0})
+            except FileNotFoundError:
+                continue  # A running process may rotate/remove a file while listing.
+        items.sort(key=lambda x:(not x['directory'],x['name'].casefold(),x['name']))
+        total = len(items)
+        offset = min(offset, ((total - 1) // limit) * limit if total else 0)
+        return {'path':str(p.relative_to(root)), 'items':items[offset:offset+limit],
+                'total':total, 'offset':offset, 'limit':limit,
+                'next_offset':offset+limit if offset+limit < total else None}
 
     def edit_file(self, args):
         if self.server_running(): raise ValueError('Stop the server before changing runtime files')

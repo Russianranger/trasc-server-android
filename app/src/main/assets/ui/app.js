@@ -58,9 +58,41 @@ action('load-backups',async()=>{const r=await api('files',{path:'backups'});$('b
 action('restore-backup',async()=>{if(!$('backup-select').value)throw new Error('Select a snapshot first.');await job('restore_database',{file:$('backup-select').value});});
 document.querySelectorAll('[data-query]').forEach(b=>b.addEventListener('click',()=>{$('sql-query').value=b.dataset.query;$('sql-write').checked=false;}));
 action('run-sql',async()=>{const r=await job('sql',{query:$('sql-query').value,write:$('sql-write').checked});$('sql-result').textContent=r.output+(r.truncated?'\n[Output truncated]':'');});
-async function browse(){const r=await api('files',{path:$('file-path').value.trim()});$('file-path').value=r.path==='.'?'':r.path;$('file-list').replaceChildren();for(const f of r.items){const row=document.createElement('tr'),name=document.createElement('td'),size=document.createElement('td'),select=document.createElement('td');if(f.directory){const b=document.createElement('button');b.className='folder';b.textContent='▸ '+f.name;b.onclick=()=>{$('file-path').value=f.path;browse().catch(e=>notice(e.message,true));};name.append(b);}else name.textContent=f.name;size.textContent=f.directory?'Folder':bytes(f.size);const b=document.createElement('button');b.className='secondary';b.textContent='Select';b.onclick=()=>{$('selected-file').value=f.path;};select.append(b);row.append(name,size,select);$('file-list').append(row);}}
-action('file-go',browse);action('file-up',async()=>{$('file-path').value=$('file-path').value.split('/').slice(0,-1).join('/');await browse();});
-action('file-upload',async()=>{const f=await api('pick',{kind:'file'});$('selected-file').value=f.path;$('file-path').value='incoming';await browse();notice('File imported. Set its destination, then Copy or Move.');});
+let fileBrowseGeneration=0,fileOffset=0,fileNext=null;
+const filePageSize=200;
+function clearFileResults(message){
+ ++fileBrowseGeneration;$('file-list').replaceChildren();$('selected-file').value='';
+ $('file-prev').disabled=$('file-next').disabled=true;$('file-results').textContent=message;
+}
+async function browse(offset=0){
+ clearFileResults('Loading files…');const request=fileBrowseGeneration;
+ const path=$('file-path').value.trim(),query=$('file-search').value.trim();
+ try{
+  const r=await api('files',{path,query,offset,limit:filePageSize});
+  if(request!==fileBrowseGeneration)return;
+  $('file-path').value=r.path==='.'?'':r.path;fileOffset=r.offset;fileNext=r.next_offset;
+  for(const f of r.items){
+   const row=document.createElement('tr'),name=document.createElement('td'),size=document.createElement('td'),select=document.createElement('td');
+   if(f.directory){const b=document.createElement('button');b.className='folder';b.textContent='▸ '+f.name;
+    b.onclick=()=>{$('file-path').value=f.path;$('file-search').value='';browse().catch(e=>notice(e.message,true));};name.append(b);
+   }else name.textContent=f.name;
+   size.textContent=f.directory?'Folder':bytes(f.size);const b=document.createElement('button');b.className='secondary';b.textContent='Select';
+   b.onclick=()=>{$('selected-file').value=f.path;};select.append(b);row.append(name,size,select);$('file-list').append(row);
+  }
+  $('file-results').textContent=r.total?`${r.offset+1}–${r.offset+r.items.length} of ${r.total} ${query?'matches':'entries'}`:query?'No matching names in this folder.':'This folder is empty.';
+  $('file-prev').disabled=r.offset===0;$('file-next').disabled=r.next_offset==null;
+  $('file-list').closest('.table-wrap').scrollTop=0;
+ }catch(e){if(request!==fileBrowseGeneration)return;$('file-results').textContent='Could not load files. '+e.message;throw e;}
+}
+for(const id of ['file-path','file-search'])$(id).addEventListener('input',()=>clearFileResults('Press Search or Open folder to load files.'));
+function fileBrowseAction(id,fn){$(id).addEventListener('click',()=>fn().catch(e=>notice(e.message,true)));}
+fileBrowseAction('file-go',()=>browse());fileBrowseAction('file-search-go',()=>browse());
+fileBrowseAction('file-search-clear',()=>{$('file-search').value='';return browse();});
+fileBrowseAction('file-up',()=>{$('file-path').value=$('file-path').value.split('/').slice(0,-1).join('/');$('file-search').value='';return browse();});
+fileBrowseAction('file-prev',()=>browse(Math.max(0,fileOffset-filePageSize)));
+fileBrowseAction('file-next',()=>browse(fileNext??0));
+for(const [id,button] of [['file-path','file-go'],['file-search','file-search-go']])$(id).addEventListener('keydown',e=>{if(e.key==='Enter'){e.preventDefault();$(button).click();}});
+action('file-upload',async()=>{const f=await api('pick',{kind:'file'});$('file-path').value='incoming';$('file-search').value='';await browse();$('selected-file').value=f.path;notice('File imported. Set its destination, then Copy or Move.');});
 for(const op of ['copy','move'])action('file-'+op,async()=>{await job('edit_file',{action:op,path:$('selected-file').value,destination:$('destination-file').value.trim()});await browse();});
 action('file-export',()=>api('export',{path:$('selected-file').value}));
 let logRetentionRead=0,logRetentionWrite=Promise.resolve();

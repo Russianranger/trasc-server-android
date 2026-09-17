@@ -1,3 +1,9 @@
+# File search update: 0.4.16 (2026-09-17)
+
+Read [file-search-0416.md](file-search-0416.md). User could not reach client files past the silent 2,000-entry browser cap. Full-folder case-insensitive name search and 200-entry Previous/Next pages now make them reachable. Search results keep Select → Export file, with explicit counts/empty states and stale-response protection. Version0.4.16/code33; preserve signing and all existing release gates. Local129 Python and native/JVM checks passed; browser/Android/runtime validation and publication are pending. No client/DLL/runtime/graphics changes are part of this update. Keep recentering off; export client/current/DINPUT8.dll and client/toolchain/sdk.json after installation to resume the separate reconnect diagnosis.
+
+---
+
 # Latest Thor feedback: keep recentering off; reconnect DLL fault captured (2026-09-17)
 
 Read [reconnect-0415-device.md](reconnect-0415-device.md) before the historical release notes below. The user confirms gear `#tim` works in EQ. Forced mouse recentering crashes during graphics startup; keep it off. With recentering subsequently reset to default, character select → server select → Play produces `c00000fd` first at native DINPUT8.dll RVA `0x9EE4`, followed by a secondary Wine exception-handler overflow. Android exit history also identifies the earlier 21:44 stop-time app closure as Chromium's unhandled WebView renderer crash; it predates the 0.4.15 recovery handler.

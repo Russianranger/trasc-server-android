@@ -1,7 +1,14 @@
+# 0.4.16 — File search and complete folder browsing
+
+- Search every filename in the open folder, ignoring capitalization. Find `dinput8.dll` or any part of a name, then Select → Export file.
+- Previous/Next pages and result counts replace the silent 2,000-entry cutoff. Large client folders remain fully accessible.
+- See [file search instructions](file-search-0416.md). Update in place; keep mouse recentering off while the separate client investigation continues.
+
+---
 # 0.4.15 input follow-up
 
 - Gear #tim uses paced keys and explicit Shift, with cancellation on focus loss.
-- Client launch options include experimental mouse recentering. Enable and relaunch to compare; disable/relaunch if inventory pointing snaps to center.
+- The experimental mouse recentering option failed the Thor test; leave it off.
 - Export Logs includes bounded Android exit/crash evidence. Management display recovery and notification shutdown handling are more robust.
 - Character-select reconnect stack overflow and the reported stop-server crash remain under investigation. These changes do not establish their causes.
 - Update in place. No runtime reinstall, DLL rebuild or Mac tools required. See [device checks](input-crashes-0415.md).

@@ -49,7 +49,13 @@ for(const [name,type,value,min,max]of [['Character:RaidExpMultiplier','real','0.
     else if(op==='export_logs')result={file:'exports/logs-native.zip'};
     else if(op==='export'){window.__exports.push(args.path);if(window.__cancelExport){window.nativeReply(id,{ok:false,error:'File selection cancelled'});return;}result={message:'File exported'};}
     else if(op==='client_dll_status')result={compiler:true,runtime:true,sdk:true,build:null};
-    else if(op==='files')result={path:'backups',items:[{name:'players-test.zip',path:'backups/players-test.zip',size:100}]};
+    else if(op==='files'){
+     const names=args.path==='client/current'?['Resources',...Array.from({length:2101},(_,i)=>'a'+String(i).padStart(4,'0')+'.txt'),'DINPUT8.dll','z-last.txt']:args.path==='client/toolchain'?['sdk.json']:['players-test.zip'];
+     const all=names.filter(n=>n.toLowerCase().includes((args.query||'').trim().toLowerCase())).map(name=>({name,path:args.path+'/'+name,size:100,directory:name==='Resources'}));
+     const offset=args.offset||0,limit=args.limit||2000;
+     result={path:args.path,items:all.slice(offset,offset+limit),total:all.length,offset,limit,next_offset:offset+limit<all.length?offset+limit:null};
+     if(window.__holdFileReply){window.__holdFileReply=false;window.__heldFileReply=()=>window.nativeReply(id,{ok:true,result});return;}
+    }
     else if(op==='controller_state')result=profile;
     else if(op==='controller_save'){profile={...profile,...args};result=profile;}
     else if(op==='controller_capture'){window.clientInputEvent?.({type:'capture',down:args.active});result={...profile,active:args.active};}
@@ -270,6 +276,42 @@ for(const [name,type,value,min,max]of [['Character:RaidExpMultiplier','real','0.
   assert.deepEqual(await page.evaluate(()=>window.__exports),['exports/logs-native.zip','exports/logs-native.zip'],'Both buttons save a native log bundle through Android');
   const calls=await page.evaluate(()=>window.__calls);
   assert(!calls.includes('state')&&!calls.includes('runtime_start'),'Offline log access must neither poll backend jobs nor start the runtime');
-  assert.deepEqual(errors,[],'UI JavaScript errors');console.log('PASS: categorized rules, field errors, controller lifecycle, and both log export buttons/readers after session failure with runtime closed');
+  await page.locator('#runtime-open').click();await page.waitForFunction(()=>window.__alive);
+  await page.locator('nav [data-tab=files]').click();
+  await page.locator('#file-path').fill('client/current');await page.locator('#file-path').press('Enter');
+  await page.waitForFunction(()=>document.getElementById('file-results').textContent==='1–200 of 2104 entries');
+  assert(await page.locator('#file-prev').isDisabled());
+  for(let n=1;n<=10;n++){
+   await page.locator('#file-next').click();
+   await page.waitForFunction(start=>document.getElementById('file-results').textContent.startsWith(start+'–'),n*200+1);
+  }
+  assert(await page.locator('#file-next').isDisabled());
+  assert((await page.locator('#file-list').textContent()).includes('z-last.txt'),'Files beyond 2,000 are reachable');
+  await page.locator('#file-prev').click();await page.waitForFunction(()=>document.getElementById('file-results').textContent.startsWith('1801–'));
+  await page.locator('#file-search').fill('DiNpUt');await page.locator('#file-search').press('Enter');
+  await page.waitForFunction(()=>document.getElementById('file-results').textContent==='1–1 of 1 matches');
+  await page.locator('#file-list button').click();await page.locator('#file-export').click();
+  await page.waitForFunction(()=>window.__exports.at(-1)==='client/current/DINPUT8.dll');
+  await page.setViewportSize({width:412,height:915});
+  await page.screenshot({path:'ui-reports/file-search-mobile.png',fullPage:true});
+  assert(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth+1),'File search fits mobile width');
+  await page.locator('#file-search').fill('missing');
+  assert.equal(await page.locator('#selected-file').inputValue(),'','Changed search clears old export selection');
+  await page.locator('#file-search-go').click();await page.waitForFunction(()=>document.getElementById('file-results').textContent.startsWith('No matching'));
+  assert(await page.locator('#file-prev').isDisabled()&&await page.locator('#file-next').isDisabled());
+  await page.locator('#file-search-clear').click();await page.waitForFunction(()=>document.getElementById('file-results').textContent==='1–200 of 2104 entries');
+  // A slow response for the previous folder must not replace current results.
+  await page.evaluate(()=>window.__holdFileReply=true);
+  await page.locator('#file-search').fill('dinput');await page.locator('#file-search-go').click();
+  await page.waitForFunction(()=>typeof window.__heldFileReply==='function');
+  await page.locator('#file-path').fill('client/toolchain');await page.locator('#file-search').fill('SDK.JSON');
+  await page.locator('#file-search-go').click();await page.waitForFunction(()=>document.getElementById('file-list').textContent.includes('sdk.json'));
+  await page.evaluate(()=>window.__heldFileReply());
+  assert.equal(await page.locator('#file-path').inputValue(),'client/toolchain');
+  assert(!(await page.locator('#file-list').textContent()).includes('DINPUT8.dll'));
+  await page.locator('#file-list button').click();await page.locator('#file-export').click();
+  await page.waitForFunction(()=>window.__exports.at(-1)==='client/toolchain/sdk.json');
+  await page.setViewportSize({width:960,height:540});await page.screenshot({path:'ui-reports/file-search-landscape.png',fullPage:true});
+  assert.deepEqual(errors,[],'UI JavaScript errors');console.log('PASS: management, controller, offline logs, full-folder search/pagination/export and stale-response protection');
  }finally{await browser.close();server.close();}
 })().catch(e=>{console.error(e);server.close();process.exitCode=1;});
