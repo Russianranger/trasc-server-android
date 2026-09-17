@@ -28,7 +28,7 @@ API references: [Android Native Window](https://developer.android.com/ndk/refere
 
 ## Validation and device comparison
 
-Local checks: 118 Python tests, JVM controller/transport/session/audio tests, strict C frame bounds/color conversion checks, and JavaScript syntax. CI must also compile native Linux/Android code and APK/lint, exercise browser persistence/layers/presets, and capture real Wine/DXVK pixels through both transports under direct Linux and PRoot. Preserve all existing release gates. Physical Thor Surface presentation, gamepad feel, overlays/touch, thermal behavior and speed remain device acceptance; do not claim them from host tests.
+Local checks: 118 Python tests, JVM controller/transport/session/audio tests, strict C frame bounds/color conversion checks, and JavaScript syntax. All seven jobs passed in [run35237303372](https://github.com/Russianranger/trasc-server-android/actions/runs/35237303372) for source `1bf596e7ac8d3ad50bd2b9640fa153adae794367`: native Linux/Android compilation, APK/lint/preserved signing, browser persistence/layers/presets, and real Wine software/DXVK/VirGL pixels through both transports under direct Linux and PRoot. All existing release gates passed. Independent APK signature/content verification and public release digest comparison are recorded in the handoff. Physical Thor Surface presentation, gamepad feel, overlays/touch, thermal behavior and speed remain device acceptance; do not claim them from host tests.
 
 After updating in place, select an EQ preset, Save, and check walking, camera, target cycling, hotbuttons/spell gems and inventory. Open/cancel/save mappings from the gear menu while moving to verify inputs release. Close/reopen the display and verify saved bindings.
 
