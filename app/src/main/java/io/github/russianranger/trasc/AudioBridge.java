@@ -37,7 +37,7 @@ final class AudioBridge implements AutoCloseable {
                 synchronized(connections){for(Connection c:connections)c.volume(volume);}
                 record("focus="+change);
             },new Handler(Looper.getMainLooper())).build();
-        if(log.exists())Files.move(log.toPath(),new File(log.getParentFile(),"client-audio.previous.log").toPath(),StandardCopyOption.REPLACE_EXISTING);
+        LogRetention.rotate(log);
     }
     private void listen()throws Exception {
         Files.deleteIfExists(path.toPath());

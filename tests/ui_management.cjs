@@ -16,7 +16,7 @@ for(const [name,type,value,min,max]of [['Character:RaidExpMultiplier','real','0.
  try{
   const page=await browser.newPage({viewport:{width:412,height:915}}),errors=[];page.on('pageerror',e=>errors.push(e.message));
   await page.addInitScript(data=>{
-   let seq=0,jobs=[],spellTest={};let addonLocked=false,addonCopied=false;const addonData=()=>({snapshot:'fixture',counts:{missing:addonCopied?0:1,different:0,same:addonCopied?1:0},entries:[{path:'uifiles/default/NMS_Test.xml',status:addonCopied?'same':'missing',locked:addonLocked,protected:false}]});const actions=['None','MouseLeft','MouseRight','PointerUp','PointerDown','PointerLeft','PointerRight','KeyW','KeyT','Space','Escape'];
+   let seq=0,jobs=[],spellTest={},logRetention=5;let addonLocked=false,addonCopied=false;const addonData=()=>({snapshot:'fixture',counts:{missing:addonCopied?0:1,different:0,same:addonCopied?1:0},entries:[{path:'uifiles/default/NMS_Test.xml',status:addonCopied?'same':'missing',locked:addonLocked,protected:false}]});const actions=['None','MouseLeft','MouseRight','PointerUp','PointerDown','PointerLeft','PointerRight','KeyW','KeyT','Space','Escape'];
    let profile={sources:['A','B','RightUp','RightDown','RightLeft','RightRight'],actions,bindings:{A:'Space',B:'Escape',RightUp:'PointerUp',RightDown:'PointerDown',RightLeft:'PointerLeft',RightRight:'PointerRight'},deadzone:.2,sensitivity:700};
    window.__saves=[];window.__alive=true;window.__calls=[];window.__exports=[];window.__clientStarts=[];window.__clientViews=0;
    let clientRuntime={installed:true,alive:false,busy:false,status:'Client runtime installed',directx_installed:false};
@@ -40,6 +40,7 @@ for(const [name,type,value,min,max]of [['Character:RaidExpMultiplier','real','0.
     else if(op==='session_backup'){
      window.__alive=false;window.nativeReply(id,{ok:false,error:'Session backup failed: simulated storage error. Runtime is stopped. Logs are still available; open runtime to continue.'});return;
     }
+    else if(op==='log_retention'){if(args.count)logRetention=args.count;result={count:logRetention,removed_files:12,removed_bytes:4096,message:'Log retention saved. Removed 12 older logs; current logs are kept.'};}
     else if(op==='logs')result={text:args.name==='app.log'?'session_backup failed: simulated storage error':'Saved output: '+args.name,names:['app.log','runtime.log','control.log','operation.log','server/zones/cabeast.log','client/Logs/dbg.txt','client/dinput8.log']};
     else if(op==='export_logs')result={file:'exports/logs-native.zip'};
     else if(op==='export'){window.__exports.push(args.path);if(window.__cancelExport){window.nativeReply(id,{ok:false,error:'File selection cancelled'});return;}result={message:'File exported'};}
@@ -203,7 +204,16 @@ for(const [name,type,value,min,max]of [['Character:RaidExpMultiplier','real','0.
   await page.waitForFunction(()=>document.getElementById('notice').textContent.includes('simulated storage error'));
   await page.waitForFunction(()=>document.getElementById('badge').textContent==='RUNTIME CLOSED');
   await page.evaluate(async()=>{await poll();window.__calls=[];});
-  await page.locator('nav [data-tab=logs]').click();await page.locator('#log-name').selectOption('operation.log');
+  await page.locator('nav [data-tab=logs]').click();
+  await page.waitForFunction(()=>document.getElementById('log-retention').value==='5');
+  for(const count of ['2','3','4','5']) {
+    await page.locator('#log-retention').selectOption(count);await page.locator('#save-log-retention').click();
+    await page.waitForFunction(()=>document.getElementById('log-retention-status').textContent.includes('Removed 12'));
+    await page.locator('nav [data-tab=server]').click();await page.locator('nav [data-tab=logs]').click();
+    await page.waitForFunction(value=>document.getElementById('log-retention').value===value,count);
+  }
+  await page.screenshot({path:'ui-reports/log-retention-mobile.png',fullPage:true});
+  await page.locator('#log-name').selectOption('operation.log');
   await page.waitForFunction(()=>document.getElementById('log-output').textContent==='Saved output: operation.log');
   await page.locator('#log-name').selectOption('server/zones/cabeast.log');
   await page.waitForFunction(()=>document.getElementById('log-output').textContent.includes('server/zones/cabeast.log'));

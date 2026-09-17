@@ -7,6 +7,7 @@ import signal
 import subprocess
 import time
 import client_dll
+from log_retention import rotate
 from engine import atomic_json
 
 WORK=Path('/work');SESSION=Path('/session');LOG=WORK/'logs/client-compiler.log'
@@ -61,7 +62,8 @@ def main():
     lease=WORK/'run/client-dll-building.json'
     try:
         atomic_json(lease,{'pid':os.getpid(),'started':time.time()})
-        if LOG.exists(): LOG.replace(LOG.with_suffix('.previous.log'))
+        rotate(LOG)
+        rotate(WORK/'logs/client-compiler-display.log')
         update('compiler_starting',message='Preparing a separate compiler prefix')
         (SESSION/'Xauthority').touch(mode=0o600)
         subprocess.run(['xauth','-f',ENV['XAUTHORITY'],'add',':8','.',secrets.token_hex(16)],check=True)

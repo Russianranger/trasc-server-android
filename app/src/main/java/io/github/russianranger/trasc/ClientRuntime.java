@@ -154,7 +154,7 @@ final class ClientRuntime {
             }
             TarExtractor.remove(run);TarExtractor.remove(tmp);run.mkdirs();tmp.mkdirs();sessionPrefix.mkdirs();client.mkdirs();
             File presentationLog=new File(server.work,"logs/client-presentation.log");
-            if(presentationLog.exists())Files.move(presentationLog.toPath(),new File(server.work,"logs/client-presentation.previous.log").toPath(),StandardCopyOption.REPLACE_EXISTING);
+            LogRetention.rotate(presentationLog);
             JSONObject request=new JSONObject().put("mode",mode).put("resolution",resolution).put("executable",executable).put("native_dinput8",options.optBoolean("native_dinput8",true))
                 .put("diagnostic_logging",options.optBoolean("diagnostic_logging",false)).put("native_d3dx",mode.equals("client")&&options.optBoolean("native_d3dx",true)).put("renderer",renderer).put("cpu_profile",cpuProfile);
             request.put("runtime_mode",runtimeMode).put("storage",new JSONObject().put("kind","app_private_internal")
@@ -166,7 +166,7 @@ final class ClientRuntime {
             if(spellJournal.exists())request.put("spell_test",json(spellJournal));
             RuntimeManager.write(new File(run,"request.json"),request.toString());
             File backend=new File(server.home,"client-backend");backend.mkdirs();
-            for(String name:new String[]{"client_runner.py","client_display.py","client_metrics.py","client_spells.py","client_vulkan.py","client_audio.py","libasound_module_pcm_trasc.so","audio-bundle.json","graphics_probe.py","runtime_probe.py","wined3d.dll","wined3d-patch.json","wineserver","wineserver-patch.json"})
+            for(String name:new String[]{"client_runner.py","log_retention.py","client_display.py","client_metrics.py","client_spells.py","client_vulkan.py","client_audio.py","libasound_module_pcm_trasc.so","audio-bundle.json","graphics_probe.py","runtime_probe.py","wined3d.dll","wined3d-patch.json","wineserver","wineserver-patch.json"})
                 try(InputStream in=context.getAssets().open(name)){RuntimeManager.copy(in,new File(backend,name));}
             if(!new File(backend,"wineserver").setExecutable(true,true))throw new IOException("Could not prepare bundled Wine server");
             if(renderer.equals("turnip")) {
@@ -200,11 +200,12 @@ final class ClientRuntime {
             RuntimeManager.write(new File(run,"request.json"),request.toString());
             if(renderer.equals("virgl")) {
                 status="Opening Android GPU driver…";
+                LogRetention.rotate(new File(server.work,"logs/client-gpu.log"));
                 graphics=GraphicsBridge.start(new File(nativeDir,"libvirgl-server.so"),new File(tmp,".virgl_test"),new File(server.work,"logs/client-gpu.log"));
             }
             if(request.getBoolean("audio"))audio=AudioBridge.start(context,new File(run,"audio.sock"),new File(server.work,"logs/client-audio.log"));
             File prootLog=new File(server.work,"logs/client-proot.log");
-            if(prootLog.exists())Files.move(prootLog.toPath(),new File(server.work,"logs/client-proot.previous.log").toPath(),StandardCopyOption.REPLACE_EXISTING);
+            LogRetention.rotate(prootLog);
             builder.redirectErrorStream(true);builder.redirectOutput(prootLog);
             process=builder.start();started=true;status="Starting client display and Wine…";
             if(mode.equals("client"))RuntimeManager.write(new File(server.work,"client/launch-options.json"),request.toString());

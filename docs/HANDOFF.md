@@ -1,3 +1,15 @@
+# Current work: 0.4.11 log retention and camp investigation (2026-09-17)
+
+User confirms gameplay works, reports a disconnect when camping, and requests at most 5 older logs per process with 2/3/4 alternatives. Read [log-retention-0411.md](log-retention-0411.md) for source/log evidence, implementation and device checks. The attached `logs-6442597055042792067.zip` shows a server-initiated close at 13:15:53 alongside three successful character saves, no Wine crash, zone idle one minute later, and explicit server stop at 13:17:24. Current source's default `Custom:CampTimerMs=100` uses the `fast_camp`/`OnDisconnect(false)` path; normal logout also sends pre-logout packets. Live rule values were not exported, so this is a strong source-supported diagnosis, not packet-level proof. User has been given the existing-app test: set the active ruleset's value to 29000, save and restart server. Do not patch the graphics stack or silently alter database rules. GM and Bazaar/EC logout paths differ.
+
+New native log retention runs without Python/runtime availability. Default 5, allowed 2/3/4/5, saved in `work/logs/retention-count.txt`. Immediate cleanup and a one-minute maintenance timer prune recognized closed PID logs by process family; zone files share one quota. Active/unknown PID state, symlinks, unknown files, chat, exports and backups are preserved. Python/native writers now retain the selected count of `.previous[.N].log` archives, with bounded 8 MiB startup/tail captures. Active server output is not a total storage quota. App 0.4.11/code28; preserve signing cache and all release gates. No new runtime payload or server/DLL build is required on the device.
+
+Local Python and native JVM regression checks pass; browser test is committed but local Chromium is unavailable, so CI must run it. Publication and physical-device retention/camp acceptance are pending at this checkpoint. Update this entry after the tested release is verified.
+
+Additional device milestone from `logs-4187556654133198681.zip`: all 49 MSVC units linked successfully into a staged x86 DLL (1,695,232 bytes; SHA256 `556ead4699b1af797eb2c676ef40dacc92ade932526ebe551f36382de7424c28`). Prior missing-library failure is resolved by source refresh. Warning C4172 is a real source issue in the disabled custom-old-animation hook; most other warnings are repeated legacy header diagnostics. Do not characterize all warnings as harmless. User subsequently reports working gameplay; no DLL/compiler change is requested here.
+
+---
+
 # Thor compiler result: all 49 units compile; refresh old source to supply libraries (2026-09-17)
 
 User supplied `logs-5989479384230296195.zip` and a screenshot of `LINK : fatal error LNK1104: cannot open file 'detours.lib'`. Read-only inspection of the bundle confirms successful SDK import on 0.4.10, completion of all 49 source compilation commands through the real Android Wine/Box64/MSVC path, and failure only at the final link step. This is new device evidence that the imported toolchain and C++ compiler work; it is not yet a successful DLL build or live-hook acceptance.

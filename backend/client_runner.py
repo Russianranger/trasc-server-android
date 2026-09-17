@@ -39,20 +39,8 @@ def wine_debug(verbose=False, sound=False):
 
 
 def archive_log(path, limit=WINE_LOG_LIMIT):
-    """Keep a bounded previous session, including old unbounded 0.3.2 logs."""
-    if not path.exists(): return
-    previous = path.with_suffix('.previous.log')
-    size = path.stat().st_size
-    if size <= limit:
-        os.replace(path, previous)
-        return
-    marker = f'\n[TRASC: previous log shortened from {size} bytes; startup and final output retained]\n'.encode()
-    head = limit // 2
-    temporary = previous.with_suffix('.new')
-    with path.open('rb') as source, temporary.open('wb') as out:
-        out.write(source.read(head)); out.write(marker)
-        source.seek(-(limit-head-len(marker)), os.SEEK_END); out.write(source.read())
-    os.replace(temporary, previous); path.unlink()
+    from log_retention import rotate
+    rotate(path, limit)
 
 
 def preserve_game_log(client=CLIENT, logs=LOGS, limit=WINE_LOG_LIMIT):
@@ -62,7 +50,8 @@ def preserve_game_log(client=CLIENT, logs=LOGS, limit=WINE_LOG_LIMIT):
     An oversized log retains bounded startup/final excerpts.
     """
     target = logs/'client-game.previous.log'
-    target.unlink(missing_ok=True)
+    from log_retention import shift
+    shift(logs/'client-game.log')
     for relative in ('Logs/dbg.txt', 'logs/dbg.txt', 'dbg.txt'):
         source = client/relative
         if source.is_symlink() or source.parent.is_symlink() or not source.is_file(): continue

@@ -84,6 +84,7 @@ public final class MainActivity extends Activity {
                         case "runtime_start": service();runtime.start();result=runtime.nativeState();break;
                         case "runtime_stop": runtime.stop();if(!clientRuntime.alive()&&!clientRuntime.busy)stopService(new Intent(MainActivity.this,ServerService.class));result=runtime.nativeState();break;
                         case "runtime_log": result=runtime.logs("runtime.log");break;
+                        case "log_retention": result=runtime.logRetention(args);break;
                         case "logs": result=runtime.logs(args.optString("name","control.log"));break;
                         case "export_logs": service();result=runtime.exportLogs();break;
                         case "session_backup": service();runOnUiThread(()->controller.capture(false));result=runtime.backupSession();break;

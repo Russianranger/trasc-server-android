@@ -136,6 +136,7 @@ final class LocalLogs {
 
     static synchronized void failure(File work,String operation,Exception error)throws IOException {
         Path path=checked(work.toPath(),"logs/app.log");Files.createDirectories(path.getParent());
+        if(Files.exists(path)&&Files.size(path)>LogRetention.LIMIT)LogRetention.rotate(path.toFile());
         try(PrintWriter out=new PrintWriter(new OutputStreamWriter(Files.newOutputStream(path,
                 StandardOpenOption.CREATE,StandardOpenOption.APPEND,LinkOption.NOFOLLOW_LINKS),StandardCharsets.UTF_8))) {
             out.println(java.time.Instant.now()+" "+operation+" failed");error.printStackTrace(out);

@@ -33,6 +33,7 @@ from managed_content import ManagedContent
 import client_addons
 import client_dll
 import player_data
+from log_retention import rotate
 
 VERSION = '0.3.4'
 DEFAULT_REPO = 'https://github.com/Russianranger/Triptych-Triumvirate'
@@ -189,7 +190,7 @@ class Engine(ManagedContent):
     def log(self, text):
         with self.log_lock:
             if self.log_path.exists() and self.log_path.stat().st_size > 8 * 1024**2:
-                os.replace(self.log_path, self.log_path.with_suffix('.previous.log'))
+                rotate(self.log_path)
             with self.log_path.open('a') as f:
                 f.write(time.strftime('%Y-%m-%d %H:%M:%S ') + str(text) + '\n')
 
@@ -221,6 +222,7 @@ class Engine(ManagedContent):
             job['status'] = 'running'
             self.log('Starting ' + job['operation'])
             try:
+                rotate(self.work/'logs/operation.log')
                 job['result'] = self.dispatch(job['operation'], args)
                 job['status'] = 'done'
                 self.log('Completed ' + job['operation'])
@@ -426,6 +428,7 @@ class Engine(ManagedContent):
             init = self.work / 'run/mysql-init.sql'
             init.write_text("ALTER USER 'root'@'localhost' IDENTIFIED BY '" + self.config['root_password'] + "';\nDELETE FROM mysql.global_priv WHERE User='' OR (User='root' AND Host<>'localhost');\nFLUSH PRIVILEGES;\n")
             init.chmod(0o600)
+            rotate(self.work/'logs/mariadb.log')
             log = open(self.work / 'logs/mariadb.log', 'ab')
             self.db = subprocess.Popen(['mariadbd', '--no-defaults', '--user=root', '--datadir=' + str(datadir),
                 '--init-file=' + str(init),
@@ -638,6 +641,7 @@ class Engine(ManagedContent):
 
     def launch(self, name, *args):
         runtime = self.work / 'server'
+        rotate(self.work/'logs'/(name+'.log'))
         with open(self.work / 'logs' / (name + '.log'), 'ab') as out:
             p = subprocess.Popen([str(runtime / 'bin' / name), *args], cwd=runtime, stdin=subprocess.DEVNULL, stdout=out, stderr=out, start_new_session=True)
         self.processes[name] = p
@@ -669,6 +673,10 @@ class Engine(ManagedContent):
                 except OSError: time.sleep(1)
             else: raise ValueError('World did not become ready within ten minutes')
             for name in ('ucs', 'queryserv'): self.launch(name)
+            # eqlaunch overwrites its fixed zone stdout files when workers start.
+            for path in (runtime/'logs').glob('zone-dynamic_*.log'):
+                if re.fullmatch(r'zone-dynamic_\d+\.log', path.name):
+                    rotate(path)
             self.launch('eqlaunch', 'trasc')
             time.sleep(3)
             failed = [n for n,p in self.processes.items() if p.poll() is not None]

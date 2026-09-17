@@ -1,3 +1,12 @@
+TRASC Server Android **0.4.11 — configurable log retention**
+
+- **Logs → Log storage:** keep 5 older logs per process by default, or select 2, 3 or 4. Save & clean older logs applies the limit immediately; automatic cleanup runs every minute.
+- Cleans accumulated server PID logs, including all zone logs under one zone quota. Running process logs are preserved. Launcher/client histories now retain the selected number of generations, with up to 8 MiB per newly archived log.
+- Saved exports, chat logs, databases and backups are retained. Install over the existing app with client/runtime stopped; no runtime download or recompilation is needed.
+- **Camp disconnect investigation:** the upstream fast-camp rule defaults to 100 ms and forces a server disconnect. For the normal countdown, use Gameplay → `Custom:CampTimerMs` → **29000**, save and restart the server. This remains a device test, not a claimed protocol fix. [Evidence and details](log-retention-0411.md).
+
+---
+
 TRASC Server Android **0.4.10 — client workspace and player preservation**
 
 - Persistent, reversible **Spell compatibility** filters client spell IDs >=45000 on Enable, Export and Prepare. Existing eight-ID tests remain enabled. New high IDs are caught automatically. Both root and Resources, plus the export ZIP, receive the filtered table. Complete generations remain backed up; Restore disables filtering and restores the latest complete table. The server database retains every spell.

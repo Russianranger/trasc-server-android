@@ -25,12 +25,19 @@ public final class RuntimeManager {
     private volatile Process process;
     private String token;
     private String recoveryError;
+    private final Timer logMaintenance=new Timer("log-retention",true);
     static final String RELEASE = "https://github.com/Russianranger/trasc-server-android/releases/download/runtime-v1/";
 
     private RuntimeManager(Context c) {
         context=c; home=c.getFilesDir(); work=new File(home,"work"); rootfs=new File(home,"rootfs");
         try {recoverSessionSwap();} catch(IOException e){recoveryError="Session recovery failed: "+e.getMessage();status=recoveryError;}
         new File(work,"incoming").mkdirs(); new File(work,"logs").mkdirs(); new File(work,"run").mkdirs();
+        logMaintenance.schedule(new TimerTask(){@Override public void run(){
+            synchronized(RuntimeManager.this){
+                if(sessionBusy)return;
+                try{LogRetention.prune(work);}catch(IOException e){android.util.Log.w("TRASC","Log cleanup deferred",e);}
+            }
+        }},1000,60000);
     }
     boolean installed() { return new File(rootfs,"etc/trasc-runtime.json").isFile(); }
     boolean alive() { return process!=null && process.isAlive(); }
@@ -43,7 +50,7 @@ public final class RuntimeManager {
         File proot=new File(nativeDir,"libproot.so"), loader=new File(nativeDir,"libproot-loader.so");
         if (!proot.canExecute() || !loader.exists()) throw new IOException("This APK is missing its ARM64 runtime launcher");
         File backend=new File(home,"backend"); backend.mkdirs();
-        for(String name:new String[]{"engine.py","rule_catalog.py","managed_content.py","client_display.py","client_spells.py","client_addons.py","client_dll.py","player_data.py","player_tables.py","client_compile_runner.py"})
+        for(String name:new String[]{"engine.py","log_retention.py","rule_catalog.py","managed_content.py","client_display.py","client_spells.py","client_addons.py","client_dll.py","player_data.py","player_tables.py","client_compile_runner.py"})
             try(InputStream in=context.getAssets().open(name)) { copy(in,new File(backend,name)); }
         byte[] secret=new byte[32]; new SecureRandom().nextBytes(secret); token=hex(secret);
         write(new File(work,"run/api-token"),token);
@@ -62,6 +69,7 @@ public final class RuntimeManager {
         pb.environment().put("PROOT_LOADER",loader.getPath());
         pb.environment().put("PROOT_TMP_DIR",tmp.getPath());
         pb.environment().put("PROOT_NO_SECCOMP","1");
+        LogRetention.rotate(new File(work,"logs/runtime.log"));
         pb.redirectErrorStream(true); pb.redirectOutput(ProcessBuilder.Redirect.appendTo(new File(work,"logs/runtime.log")));
         process=pb.start(); status="Starting local control service…";
         for(int i=0;i<60;i++) {
@@ -100,6 +108,18 @@ public final class RuntimeManager {
             .put("session_busy",sessionBusy)
             .put("status",status).put("free_bytes",home.getUsableSpace()).put("abi",android.os.Build.SUPPORTED_ABIS[0]);
     }
+    synchronized JSONObject logRetention(JSONObject args)throws Exception {
+        if(sessionBusy)throw new IOException("Wait for the complete session transfer");
+        if(args.has("count")) {
+            Object value=args.get("count");
+            if(!(value instanceof Integer)||((Integer)value)<2||((Integer)value)>5)
+                throw new IOException("Choose 2, 3, 4 or 5 older logs");
+            LogRetention.save(work,(Integer)value);
+        }
+        long[] removed=args.has("count")?LogRetention.prune(work):new long[]{0,0};
+        return new JSONObject().put("count",LogRetention.count(work)).put("removed_files",removed[0])
+            .put("removed_bytes",removed[1]).put("message","Log retention saved. Removed "+removed[0]+" older logs; current logs are kept.");
+    }
     JSONObject logs(String name)throws Exception {
         return new JSONObject().put("text",LocalLogs.tail(work,name))
             .put("names",new org.json.JSONArray(LocalLogs.inventory(work).keySet()));
@@ -111,6 +131,7 @@ public final class RuntimeManager {
             .put("created_utc",java.time.Instant.now().toString()).put("native",nativeState())
             .put("client",ClientRuntime.get(context).state())
             .put("android_sdk",android.os.Build.VERSION.SDK_INT).put("device",android.os.Build.MODEL);
+        metadata.put("log_retention",LogRetention.count(work));
         File archive=LocalLogs.export(work,metadata.toString(2));
         return new JSONObject().put("file","exports/"+archive.getName());
     }
