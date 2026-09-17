@@ -37,7 +37,9 @@ If schema review blocks restoration, retain the ZIP and recovery database and se
 
 This is an experimental device path. The real upstream project requires Microsoft-specific naked function hooks; Clang cannot compile it unchanged. The app therefore uses the original MSVC compiler through its existing Wine/Box64 runtime, in a separate compiler prefix.
 
-One-time preparation on a Windows PC:
+**No Windows PC available:** use the [Thor-only preparation instructions](toolchain-without-windows.md). The ZIP can be prepared in your existing Termux/Ubuntu environment and imported into the current APK; your work computer needs no downloads or extra tools. Automatic in-app downloading is not yet implemented.
+
+Alternatively, one-time preparation on a Windows PC:
 
 1. In Visual Studio Installer, install **MSVC v142 — VS 2019 C++ x64/x86 build tools (14.29)** and a **Windows 10 SDK**. They can be added to Visual Studio 2022.
 2. Download `tools/pack-client-sdk.ps1` from this repository. In PowerShell, run it from its folder:
