@@ -16,6 +16,7 @@ sudo apt-get install -y build-essential libtalloc-dev gawk
 git clone https://github.com/termux/proot.git "$task_dir/proot"
 git -C "$task_dir/proot" checkout 7266fb3e8516535682f5a9c8f3a7e70f6506eddb
 git -C "$task_dir/proot" apply "$PWD/native/proot-acceleration.patch"
+git -C "$task_dir/proot" apply "$PWD/native/proot-sysvipc.patch"
 sed -i '1i#include <string.h>' "$task_dir/proot/src/extension/ashmem_memfd/ashmem_memfd.c"
 make -C "$task_dir/proot/src" -j2 PROOT_UNBUNDLE_LOADER=/unused HAS_LOADER_32BIT=
 mkdir -p "$task_dir/classes" "$task_dir/root" "$task_dir/client" "$task_dir/prefix" "$task_dir/session" "$task_dir/tmp" "$task_dir/logs"
@@ -23,17 +24,20 @@ javac -d "$task_dir/classes" tests/java/android/system/Os.java app/src/main/java
 java -cp "$task_dir/classes" io.github.russianranger.trasc.ExtractRuntimeHost "${TRASC_TEST_ROOTFS:-dist/client-runtime-arm64.tar.gz}" "$task_dir/root"
 mkdir -p "$task_dir/root/directx"
 cp runtime-work/client-test/client/audio.exe runtime-work/client-test/client/eqgame.exe runtime-work/client-test/client/dinput8.dll runtime-work/client-test/client/models.exe runtime-work/client-test/client/textures.exe "$task_dir/client/"
+# The SysV helper uses a filesystem Unix socket (108-byte path limit).
+# Keep its private host directory short even in deeply nested CI checkouts.
+proot_tmp_dir=$(mktemp -d /tmp/trasc-proot.XXXXXX)
+trap 'if [ -n "${graphics_pid:-}" ]; then kill "$graphics_pid" 2>/dev/null || true; wait "$graphics_pid" 2>/dev/null || true; fi; rm -rf "$proot_tmp_dir"' EXIT
 if [ "$renderer" = virgl ]; then
     LIBGL_ALWAYS_SOFTWARE=1 GALLIUM_DRIVER=llvmpipe runtime-work/native/virgl-host/out/vtest/virgl_test_server \
         --use-egl-surfaceless --use-gles --multi-clients --socket-path "$task_dir/tmp/.virgl_test" > "$task_dir/logs/client-gpu.log" 2>&1 &
     graphics_pid=$!
-    trap 'kill "$graphics_pid" 2>/dev/null || true; wait "$graphics_pid" 2>/dev/null || true' EXIT
     for i in $(seq 1 100); do test -S "$task_dir/tmp/.virgl_test" && break; sleep .1; done
     test -S "$task_dir/tmp/.virgl_test"
 fi
 if [ "$acceleration" = compatibility ]; then export PROOT_NO_SECCOMP=1; else unset PROOT_NO_SECCOMP; fi
 export TRASC_PROOT_REPORT=1
-export PROOT_LOADER="$task_dir/proot/src/loader/loader" PROOT_TMP_DIR="$task_dir/tmp"
+export PROOT_LOADER="$task_dir/proot/src/loader/loader" PROOT_TMP_DIR="$proot_tmp_dir"
 vulkan_test_env=()
 if [ "$renderer" = turnip ]; then
     vulkan_test_env=(TRASC_TEST_ALLOW_SOFTWARE_VULKAN=1 TRASC_TEST_VULKAN_ICD=/usr/share/vulkan/icd.d/lvp_icd.aarch64.json)
@@ -52,6 +56,7 @@ if [ "$acceleration" = auto ]; then
     grep -q "TRASC PRoot: seccomp acceleration observed" "$task_dir/logs/client-runtime-probe.log"
 fi
 timeout 300 "${client_command[@]}" /tests/integration_client.py 2>&1 | tee "$task_dir/logs/client-proot.log"
+grep -q "TRASC PRoot: SysV shared memory uses memfd" "$task_dir/logs/client-proot.log"
 if [ "$acceleration" = auto ]; then
     grep -q "TRASC PRoot: seccomp acceleration observed" "$task_dir/logs/client-proot.log"
 fi

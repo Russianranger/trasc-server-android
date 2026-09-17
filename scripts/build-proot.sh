@@ -16,6 +16,11 @@ if git -C proot apply --check "$repo_root/native/proot-acceleration.patch"; then
 else
     git -C proot apply --reverse --check "$repo_root/native/proot-acceleration.patch"
 fi
+if git -C proot apply --check "$repo_root/native/proot-sysvipc.patch"; then
+    git -C proot apply "$repo_root/native/proot-sysvipc.patch"
+else
+    git -C proot apply --reverse --check "$repo_root/native/proot-sysvipc.patch"
+fi
 # This pinned revision omits the declaration header needed by modern Clang.
 python3 - <<'PY'
 from pathlib import Path
