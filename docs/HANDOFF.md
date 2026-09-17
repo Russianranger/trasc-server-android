@@ -1,3 +1,17 @@
+# Thor compiler result: all 49 units compile; refresh old source to supply libraries (2026-09-17)
+
+User supplied `logs-5989479384230296195.zip` and a screenshot of `LINK : fatal error LNK1104: cannot open file 'detours.lib'`. Read-only inspection of the bundle confirms successful SDK import on 0.4.10, completion of all 49 source compilation commands through the real Android Wine/Box64/MSVC path, and failure only at the final link step. This is new device evidence that the imported toolchain and C++ compiler work; it is not yet a successful DLL build or live-hook acceptance.
+
+**Cause:** `control.log` records the only source import as `18141ae0c9a11813733f08fa77db986951b853d6` on September 13. That Git tree has Detours headers but no `Detours/lib/detours.lib` and no DirectX `.lib` files. The already-synced current source `main`, **4c653ca2d16aaede33b7011d07254c520ac5f5df**, contains all three required libraries at the launcher's existing search paths. Its Detours header and Release/Win32 project are byte-identical to the old snapshot. The three library archives were inspected and contain x86 COFF objects, not Git LFS pointers. This is also the exact source revision that passed the real Microsoft v142 Windows compilation job for release0.4.10.
+
+**Immediate fix in the existing APK:** stop the game/compiler and game server, leaving the server runtime open. In **Setup → Import server**, use `https://github.com/Russianranger/Triptych-Triumvirate`, branch `main`, then **Import from GitHub**. Verify the imported source commit begins `4c653ca` (or deliberately review a later revision). Return to **Client → Build dinput8.dll on this device → Compile dinput8.dll**. The source import stores the previous source generation and rescans available SQL files; it does not import the database or rebuild/deploy server binaries. Do not select database replacement or server compilation for this retry. Keep the already-imported Microsoft toolchain and existing prefixes. After a successful build, deployment remains a separate action with the prior DLL backed up.
+
+No new APK or toolchain download is needed for this diagnosed failure. An initially proposed launcher patch/build was dropped once the old-source dependency omission was proven. No application code or test gate changed; this handoff update uses `[skip ci]`. The missing-libXcomposite startup warnings did not prevent all49 units from compiling and are not the demonstrated cause of LNK1104. A successful final link and ROF2 hook behavior still need the device retry.
+
+Verified current-source library SHA256 values: `detours.lib` = `526c275495912b604dbbc0d317f0e2dca0ab5b06b632df0dcd42c77fdf4f458f`; `d3d9.lib` = `d56bc70d6e8ae71594262434a3c1dee2c6dfacbfea11bc43568b8ac4e1631fc1`; `d3dx9.lib` = `d656e690f07fdf00a4e912f1a8a1587363703d180337b44f2cf00ec8bd1cbed5`.
+
+---
+
 # Toolchain preparation without a personal Windows/Mac setup (2026-09-17)
 
 The user currently has only a work Mac and **cannot download/install extra tools on it**. Do not ask them to install Homebrew, Python, msitools, Wine, Windows or a VM on that computer. Added `tools/pack-client-sdk.py` and [Thor-only instructions](toolchain-without-windows.md): use the existing Termux/Ubuntu environment on the Thor once to fetch Microsoft's original VS2019/v142 and SDK19041 packages, package the existing `trasc-msvc-sdk-1` format, and import it through the current 0.4.10 APK. Compiler execution remains inside TRASC afterward. This is a one-time preparation alternative; an in-app toolchain download button is not implemented.
