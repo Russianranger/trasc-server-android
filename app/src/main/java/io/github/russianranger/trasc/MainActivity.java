@@ -93,6 +93,7 @@ public final class MainActivity extends Activity {
                         case "controller_capture": runOnUiThread(()->{try{controller.capture(args.optBoolean("active")&&hasWindowFocus());reply(id,controller.state(),null);}catch(Exception e){reply(id,null,e);}});return;
                         case "pick": runOnUiThread(()->pick(id,args.optString("kind","file"),args.optBoolean("replace")));return;
                         case "export": runOnUiThread(()->export(id,args.optString("path")));return;
+                        case "client_settings_save":
                         case "import_client_zip": case "prepare_client": case "export_client":
                         case "apply_spell_test": case "restore_spell_test":
                         case "client_addons_copy": case "client_dll_deploy":

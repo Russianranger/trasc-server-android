@@ -11,6 +11,7 @@ else
     frame_container=$(docker create trasc-presentation:1)
     trap 'docker rm -f "$frame_container" >/dev/null 2>&1 || true' EXIT
     docker cp "$frame_container:/out/x11-frame-bridge" backend-assets/
+    docker cp "$frame_container:/out/presentation-notices.txt" backend-assets/
     python3 - <<'PY'
 import pathlib,hashlib,json
 p=pathlib.Path('backend-assets/x11-frame-bridge')

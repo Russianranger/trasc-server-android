@@ -28,6 +28,8 @@ public final class ClientActivity extends Activity {
     private boolean menuOpen, keyboardOpen, mappingsOpen;
     private String displayError;
     private boolean failureShown;
+    private int commandGeneration;
+    private boolean commandPending;
     private final Handler handler=new Handler(Looper.getMainLooper());
     private final Runnable refresh=new Runnable(){@Override public void run(){
         try {
@@ -69,6 +71,8 @@ public final class ClientActivity extends Activity {
         addMenuButton("Back to Client",v->finish());
         addMenuButton("Keyboard",v->textDialog());
         addMenuButton("Controller mappings",v->controllerDialog());
+        addMenuButton("Toggle classic NPC models (#tim)",v->classicNpcs());
+        addMenuButton("Capture external mouse",v->{setMenuOpen(false);display.post(()->display.requestPointerCapture());});
         addMenuButton("Esc",v->{setMenuOpen(false);display.input.key("escape",0xff1b,true);display.input.key("escape",0xff1b,false);});
         status=new TextView(this);status.setTextColor(0xffe2eded);status.setTextSize(12);status.setPadding(dp(4),dp(10),dp(4),0);
         menu.addView(status);scroll.addView(menu);
@@ -115,12 +119,12 @@ public final class ClientActivity extends Activity {
             if(insets!=null){insets.setSystemBarsBehavior(WindowInsetsController.BEHAVIOR_SHOW_TRANSIENT_BARS_BY_SWIPE);insets.hide(WindowInsets.Type.systemBars());}
         }else getWindow().getDecorView().setSystemUiVisibility(View.SYSTEM_UI_FLAG_IMMERSIVE_STICKY|View.SYSTEM_UI_FLAG_FULLSCREEN|View.SYSTEM_UI_FLAG_HIDE_NAVIGATION|View.SYSTEM_UI_FLAG_LAYOUT_STABLE|View.SYSTEM_UI_FLAG_LAYOUT_FULLSCREEN|View.SYSTEM_UI_FLAG_LAYOUT_HIDE_NAVIGATION);
     }
-    private boolean gameInputActive(){return hasWindowFocus()&&!menuOpen&&!keyboardOpen&&!mappingsOpen&&!failureShown;}
+    private boolean gameInputActive(){return hasWindowFocus()&&!menuOpen&&!keyboardOpen&&!mappingsOpen&&!commandPending&&!failureShown;}
     private void setMenuOpen(boolean open){
         menuOpen=open;menuLayer.setVisibility(open?View.VISIBLE:View.GONE);
         gear.setContentDescription(open?"Close client controls":"Open client controls");gear.setAlpha(open?1f:.78f);
         if(controller!=null)controller.capture(gameInputActive());
-        if(open){display.input.releaseAll();menu.getChildAt(0).requestFocus();}else display.requestFocus();
+        if(open){commandGeneration++;display.releasePointerCapture();display.input.releaseAll();menu.getChildAt(0).requestFocus();}else display.requestFocus();
     }
     private void fallbackPresentation(String reason){
         if(!nativeActive)return;nativeActive=false;presentationFallback=reason;
@@ -132,6 +136,18 @@ public final class ClientActivity extends Activity {
     private void controllerDialog(){
         mappingsOpen=true;controller.capture(false);display.input.releaseAll();
         new ControllerDialog(this,controller,()->{mappingsOpen=false;controller.capture(gameInputActive());}).show();
+    }
+    private void classicNpcs(){
+        // Slash opens EQ command entry without submitting any existing chat draft.
+        final int generation=++commandGeneration;commandPending=true;setMenuOpen(false);controller.capture(false);display.input.releaseAll();
+        display.input.text("/",false);
+        handler.postDelayed(()->{
+            if(generation!=commandGeneration||isFinishing()||!hasWindowFocus()||menuOpen){commandPending=false;controller.capture(gameInputActive());return;}
+            display.input.key("command-control",0xffe3,true);display.input.key("command-select",'a',true);
+            display.input.key("command-select",'a',false);display.input.key("command-control",0xffe3,false);
+            display.input.text("#tim",true);commandPending=false;controller.capture(gameInputActive());
+            Toast.makeText(this,"Sent #tim · check the game’s response",Toast.LENGTH_SHORT).show();
+        },180);
     }
     private void textDialog() {
         keyboardOpen=true;setMenuOpen(false);controller.capture(false);display.input.releaseAll();
@@ -169,9 +185,9 @@ public final class ClientActivity extends Activity {
         return code<=255?code:code<=0x10ffff?0x01000000|code:0;
     }
     @Override public boolean dispatchGenericMotionEvent(MotionEvent event){return gameInputActive()&&controller!=null&&controller.motion(event)||super.dispatchGenericMotionEvent(event);}
-    @Override public void onBackPressed(){if(menuOpen)setMenuOpen(false);else super.onBackPressed();}
-    @Override public void onWindowFocusChanged(boolean focus){super.onWindowFocusChanged(focus);if(focus&&!keyboardOpen)immersive();if(controller!=null)controller.capture(gameInputActive());if(!focus&&display!=null)display.input.releaseAll();}
-    @Override protected void onPause(){if(controller!=null)controller.capture(false);if(display!=null)display.input.releaseAll();super.onPause();}
+    @Override public void onBackPressed(){if(display.hasPointerCapture()){display.releasePointerCapture();setMenuOpen(true);return;}if(menuOpen)setMenuOpen(false);else super.onBackPressed();}
+    @Override public void onWindowFocusChanged(boolean focus){super.onWindowFocusChanged(focus);if(focus&&!keyboardOpen)immersive();if(controller!=null)controller.capture(gameInputActive());if(!focus&&display!=null){commandGeneration++;display.input.releaseAll();}}
+    @Override protected void onPause(){commandGeneration++;if(controller!=null)controller.capture(false);if(display!=null)display.input.releaseAll();super.onPause();}
     @Override protected void onDestroy(){handler.removeCallbacks(refresh);handler.removeCallbacks(hideLayer);if(layerBanner!=null)layerBanner.animate().cancel();if(controller!=null)controller.close();if(nativeDisplay!=null)nativeDisplay.close();if(display!=null)display.close();super.onDestroy();}
 
     private final class ClientView extends View implements RfbConnection.Screen {
@@ -187,14 +203,23 @@ public final class ClientActivity extends Activity {
         private final ExecutorService writer=Executors.newSingleThreadExecutor();
         private volatile LocalSocket socket;
         private volatile RfbConnection connection;
+        private volatile LocalSocket inputSocket;
+        private volatile RelativeInput relative;
         private volatile boolean closed;
         final DisplayInput input=new DisplayInput(new DisplayInput.Sink(){
             public void key(int sym,boolean down){send(r->r.key(sym,down));}
-            public void pointer(int x,int y,int buttons){send(r->r.pointer(x,y,buttons));}
+            public void pointer(int x,int y,int buttons){if(!sendRelative(0,x,y,buttons))send(r->r.pointer(x,y,buttons));}
+            public boolean relative(int dx,int dy,int buttons){return sendRelative(1,dx,dy,buttons);}
+            public boolean buttons(int buttons){return sendRelative(2,0,0,buttons);}
         });
         interface Send {void write(RfbConnection connection)throws IOException;}
         ClientView(){super(ClientActivity.this);setFocusable(true);setFocusableInTouchMode(true);}
         void send(Send send){if(!closed)writer.execute(()->{try{RfbConnection r=connection;if(r!=null)send.write(r);}catch(IOException e){failure(e);}});}
+        boolean sendRelative(int type,int x,int y,int mask){
+            if(closed||relative==null)return false;
+            writer.execute(()->{try{RelativeInput target=relative;if(target!=null)target.send(type,x,y,mask);}catch(IOException e){closeInput();post(()->Toast.makeText(ClientActivity.this,"Relative input disconnected; reopen the display to restore mouse look",Toast.LENGTH_LONG).show());}});return true;
+        }
+        void closeInput(){relative=null;try{if(inputSocket!=null)inputSocket.close();}catch(IOException ignored){}inputSocket=null;}
         void connect(){new Thread(()->{
             try {
                 LocalSocket local=new LocalSocket();socket=local;
@@ -203,11 +228,16 @@ public final class ClientActivity extends Activity {
                 local.setSoTimeout(15000);
                 RfbConnection r=new RfbConnection(local.getInputStream(),local.getOutputStream(),this);boolean frames=!nativeActive;r.handshake(frames);
                 local.setSoTimeout(0);connection=r;
+                try{
+                    LocalSocket control=new LocalSocket();inputSocket=control;
+                    control.connect(new LocalSocketAddress(new File(runtime.run,"input.sock").getPath(),LocalSocketAddress.Namespace.FILESYSTEM));control.setSoTimeout(3000);
+                    relative=new RelativeInput(control.getInputStream(),control.getOutputStream());control.setSoTimeout(0);
+                }catch(IOException inputError){closeInput();runtime.server.recordFailure("client_relative_input",inputError);}
                 // A native failure can happen during the input-only handshake.
                 if(!frames&&!nativeActive){resize(r.width,r.height);r.request(false);}
                 while(!closed)r.readUpdate();
             }catch(IOException e){if(!closed)failure(e);}
-            finally {try{if(socket!=null)socket.close();}catch(IOException ignored){}connection=null;}
+            finally {closeInput();try{if(socket!=null)socket.close();}catch(IOException ignored){}connection=null;}
         },"TRASC client display").start();}
         void failure(Exception error){if(closed)return;runtime.server.recordFailure("client_display",error);post(()->{displayError="Display disconnected: "+error.getMessage()+" · Back to Client to reconnect";if(!isDestroyed()){status.setText(displayError);setMenuOpen(true);}});}
         @Override public void resize(int w,int h){frameWidth=w;frameHeight=h;synchronized(pixelsLock){if(!nativeActive)bitmap=Bitmap.createBitmap(w,h,Bitmap.Config.ARGB_8888);}post(()->{input.size(w,h);arrangeSurface();});}
@@ -286,8 +316,14 @@ public final class ClientActivity extends Activity {
             if(event.isFromSource(InputDevice.SOURCE_MOUSE)){position(event);mouseButtons(event);if(event.getAction()==MotionEvent.ACTION_SCROLL)input.wheel(Math.round(event.getAxisValue(MotionEvent.AXIS_VSCROLL)));return true;}
             return super.onGenericMotionEvent(event);
         }
+        @Override public boolean onCapturedPointerEvent(MotionEvent event){
+            if(!gameInputActive()){releasePointerCapture();return true;}
+            input.move(event.getX()*frameWidth/Math.max(1,getWidth()),event.getY()*frameHeight/Math.max(1,getHeight()));
+            mouseButtons(event);if(event.getActionMasked()==MotionEvent.ACTION_SCROLL)input.wheel(Math.round(event.getAxisValue(MotionEvent.AXIS_VSCROLL)));return true;
+        }
+        @Override public void onPointerCaptureChange(boolean captured){super.onPointerCaptureChange(captured);if(!captured)input.releaseAll();}
         @Override public boolean performClick(){super.performClick();return true;}
-        private void closeSocket(){try{if(socket!=null)socket.close();}catch(IOException ignored){}}
+        private void closeSocket(){closeInput();try{if(socket!=null)socket.close();}catch(IOException ignored){}}
         void close(){input.releaseAll();closed=true;writer.execute(this::closeSocket);writer.shutdown();handler.postDelayed(this::closeSocket,250);}
     }
 }

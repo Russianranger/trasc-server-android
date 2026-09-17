@@ -37,3 +37,24 @@ def start(supervisor):
     except (OSError, ValueError, KeyError, RuntimeError) as error:
         result['presentation_fallback'] = str(error)
         return result
+
+
+def start_input(supervisor):
+    """XTest relative input also works with the Current/RFB display path."""
+    try:
+        root = Path(__file__).parent
+        binary = root/'x11-frame-bridge'
+        manifest = json.loads((root/'presentation-bundle.json').read_text())
+        if binary.is_symlink() or hashlib.sha256(binary.read_bytes()).hexdigest() != manifest['sha256']:
+            raise ValueError('Relative input helper failed verification')
+        sock = Path(supervisor.env['XAUTHORITY']).parent/'input.sock'
+        sock.unlink(missing_ok=True)
+        process = supervisor.spawn([str(binary),'--input',str(sock)],'client-input.log')
+        for _ in range(30):
+            if process.poll() is not None: raise RuntimeError('Relative input helper exited')
+            if sock.exists(): return {'pointer_transport':'relative_xtest'}
+            time.sleep(.1)
+        process.terminate()
+        raise RuntimeError('Relative input helper did not become ready')
+    except (OSError, ValueError, KeyError, RuntimeError) as error:
+        return {'pointer_transport':'absolute_rfb','pointer_fallback':str(error)}

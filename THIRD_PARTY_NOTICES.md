@@ -71,3 +71,5 @@ Mesa 26.0.0 is built using Khronos glslang 15.1.0 (source archive SHA256 `4bdcd8
 Cinzel and Crimson Pro from https://github.com/google/fonts, distributed under the SIL Open Font License 1.1. Font files and their complete OFL/copyright notices are included in app/src/main/assets/ui. The fantasy backdrop is original AI-generated artwork commissioned for this launcher.
 
 Microsoft Visual C++ compiler tools and Windows SDK headers/libraries are user-supplied and are not distributed by this project. In-app compilation uses the existing Wine/Box64 runtime with an isolated compiler prefix.
+
+The native presentation/input helper statically links the MIT/X11-licensed libXdamage and libXtst client libraries. Their complete distribution copyright/license notices are bundled in the APK as `presentation-notices.txt` and in the corresponding launcher source archive.

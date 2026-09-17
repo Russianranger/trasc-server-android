@@ -1,3 +1,11 @@
+# 0.4.14 preview
+
+- Client → Game settings exposes classic/Luclin player model presets, individual model flags and existing eqclient.ini settings. Saves retain original/previous backups and require the client to be stopped.
+- Gear → Toggle classic NPC models sends #tim through game chat.
+- Native Surface enables shared-memory capture through PRoot and skips unchanged captures/pixel transfers. XGetImage and Current display remain available.
+- Relative controller pointer input supports mouse look beyond desktop bounds. Optional external-mouse capture is available from the gear menu; Android Back releases it.
+- Existing settings, controller profiles and installed runtimes are retained. Physical Thor rendering, mouse-look behavior and power usage still require device acceptance.
+
 # 0.4.13 — Cycling controller layers, HUD control and native transfer batching
 
 - **Thor defaults / cycling** uses the requested Main controls and LT cycles Main → Hotbar 2 → Spells → Inventory → Main. A faint top-center notification appears briefly. Edit up to six named layers from Client or the in-game gear, with Next/Previous, direct selection and held overrides.

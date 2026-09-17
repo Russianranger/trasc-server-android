@@ -3,6 +3,7 @@ let controllerLoaded=false,controllerOptions=null,captureActive=false;
 const clientPressed=new Set();let pointerX=450,pointerY=160,wheelTotal=0;
 let clientFileBusy=false, spellComparison={}, clientImported=false;
 function spellTestControls(){
+ if(typeof gameSettingsControls==='function')gameSettingsControls();
  if(typeof addonControls==='function')addonControls();
  const active=!!spellComparison.state&&spellComparison.state!=='restored';
  const incomplete=active&&spellComparison.state!=='applied';

@@ -6,6 +6,8 @@
 
 // ROF2 is a sizeable legacy PE32 image; exercise its low-address allocation class.
 static volatile unsigned char legacy_image[20*1024*1024];
+static BOOL pause_render,alternate_color,relative_test;
+static LONG relative_total;
 
 static void marker(const char *name,const char *value) {
     // Readers use existence as readiness; never expose an empty/partial result.
@@ -18,6 +20,13 @@ static void marker(const char *name,const char *value) {
 static LRESULT CALLBACK window_proc(HWND window,UINT message,WPARAM key,LPARAM data) {
     if(message==WM_KEYDOWN&&key=='T')marker("D:\\probe-key.txt","T");
     if(message==WM_LBUTTONDOWN)marker("D:\\probe-mouse.txt","left");
+    if(message==WM_KEYDOWN&&key=='P'){pause_render=!pause_render;marker("D:\\probe-paused.txt",pause_render?"yes":"no");}
+    if(message==WM_KEYDOWN&&key=='V')alternate_color=!alternate_color;
+    if(message==WM_KEYDOWN&&key=='R'){
+        RECT area;GetWindowRect(window,&area);int x=(area.left+area.right)/2,y=(area.top+area.bottom)/2;
+        SetCursorPos(x,y);RECT clip={x,y,x+1,y+1};ClipCursor(&clip);relative_total=0;relative_test=TRUE;
+    }
+    if(message==WM_KEYDOWN&&key=='E'){relative_test=FALSE;ClipCursor(NULL);}
     if(message==WM_DESTROY){PostQuitMessage(0);return 0;}
     return DefWindowProc(window,message,key,data);
 }
@@ -43,6 +52,7 @@ int WINAPI WinMain(HINSTANCE instance,HINSTANCE previous,LPSTR command,int show)
     }
     LoadLibraryA("d3dx9_30.dll");LoadLibraryA("d3dx9_35.dll");
     int (*held_key)(HWND,int)=(void*)GetProcAddress(dll,"TrascHeldKey");
+    int (*mouse_delta)(HWND,LONG*)=(void*)GetProcAddress(dll,"TrascMouseDelta");
     BOOL saw_hold=FALSE;int previous_held=-99;
     WNDCLASSA cls={0};cls.lpfnWndProc=window_proc;cls.hInstance=instance;cls.lpszClassName="TrascProbe";
     RegisterClassA(&cls);
@@ -65,8 +75,8 @@ int WINAPI WinMain(HINSTANCE instance,HINSTANCE previous,LPSTR command,int show)
     while(GetTickCount()<until) {
         MSG msg;
         while(PeekMessage(&msg,NULL,0,0,PM_REMOVE)){if(msg.message==WM_QUIT)goto done;TranslateMessage(&msg);DispatchMessage(&msg);}
-        HRESULT cleared=IDirect3DDevice9_Clear(device,0,NULL,D3DCLEAR_TARGET,D3DCOLOR_XRGB(24,72,96),1,0);
-        HRESULT presented=IDirect3DDevice9_Present(device,NULL,NULL,NULL,NULL);
+        HRESULT cleared=pause_render?S_OK:IDirect3DDevice9_Clear(device,0,NULL,D3DCLEAR_TARGET,alternate_color?D3DCOLOR_XRGB(96,72,24):D3DCOLOR_XRGB(24,72,96),1,0);
+        HRESULT presented=pause_render?S_OK:IDirect3DDevice9_Present(device,NULL,NULL,NULL,NULL);
         if(!ready&&SUCCEEDED(cleared)&&SUCCEEDED(presented)) {
             IDirect3DSwapChain9 *chain=NULL;D3DPRESENT_PARAMETERS actual={0};RECT area={0};
             if(FAILED(IDirect3DDevice9_GetSwapChain(device,0,&chain))||FAILED(IDirect3DSwapChain9_GetPresentParameters(chain,&actual))||!GetClientRect(window,&area))return 4;
@@ -81,8 +91,14 @@ int WINAPI WinMain(HINSTANCE instance,HINSTANCE previous,LPSTR command,int show)
             if(held==1){saw_hold=TRUE;marker("D:\\probe-held-key.txt","W held");}
             if(saw_hold&&held==0)marker("D:\\probe-released-key.txt","W released");
         }
+        if(relative_test&&mouse_delta){
+            LONG dx=0;int result=mouse_delta(window,&dx);
+            if(result==0){marker("D:\\probe-relative-ready.txt","ready");relative_total+=dx;}
+            if(relative_total>=4096){char total[64];snprintf(total,sizeof(total),"%ld",relative_total);marker("D:\\probe-relative.txt",total);}
+        }
         Sleep(30);
     }
 done:
+    ClipCursor(NULL);
     IDirect3DDevice9_Release(device);IDirect3D9_Release(d3d);return 0;
 }

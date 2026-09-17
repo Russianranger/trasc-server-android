@@ -38,7 +38,7 @@ vulkan_test_env=()
 if [ "$renderer" = turnip ]; then
     vulkan_test_env=(TRASC_TEST_ALLOW_SOFTWARE_VULKAN=1 TRASC_TEST_VULKAN_ICD=/usr/share/vulkan/icd.d/lvp_icd.aarch64.json)
 fi
-client_command=("$task_dir/proot/src/proot" --kill-on-exit -0 -r "$task_dir/root" \
+client_command=("$task_dir/proot/src/proot" --kill-on-exit --sysvipc -0 -r "$task_dir/root" \
     -b "$PWD/runtime-work/directx-test/output/directx:/directx" \
     -b "$PWD/backend/wineserver:/opt/wine/bin/wineserver" \
     -b "$PWD/backend-assets/wined3d.dll:/opt/wine/lib/wine/i386-windows/wined3d.dll" \

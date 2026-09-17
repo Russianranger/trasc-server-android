@@ -39,7 +39,12 @@ def check_native_frames(path, width, height, label, unshared=False):
             for _ in range(4):
                 frames.sendall(b'\1');header=struct.unpack('>8I',recv(frames,32))
                 magic,fw,fh,stride,capture,seq,length,shm=header
-                assert magic==0x54524631 and (fw,fh)==(width,height) and stride==fw*4 and length==fw*fh*4,header
+                assert magic==0x54524631 and (fw,fh)==(width,height) and stride==fw*4 and shm in (0,1,2,3),header
+                assert not unshared or not shm&1,header
+                if shm&2:
+                    assert length==0 and samples,header
+                    samples.append({'sequence':seq,'unchanged':True});continue
+                assert length==fw*fh*4,header
                 assert shm in (0,1) and (not unshared or shm==0),header
                 raw=recv(frames,length);colors=Counter(raw[i:i+3] for i in range(0,len(raw),4))
                 assert colors[bytes([96,72,24])]>1000,('Native Surface source pixels',header)
@@ -59,16 +64,63 @@ def check_unshared_frames(env,width,height):
             permissions=path.stat().st_mode&0o777
             assert permissions&0o077==0 and permissions&0o600==0o600,('Native socket must remain owner-only',oct(permissions))
             check_native_frames(path,width,height,'native-no-shm',True)
-            wait_for(lambda:sum(json.loads(l)['frames'] for l in log.read_text().splitlines() if l.startswith('{'))>=8,'Transfer statistics not recorded after reconnect',5)
+            wait_for(lambda:sum(json.loads(l)['requests'] for l in log.read_text().splitlines() if l.startswith('{'))>=8,'Transfer statistics not recorded after reconnect',5)
             reports=[json.loads(l) for l in log.read_text().splitlines() if l.startswith('{')]
             assert 'Capture mode: XGetImage' in log.read_text()
-            assert sum(r['frames'] for r in reports)==8,reports
+            assert sum(r['requests'] for r in reports)==8,reports
+            assert 2<=sum(r['frames'] for r in reports)<=8,reports
             for r in reports:
-                assert r['transport']=='batched-v1' and r['frames']>0 and r['bytes_per_frame']==width*height*4,r
+                assert r['transport']=='batched-v2',r
+                if not r['frames']:continue
+                assert r['bytes_per_frame']==width*height*4,r
                 assert 2<=r['send_calls_per_frame']<32,('Payload unexpectedly fragmented into row writes',r)
             print('PASS: actual Wine pixels through non-SHM XGetImage, batched sends and two consumer connections')
         finally:
             helper.terminate();helper.wait(timeout=5);path.unlink(missing_ok=True)
+
+
+def key(display, letter):
+    display.sendall(struct.pack('>BBHI',4,1,0,ord(letter))+struct.pack('>BBHI',4,0,0,ord(letter)))
+
+
+def check_relative_input(display):
+    path=Path('/session/input.sock')
+    assert path.is_socket() and path.stat().st_mode&0o077==0
+    with socket.socket(socket.AF_UNIX) as control:
+        control.settimeout(5);control.connect(str(path));assert recv(control,8)==b'TRASCIN1'
+        key(display,'r')
+        try:
+            wait_for(lambda:Path('/client/probe-relative-ready.txt').exists(),'DirectInput relative mouse not ready',10)
+            for _ in range(160):
+                control.sendall(struct.pack('>IiiI',1,40,0,0));time.sleep(.01)
+            wait_for(lambda:Path('/client/probe-relative.txt').exists(),'Relative movement stopped at the clipped screen edge',10)
+            total=int(Path('/client/probe-relative.txt').read_text());assert total>=4096,total
+            Path('/logs/relative-input-verification.json').write_text(json.dumps({'directinput_dx':total,'clip_width':1,'injected_dx':6400}))
+        finally:key(display,'e')
+    print('PASS: polled Windows DirectInput accumulates over 4096 pixels while the cursor is clipped to one pixel')
+
+
+def check_idle_frames(display,width,height):
+    key(display,'p');wait_for(lambda:Path('/client/probe-paused.txt').exists() and Path('/client/probe-paused.txt').read_text()=='yes','Probe did not pause presentations',5)
+    try:
+        with socket.socket(socket.AF_UNIX) as frames:
+            frames.settimeout(5);frames.connect('/session/frames.sock');samples=[]
+            for i in range(24):
+                frames.sendall(b'\1');h=struct.unpack('>8I',recv(frames,32));recv(frames,h[6]);samples.append(h)
+                if i==0:assert h[6]==width*height*4 and h[7]==1,('Shared-memory first frame required, including under PRoot',h)
+            assert sum(bool(h[7]&2) for h in samples[4:])>=18,samples
+            # A newly painted image must promptly replace the retained Surface content.
+            key(display,'v');key(display,'p')
+            deadline=time.monotonic()+5;changed=False
+            while time.monotonic()<deadline:
+                frames.sendall(b'\1');h=struct.unpack('>8I',recv(frames,32));raw=recv(frames,h[6])
+                if raw and sum(raw[i:i+3]==bytes([24,72,96]) for i in range(0,len(raw),4))>1000:changed=True;break
+            assert changed,'Display did not refresh after idle'
+            Path('/logs/native-idle-verification.json').write_text(json.dumps({'idle_responses':sum(bool(h[7]&2) for h in samples),'samples':len(samples),'shared_memory':True,'resumed_correct_pixels':changed}))
+    finally:
+        if Path('/client/probe-paused.txt').read_text()=='yes':key(display,'p')
+        key(display,'v')
+    print('PASS: shared-memory capture, retained idle frames, and correct image after rendering resumes')
 
 
 def main():
@@ -180,6 +232,8 @@ def main():
             time.sleep(.35)
             display.sendall(struct.pack('>BBHI',4,0,0,ord('w')))
             wait_for(lambda:Path('/client/probe-released-key.txt').exists(),'DirectInput movement key did not release',15)
+            check_relative_input(display)
+            check_idle_frames(display,width,height)
         wait_for(lambda:json.loads(Path('/session/status.json').read_text()).get('model_libraries_loaded')=={'d3dx9_30.dll':'native','d3dx9_35.dll':'native'}, 'Native model load evidence not recognized',15)
         print('PASS: held W movement key and release reach polled DirectInput keyboard state')
         wait_for(lambda:json.loads(Path('/session/status.json').read_text()).get('native_loaded'), 'Native DLL trace not recognized',15)

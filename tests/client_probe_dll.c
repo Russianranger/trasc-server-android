@@ -46,3 +46,21 @@ __declspec(dllexport) int TrascHeldKey(HWND window,int scan) {
     if(FAILED(IDirectInputDevice8_GetDeviceState(held_keyboard,sizeof(keys),keys)))return -5;
     return !!(keys[scan]&0x80);
 }
+
+static IDirectInputDevice8A *relative_mouse;
+__declspec(dllexport) int TrascMouseDelta(HWND window,LONG *dx) {
+    if(!relative_mouse){
+        if(!held_input)return -1;
+        if(FAILED(IDirectInput8_CreateDevice(held_input,&GUID_SysMouse,&relative_mouse,NULL)))return -2;
+        DIOBJECTDATAFORMAT objects[11]={0};
+        const GUID *axes[]={&GUID_XAxis,&GUID_YAxis,&GUID_ZAxis};
+        for(int i=0;i<3;i++){objects[i].pguid=axes[i];objects[i].dwOfs=i*4;objects[i].dwType=DIDFT_RELAXIS|DIDFT_MAKEINSTANCE(i);}
+        for(int i=0;i<8;i++){objects[i+3].pguid=&GUID_Button;objects[i+3].dwOfs=12+i;objects[i+3].dwType=DIDFT_OPTIONAL|DIDFT_BUTTON|DIDFT_MAKEINSTANCE(i);}
+        DIDATAFORMAT format={sizeof(DIDATAFORMAT),sizeof(DIOBJECTDATAFORMAT),DIDF_RELAXIS,sizeof(DIMOUSESTATE2),11,objects};
+        if(FAILED(IDirectInputDevice8_SetDataFormat(relative_mouse,&format)))return -3;
+        if(FAILED(IDirectInputDevice8_SetCooperativeLevel(relative_mouse,window,DISCL_FOREGROUND|DISCL_NONEXCLUSIVE)))return -4;
+    }
+    DIMOUSESTATE2 state={0};IDirectInputDevice8_Acquire(relative_mouse);
+    if(FAILED(IDirectInputDevice8_GetDeviceState(relative_mouse,sizeof(state),&state)))return -5;
+    *dx=state.lX;return 0;
+}

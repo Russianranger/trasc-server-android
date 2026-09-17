@@ -114,7 +114,7 @@ final class ClientRuntime {
                 org.json.JSONArray jobs=response.getJSONObject("result").getJSONArray("jobs");
                 for(int i=0;i<jobs.length();i++) {
                     JSONObject job=jobs.getJSONObject(i);
-                    if(Arrays.asList("import_client_zip","prepare_client","export_client","apply_spell_test","restore_spell_test","client_addons_copy","client_dll_deploy").contains(job.optString("operation"))&&Arrays.asList("queued","running").contains(job.optString("status")))
+                    if(Arrays.asList("client_settings_save","import_client_zip","prepare_client","export_client","apply_spell_test","restore_spell_test","client_addons_copy","client_dll_deploy").contains(job.optString("operation"))&&Arrays.asList("queued","running").contains(job.optString("status")))
                         throw new IOException("Wait for client file changes to finish before launching");
                 }
             }
@@ -174,7 +174,7 @@ final class ClientRuntime {
             for(String name:new String[]{"client_runner.py","client_presentation.py","log_retention.py","client_display.py","client_metrics.py","client_spells.py","client_vulkan.py","client_audio.py","libasound_module_pcm_trasc.so","audio-bundle.json","graphics_probe.py","runtime_probe.py","wined3d.dll","wined3d-patch.json","wineserver","wineserver-patch.json"})
                 try(InputStream in=context.getAssets().open(name)){RuntimeManager.copy(in,new File(backend,name));}
             if(!new File(backend,"wineserver").setExecutable(true,true))throw new IOException("Could not prepare bundled Wine server");
-            if(presentation.equals("native_surface")) {
+            { // The same verified helper supplies relative input in both display modes.
                 for(String name:new String[]{"x11-frame-bridge","presentation-bundle.json"})try(InputStream in=context.getAssets().open(name)){RuntimeManager.copy(in,new File(backend,name));}
                 if(!new File(backend,"x11-frame-bridge").setExecutable(true,true))throw new IOException("Could not prepare native presentation helper");
             }
@@ -188,7 +188,7 @@ final class ClientRuntime {
             RuntimeManager.write(new File(root,"etc/resolv.conf"),"nameserver 1.1.1.1\nnameserver 8.8.8.8\n");
             directx.mkdirs();new File(root,"directx").mkdirs();
             File nativeDir=new File(context.getApplicationInfo().nativeLibraryDir);
-            List<String> command=new ArrayList<>(Arrays.asList(new File(nativeDir,"libproot.so").getPath(),"--kill-on-exit","-0","-r",root.getPath(),
+            List<String> command=new ArrayList<>(Arrays.asList(new File(nativeDir,"libproot.so").getPath(),"--kill-on-exit","--sysvipc","-0","-r",root.getPath(),
                 "-b",new File(backend,"wineserver").getPath()+":/opt/wine/bin/wineserver",
                 "-b",new File(backend,"wined3d.dll").getPath()+":/opt/wine/lib/wine/i386-windows/wined3d.dll","-b","/dev","-b","/proc","-b","/sys","-b",directx.getPath()+":/directx","-b",client.getPath()+":/client","-b",sessionPrefix.getPath()+":/prefix","-b",run.getPath()+":/session",
                 "-b",new File(server.work,"logs").getPath()+":/logs","-b",backend.getPath()+":/opt/trasc-client","-b",tmp.getPath()+":/tmp",

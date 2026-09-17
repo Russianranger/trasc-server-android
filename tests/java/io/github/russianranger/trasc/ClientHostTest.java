@@ -16,7 +16,7 @@ public final class ClientHostTest {
         return data.toByteArray();
     }
     public static void main(String[] args)throws Exception {
-        frameMeasurements();reusedPixels();controllerLayers();namedLayers();
+        relativeInput();frameMeasurements();reusedPixels();controllerLayers();namedLayers();
         int[] pixels=new int[6];ByteArrayOutputStream wire=new ByteArrayOutputStream();
         RfbConnection.Screen screen=new RfbConnection.Screen(){public void resize(int w,int h){check(w==3&&h==2,"Display dimensions");}public void pixels(int x,int y,int w,int h,int[] colors){System.arraycopy(colors,0,pixels,0,6);}public void copy(int x,int y,int w,int h,int sx,int sy){}public void updated(){}};
         RfbConnection r=new RfbConnection(new ByteArrayInputStream(server(false)),wire,screen);r.handshake();r.readUpdate();
@@ -50,6 +50,20 @@ public final class ClientHostTest {
             check(Files.readString(game.resolve("eqgame.exe")).equals("owned client"),"Repair never touches imported game files");
         } finally {TarExtractor.remove(tree.toFile());}
         System.out.println("PASS: native RFB pixels/events, malformed frames, combined controller/physical/touch holds, focus releases and typed Enter");
+    }
+    static void relativeInput()throws Exception {
+        ByteArrayOutputStream wire=new ByteArrayOutputStream();RelativeInput channel=new RelativeInput(new ByteArrayInputStream("TRASCIN1".getBytes("US-ASCII")),wire);
+        channel.send(1,-40,5,4);DataInputStream data=new DataInputStream(new ByteArrayInputStream(wire.toByteArray()));
+        check(data.readInt()==1&&data.readInt()==-40&&data.readInt()==5&&data.readInt()==4,"Signed relative motion and held button wire format");
+        try{channel.send(1,5000,0,0);throw new AssertionError("Oversized motion accepted");}catch(IOException expected){}
+        final int[] dx={0},held={0},absolute={0};
+        DisplayInput input=new DisplayInput(new DisplayInput.Sink(){public void key(int k,boolean down){}public void pointer(int x,int y,int mask){absolute[0]++;}
+            public boolean relative(int x,int y,int mask){dx[0]+=x;held[0]=mask;return true;}public boolean buttons(int mask){held[0]=mask;return true;}});
+        input.size(800,600);input.action("MouseRight",true);
+        for(int i=0;i<24000;i++)input.move(.25f,0);
+        check(dx[0]==6000&&held[0]==4&&absolute[0]==0,"Stick deltas accumulate past screen bounds without absolute recenter jumps");
+        input.position(25,40);check(absolute[0]==1,"Touch remains absolute");input.releaseAll();check(held[0]==0,"Focus loss releases relative mouse buttons");
+        System.out.println("PASS: relative mouse wire, fractional deltas beyond screen bounds, absolute touch and held-button release");
     }
     static void controllerLayers(){
         List<String> events=new ArrayList<>();

@@ -13,6 +13,7 @@ JNIEXPORT jint JNICALL Java_io_github_russianranger_trasc_NativePresentation_fra
     if(send(fd,&request,1,MSG_NOSIGNAL)!=1||receive(fd,header,sizeof(header)))return -1;
     for(int i=0;i<8;i++)header[i]=ntohl(header[i]);
     if(!trasc_frame_valid(header)||(*env)->GetArrayLength(env,measures)<9)return -2;
+    if(header[7]&2)return 1; /* Retain the last Surface buffer; no pixel read/copy/post. */
     void *pixels=(*env)->GetDirectBufferAddress(env,storage);jlong capacity=(*env)->GetDirectBufferCapacity(env,storage);
     if(!pixels||capacity<header[6]||receive(fd,pixels,header[6]))return -3;
     uint64_t received=now_ns();ANativeWindow *window=ANativeWindow_fromSurface(env,surface);if(!window)return -4;

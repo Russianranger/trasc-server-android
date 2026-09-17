@@ -18,7 +18,7 @@ final class NativePresentation extends SurfaceView implements SurfaceHolder.Call
     private volatile Thread worker;
     private Thread lastWorker;
     private volatile boolean closed;
-    private long since=System.nanoTime(),frames,readNs,captureNs,lockNs,copyNs,postNs,bytes,shmFrames,lastFrame;
+    private long since=System.nanoTime(),frames,unchanged,readNs,captureNs,lockNs,copyNs,postNs,bytes,shmFrames,lastFrame;
     private int width,height;
     NativePresentation(Context context,File path,Events events){super(context);this.path=path;this.events=events;getHolder().addCallback(this);}
     private static native int frame(Surface surface,int fd,ByteBuffer pixels,long[] measures);
@@ -42,6 +42,7 @@ final class NativePresentation extends SurfaceView implements SurfaceHolder.Call
                         ByteBuffer pixels=ByteBuffer.allocateDirect(CAPACITY);long[] times=new long[9];
                         while(worker==Thread.currentThread()&&!closed&&surface.isValid()){
                             int result=frame(surface,fd.getFd(),pixels,times);
+                            if(result==1){synchronized(this){unchanged++;}continue;}
                             if(result!=0)throw new IOException("Native frame delivery failed ("+result+")");
                             synchronized(this){frames++;width=(int)times[0];height=(int)times[1];captureNs+=times[2];readNs+=times[3];lockNs+=times[4];copyNs+=times[5];postNs+=times[6];bytes+=times[7];shmFrames+=times[8];lastFrame=System.nanoTime();}
                             final int w=(int)times[0],h=(int)times[1];if(w!=reportedWidth||h!=reportedHeight){reportedWidth=w;reportedHeight=h;post(()->events.size(w,h));}
@@ -60,8 +61,8 @@ final class NativePresentation extends SurfaceView implements SurfaceHolder.Call
             .put("capture_ms_per_frame",frames==0?0:captureNs/1e6/frames).put("request_receive_ms_per_frame",frames==0?0:readNs/1e6/frames)
             .put("surface_lock_ms_per_frame",frames==0?0:lockNs/1e6/frames).put("native_copy_ms_per_frame",frames==0?0:copyNs/1e6/frames)
             .put("surface_post_ms_per_frame",frames==0?0:postNs/1e6/frames).put("bytes_per_second",bytes/seconds)
-            .put("shm_frames",shmFrames).put("frames",frames).put("frame_width",width).put("frame_height",height)
+            .put("unchanged_responses",unchanged).put("shm_frames",shmFrames).put("frames",frames).put("frame_width",width).put("frame_height",height)
             .put("last_update_age_seconds",lastFrame==0?-1:Math.max(0,now-lastFrame)/1e9);
-        since=now;frames=readNs=captureNs=lockNs=copyNs=postNs=bytes=shmFrames=0;return result;
+        since=now;frames=unchanged=readNs=captureNs=lockNs=copyNs=postNs=bytes=shmFrames=0;return result;
     }
 }

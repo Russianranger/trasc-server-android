@@ -32,6 +32,7 @@ from rule_catalog import KNOWN, metadata, parse_source, validate_value
 from managed_content import ManagedContent
 import client_addons
 import client_dll
+import client_settings
 import player_data
 from log_retention import rotate
 
@@ -970,7 +971,8 @@ class Engine(ManagedContent):
             'nektulos':self.nektulos_status(), 'client':self.client_status()}
 
     def dispatch(self,op,args):
-        methods={'client_addons_scan':lambda a:client_addons.scan(self,a),
+        methods={'client_settings':lambda a:client_settings.inspect(self,a),'client_settings_save':lambda a:client_settings.save(self,a),
+            'client_addons_scan':lambda a:client_addons.scan(self,a),
             'client_addons_lock':lambda a:client_addons.set_lock(self,a),'client_addons_copy':lambda a:client_addons.copy_files(self,a),
             'client_dll_status':lambda a:client_dll.compiler_status(self,a),
             'client_dll_sdk':lambda a:client_dll.import_sdk(self,a),

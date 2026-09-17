@@ -16,7 +16,7 @@ for(const [name,type,value,min,max]of [['Character:RaidExpMultiplier','real','0.
  try{
   const page=await browser.newPage({viewport:{width:412,height:915}}),errors=[];page.on('pageerror',e=>errors.push(e.message));
   await page.addInitScript(data=>{
-   let seq=0,jobs=[],spellTest={},logRetention=5;let addonLocked=false,addonCopied=false;const addonData=()=>({snapshot:'fixture',counts:{missing:addonCopied?0:1,different:0,same:addonCopied?1:0},entries:[{path:'uifiles/default/NMS_Test.xml',status:addonCopied?'same':'missing',locked:addonLocked,protected:false}]});const actions=['None','MouseLeft','MouseRight','PointerUp','PointerDown','PointerLeft','PointerRight','KeyW','KeyT','Space','Escape'];
+   let seq=0,jobs=[],spellTest={},logRetention=5;let iniRevision='ini1',iniValues=[{section:'Defaults',key:'AllLuclinPcModelsOff',value:'FALSE'},{section:'Defaults',key:'UseLuclinHumanMale',value:'TRUE'},{section:'Defaults',key:'UseLuclinElementals',value:'TRUE'},{section:'Options',key:'MaxFPS',value:'100'},{section:'KeyMaps',key:'Custom',value:'42'}];let addonLocked=false,addonCopied=false;const addonData=()=>({snapshot:'fixture',counts:{missing:addonCopied?0:1,different:0,same:addonCopied?1:0},entries:[{path:'uifiles/default/NMS_Test.xml',status:addonCopied?'same':'missing',locked:addonLocked,protected:false}]});const actions=['None','MouseLeft','MouseRight','PointerUp','PointerDown','PointerLeft','PointerRight','KeyW','KeyT','Space','Escape'];
    let profile={sources:['A','B','L2','RightUp','RightDown','RightLeft','RightRight'],actions:[...actions,'AltLeft+Digit1','F8','ClientMenu','LayerNext','LayerPrevious','Layer1','Layer2','HoldLayer2','Layer3','HoldLayer3','Layer4','HoldLayer4'],format:2,deadzone:.2,sensitivity:700,max_layers:6};
    const base={A:'Space',B:'Escape',L2:'LayerNext',RightUp:'PointerUp',RightDown:'PointerDown',RightLeft:'PointerLeft',RightRight:'PointerRight'},inherit=Object.fromEntries(profile.sources.map(s=>[s,'Inherit']));
    profile.layers=[{name:'Main',bindings:{...base}},{name:'Spells',bindings:{...inherit,A:'AltLeft+Digit1'}}];
@@ -54,7 +54,10 @@ for(const [name,type,value,min,max]of [['Character:RaidExpMultiplier','real','0.
     else if(op==='controller_save'){profile={...profile,...args};result=profile;}
     else if(op==='controller_capture'){window.clientInputEvent?.({type:'capture',down:args.active});result={...profile,active:args.active};}
     else{
-     let completed={};if(op==='gameplay')completed={...data,rulesets:[{id:1,name:'default'}],selected:1,active_name:'default'};
+     let completed={};if(op==='client_settings'||op==='client_settings_save'){
+      if(op==='client_settings_save'){window.__iniChanges=args.changes;for(const c of args.changes){const e=iniValues.find(e=>e.section===c.section&&e.key===c.key);e.value=c.value;}iniRevision='ini2';}
+      completed={revision:iniRevision,entries:iniValues,models:['AllLuclinPcModelsOff','UseLuclinHumanMale','UseLuclinElementals'],message:op==='client_settings_save'?'Game settings saved. Restart the client.':''};
+     }else if(op==='gameplay')completed={...data,rulesets:[{id:1,name:'default'}],selected:1,active_name:'default'};
      else if(op==='export_client')completed={file:'exports/client-data.zip',local_client_synced:true,copied_files:8,message:'All four client data files overwritten in the local client root and Resources folder. Originals saved in backups/client-setup/test.'};
      else if(op==='apply_spell_test'){spellTest={state:'applied',excluded_ids:[50000,50001,50002,50003,50004,50005,50006,50007],filtered_rows:40914};completed={message:'Spell test applied: 8 high-ID entries excluded.'};}
      else if(op==='restore_spell_test'){spellTest={state:'restored'};completed={message:'Full spell files restored and verified in root and Resources.'};}
@@ -93,6 +96,14 @@ for(const [name,type,value,min,max]of [['Character:RaidExpMultiplier','real','0.
   assert(!(await page.locator('#client-resolution').isVisible()),'Settings start collapsed');
   await page.screenshot({path:'ui-reports/client-collapsed-mobile.png',fullPage:true});
   await page.locator('#client details').evaluateAll(ds=>ds.forEach(d=>d.open=true));
+  await clickDone('game-settings-load');await page.waitForFunction(()=>!document.getElementById('game-settings-editor').hidden);
+  await clickDone('game-models-classic');await clickDone('game-settings-save');
+  assert.deepEqual(await page.evaluate(()=>window.__iniChanges),[{section:'Defaults',key:'AllLuclinPcModelsOff',value:'TRUE'},{section:'Defaults',key:'UseLuclinHumanMale',value:'FALSE'}],'Classic preset changes player models only');
+  await page.locator('#game-other-settings details').evaluateAll(ds=>ds.forEach(d=>d.open=true));
+  await page.locator('#game-settings-search').fill('MaxFPS');await page.locator('#ini-3').fill('60');await clickDone('game-settings-save');
+  assert.deepEqual(await page.evaluate(()=>window.__iniChanges),[{section:'Options',key:'MaxFPS',value:'60'}],'Only edited existing INI value submitted');
+  await page.screenshot({path:'ui-reports/game-settings-mobile.png',fullPage:true});
+
   await page.locator('#binding-A').selectOption('KeyT');await clickDone('controller-save');
   await page.waitForFunction(()=>document.getElementById('notice').textContent==='Controller bindings saved.');
   await page.locator('#controller-preset').selectOption('thor');await clickDone('controller-defaults');

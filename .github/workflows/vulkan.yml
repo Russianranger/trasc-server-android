@@ -22,6 +22,7 @@ jobs:
             backend-assets/audio-bundle.json
             backend-assets/x11-frame-bridge
             backend-assets/presentation-bundle.json
+            backend-assets/presentation-notices.txt
             backend-assets/turnip.so
             backend-assets/turnip-26.0.0.so
             backend-assets/vulkan-probe

@@ -1,3 +1,9 @@
+# In progress: 0.4.14 model settings, shared-memory capture and relative input (2026-09-17)
+
+The latest user authorized implementation. Read [models-capture-0414.md](models-capture-0414.md) for scope, device evidence and validation status. Implemented INI editor/presets with original/previous backups; gear #tim shortcut; PRoot --sysvipc; XDamage/identical-frame suppression; XTest relative input for controller mouse look and optional Android external-mouse capture. Local124 Python tests and JVM/C checks pass. Full CI/Android build and real clipped-cursor DirectInput/shared-memory/idle-resume tests are next. No device success is claimed yet. The staged user INI remains untouched and is not committed. Do not resume camp or install anything on the user's work Mac. No agents were used.
+
+---
+
 # 0.4.13 implemented and verified; public release blocked (2026-09-17)
 
 The user's authorized controller, HUD and presentation changes are complete. Read [controller-layers-0413.md](controller-layers-0413.md). Camp remains parked. No subagents were used and no tools need installing on the user's work Mac. The verified APK has been supplied directly; GitHub publication is blocked by repeated HTTP 500 responses uploading runtime archives. Do not describe the public preview as 0.4.13.

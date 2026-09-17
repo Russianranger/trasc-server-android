@@ -587,6 +587,7 @@ class Supervisor:
             time.sleep(.1)
         else: raise RuntimeError('Client display did not become ready')
         self.update(**client_presentation.start(self))
+        self.update(**client_presentation.start_input(self))
         self.update(display_ready=True)
         with self.timed('graphics_check'): self.check_graphics()
         patch = Path(__file__).with_name('wined3d-patch.json')
