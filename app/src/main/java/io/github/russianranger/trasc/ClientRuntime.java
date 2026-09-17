@@ -29,6 +29,7 @@ final class ClientRuntime {
     }
     boolean installed(){return new File(root,"etc/trasc-client-runtime.json").isFile();}
     boolean alive(){return (process!=null&&process.isAlive())||(graphics!=null&&graphics.alive());}
+    File frameSocket(){return new File(run,"frames.sock");}
     File displaySocket(){return new File(run,"display.sock");}
     static JSONObject json(File file)throws Exception {
         if(file.length()>131072)throw new IOException("Client metadata exceeds limits");
@@ -120,6 +121,9 @@ final class ClientRuntime {
             String mode=options.optString("mode","client"),resolution=options.optString("resolution","800x600"),renderer=options.optString("renderer","software");
             String cpuProfile=options.optString("cpu_profile","balanced");
             String npcRendering=options.optString("npc_rendering","compatibility");
+            String presentation=options.optString("presentation_mode","rfb");
+            int displayFps=options.optInt("display_fps",30);
+            if(!Arrays.asList("rfb","native_surface").contains(presentation)||(displayFps!=30&&displayFps!=60))throw new IOException("Unsupported display presentation option");
             String turnipDriver=options.optString("turnip_driver","24.3.4");
             if(!Arrays.asList("24.3.4","26.0.0").contains(turnipDriver))throw new IOException("Unsupported Turnip driver");
             if(!Arrays.asList("standard","compatibility","compatibility_042","direct_043").contains(npcRendering))throw new IOException("Unsupported NPC rendering mode");
@@ -161,14 +165,18 @@ final class ClientRuntime {
                 .put("android_directory",client.getCanonicalPath()).put("windows_drive","D:").put("shared_storage",false));
             request.put("graphics_threading",graphicsThreading).put("cpu_affinity",cpuAffinity).put("fullscreen",mode.equals("client")&&options.optBoolean("fullscreen",true));
             request.put("npc_rendering",npcRendering).put("audio",options.optBoolean("audio",true)).put("sound_diagnostics",options.optBoolean("sound_diagnostics",false));
-            request.put("turnip_driver",turnipDriver);
+            request.put("turnip_driver",turnipDriver).put("presentation_mode",presentation).put("display_fps",displayFps);
             File spellJournal=new File(server.work,"backups/client-spell-test/current.json");
             if(spellJournal.exists())request.put("spell_test",json(spellJournal));
             RuntimeManager.write(new File(run,"request.json"),request.toString());
             File backend=new File(server.home,"client-backend");backend.mkdirs();
-            for(String name:new String[]{"client_runner.py","log_retention.py","client_display.py","client_metrics.py","client_spells.py","client_vulkan.py","client_audio.py","libasound_module_pcm_trasc.so","audio-bundle.json","graphics_probe.py","runtime_probe.py","wined3d.dll","wined3d-patch.json","wineserver","wineserver-patch.json"})
+            for(String name:new String[]{"client_runner.py","client_presentation.py","log_retention.py","client_display.py","client_metrics.py","client_spells.py","client_vulkan.py","client_audio.py","libasound_module_pcm_trasc.so","audio-bundle.json","graphics_probe.py","runtime_probe.py","wined3d.dll","wined3d-patch.json","wineserver","wineserver-patch.json"})
                 try(InputStream in=context.getAssets().open(name)){RuntimeManager.copy(in,new File(backend,name));}
             if(!new File(backend,"wineserver").setExecutable(true,true))throw new IOException("Could not prepare bundled Wine server");
+            if(presentation.equals("native_surface")) {
+                for(String name:new String[]{"x11-frame-bridge","presentation-bundle.json"})try(InputStream in=context.getAssets().open(name)){RuntimeManager.copy(in,new File(backend,name));}
+                if(!new File(backend,"x11-frame-bridge").setExecutable(true,true))throw new IOException("Could not prepare native presentation helper");
+            }
             if(renderer.equals("turnip")) {
                 status="Preparing Turnip "+turnipDriver+" and DXVK…";
                 for(String name:new String[]{"turnip.so","turnip-26.0.0.so","vulkan-probe","dxvk-d3d9.dll","vulkan-bundle.json"})
@@ -228,7 +236,7 @@ final class ClientRuntime {
                 File report=new File(run,"status.json");
                 if(report.isFile()){JSONObject info=json(report);if(info.optString("phase").equals("error"))throw new IOException(info.optString("error"));}
                 if(!process.isAlive())throw new IOException("Client runtime exited. See client-runtime.log and client-wine.log.");
-                if(displaySocket().exists()){status=mode.equals("compiler")?"Microsoft DLL compilation running. See client-compiler.log; Stop client cancels.":"Client display open. Wine may take a minute to prepare its first prefix.";return state();}
+                if(displaySocket().exists()&&(!presentation.equals("native_surface")||mode.equals("compiler")||(report.isFile()&&json(report).has("presentation_active")))){status=mode.equals("compiler")?"Microsoft DLL compilation running. See client-compiler.log; Stop client cancels.":"Client display open. Wine may take a minute to prepare its first prefix.";return state();}
                 Thread.sleep(100);
             }
             throw new IOException("Client display startup timed out; export Logs");

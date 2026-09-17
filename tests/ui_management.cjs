@@ -18,6 +18,10 @@ for(const [name,type,value,min,max]of [['Character:RaidExpMultiplier','real','0.
   await page.addInitScript(data=>{
    let seq=0,jobs=[],spellTest={},logRetention=5;let addonLocked=false,addonCopied=false;const addonData=()=>({snapshot:'fixture',counts:{missing:addonCopied?0:1,different:0,same:addonCopied?1:0},entries:[{path:'uifiles/default/NMS_Test.xml',status:addonCopied?'same':'missing',locked:addonLocked,protected:false}]});const actions=['None','MouseLeft','MouseRight','PointerUp','PointerDown','PointerLeft','PointerRight','KeyW','KeyT','Space','Escape'];
    let profile={sources:['A','B','RightUp','RightDown','RightLeft','RightRight'],actions,bindings:{A:'Space',B:'Escape',RightUp:'PointerUp',RightDown:'PointerDown',RightLeft:'PointerLeft',RightRight:'PointerRight'},deadzone:.2,sensitivity:700};
+   profile.sources.splice(2,0,'L1');profile.bindings.L1='None';profile.actions.push('AltLeft+Digit1','F8','ClientMenu');
+   profile.modifier='None';profile.shifted=Object.fromEntries(profile.sources.map(s=>[s,'Inherit']));
+   profile.presets={adventure:{bindings:{...profile.bindings,A:'F8'},shifted:{...profile.shifted,A:'AltLeft+Digit1'},modifier:'L1',deadzone:.2,sensitivity:700}};
+
    window.__saves=[];window.__alive=true;window.__calls=[];window.__exports=[];window.__clientStarts=[];window.__clientViews=0;
    let clientRuntime={installed:true,alive:false,busy:false,status:'Client runtime installed',directx_installed:false};
    window.__clientEvidence=value=>Object.assign(clientRuntime.launch,value);
@@ -90,6 +94,15 @@ for(const [name,type,value,min,max]of [['Character:RaidExpMultiplier','real','0.
   await page.locator('#client details').evaluateAll(ds=>ds.forEach(d=>d.open=true));
   await page.locator('#binding-A').selectOption('KeyT');await page.locator('#controller-save').click();
   await page.waitForFunction(()=>document.getElementById('notice').textContent==='Controller bindings saved.');
+  await page.locator('#controller-preset').selectOption('adventure');await page.locator('#controller-defaults').click();
+  await page.waitForFunction(()=>document.getElementById('binding-A').value==='F8');
+  await page.locator('#controller-layer').selectOption('shifted');assert.equal(await page.locator('#binding-A').inputValue(),'AltLeft+Digit1');
+  await page.locator('#binding-B').selectOption('KeyT');await page.locator('#controller-layer').selectOption('bindings');
+  await page.locator('#controller-save').click();await page.waitForFunction(()=>document.getElementById('notice').textContent==='Controller bindings saved.');
+  await page.locator('#controller-load').click();await page.locator('#controller-layer').selectOption('shifted');
+  await page.waitForFunction(()=>document.getElementById('binding-B').value==='KeyT');
+  assert.equal(await page.locator('#controller-modifier').inputValue(),'L1');await page.locator('#controller-layer').selectOption('bindings');
+  await page.locator('#client-presentation').selectOption('native_surface');await page.locator('#client-display-fps').selectOption('60');
   await page.locator('#controller-capture').click();await page.waitForFunction(()=>document.getElementById('controller-focus').textContent.includes('captured'));
   await page.evaluate(()=>{window.clientInputEvent({type:'button',action:'KeyT',down:true});window.clientInputEvent({type:'pointer',x:90,y:20});});
   assert((await page.locator('#client-input-status').textContent()).includes('KeyT'));
@@ -123,7 +136,7 @@ for(const [name,type,value,min,max]of [['Character:RaidExpMultiplier','real','0.
   await page.waitForFunction(()=>window.__clientViews===1);
   assert(await page.locator('#spell-test-apply').isDisabled(),'Running client blocks file comparison');
   assert(await page.locator('#client-launch').isDisabled(),'A running desktop must be stopped before another launch');
-  assert.deepEqual(await page.evaluate(()=>window.__clientStarts[0]),{turnip_driver:'24.3.4',sound_diagnostics:false,audio:true,npc_rendering:'compatibility',mode:'desktop',resolution:'960x540',fullscreen:false,native_dinput8:true,diagnostic_logging:false,native_d3dx:false,renderer:'software',cpu_profile:'balanced',runtime_mode:'auto',graphics_threading:'multi',cpu_affinity:'available'});
+  assert.deepEqual(await page.evaluate(()=>window.__clientStarts[0]),{presentation_mode:'native_surface',display_fps:60,turnip_driver:'24.3.4',sound_diagnostics:false,audio:true,npc_rendering:'compatibility',mode:'desktop',resolution:'960x540',fullscreen:false,native_dinput8:true,diagnostic_logging:false,native_d3dx:false,renderer:'software',cpu_profile:'balanced',runtime_mode:'auto',graphics_threading:'multi',cpu_affinity:'available'});
   assert(!(await page.locator('#client-launch-status').textContent()).includes('load confirmed'),'File presence/request must not claim DLL loaded');
   await page.locator('#client-stop').click();await page.waitForFunction(()=>document.getElementById('client-launch-status').textContent.startsWith('Client stopped.'));
   await page.locator('#client-renderer').selectOption('virgl');
@@ -139,7 +152,7 @@ for(const [name,type,value,min,max]of [['Character:RaidExpMultiplier','real','0.
   await page.locator('#client-view').click();await page.waitForFunction(()=>window.__clientViews===3);
   await page.locator('#client-stop').click();await page.waitForFunction(()=>document.getElementById('client-launch-status').textContent.startsWith('Client stopped.'));
   await page.locator('#client-graphics-threading').selectOption('opengl_worker');await page.locator('#client-runtime-mode').selectOption('compatibility');await page.locator('#client-cpu-profile').selectOption('compatibility');await page.locator('#client-diagnostics').check();await page.locator('#client-prefix-repair').click();await page.waitForFunction(()=>window.__clientViews===4);
-  assert.deepEqual(await page.evaluate(()=>window.__clientStarts[2]),{turnip_driver:'24.3.4',sound_diagnostics:false,audio:true,npc_rendering:'compatibility',mode:'desktop',resolution:'960x540',fullscreen:false,native_dinput8:true,diagnostic_logging:true,native_d3dx:false,repair_prefix:true,renderer:'software',cpu_profile:'compatibility',runtime_mode:'compatibility',graphics_threading:'opengl_worker',cpu_affinity:'available'});
+  assert.deepEqual(await page.evaluate(()=>window.__clientStarts[2]),{presentation_mode:'native_surface',display_fps:60,turnip_driver:'24.3.4',sound_diagnostics:false,audio:true,npc_rendering:'compatibility',mode:'desktop',resolution:'960x540',fullscreen:false,native_dinput8:true,diagnostic_logging:true,native_d3dx:false,repair_prefix:true,renderer:'software',cpu_profile:'compatibility',runtime_mode:'compatibility',graphics_threading:'opengl_worker',cpu_affinity:'available'});
   assert((await page.locator('#client-launch-status').textContent()).includes('Verbose diagnostics enabled'));
   await page.locator('#client-stop').click();
   await page.waitForFunction(()=>document.getElementById('client-launch-status').textContent.startsWith('Client stopped.'));

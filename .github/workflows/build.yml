@@ -141,6 +141,7 @@ jobs:
           bash scripts/build-proot.sh
           bash scripts/build-cabextract.sh android
           bash scripts/build-virgl.sh android
+          bash scripts/build-presentation.sh android
       - name: Package corresponding launcher sources
         run: bash scripts/pack-launcher-sources.sh
       - name: Compile APK and check Android lint

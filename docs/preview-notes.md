@@ -1,3 +1,10 @@
+# 0.4.12 — Controller presets and optional native presentation
+
+- Edit controller mappings from the in-game gear menu. EQ adventure, spell-gem and inventory presets, held alternate bindings, Shift/Ctrl/Alt combinations, and Start-to-menu access. Existing mappings are retained.
+- Compare the current display with an optional native Surface path and separate 30/60 update limits. Current/30 remains the default; native failure falls back to it at the selected update limit.
+- Exported display measurements separate conversion, copying, capture and Surface costs. The prototype retains X11 readback; Thor performance improvement is not yet established.
+- See [setup and comparison instructions](controller-presentation-0412.md). No server/DLL rebuild or database replacement is needed.
+
 TRASC Server Android **0.4.11 — configurable log retention**
 
 - **Logs → Log storage:** keep 5 older logs per process by default, or select 2, 3 or 4. Save & clean older logs applies the limit immediately; automatic cleanup runs every minute.

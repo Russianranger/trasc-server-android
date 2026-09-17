@@ -17,7 +17,7 @@ final class DisplayInput {
         if(action.matches("Digit[0-9]"))return action.charAt(5);
         if(action.matches("F([1-9]|1[0-2])"))return 0xffbd+Integer.parseInt(action.substring(1));
         switch(action) {
-            case "Space":return 32;case "Enter":return 0xff0d;case "Escape":return 0xff1b;case "Tab":return 0xff09;case "Backspace":return 0xff08;
+            case "NumLock":return 0xff7f;case "Space":return 32;case "Enter":return 0xff0d;case "Escape":return 0xff1b;case "Tab":return 0xff09;case "Backspace":return 0xff08;
             case "ArrowLeft":return 0xff51;case "ArrowUp":return 0xff52;case "ArrowRight":return 0xff53;case "ArrowDown":return 0xff54;
             case "ShiftLeft":return 0xffe1;case "ControlLeft":return 0xffe3;case "AltLeft":return 0xffe9;
             case "Home":return 0xff50;case "End":return 0xff57;case "PageUp":return 0xff55;case "PageDown":return 0xff56;case "Insert":return 0xff63;case "Delete":return 0xffff;

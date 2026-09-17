@@ -3,6 +3,8 @@ package io.github.russianranger.trasc;
 /** Transport/display counters. Neither redraws nor RFB updates measure game FPS. */
 final class ClientFrameStats {
     private long since,updates,draws,receiveNs,decodeNs,drawNs,pixels;
+    private long conversionNs,applyNs;
+    synchronized void stages(long conversion,long apply){conversionNs+=conversion;applyNs+=apply;}
     private long generation,drawnGeneration,lastReceived;
     ClientFrameStats(){this(System.nanoTime());}
     ClientFrameStats(long now){since=now;}
@@ -19,7 +21,8 @@ final class ClientFrameStats {
         double[] result={seconds,updates/seconds,draws/seconds,
             updates==0?0:receiveNs/1e6/updates,updates==0?0:decodeNs/1e6/updates,
             draws==0?0:drawNs/1e6/draws,pixels/seconds,
-            lastReceived==0?-1:(now-lastReceived)/1e9};
-        since=now;updates=draws=receiveNs=decodeNs=drawNs=pixels=0;return result;
+            lastReceived==0?-1:(now-lastReceived)/1e9,
+            updates==0?0:conversionNs/1e6/updates,updates==0?0:applyNs/1e6/updates,pixels*4/seconds};
+        since=now;updates=draws=receiveNs=decodeNs=drawNs=pixels=conversionNs=applyNs=0;return result;
     }
 }

@@ -183,6 +183,7 @@ public final class MainActivity extends Activity {
     @Override public boolean dispatchKeyEvent(KeyEvent event){return controller!=null&&controller.key(event)||super.dispatchKeyEvent(event);}
     @Override public boolean dispatchGenericMotionEvent(MotionEvent event){return controller!=null&&controller.motion(event)||super.dispatchGenericMotionEvent(event);}
     @Override public void onWindowFocusChanged(boolean focus){super.onWindowFocusChanged(focus);if(!focus&&controller!=null)controller.capture(false);}
+    @Override protected void onResume(){super.onResume();if(controller!=null)controller.reload();if(web!=null)web.evaluateJavascript("if(typeof controllerLoaded!=='undefined'){controllerLoaded=false;if(currentTab==='client')loadController(true).catch(e=>notice(e.message,true));}",null);}
     @Override protected void onPause(){if(controller!=null)controller.capture(false);super.onPause();}
     @Override public void onBackPressed(){if(controller.active()){controller.capture(false);return;}web.evaluateJavascript("window.appBack && window.appBack()",null);}
     @Override protected void onDestroy(){controller.close();web.removeJavascriptInterface("Trasc");web.destroy();tasks.shutdown();super.onDestroy();}

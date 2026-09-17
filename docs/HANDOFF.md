@@ -1,3 +1,11 @@
+# In progress: 0.4.12 controller and presentation milestone (2026-09-17)
+
+User shelved camp and authorized controller/gear-menu polish plus measurement and an optional more-direct display prototype in the same pass. Read [controller-presentation-0412.md](controller-presentation-0412.md). Existing profiles and Current display/30 defaults remain; Native Surface bypasses RFB pixels/Java Bitmap but still uses X11 readback. It is not a zero-copy implementation or a proven Thor performance improvement. No server/database/DLL change is included. Version0.4.12/code29; preserve the existing signing cache/certificate and every release gate. Implementation and local tests complete; CI/release verification pending. Do not claim publication until the run succeeds.
+
+The camp follow-up bundle `logs-4182792564389881283.zip` showed the server close at13:59:50, client logout attempt14:00:20 and recovered character selection14:00:25. Settings save preceded restart. GM camp bypasses Custom:CampTimerMs; live GM flag/rule value remain unproven. User was offered #rules get and self #set gm off, then explicitly parked this issue. Do not resume camp work during this milestone.
+
+---
+
 # Released: 0.4.11 log retention and camp investigation (2026-09-17)
 
 User confirms gameplay works, reports a disconnect when camping, and requests at most 5 older logs per process with 2/3/4 alternatives. Read [log-retention-0411.md](log-retention-0411.md) for source/log evidence, implementation and device checks. The attached `logs-6442597055042792067.zip` shows a server-initiated close at 13:15:53 alongside three successful character saves, no Wine crash, zone idle one minute later, and explicit server stop at 13:17:24. Current source's default `Custom:CampTimerMs=100` uses the `fast_camp`/`OnDisconnect(false)` path; normal logout also sends pre-logout packets. Live rule values were not exported, so this is a strong source-supported diagnosis, not packet-level proof. User has been given the existing-app test: set the active ruleset's value to 29000, save and restart server. Do not patch the graphics stack or silently alter database rules. GM and Bazaar/EC logout paths differ.

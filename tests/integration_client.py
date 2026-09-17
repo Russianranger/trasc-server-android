@@ -35,7 +35,7 @@ def recv(stream, size):
 def main():
     for name in ('/session','/prefix','/logs'): Path(name).mkdir(exist_ok=True)
     renderer=os.environ.get('TRASC_TEST_RENDERER','software')
-    request={'audio':True,'npc_rendering':'compatibility','mode':'client','resolution':'800x600','executable':'eqgame.exe','native_dinput8':True,'native_d3dx':True,'renderer':renderer,'graphics_threading':'single' if renderer=='turnip' else 'opengl_worker','cpu_affinity':'available'}
+    request={'audio':True,'npc_rendering':'compatibility','mode':'client','resolution':'800x600','executable':'eqgame.exe','native_dinput8':True,'native_d3dx':True,'renderer':renderer,'graphics_threading':'single' if renderer=='turnip' else 'opengl_worker','cpu_affinity':'available','presentation_mode':'native_surface','display_fps':60}
     if renderer=='turnip': request.update(resolution='1280x720',fullscreen=True)
     Path('/session/request.json').write_text(json.dumps(request))
     audio_receiver = Receiver('/session/audio.sock')
@@ -51,6 +51,8 @@ def main():
         assert all(result.values()),result
         graphics=json.loads(Path('/session/status.json').read_text())
         assert graphics['graphics_backend']==renderer,graphics
+        assert graphics['presentation_active']=='native_surface',graphics
+        assert graphics['display_target_fps']==60,graphics
         assert graphics['wined3d_patch']=='legacy-specular-fog-v1',graphics
         assert graphics['wineserver_patch']=='translated-exit-grace-v1',graphics
         assert graphics['wineserver_exit_grace_seconds']==8,graphics
@@ -124,6 +126,24 @@ def main():
             Path('/logs/display-colors.json').write_text(json.dumps(summary,indent=2))
             assert colors[bytes([96,72,24])]>1000,('Direct3D output not visible in native display protocol',summary)
             if renderer=='turnip': assert colors[bytes([96,72,24])]>width*height*.95,('Fullscreen image does not fill the display',summary)
+            # Same real Wine/DXVK pixels through the optional native protocol.
+            # Close/reopen the consumer, as Android does on Activity recreation.
+            for attempt in range(2):
+                with socket.socket(socket.AF_UNIX) as frames:
+                    frames.settimeout(8);frames.connect('/session/frames.sock')
+                    samples=[]
+                    for _ in range(4):
+                        frames.sendall(b'\1');header=struct.unpack('>8I',recv(frames,32))
+                        magic,fw,fh,stride,capture,seq,length,shm=header
+                        assert magic==0x54524631 and (fw,fh)==(width,height) and stride==fw*4 and length==fw*fh*4,header
+                        assert shm in (0,1),header
+                        raw=recv(frames,length);colors_native=Counter(raw[i:i+3] for i in range(0,len(raw),4))
+                        assert colors_native[bytes([96,72,24])]>1000,('Native Surface source pixels',header)
+                        if renderer=='turnip':assert colors_native[bytes([96,72,24])]>fw*fh*.95,header
+                        samples.append({'capture_us':capture,'sequence':seq,'shm':shm,'bytes':length})
+                    assert samples[-1]['sequence']>samples[0]['sequence'],samples
+                    Path('/logs/native-presentation-'+str(attempt)+'.json').write_text(json.dumps(samples,indent=2))
+            print('PASS: real Wine pixels, color order, native frame bounds and presentation reconnect')
             # Focus the probe interior, then deliver a keyboard press/release.
             display.sendall(struct.pack('>BBHH',5,1,200,200)+struct.pack('>BBHH',5,0,200,200))
             display.sendall(struct.pack('>BBHI',4,1,0,ord('t'))+struct.pack('>BBHI',4,0,0,ord('t')))

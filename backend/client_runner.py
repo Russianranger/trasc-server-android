@@ -18,6 +18,7 @@ from client_metrics import process_threads, allow_game_cpus
 import client_vulkan
 import client_audio
 import client_spells
+import client_presentation
 from client_display import RESOLUTIONS, apply_display
 
 SESSION = Path('/session')
@@ -340,7 +341,7 @@ class Supervisor:
         self.last_thread_sample = 0
         self.launch_token = secrets.token_hex(16)
         self.started_monotonic = time.monotonic()
-        self.status = {'phase': 'starting', 'mode': request['mode'], 'resolution': request['resolution'], 'fullscreen': request.get('fullscreen', False), 'display_target_fps': 30,
+        self.status = {'phase': 'starting', 'mode': request['mode'], 'resolution': request['resolution'], 'fullscreen': request.get('fullscreen', False), 'display_target_fps': request.get('display_fps',30), 'presentation_requested': request.get('presentation_mode','rfb'),
                        'native_dinput8_requested': request['mode']=='client' and request.get('native_dinput8', True), 'native_loaded': False,
                        'system_dinput8_loaded': False,
                        'diagnostic_logging': request.get('diagnostic_logging', False),
@@ -563,7 +564,7 @@ class Supervisor:
         self.update(runtime_acceleration_observed=observed)
         if self.request.get('runtime_acceleration') == 'seccomp' and not observed:
             raise RuntimeError('Runtime acceleration was not confirmed. Select Compatibility runtime mode and export Logs.')
-        for name in ('client-wine.log', 'client-prefix.log', 'client-display.log', 'client-graphics.log', 'client-threads.log', 'client-vulkan.log', 'eqgame_d3d9.log'):
+        for name in ('client-wine.log', 'client-prefix.log', 'client-display.log', 'client-graphics.log', 'client-threads.log', 'client-vulkan.log', 'client-frame-bridge.log', 'eqgame_d3d9.log'):
             archive_log(LOGS / name)
         sound_report = LOGS / 'client-wine.sound.json'
         if sound_report.is_file(): sound_report.replace(LOGS / 'client-wine.sound.previous.json')
@@ -575,13 +576,14 @@ class Supervisor:
         xserver = self.spawn(['Xtigervnc', ':7', '-geometry', self.request['resolution'], '-depth', '24',
                              '-rfbport', '-1', '-rfbunixpath', str(SESSION / 'display.sock'), '-rfbunixmode', '0600',
                              '-SecurityTypes', 'None', '-nolisten', 'tcp', '-auth', self.env['XAUTHORITY'],
-                             '-AlwaysShared', '-FrameRate', '30', '-desktop', 'TRASC client'], 'client-display.log')
+                             '-AlwaysShared', '-FrameRate', str(client_presentation.options(self.request)[1]), '-desktop', 'TRASC client'], 'client-display.log')
         for _ in range(150):
             if self.stopping(): raise StopRequested()
             if xserver.poll() is not None: raise RuntimeError('Client display failed; see client-display.log')
             if (SESSION / 'display.sock').exists(): break
             time.sleep(.1)
         else: raise RuntimeError('Client display did not become ready')
+        self.update(**client_presentation.start(self))
         self.update(display_ready=True)
         with self.timed('graphics_check'): self.check_graphics()
         patch = Path(__file__).with_name('wined3d-patch.json')

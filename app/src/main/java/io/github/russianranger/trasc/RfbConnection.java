@@ -25,7 +25,8 @@ final class RfbConnection {
         this.out=new DataOutputStream(out);this.screen=screen;
     }
     private byte[] bytes(int count)throws IOException {if(count<0||count>1048576)throw new IOException("Display message exceeds limits");byte[] b=new byte[count];in.readFully(b);return b;}
-    void handshake()throws IOException {
+    void handshake()throws IOException {handshake(true);}
+    void handshake(boolean frames)throws IOException {
         if(!new String(bytes(12),StandardCharsets.US_ASCII).equals("RFB 003.008\n"))throw new IOException("Unsupported client display protocol");
         synchronized(out){out.write("RFB 003.008\n".getBytes(StandardCharsets.US_ASCII));out.flush();}
         int count=in.readUnsignedByte();if(count==0)throw new IOException("Display refused connection: "+new String(bytes(in.readInt()),StandardCharsets.UTF_8));
@@ -40,7 +41,7 @@ final class RfbConnection {
             out.write(new byte[]{32,24,0,1,0,(byte)255,0,(byte)255,0,(byte)255,16,8,0,0,0,0});
             out.writeByte(2);out.writeByte(0);out.writeShort(3);out.writeInt(0);out.writeInt(1);out.writeInt(-223);out.flush();
         }
-        request(false);
+        if(frames)request(false);
     }
     private void resize(int w,int h)throws IOException {
         if(w<1||h<1||w>4096||h>2160||(long)w*h>4_194_304)throw new IOException("Unsupported client display dimensions");
@@ -69,13 +70,13 @@ final class RfbConnection {
                     in.readFully(rowBuffer,0,length*4);
                     long convert=System.nanoTime();
                     for(int ix=0;ix<length;ix++){int at=ix*4;pixelBuffer[iy*w+ix]=0xff000000|((rowBuffer[at+2]&255)<<16)|((rowBuffer[at+1]&255)<<8)|(rowBuffer[at]&255);}
-                    decode+=System.nanoTime()-convert;iy+=rowCount;
+                    long cost=System.nanoTime()-convert;decode+=cost;stats.stages(cost,0);iy+=rowCount;
                 }
-                long apply=System.nanoTime();screen.pixels(x,y,w,h,pixelBuffer);decode+=System.nanoTime()-apply;
+                long apply=System.nanoTime();screen.pixels(x,y,w,h,pixelBuffer);long cost=System.nanoTime()-apply;decode+=cost;stats.stages(0,cost);
                 pixelCount+=(long)w*h;
             } else if(encoding==1) {
                 int sx=in.readUnsignedShort(),sy=in.readUnsignedShort();rectangle(sx,sy,w,h);
-                long apply=System.nanoTime();screen.copy(x,y,w,h,sx,sy);decode+=System.nanoTime()-apply;
+                long apply=System.nanoTime();screen.copy(x,y,w,h,sx,sy);long cost=System.nanoTime()-apply;decode+=cost;stats.stages(0,cost);
             } else throw new IOException("Unsupported display encoding: "+encoding);
         }
         if(count>0){stats.received(System.nanoTime(),System.nanoTime()-started,decode,pixelCount);screen.updated();}

@@ -16,7 +16,7 @@ public final class ClientHostTest {
         return data.toByteArray();
     }
     public static void main(String[] args)throws Exception {
-        frameMeasurements();reusedPixels();
+        frameMeasurements();reusedPixels();controllerLayers();
         int[] pixels=new int[6];ByteArrayOutputStream wire=new ByteArrayOutputStream();
         RfbConnection.Screen screen=new RfbConnection.Screen(){public void resize(int w,int h){check(w==3&&h==2,"Display dimensions");}public void pixels(int x,int y,int w,int h,int[] colors){System.arraycopy(colors,0,pixels,0,6);}public void copy(int x,int y,int w,int h,int sx,int sy){}public void updated(){}};
         RfbConnection r=new RfbConnection(new ByteArrayInputStream(server(false)),wire,screen);r.handshake();r.readUpdate();
@@ -33,7 +33,7 @@ public final class ClientHostTest {
         input.action("ShiftLeft",true);input.action("KeyA",true);input.action("ShiftLeft",false);input.action("KeyA",false);check(sent.contains("key:65:true")&&sent.contains("key:65:false"),"Shifted key releases its original symbol");
         input.action("KeyT",true);input.releaseAll();check(sent.contains("key:116:false")&&sent.get(sent.size()-1).endsWith(":0"),"Focus loss releases keyboard and mouse");
         sent.clear();input.text("hello",true);check(sent.get(sent.size()-1).equals("key:65293:false"),"Send + Enter actually sends chat");
-        for(String action:ControllerInput.ACTIONS)if(!action.equals("None")&&!action.startsWith("Pointer")&&!action.startsWith("Mouse")&&!action.startsWith("Wheel"))check(DisplayInput.symbol(action)!=0,"Every advertised keyboard binding reaches the client: "+action);
+        for(String action:ControllerInput.ACTIONS)if(!action.equals("None")&&!action.startsWith("Pointer")&&!action.startsWith("Mouse")&&!action.startsWith("Wheel")){if(!action.equals("ClientMenu"))for(String atom:action.split("\\+"))check(DisplayInput.symbol(atom)!=0,"Every advertised keyboard binding reaches the client: "+atom);}
         Path tree=Files.createTempDirectory("trasc-prefix-");
         try {
             Path prefix=tree.resolve("prefix"),game=tree.resolve("current");Files.createDirectories(prefix.resolve("dosdevices"));Files.createDirectories(game);
@@ -46,6 +46,20 @@ public final class ClientHostTest {
             check(Files.readString(game.resolve("eqgame.exe")).equals("owned client"),"Repair never touches imported game files");
         } finally {TarExtractor.remove(tree.toFile());}
         System.out.println("PASS: native RFB pixels/events, malformed frames, combined controller/physical/touch holds, focus releases and typed Enter");
+    }
+    static void controllerLayers(){
+        List<String> events=new ArrayList<>();
+        ControllerInput input=new ControllerInput(new ControllerInput.Sink(){public void button(String a,boolean d){events.add(a+":"+d);}public void pointer(float x,float y){}public void wheel(int n){}});
+        Map<String,String> base=ControllerInput.defaults(),shifted=ControllerInput.inherited();base.put("A","Digit1");shifted.put("A","AltLeft+Digit2");
+        input.configure(base,shifted,"L1",.2f,700);input.activate(true);input.value("A",1);input.value("L1",1);
+        check(events.equals(Arrays.asList("Digit1:true","Digit1:false","AltLeft:true","Digit2:true")),"Layer change releases old key before pressing chord in modifier-first order");
+        input.value("L1",0);check(events.subList(4,7).equals(Arrays.asList("Digit2:false","AltLeft:false","Digit1:true")),"Releasing layer returns held source to base without stuck chord");
+        input.activate(false);check(events.get(events.size()-1).equals("Digit1:false"),"Focus loss releases layered actions");
+        events.clear();base.put("A","AltLeft+Digit1");base.put("B","AltLeft+Digit2");input.configure(base,.2f,700);input.activate(true);
+        input.value("A",1);input.value("B",1);input.value("A",0);check(!events.contains("AltLeft:false"),"Overlapping chords retain common modifier");input.value("B",0);check(events.get(events.size()-1).equals("AltLeft:false"),"Final chord releases modifier last");
+        events.clear();input.value("A",Float.NaN);check(events.isEmpty(),"Invalid analog value is ignored");
+        for(String name:Arrays.asList("legacy","adventure","spells","inventory"))input.configure(ControllerInput.preset(name,false),ControllerInput.preset(name,true),name.equals("legacy")?"None":"L1",.2f,700);
+        events.clear();input.activate(true);input.value("Start",1);check(events.equals(Arrays.asList("ClientMenu:true")),"Preset opens app controls without sending a game key");
     }
     static void frameMeasurements(){
         ClientFrameStats stats=new ClientFrameStats(0);

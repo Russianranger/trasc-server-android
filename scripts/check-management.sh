@@ -1,5 +1,7 @@
 #!/usr/bin/env bash
 set -euo pipefail
+cc -std=c11 -Wall -Wextra -Werror tests/frame_protocol.c -o /tmp/trasc-frame-test
+/tmp/trasc-frame-test
 classes=$(mktemp -d)
 trap 'rm -rf "$classes"' EXIT
 compiler=(javac)

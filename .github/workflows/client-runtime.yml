@@ -24,6 +24,7 @@ jobs:
         with:
           name: client-vulkan
       - run: cp backend-assets/libasound_module_pcm_trasc.so backend-assets/audio-bundle.json backend/
+      - run: cp backend-assets/x11-frame-bridge backend-assets/presentation-bundle.json backend/ && chmod +x backend/x11-frame-bridge
       - run: cp backend-assets/wined3d-patch.json backend/
       - run: cp backend-assets/wineserver backend-assets/wineserver-patch.json backend/ && chmod +x backend/wineserver
       - run: cp backend-assets/turnip.so backend-assets/turnip-26.0.0.so backend-assets/vulkan-probe backend-assets/dxvk-d3d9.dll backend-assets/vulkan-bundle.json backend/ && chmod +x backend/vulkan-probe

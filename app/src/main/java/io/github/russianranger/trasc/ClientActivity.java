@@ -17,11 +17,14 @@ public final class ClientActivity extends Activity {
     private ClientRuntime runtime;
     private ControllerManager controller;
     private ClientView display;
+    private NativePresentation nativeDisplay;
+    private volatile boolean nativeActive;
+    private String presentationFallback="";
     private TextView status;
     private FrameLayout menuLayer;
     private LinearLayout menu;
     private ImageButton gear;
-    private boolean menuOpen, keyboardOpen;
+    private boolean menuOpen, keyboardOpen, mappingsOpen;
     private String displayError;
     private boolean failureShown;
     private final Handler handler=new Handler(Looper.getMainLooper());
@@ -46,7 +49,15 @@ public final class ClientActivity extends Activity {
         super.onCreate(saved);setVolumeControlStream(android.media.AudioManager.STREAM_MUSIC);runtime=ClientRuntime.get(this);
         getWindow().addFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON);
         FrameLayout layout=new FrameLayout(this);layout.setBackgroundColor(Color.BLACK);
-        display=new ClientView();layout.addView(display,new FrameLayout.LayoutParams(-1,-1));
+        display=new ClientView();
+        try{JSONObject state=runtime.state(),launch=state.optJSONObject("launch");nativeActive=launch!=null&&launch.optString("presentation_active").equals("native_surface");if(launch!=null)presentationFallback=launch.optString("presentation_fallback","");}catch(Exception ignored){}
+        if(nativeActive){
+            nativeDisplay=new NativePresentation(this,runtime.frameSocket(),new NativePresentation.Events(){
+                public void failed(String reason){fallbackPresentation(reason);}
+                public void size(int width,int height){display.frameWidth=width;display.frameHeight=height;display.input.size(width,height);display.arrangeSurface();}
+            });layout.addView(nativeDisplay,new FrameLayout.LayoutParams(-1,-1,Gravity.CENTER));
+        }
+        layout.addView(display,new FrameLayout.LayoutParams(-1,-1));
         // A separate overlay never changes the framebuffer's size or touch map.
         menuLayer=new FrameLayout(this);menuLayer.setVisibility(View.GONE);
         menuLayer.setOnClickListener(v->setMenuOpen(false));
@@ -56,6 +67,7 @@ public final class ClientActivity extends Activity {
         menu.setBackground(panelBackground(0xd010191c));menu.setOnClickListener(v->{});
         addMenuButton("Back to Client",v->finish());
         addMenuButton("Keyboard",v->textDialog());
+        addMenuButton("Controller mappings",v->controllerDialog());
         addMenuButton("Esc",v->{setMenuOpen(false);display.input.key("escape",0xff1b,true);display.input.key("escape",0xff1b,false);});
         status=new TextView(this);status.setTextColor(0xffe2eded);status.setTextSize(12);status.setPadding(dp(4),dp(10),dp(4),0);
         menu.addView(status);scroll.addView(menu);
@@ -78,7 +90,7 @@ public final class ClientActivity extends Activity {
         setContentView(layout);immersive();
         controller=new ControllerManager(this,runtime.server.work,event->{
             switch(event.optString("type")) {
-                case "button":display.input.action(event.optString("action"),event.optBoolean("down"));break;
+                case "button":if(event.optString("action").equals("ClientMenu")){setMenuOpen(true);break;}display.input.action(event.optString("action"),event.optBoolean("down"));break;
                 case "pointer":display.input.move((float)event.optDouble("x"),(float)event.optDouble("y"));break;
                 case "wheel":display.input.wheel(event.optInt("y"));break;
             }
@@ -95,12 +107,23 @@ public final class ClientActivity extends Activity {
             if(insets!=null){insets.setSystemBarsBehavior(WindowInsetsController.BEHAVIOR_SHOW_TRANSIENT_BARS_BY_SWIPE);insets.hide(WindowInsets.Type.systemBars());}
         }else getWindow().getDecorView().setSystemUiVisibility(View.SYSTEM_UI_FLAG_IMMERSIVE_STICKY|View.SYSTEM_UI_FLAG_FULLSCREEN|View.SYSTEM_UI_FLAG_HIDE_NAVIGATION|View.SYSTEM_UI_FLAG_LAYOUT_STABLE|View.SYSTEM_UI_FLAG_LAYOUT_FULLSCREEN|View.SYSTEM_UI_FLAG_LAYOUT_HIDE_NAVIGATION);
     }
-    private boolean gameInputActive(){return hasWindowFocus()&&!menuOpen&&!keyboardOpen&&!failureShown;}
+    private boolean gameInputActive(){return hasWindowFocus()&&!menuOpen&&!keyboardOpen&&!mappingsOpen&&!failureShown;}
     private void setMenuOpen(boolean open){
         menuOpen=open;menuLayer.setVisibility(open?View.VISIBLE:View.GONE);
         gear.setContentDescription(open?"Close client controls":"Open client controls");gear.setAlpha(open?1f:.78f);
         if(controller!=null)controller.capture(gameInputActive());
         if(open){display.input.releaseAll();menu.getChildAt(0).requestFocus();}else display.requestFocus();
+    }
+    private void fallbackPresentation(String reason){
+        if(!nativeActive)return;nativeActive=false;presentationFallback=reason;
+        if(nativeDisplay!=null){nativeDisplay.close();nativeDisplay.setVisibility(View.GONE);}
+        display.resize(display.frameWidth,display.frameHeight);
+        display.send(r->r.request(false));display.invalidate();
+        Toast.makeText(this,"Using current display: "+reason,Toast.LENGTH_LONG).show();
+    }
+    private void controllerDialog(){
+        mappingsOpen=true;controller.capture(false);display.input.releaseAll();
+        new ControllerDialog(this,controller,()->{mappingsOpen=false;controller.capture(gameInputActive());}).show();
     }
     private void textDialog() {
         keyboardOpen=true;setMenuOpen(false);controller.capture(false);display.input.releaseAll();
@@ -141,7 +164,7 @@ public final class ClientActivity extends Activity {
     @Override public void onBackPressed(){if(menuOpen)setMenuOpen(false);else super.onBackPressed();}
     @Override public void onWindowFocusChanged(boolean focus){super.onWindowFocusChanged(focus);if(focus&&!keyboardOpen)immersive();if(controller!=null)controller.capture(gameInputActive());if(!focus&&display!=null)display.input.releaseAll();}
     @Override protected void onPause(){if(controller!=null)controller.capture(false);if(display!=null)display.input.releaseAll();super.onPause();}
-    @Override protected void onDestroy(){handler.removeCallbacks(refresh);if(controller!=null)controller.close();if(display!=null)display.close();super.onDestroy();}
+    @Override protected void onDestroy(){handler.removeCallbacks(refresh);if(controller!=null)controller.close();if(nativeDisplay!=null)nativeDisplay.close();if(display!=null)display.close();super.onDestroy();}
 
     private final class ClientView extends View implements RfbConnection.Screen {
         private final Object pixelsLock=new Object();
@@ -149,6 +172,8 @@ public final class ClientActivity extends Activity {
         private int[] copyBuffer=new int[0];
         private long measuredAt=System.nanoTime();
         private double displayRate;
+        private String displayCost="";
+        private int frameWidth=800,frameHeight=600;
         private final Paint paint=new Paint(Paint.FILTER_BITMAP_FLAG);
         private final RectF bounds=new RectF();
         private final ExecutorService writer=Executors.newSingleThreadExecutor();
@@ -168,18 +193,27 @@ public final class ClientActivity extends Activity {
                 if(closed)return;
                 local.connect(new LocalSocketAddress(runtime.displaySocket().getPath(),LocalSocketAddress.Namespace.FILESYSTEM));
                 local.setSoTimeout(15000);
-                RfbConnection r=new RfbConnection(local.getInputStream(),local.getOutputStream(),this);r.handshake();
+                RfbConnection r=new RfbConnection(local.getInputStream(),local.getOutputStream(),this);r.handshake(!nativeActive);
                 local.setSoTimeout(0);connection=r;
                 while(!closed)r.readUpdate();
             }catch(IOException e){if(!closed)failure(e);}
             finally {try{if(socket!=null)socket.close();}catch(IOException ignored){}connection=null;}
         },"TRASC client display").start();}
         void failure(Exception error){if(closed)return;runtime.server.recordFailure("client_display",error);post(()->{displayError="Display disconnected: "+error.getMessage()+" · Back to Client to reconnect";if(!isDestroyed()){status.setText(displayError);setMenuOpen(true);}});}
-        @Override public void resize(int w,int h){synchronized(pixelsLock){bitmap=Bitmap.createBitmap(w,h,Bitmap.Config.ARGB_8888);}post(()->input.size(w,h));}
+        @Override public void resize(int w,int h){frameWidth=w;frameHeight=h;synchronized(pixelsLock){if(!nativeActive)bitmap=Bitmap.createBitmap(w,h,Bitmap.Config.ARGB_8888);}post(()->{input.size(w,h);arrangeSurface();});}
+        void arrangeSurface(){
+            if(!nativeActive||nativeDisplay==null||getWidth()==0||getHeight()==0)return;
+            float scale=Math.min((float)getWidth()/frameWidth,(float)getHeight()/frameHeight);
+            int w=Math.round(frameWidth*scale),h=Math.round(frameHeight*scale);bounds.set((getWidth()-w)/2f,(getHeight()-h)/2f,(getWidth()+w)/2f,(getHeight()+h)/2f);
+            android.view.ViewGroup.LayoutParams old=nativeDisplay.getLayoutParams();
+            if(old.width!=w||old.height!=h)nativeDisplay.setLayoutParams(new FrameLayout.LayoutParams(w,h,Gravity.CENTER));
+        }
+        @Override protected void onSizeChanged(int w,int h,int oldw,int oldh){super.onSizeChanged(w,h,oldw,oldh);arrangeSurface();}
         @Override public void pixels(int x,int y,int w,int h,int[] colors){synchronized(pixelsLock){bitmap.setPixels(colors,0,w,x,y,w,h);}}
         @Override public void copy(int x,int y,int w,int h,int sx,int sy){synchronized(pixelsLock){if(copyBuffer.length<w*h)copyBuffer=new int[w*h];bitmap.getPixels(copyBuffer,0,w,sx,sy,w,h);bitmap.setPixels(copyBuffer,0,w,x,y,w,h);}}
         @Override public void updated(){postInvalidateOnAnimation();}
         @Override protected void onDraw(Canvas canvas) {
+            if(nativeActive)return;
             long started=System.nanoTime();
             canvas.drawColor(Color.BLACK);
             synchronized(pixelsLock){if(bitmap!=null){float scale=Math.min((float)getWidth()/bitmap.getWidth(),(float)getHeight()/bitmap.getHeight());float w=bitmap.getWidth()*scale,h=bitmap.getHeight()*scale;bounds.set((getWidth()-w)/2,(getHeight()-h)/2,(getWidth()+w)/2,(getHeight()+h)/2);canvas.drawBitmap(bitmap,null,bounds,paint);}}
@@ -195,12 +229,15 @@ public final class ClientActivity extends Activity {
                 if(sample!=null)try {
                     displayRate=sample[2];
                     JSONObject info=new JSONObject().put("created_utc",java.time.Instant.now().toString());
+                    info.put("presentation_active",nativeActive?"native_surface":"rfb").put("presentation_fallback",presentationFallback);
+                    if(nativeActive&&nativeDisplay!=null){JSONObject surface=nativeDisplay.sample(now);info.put("native_surface",surface);displayRate=surface.optDouble("surface_posts_per_second");displayCost=String.format(java.util.Locale.ROOT,"\nCapture %.2f ms · copy %.2f ms · Surface wait/post %.2f ms",surface.optDouble("capture_ms_per_frame"),surface.optDouble("native_copy_ms_per_frame"),surface.optDouble("surface_lock_ms_per_frame")+surface.optDouble("surface_post_ms_per_frame"));}
                     info.put("view_width",getWidth()).put("view_height",getHeight()).put("controls_open",menuOpen).put("keyboard_open",keyboardOpen).put("window_focused",hasWindowFocus());
                     // Read Android's reported state; no scheduling/power policy changes.
                     PowerManager power=getSystemService(PowerManager.class);
                     try{if(power!=null){info.put("power_save",power.isPowerSaveMode());if(Build.VERSION.SDK_INT>=29)info.put("thermal_status",power.getCurrentThermalStatus());}}catch(RuntimeException unavailable){info.put("power_state_unavailable",true);}
-                    String[] keys={"window_seconds","rfb_updates_per_second","new_bitmap_draws_per_second","receive_ms_per_update","decode_apply_ms_per_update","canvas_submit_ms_per_draw","raw_pixels_per_second","last_update_age_seconds"};
+                    String[] keys={"window_seconds","rfb_updates_per_second","new_bitmap_draws_per_second","receive_ms_per_update","decode_apply_ms_per_update","canvas_submit_ms_per_draw","raw_pixels_per_second","last_update_age_seconds","pixel_conversion_ms_per_update","bitmap_apply_ms_per_update","raw_bytes_per_second"};
                     for(int i=0;i<keys.length;i++)info.put(keys[i],sample[i]);
+                    if(!nativeActive)displayCost=String.format(java.util.Locale.ROOT,"\nConvert %.2f ms · Bitmap %.2f ms · Canvas submit %.2f ms",sample[8],sample[9],sample[5]);
                     if(fresh)info.put("wine_present",wine);
                     if(launch!=null)info.put("graphics_threading",launch.optString("graphics_threading_observed","unknown"))
                         .put("graphics_threading_requested",launch.optString("graphics_threading","multi"))
@@ -217,12 +254,12 @@ public final class ClientActivity extends Activity {
                     });
                 }catch(org.json.JSONException ignored){}
             }
-            if(launch!=null&&launch.optString("graphics_backend").equals("turnip")) return String.format(java.util.Locale.ROOT," · DXVK FPS in HUD · Display %.1f/s",displayRate);
-            return String.format(java.util.Locale.ROOT," · Wine %s/s · Display %.1f/s",fresh?String.format(java.util.Locale.ROOT,"%.1f",wine.optDouble("per_second")):"—",displayRate);
+            if(launch!=null&&launch.optString("graphics_backend").equals("turnip")) return String.format(java.util.Locale.ROOT," · DXVK FPS in HUD · %s %.1f/s",nativeActive?"Native Surface":"Current display",displayRate)+displayCost;
+            return String.format(java.util.Locale.ROOT," · Wine %s/s · Display %.1f/s",fresh?String.format(java.util.Locale.ROOT,"%.1f",wine.optDouble("per_second")):"—",displayRate)+displayCost;
         }
         private boolean position(MotionEvent event) {
-            if(bitmap==null||bounds.width()==0||!bounds.contains(event.getX(),event.getY()))return false;
-            input.position((event.getX()-bounds.left)*bitmap.getWidth()/bounds.width(),(event.getY()-bounds.top)*bitmap.getHeight()/bounds.height());return true;
+            if((bitmap==null&&!nativeActive)||bounds.width()==0||!bounds.contains(event.getX(),event.getY()))return false;
+            input.position((event.getX()-bounds.left)*frameWidth/bounds.width(),(event.getY()-bounds.top)*frameHeight/bounds.height());return true;
         }
         @Override public boolean onTouchEvent(MotionEvent event) {
             if(!gameInputActive())return true;

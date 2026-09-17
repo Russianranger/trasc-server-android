@@ -19,6 +19,8 @@ final class ControllerManager implements InputManager.InputDeviceListener {
     private final Handler handler=new Handler(Looper.getMainLooper());
     private final ControllerInput input;
     private Map<String,String> bindings=ControllerInput.defaults();
+    private Map<String,String> shifted=ControllerInput.inherited();
+    private String modifier="None";
     private long lastTick;
     private String loadError="";
     private int device=-1;
@@ -38,7 +40,7 @@ final class ControllerManager implements InputManager.InputDeviceListener {
         try{events.emit(new JSONObject().put("type",type).put("action",action).put("down",down).put("x",x).put("y",y));}catch(JSONException ignored){}
     }
     void reload() {
-        capture(false);bindings=ControllerInput.defaults();input.configure(bindings,.20f,700);loadError="";
+        capture(false);bindings=ControllerInput.defaults();shifted=ControllerInput.inherited();modifier="None";input.configure(bindings,.20f,700);loadError="";
         if(profile.isFile())try {
             if(profile.length()>32768)throw new IOException("Controller profile exceeds limits");
             configure(new JSONObject(new String(Files.readAllBytes(profile.toPath()),StandardCharsets.UTF_8)),false);
@@ -47,21 +49,29 @@ final class ControllerManager implements InputManager.InputDeviceListener {
     JSONObject state()throws JSONException {
         return new JSONObject().put("bindings",new JSONObject(bindings)).put("sources",new JSONArray(ControllerInput.SOURCES))
             .put("actions",new JSONArray(ControllerInput.ACTIONS)).put("deadzone",input.deadzone).put("sensitivity",input.sensitivity)
-            .put("active",input.active()).put("error",loadError);
+            .put("modifier",modifier).put("shifted",new JSONObject(shifted)).put("presets",presets()).put("active",input.active()).put("error",loadError);
     }
+    static JSONObject preset(String name)throws JSONException {
+        return new JSONObject().put("bindings",new JSONObject(ControllerInput.preset(name,false)))
+            .put("shifted",new JSONObject(ControllerInput.preset(name,true))).put("modifier",name.equals("legacy")?"None":"L1").put("deadzone",.2).put("sensitivity",name.equals("inventory")?450:700);
+    }
+    private JSONObject presets()throws JSONException {JSONObject p=new JSONObject();for(String name:new String[]{"legacy","adventure","spells","inventory"})p.put(name,preset(name));return p;}
     void configure(JSONObject data,boolean save)throws Exception {
         JSONObject raw=data.getJSONObject("bindings");Map<String,String> next=new LinkedHashMap<>();
         for(String key:ControllerInput.SOURCES)next.put(key,raw.getString(key));
+        Map<String,String> alternate=ControllerInput.inherited();JSONObject alt=data.optJSONObject("shifted");
+        if(alt!=null)for(String key:ControllerInput.SOURCES)alternate.put(key,alt.getString(key));
+        String mod=data.optString("modifier","None");
         float deadzone=(float)data.getDouble("deadzone"),speed=(float)data.getDouble("sensitivity");
         // Validate without changing the active profile until the disk write succeeds.
         ControllerInput check=new ControllerInput(new ControllerInput.Sink(){public void button(String a,boolean b){}public void pointer(float x,float y){}public void wheel(int v){}});
-        check.configure(next,deadzone,speed);
+        check.configure(next,alternate,mod,deadzone,speed);
         if(save) {
             profile.getParentFile().mkdirs();File temp=new File(profile.getParentFile(),"controller.json.new");
-            try(FileOutputStream out=new FileOutputStream(temp)){out.write(data.toString(2).getBytes(StandardCharsets.UTF_8));out.getFD().sync();}
+            try(FileOutputStream out=new FileOutputStream(temp)){out.write(new JSONObject().put("bindings",new JSONObject(next)).put("shifted",new JSONObject(alternate)).put("modifier",mod).put("deadzone",deadzone).put("sensitivity",speed).toString(2).getBytes(StandardCharsets.UTF_8));out.getFD().sync();}
             Files.move(temp.toPath(),profile.toPath(),StandardCopyOption.REPLACE_EXISTING,StandardCopyOption.ATOMIC_MOVE);
         }
-        capture(false);input.configure(next,deadzone,speed);bindings=next;loadError="";
+        capture(false);input.configure(next,alternate,mod,deadzone,speed);bindings=next;shifted=alternate;modifier=mod;loadError="";
     }
     void capture(boolean active){input.activate(false);digital.clear();analog.clear();input.activate(active);device=-1;handler.removeCallbacks(tick);if(active){lastTick=SystemClock.uptimeMillis();handler.post(tick);}emit("capture","",active,0,0);}
     boolean active(){return input.active();}

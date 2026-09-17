@@ -22,23 +22,38 @@ function renderClientStatus(client){
  $('spell-excluded-list').textContent=spellComparison.state==='applied'?(excluded.length?excluded.map(s=>s.id+' — '+s.name).join('\n'):(spellComparison.excluded_ids||[]).join(', '))+(spellComparison.excluded_ids_truncated?'\nList limited to first 64; total shown above.':''):'';
  spellTestControls();
 }
-function renderController(profile){
- controllerOptions=profile;controllerLoaded=true;$('controller-deadzone').value=profile.deadzone;$('controller-speed').value=profile.sensitivity;$('controller-bindings').replaceChildren();
+function readControllerEdits(){
+ if(!controllerOptions)return;
+ const target=$('controller-layer').value==='shifted'?'shifted':'bindings';
+ for(const source of controllerOptions.sources){const select=$('binding-'+source);if(select)controllerOptions[target][source]=select.value;}
+ controllerOptions.modifier=$('controller-modifier').value;
+ controllerOptions.deadzone=Number($('controller-deadzone').value);controllerOptions.sensitivity=Number($('controller-speed').value);
+}
+function controllerFields(){
+ const profile=controllerOptions,shifted=$('controller-layer').value==='shifted';$('controller-bindings').replaceChildren();
  for(const source of profile.sources){const field=document.createElement('div'),label=document.createElement('label'),select=document.createElement('select');label.htmlFor='binding-'+source;label.textContent=source.replace(/([a-z])([A-Z])/g,'$1 $2');select.id='binding-'+source;
-  for(const code of profile.actions){const option=document.createElement('option');option.value=code;option.textContent=code.replace(/^Key/,'Key ').replace(/^Digit/,'Number ').replace(/([a-z])([A-Z])/g,'$1 $2');select.append(option);}select.value=profile.bindings[source];field.append(label,select);$('controller-bindings').append(field);
+  for(const code of shifted?['Inherit',...profile.actions]:profile.actions){const option=document.createElement('option');option.value=code;option.textContent=code.replace(/^Key/,'Key ').replace(/^Digit/,'Number ').replace(/([a-z])([A-Z])/g,'$1 $2');select.append(option);}select.value=profile[shifted?'shifted':'bindings'][source];
+  select.addEventListener('change',()=>{profile[shifted?'shifted':'bindings'][source]=select.value;});field.append(label,select);$('controller-bindings').append(field);
  }
- if(profile.error)notice(profile.error,true);
+}
+function renderController(profile){
+ controllerOptions=structuredClone(profile);controllerOptions.shifted??=Object.fromEntries(profile.sources.map(s=>[s,'Inherit']));controllerOptions.modifier??='None';controllerLoaded=true;
+ $('controller-deadzone').value=profile.deadzone;$('controller-speed').value=profile.sensitivity;
+ $('controller-modifier').replaceChildren(...['None',...profile.sources.slice(0,12)].map(s=>{const o=document.createElement('option');o.value=s;o.textContent=s;return o;}));$('controller-modifier').value=controllerOptions.modifier;
+ controllerFields();if(profile.error)notice(profile.error,true);
 }
 async function loadController(force=false){if(controllerLoaded&&!force)return;renderController(await api('controller_state'));}
+$('controller-layer').addEventListener('change',()=>controllerOptions&&controllerFields());
 action('controller-load',()=>loadController(true));
 action('controller-defaults',async()=>{
- await loadController();const bindings=Object.fromEntries(controllerOptions.sources.map(s=>[s,'None']));Object.assign(bindings,{A:'Space',B:'Escape',X:'KeyE',Y:'Tab',L1:'ShiftLeft',R1:'ControlLeft',L2:'MouseRight',R2:'MouseLeft',L3:'KeyR',R3:'MouseMiddle',Start:'Enter',Select:'KeyI',LeftUp:'KeyW',LeftDown:'KeyS',LeftLeft:'KeyA',LeftRight:'KeyD'});
- for(const dir of ['Up','Down','Left','Right']){bindings['Dpad'+dir]='Arrow'+dir;bindings['Right'+dir]='Pointer'+dir;}
- renderController({...controllerOptions,bindings,deadzone:.2,sensitivity:700});notice('Default bindings filled in. Select Save bindings to keep them.');
+ await loadController();const name=$('controller-preset').value,preset=controllerOptions.presets?.[name];
+ if(!preset)throw new Error('Preset unavailable. Reload bindings after updating the app.');
+ renderController({...controllerOptions,...preset});notice('Preset filled in. Save bindings to keep it.');
 });
 action('controller-save',async()=>{
- if(!controllerLoaded)throw new Error('Load bindings first.');const bindings=Object.fromEntries(controllerOptions.sources.map(s=>[s,$('binding-'+s).value]));
- renderController(await api('controller_save',{bindings,deadzone:Number($('controller-deadzone').value),sensitivity:Number($('controller-speed').value)}));notice('Controller bindings saved.');
+ if(!controllerLoaded)throw new Error('Load bindings first.');readControllerEdits();
+ const {bindings,shifted,modifier,deadzone,sensitivity}=controllerOptions;
+ renderController(await api('controller_save',{bindings,shifted,modifier,deadzone,sensitivity}));notice('Controller bindings saved.');
 });
 action('client-import',async()=>{await api('controller_capture',{active:false});const f=await api('pick',{kind:'client'});await job('import_client_zip',{file:f.file});});
 action('controller-capture',async()=>{await api('controller_capture',{active:true});});
@@ -67,8 +82,8 @@ async function clientRuntimeState(){
  const s=await api('client_native_state');
  if(!launchOptionsLoaded){
   launchOptionsLoaded=true;const saved=s.launch_options||{};
-  for(const [id,key] of [['client-turnip-driver','turnip_driver'],['client-npc-rendering','npc_rendering'],['client-renderer','renderer'],['client-cpu-affinity','cpu_affinity'],['client-graphics-threading','graphics_threading'],['client-cpu-profile','cpu_profile'],['client-runtime-mode','runtime_mode'],['client-resolution','resolution']]){
-   const select=$(id);if([...select.options].some(o=>o.value===saved[key]))select.value=saved[key];
+  for(const [id,key] of [['client-presentation','presentation_mode'],['client-display-fps','display_fps'],['client-turnip-driver','turnip_driver'],['client-npc-rendering','npc_rendering'],['client-renderer','renderer'],['client-cpu-affinity','cpu_affinity'],['client-graphics-threading','graphics_threading'],['client-cpu-profile','cpu_profile'],['client-runtime-mode','runtime_mode'],['client-resolution','resolution']]){
+   const select=$(id);if([...select.options].some(o=>o.value===String(saved[key])))select.value=saved[key];
   }
   for(const [id,key] of [['client-sound-diagnostics','sound_diagnostics'],['client-audio','audio'],['client-fullscreen','fullscreen'],['client-native-dll','native_dinput8'],['client-native-models','native_d3dx'],['client-diagnostics','diagnostic_logging']])if(typeof saved[key]==='boolean')$(id).checked=saved[key];
  }
@@ -87,7 +102,7 @@ async function clientRuntimeState(){
   'Client stopped. '+(launch?.native_loaded?'Last session confirmed native dinput8.dll loading.':'');
  return s;
 }
-const launchOptions=mode=>({mode,turnip_driver:$('client-turnip-driver').value,sound_diagnostics:$('client-sound-diagnostics').checked,audio:$('client-audio').checked,npc_rendering:$('client-npc-rendering').value,renderer:$('client-renderer').value,cpu_affinity:$('client-cpu-affinity').value,graphics_threading:$('client-graphics-threading').value,cpu_profile:$('client-cpu-profile').value,runtime_mode:$('client-runtime-mode').value,resolution:$('client-resolution').value,fullscreen:mode==='client'&&$('client-fullscreen').checked,native_dinput8:$('client-native-dll').checked,diagnostic_logging:$('client-diagnostics').checked,native_d3dx:mode==='client'&&$('client-native-models').checked});
+const launchOptions=mode=>({mode,presentation_mode:$('client-presentation').value,display_fps:Number($('client-display-fps').value),turnip_driver:$('client-turnip-driver').value,sound_diagnostics:$('client-sound-diagnostics').checked,audio:$('client-audio').checked,npc_rendering:$('client-npc-rendering').value,renderer:$('client-renderer').value,cpu_affinity:$('client-cpu-affinity').value,graphics_threading:$('client-graphics-threading').value,cpu_profile:$('client-cpu-profile').value,runtime_mode:$('client-runtime-mode').value,resolution:$('client-resolution').value,fullscreen:mode==='client'&&$('client-fullscreen').checked,native_dinput8:$('client-native-dll').checked,diagnostic_logging:$('client-diagnostics').checked,native_d3dx:mode==='client'&&$('client-native-models').checked});
 action('client-runtime-online',async()=>{notice('Downloading the client runtime…');await api('client_runtime_online');await clientRuntimeState();notice('Client runtime installed. Try Wine desktop first.');});
 action('client-runtime-offline',async()=>{await api('pick',{kind:'client-runtime'});await clientRuntimeState();notice('Client runtime installed.');});
 action('client-directx-online',async()=>{notice('Downloading Microsoft DirectX model helpers…');await api('client_directx_online');await clientRuntimeState();notice('DirectX model helpers installed. Launch ROF2.');});
