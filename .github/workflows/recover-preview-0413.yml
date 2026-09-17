@@ -1,0 +1,131 @@
+name: Recover verified 0.4.13 publication
+on:
+  push:
+    branches: [codex/recover-preview-0413]
+permissions:
+  contents: write
+  actions: read
+# Serialize with the main release and stop its hung publication, after tests passed.
+concurrency:
+  group: android-refs/heads/main
+  cancel-in-progress: true
+jobs:
+  publish-verified:
+    runs-on: ubuntu-latest
+    timeout-minutes: 40
+    env:
+      GH_TOKEN: ${{ github.token }}
+      GODEBUG: http2client=0
+      SOURCE_SHA: f4131dd2d317bc2b279e2318939d9a3c4ffabc6c
+      SOURCE_RUN: '35254262724'
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: f4131dd2d317bc2b279e2318939d9a3c4ffabc6c
+          persist-credentials: false
+      - name: Require the immutable source and every original test gate
+        run: |
+          python3 - <<'PY'
+          import json,os,subprocess,time
+          repo=os.environ['GITHUB_REPOSITORY'];sha=os.environ['SOURCE_SHA'];run=os.environ['SOURCE_RUN']
+          def api(path): return json.loads(subprocess.check_output(['gh','api',f'repos/{repo}/{path}']))
+          source=api(f'actions/runs/{run}')
+          assert source['head_sha']==sha and source['head_branch']=='main' and source['event']=='push',source
+          assert source['head_repository']['full_name']==repo,source
+          assert api('git/ref/heads/main')['object']['sha']==sha,'Main changed; do not publish a stale candidate'
+          for attempt in range(36):
+              jobs=api(f'actions/runs/{run}/jobs?per_page=100')['jobs']
+              runtime=next(j for j in jobs if j['name']=='client-runtime / client-runtime')
+              if runtime['status']=='completed': break
+              time.sleep(5)
+          assert runtime['status']=='completed','Original publisher has not stopped'
+          expected={'database','client-dll / compile','wined3d / wined3d','vulkan / vulkan','apk'}
+          by_name={j['name']:j for j in jobs}
+          assert expected.issubset(by_name),list(by_name)
+          for name in expected: assert by_name[name]['conclusion']=='success',(name,by_name[name]['conclusion'])
+          steps=runtime['steps'];publish=next(s for s in steps if s['name']=='Publish separate online and offline client runtime')
+          assert publish['conclusion'] in ('success','failure','cancelled'),publish
+          for step in steps:
+              if step['number']<publish['number']: assert step['conclusion'] in ('success','skipped'),step
+          required=[
+              'Verify Microsoft DirectX helper installation',
+              'Compile our own Windows 32-bit test program and DLL',
+              'Verify real PE32 launch, native DLL, Direct3D9 and display input on ARM64',
+              'Verify Vulkan DXVK presentation, pixels, models and input directly and through PRoot',
+              'Verify client runtime installer and complete session roundtrip',
+              'Verify the installed runtime through pinned PRoot',
+              'Build and verify the native GLES bridge lifecycle',
+              'Verify PE32 models, animation and movement through VirGL GLES',
+              'Verify VirGL GLES through the installed PRoot runtime']
+          for name in required: assert any(s['name']==name and s['conclusion']=='success' for s in steps),name
+          print('All original application, database, compiler and rendering gates passed for',sha)
+          PY
+      - uses: actions/download-artifact@v4
+        with:
+          name: client-runtime
+          path: runtime-release
+          run-id: 35254262724
+          github-token: ${{ github.token }}
+      - uses: actions/download-artifact@v4
+        with:
+          name: trasc-server-android-debug
+          path: apk-release
+          run-id: 35254262724
+          github-token: ${{ github.token }}
+      - name: Verify the exact tested artifacts and prepare release metadata
+        run: |
+          python3 - <<'PY'
+          import hashlib,json,os,pathlib,shutil
+          def digest(p): return hashlib.file_digest(p.open('rb'),'sha256').hexdigest()
+          runtime=pathlib.Path('runtime-release');manifest=json.loads((runtime/'client-runtime-manifest.json').read_text())
+          assert manifest['format']==1 and manifest['architecture']=='arm64',manifest
+          assert manifest['source_commit']==os.environ['SOURCE_SHA'],manifest
+          assert digest(runtime/'client-runtime-arm64.tar.gz')==manifest['sha256']
+          apk=pathlib.Path('apk-release/app/build/outputs/apk/debug/app-debug.apk')
+          sources=pathlib.Path('apk-release/dist/launcher-sources.tar.gz')
+          assert digest(apk)=='1b17d6c2df78119f64f25940b5c2c96b4ea4d2e2111020c099e5473c2f73bb23'
+          assert digest(sources)=='3a1dc710278ba08f9d932594b6774a850776dba80b05d4d3d5104ff5712d850a'
+          signing=pathlib.Path('apk-release/dist/preview-signing.sha256').read_text().strip()
+          assert signing=='ff9c09cdc3e2404d1d7f72d61ce2f8651464f5e03dff340f70bd4df28c70e869'
+          out=pathlib.Path('release-upload');out.mkdir()
+          shutil.copyfile(apk,out/'trasc-server-android-preview.apk');shutil.copyfile(sources,out/'launcher-sources.tar.gz')
+          (out/'preview-build.json').write_text(json.dumps({'commit':os.environ['SOURCE_SHA'],'sha256':digest(apk),'file':'trasc-server-android-preview.apk','version':'0.4.13','application_id':'io.github.russianranger.trasc.preview','signing_certificate_sha256':signing},indent=2))
+          print('Exact signed candidate, sources and runtime checksum verified')
+          PY
+      - name: Publish the verified files over HTTP/1.1 with bounded retries
+        run: |
+          set -euo pipefail
+          test "$(gh api "repos/$GITHUB_REPOSITORY/git/ref/heads/main" --jq .object.sha)" = "$SOURCE_SHA"
+          upload() {
+            local tag="$1" asset="$2" attempt
+            for attempt in 1 2; do
+              echo "Uploading $asset over HTTP/1.1 (attempt $attempt/2)"
+              if timeout --kill-after=15s 5m gh release upload "$tag" "$asset" --clobber; then return 0; fi
+            done
+            echo "::error::Upload failed: $asset"
+            return 1
+          }
+          upload client-runtime-v1 runtime-release/client-runtime-arm64.tar.gz
+          upload client-runtime-v1 runtime-release/client-runtime-sources.tar.gz
+          upload client-runtime-v1 runtime-release/client-runtime-manifest.json
+          gh api --method PATCH "repos/$GITHUB_REPOSITORY/git/refs/tags/client-runtime-v1" -f sha="$SOURCE_SHA" -F force=true
+          upload preview release-upload/trasc-server-android-preview.apk
+          upload preview release-upload/launcher-sources.tar.gz
+          upload preview release-upload/preview-build.json
+          gh api --method PATCH "repos/$GITHUB_REPOSITORY/git/refs/tags/preview" -f sha="$SOURCE_SHA" -F force=true
+          gh release edit preview --title 'TRASC Android preview' --notes-file docs/preview-notes.md
+      - name: Verify public release digests and source tags
+        run: |
+          python3 - <<'PY'
+          import hashlib,json,os,pathlib,subprocess
+          repo=os.environ['GITHUB_REPOSITORY'];sha=os.environ['SOURCE_SHA']
+          def api(path): return json.loads(subprocess.check_output(['gh','api',f'repos/{repo}/{path}']))
+          for tag,folder in [('client-runtime-v1','runtime-release'),('preview','release-upload')]:
+              assets={a['name']:a for a in api('releases/tags/'+tag)['assets']}
+              for p in pathlib.Path(folder).iterdir():
+                  if not p.is_file(): continue
+                  expected='sha256:'+hashlib.file_digest(p.open('rb'),'sha256').hexdigest()
+                  assert assets[p.name]['size']==p.stat().st_size and assets[p.name]['digest']==expected,(p.name,assets[p.name])
+              assert api('git/ref/tags/'+tag)['object']['sha']==sha,tag
+          print('Public runtime, APK, corresponding sources, manifests and tags match the verified candidate')
+          PY
