@@ -690,6 +690,7 @@ class Engine(ManagedContent):
             raise
 
     def stop(self, args):
+        self.log('Server shutdown requested; saving zones before stopping services')
         self.stopping = True
         incomplete = []
         try:
@@ -735,10 +736,12 @@ class Engine(ManagedContent):
                         os.killpg(p.pid, signal.SIGKILL)
                         p.wait()
             self.processes.clear()
+            self.log('Server shutdown completed; errors=' + str(incomplete))
             return {'message': 'Server stopped. Database remains available for editing and backup.', 'clean_shutdown': not incomplete, 'shutdown_errors': incomplete}
         finally: self.stopping = False
 
     def shutdown(self):
+        self.log('Runtime shutdown requested')
         self.cancel.set()
         if self.command and self.command.poll() is None:
             with contextlib.suppress(ProcessLookupError): os.killpg(self.command.pid, signal.SIGTERM)
@@ -750,6 +753,7 @@ class Engine(ManagedContent):
             except subprocess.TimeoutExpired:
                 self.log('MariaDB did not stop within 45 seconds')
                 self.db.kill()
+        self.log('Runtime shutdown completed')
 
     def gameplay(self, args):
         self.ensure_db()

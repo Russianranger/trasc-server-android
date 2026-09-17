@@ -51,6 +51,8 @@ jobs:
           sudo apt-get update
           sudo apt-get install -y gcc-mingw-w64-i686
           mkdir -p runtime-work/client-test/client runtime-work/client-test/logs
+          javac -d runtime-work/command-test app/src/main/java/io/github/russianranger/trasc/{GameCommand,DisplayInput}.java tests/java/io/github/russianranger/trasc/GameCommandHostTest.java
+          java -cp runtime-work/command-test io.github.russianranger.trasc.GameCommandHostTest runtime-work/client-test/client/command-keys.txt
           cc -shared -fPIC -O2 -Wall -Wextra -Werror tests/client_exit_delay.c -ldl -o runtime-work/client-test/client/exit-delay.so
           i686-w64-mingw32-gcc tests/client_probe.c -o runtime-work/client-test/client/eqgame.exe -mwindows -ld3d9
           i686-w64-mingw32-gcc tests/client_textures.c -o runtime-work/client-test/client/textures.exe -mwindows -ld3d9

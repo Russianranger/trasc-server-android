@@ -166,6 +166,7 @@ final class ClientRuntime {
             request.put("graphics_threading",graphicsThreading).put("cpu_affinity",cpuAffinity).put("fullscreen",mode.equals("client")&&options.optBoolean("fullscreen",true));
             request.put("npc_rendering",npcRendering).put("audio",options.optBoolean("audio",true)).put("sound_diagnostics",options.optBoolean("sound_diagnostics",false));
             request.put("dxvk_hud",options.optBoolean("dxvk_hud",true));
+            request.put("mouse_warp",options.optBoolean("mouse_warp",false));
             request.put("turnip_driver",turnipDriver).put("presentation_mode",presentation).put("display_fps",displayFps);
             File spellJournal=new File(server.work,"backups/client-spell-test/current.json");
             if(spellJournal.exists())request.put("spell_test",json(spellJournal));

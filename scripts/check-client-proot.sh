@@ -23,7 +23,7 @@ mkdir -p "$task_dir/classes" "$task_dir/root" "$task_dir/client" "$task_dir/pref
 javac -d "$task_dir/classes" tests/java/android/system/Os.java app/src/main/java/io/github/russianranger/trasc/TarExtractor.java tests/java/io/github/russianranger/trasc/ExtractRuntimeHost.java
 java -cp "$task_dir/classes" io.github.russianranger.trasc.ExtractRuntimeHost "${TRASC_TEST_ROOTFS:-dist/client-runtime-arm64.tar.gz}" "$task_dir/root"
 mkdir -p "$task_dir/root/directx"
-cp runtime-work/client-test/client/audio.exe runtime-work/client-test/client/eqgame.exe runtime-work/client-test/client/dinput8.dll runtime-work/client-test/client/models.exe runtime-work/client-test/client/textures.exe "$task_dir/client/"
+cp runtime-work/client-test/client/command-keys.txt runtime-work/client-test/client/audio.exe runtime-work/client-test/client/eqgame.exe runtime-work/client-test/client/dinput8.dll runtime-work/client-test/client/models.exe runtime-work/client-test/client/textures.exe "$task_dir/client/"
 # The SysV helper uses a filesystem Unix socket (108-byte path limit).
 # Keep its private host directory short even in deeply nested CI checkouts.
 proot_tmp_dir=$(mktemp -d /tmp/trasc-proot.XXXXXX)

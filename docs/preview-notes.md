@@ -1,9 +1,17 @@
+# 0.4.15 input follow-up
+
+- Gear #tim uses paced keys and explicit Shift, with cancellation on focus loss.
+- Client launch options include experimental mouse recentering. Enable and relaunch to compare; disable/relaunch if inventory pointing snaps to center.
+- Export Logs includes bounded Android exit/crash evidence. Management display recovery and notification shutdown handling are more robust.
+- Character-select reconnect stack overflow and the reported stop-server crash remain under investigation. These changes do not establish their causes.
+- Update in place. No runtime reinstall, DLL rebuild or Mac tools required. See [device checks](input-crashes-0415.md).
+
 # 0.4.14 preview
 
 - Client → Game settings exposes classic/Luclin player model presets, individual model flags and existing eqclient.ini settings. Saves retain original/previous backups and require the client to be stopped.
 - Gear → Toggle classic NPC models sends #tim through game chat.
 - Native Surface enables shared-memory capture through PRoot and skips unchanged captures/pixel transfers. XGetImage and Current display remain available.
-- Relative controller pointer input supports mouse look beyond desktop bounds. Optional external-mouse capture is available from the gear menu; Android Back releases it.
+- Relative controller pointer transport was added; Thor feedback still reports bounded mouse look. Optional external-mouse capture is available from the gear menu; Android Back releases it.
 - Existing settings, controller profiles and installed runtimes are retained. Physical Thor rendering, mouse-look behavior and power usage still require device acceptance.
 
 # 0.4.13 — Cycling controller layers, HUD control and native transfer batching

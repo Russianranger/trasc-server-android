@@ -126,6 +126,7 @@ public final class RuntimeManager {
     }
     synchronized JSONObject exportLogs()throws Exception {
         if(sessionBusy)throw new IOException("Wait for the complete session transfer before exporting logs");
+        try{AndroidExitDiagnostics.collect(context,work);}catch(Exception e){recordFailure("android_exit_diagnostics",e);}
         // Only native diagnostics: no credentials, settings, API token or backend request.
         JSONObject metadata=new JSONObject().put("version",BuildConfig.VERSION_NAME)
             .put("created_utc",java.time.Instant.now().toString()).put("native",nativeState())

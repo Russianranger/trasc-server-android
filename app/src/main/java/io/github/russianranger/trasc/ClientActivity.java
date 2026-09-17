@@ -124,7 +124,7 @@ public final class ClientActivity extends Activity {
         menuOpen=open;menuLayer.setVisibility(open?View.VISIBLE:View.GONE);
         gear.setContentDescription(open?"Close client controls":"Open client controls");gear.setAlpha(open?1f:.78f);
         if(controller!=null)controller.capture(gameInputActive());
-        if(open){commandGeneration++;display.releasePointerCapture();display.input.releaseAll();menu.getChildAt(0).requestFocus();}else display.requestFocus();
+        if(open){cancelCommand();display.releasePointerCapture();menu.getChildAt(0).requestFocus();}else display.requestFocus();
     }
     private void fallbackPresentation(String reason){
         if(!nativeActive)return;nativeActive=false;presentationFallback=reason;
@@ -138,17 +138,20 @@ public final class ClientActivity extends Activity {
         new ControllerDialog(this,controller,()->{mappingsOpen=false;controller.capture(gameInputActive());}).show();
     }
     private void classicNpcs(){
-        // Slash opens EQ command entry without submitting any existing chat draft.
         final int generation=++commandGeneration;commandPending=true;setMenuOpen(false);controller.capture(false);display.input.releaseAll();
-        display.input.text("/",false);
+        java.util.List<GameCommand.Stroke> steps=GameCommand.classicNpcs();
+        for(GameCommand.Stroke step:steps)handler.postDelayed(()->{
+            if(generation!=commandGeneration)return;
+            if(isFinishing()||!hasWindowFocus()||menuOpen){cancelCommand();return;}
+            display.input.key("command:"+step.symbol,step.symbol,step.down);
+        },step.delay);
         handler.postDelayed(()->{
-            if(generation!=commandGeneration||isFinishing()||!hasWindowFocus()||menuOpen){commandPending=false;controller.capture(gameInputActive());return;}
-            display.input.key("command-control",0xffe3,true);display.input.key("command-select",'a',true);
-            display.input.key("command-select",'a',false);display.input.key("command-control",0xffe3,false);
-            display.input.text("#tim",true);commandPending=false;controller.capture(gameInputActive());
-            Toast.makeText(this,"Sent #tim · check the game’s response",Toast.LENGTH_SHORT).show();
-        },180);
+            if(generation!=commandGeneration)return;
+            commandPending=false;controller.capture(gameInputActive());
+            Toast.makeText(this,"Typed #tim · check the game’s response",Toast.LENGTH_SHORT).show();
+        },steps.get(steps.size()-1).delay+100);
     }
+    private void cancelCommand(){commandGeneration++;commandPending=false;if(display!=null)display.input.releaseAll();}
     private void textDialog() {
         keyboardOpen=true;setMenuOpen(false);controller.capture(false);display.input.releaseAll();
         EditText text=new EditText(this);text.setSingleLine(true);text.setHint("Type into the focused client field");
@@ -186,9 +189,9 @@ public final class ClientActivity extends Activity {
     }
     @Override public boolean dispatchGenericMotionEvent(MotionEvent event){return gameInputActive()&&controller!=null&&controller.motion(event)||super.dispatchGenericMotionEvent(event);}
     @Override public void onBackPressed(){if(display.hasPointerCapture()){display.releasePointerCapture();setMenuOpen(true);return;}if(menuOpen)setMenuOpen(false);else super.onBackPressed();}
-    @Override public void onWindowFocusChanged(boolean focus){super.onWindowFocusChanged(focus);if(focus&&!keyboardOpen)immersive();if(controller!=null)controller.capture(gameInputActive());if(!focus&&display!=null){commandGeneration++;display.input.releaseAll();}}
-    @Override protected void onPause(){commandGeneration++;if(controller!=null)controller.capture(false);if(display!=null)display.input.releaseAll();super.onPause();}
-    @Override protected void onDestroy(){handler.removeCallbacks(refresh);handler.removeCallbacks(hideLayer);if(layerBanner!=null)layerBanner.animate().cancel();if(controller!=null)controller.close();if(nativeDisplay!=null)nativeDisplay.close();if(display!=null)display.close();super.onDestroy();}
+    @Override public void onWindowFocusChanged(boolean focus){super.onWindowFocusChanged(focus);if(focus&&!keyboardOpen)immersive();if(controller!=null)controller.capture(gameInputActive());if(!focus&&display!=null){cancelCommand();}}
+    @Override protected void onPause(){cancelCommand();if(controller!=null)controller.capture(false);if(display!=null)display.input.releaseAll();super.onPause();}
+    @Override protected void onDestroy(){cancelCommand();handler.removeCallbacksAndMessages(null);if(layerBanner!=null)layerBanner.animate().cancel();if(controller!=null)controller.close();if(nativeDisplay!=null)nativeDisplay.close();if(display!=null)display.close();super.onDestroy();}
 
     private final class ClientView extends View implements RfbConnection.Screen {
         private final Object pixelsLock=new Object();

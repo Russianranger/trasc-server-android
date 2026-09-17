@@ -17,15 +17,20 @@ static int input_server(const char *path){
     fprintf(stderr,"TRASC XTest relative input ready\n");fflush(stderr);
     for(;;){
         int fd=accept(listener,NULL,NULL);if(fd<0){if(errno==EINTR)continue;break;}
-        unsigned buttons=0;uint32_t wire[4];
+        unsigned buttons=0;uint32_t wire[4];unsigned long relative_count=0,absolute_count=0,button_count=0;
+        fprintf(stderr,"Input consumer connected\n");fflush(stderr);
         if(send(fd,"TRASCIN1",8,MSG_NOSIGNAL)==8)while(!read_input(fd,wire,sizeof(wire))){
             unsigned type=ntohl(wire[0]),next=ntohl(wire[3]);int32_t x=(int32_t)ntohl(wire[1]),y=(int32_t)ntohl(wire[2]);
             if(type>2||next>31||x < -4096||x>4096||y < -4096||y>4096)break;
+            if(type==0)absolute_count++;
+            if(type==1)relative_count++;
+            if(type==2)button_count++;
             if(type==0)XTestFakeMotionEvent(d,DefaultScreen(d),x<0?0:x,y<0?0:y,CurrentTime);
             if(type==1)XTestFakeRelativeMotionEvent(d,x,y,CurrentTime);
             input_buttons(d,buttons,next);buttons=next;XFlush(d);
         }
         input_buttons(d,buttons,0);XSync(d,False);close(fd);
+        fprintf(stderr,"Input consumer disconnected: relative=%lu absolute=%lu buttons=%lu\n",relative_count,absolute_count,button_count);fflush(stderr);
     }
     close(listener);unlink(path);XCloseDisplay(d);return 0;
 }

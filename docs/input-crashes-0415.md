@@ -1,0 +1,22 @@
+# 0.4.15 input follow-up and crash evidence
+
+The Thor 0.4.14 bundle logs-7101954634475225843 confirms shared-memory capture: memfd SysV IPC, MIT-SHM, about 0.95 ms median capture time, 16,511 idle capture skips and 15,621 duplicate transfer skips in the latest session. This is capture-stage evidence, not proof of improved battery life or equivalent-scene FPS.
+
+The user reports gear #tim fails while manual typing succeeds; controller look remains bounded; stack overflow follows character select → server select → reconnect; the app also disappeared during server stop. No stack-overflow trace or Android crash report is present in this bundle. dbg.txt reaches normal quit and login UI initialization. Do not label reconnect or shutdown crashes fixed by this update.
+
+Changes:
+- Gear command uses paced key-down/up events, Escape to cancel an existing draft, slash then Backspace to open an empty command line, explicit Shift+# and tim, then Enter. No Ctrl+A assumption. All pending strokes cancel on menu/focus/lifecycle changes; held modifiers release. The shared Java schedule is replayed through the real VNC/Wine Windows text receiver in CI.
+- Optional Client → Graphics, audio & launch options → Recenter mouse for camera look. Off by default. The app-specific Wine DirectInput MouseWarpOverride is force when enabled, default when disabled, set before the next game process creates input devices. Wine owns recentering and its warp bookkeeping. This is a device comparison, not a proven EQ fix; turn it off/relaunch if inventory pointing snaps to center. Tests add buffered GetDeviceData alongside polled GetDeviceState and check actual client-area recentering after movement beyond desktop width. Helper connection/delta counts distinguish readiness from received input.
+- Logs export adds the app's five most recent Android process-exit records, with at most 256 KiB of trace per record. Native tombstone protobufs are base64; ANR traces are text. A bounded latest Java uncaught-exception report is retained before Android's normal handler. These are local diagnostics, no additional permission or upload.
+- Management WebView renderer exit now records the event and offers a native reopen button instead of accepting Android's default application termination. Late worker replies/submission after activity destruction are guarded. Notification stop requests share one owned executor, ignore duplicate concurrent requests, attempt both client and server stops independently, record failures and keep the foreground service if a runtime remains alive. This fixes identified lifecycle/resource handling gaps, not an established cause of the reported crash.
+- Server shutdown now logs request/completion phases so interrupted saves can be located.
+
+Source basis: [Wine 10 DirectInput mouse](https://github.com/wine-mirror/wine/blob/wine-10.0/dlls/dinput/mouse.c), [per-application registry lookup](https://github.com/wine-mirror/wine/blob/wine-10.0/dlls/dinput/device.c), [Android process exit information](https://developer.android.com/reference/android/app/ApplicationExitInfo), [WebView renderer exit](https://developer.android.com/reference/android/webkit/WebViewClient#onRenderProcessGone(android.webkit.WebView,%20android.webkit.RenderProcessGoneDetail)).
+
+Device checks after installing in place:
+1. In-world with no chat draft to keep, use gear #tim and check the game response.
+2. Stop client, enable recentering, relaunch, compare held-right-click and toggled mouse look plus inventory pointing. Disable/relaunch if unsuitable. No runtime reinstall or DLL rebuild is needed.
+3. Reproduce character select → server select → reconnect once with the existing Wine diagnostic option enabled for that short attempt, then export Logs. Turn verbose diagnostics off afterward. Restart the client rather than re-entering the same process as a temporary workaround.
+4. Reproduce the stop failure if it recurs; reopen app and export Logs promptly so Android's exit reason is included.
+
+Pending: full CI and signed candidate verification; Thor acceptance of command/mouse behavior; stack-overflow and shutdown root causes. Existing release publication failures remain separate from application testing. Preserve all release gates and signing identity; do not reinstall the working client runtime.

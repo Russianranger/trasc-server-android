@@ -3,11 +3,14 @@ package io.github.russianranger.trasc;
 import android.app.*;
 import android.content.*;
 import android.os.*;
-import java.util.concurrent.Executors;
+import java.util.concurrent.*;
+import java.util.concurrent.atomic.AtomicBoolean;
 
 public final class ServerService extends Service {
     static final String STOP="io.github.russianranger.trasc.STOP";
     private PowerManager.WakeLock lock;
+    private final ExecutorService shutdown=Executors.newSingleThreadExecutor();
+    private final AtomicBoolean stopping=new AtomicBoolean();
     @Override public void onCreate(){
         super.onCreate();
         NotificationManager nm=getSystemService(NotificationManager.class);
@@ -21,12 +24,17 @@ public final class ServerService extends Service {
         lock=((PowerManager)getSystemService(POWER_SERVICE)).newWakeLock(PowerManager.PARTIAL_WAKE_LOCK,"TRASC:runtime");lock.acquire();
     }
     @Override public int onStartCommand(Intent intent,int flags,int startId){
-        if(intent!=null&&STOP.equals(intent.getAction()))Executors.newSingleThreadExecutor().execute(()->{
-            try{ClientRuntime.get(this).stop();RuntimeManager.get(this).stop();}catch(Exception e){RuntimeManager.get(this).status=e.getMessage();}
-            stopForeground(STOP_FOREGROUND_REMOVE);stopSelf();
+        if(intent!=null&&STOP.equals(intent.getAction())&&stopping.compareAndSet(false,true))shutdown.execute(()->{
+            RuntimeManager runtime=RuntimeManager.get(this);ClientRuntime client=ClientRuntime.get(this);
+            try{client.stop();}catch(Exception e){runtime.recordFailure("notification_client_stop",e);}
+            try{runtime.stop();}catch(Exception e){runtime.status=e.getMessage();runtime.recordFailure("notification_runtime_stop",e);}
+            new Handler(Looper.getMainLooper()).post(()->{
+                stopping.set(false);
+                if(!client.alive()&&!runtime.alive())stopSelf();
+            });
         });
         return START_NOT_STICKY;
     }
-    @Override public void onDestroy(){if(lock!=null&&lock.isHeld())lock.release();super.onDestroy();}
+    @Override public void onDestroy(){shutdown.shutdown();if(lock!=null&&lock.isHeld())lock.release();super.onDestroy();}
     @Override public IBinder onBind(Intent intent){return null;}
 }

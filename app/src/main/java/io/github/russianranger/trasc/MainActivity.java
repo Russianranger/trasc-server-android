@@ -28,13 +28,22 @@ public final class MainActivity extends Activity {
         getWindow().setStatusBarColor(0xff10191c); getWindow().setNavigationBarColor(0xff10191c);
         web=new WebView(this);setContentView(web);
         controller=new ControllerManager(this,runtime.work,event->runOnUiThread(()->{
-            if(!isDestroyed())web.evaluateJavascript("window.clientInputEvent && window.clientInputEvent("+event+")",null);
+            if(!isDestroyed()&&web!=null)web.evaluateJavascript("window.clientInputEvent && window.clientInputEvent("+event+")",null);
         }));
         WebSettings s=web.getSettings();s.setJavaScriptEnabled(true);s.setDomStorageEnabled(true);
         s.setAllowFileAccess(false);s.setAllowContentAccess(false);s.setAllowFileAccessFromFileURLs(false);s.setAllowUniversalAccessFromFileURLs(false);
         s.setMixedContentMode(WebSettings.MIXED_CONTENT_NEVER_ALLOW);
         web.addJavascriptInterface(new Bridge(),"Trasc");
         web.setWebViewClient(new WebViewClient(){
+            @Override public boolean onRenderProcessGone(WebView view,RenderProcessGoneDetail detail){
+                runtime.recordFailure("management_display",new IOException("WebView renderer exited: crashed="+detail.didCrash()+" priority="+detail.rendererPriorityAtExit()));
+                controller.capture(false);web=null;
+                android.view.ViewParent parent=view.getParent();if(parent instanceof android.view.ViewGroup)((android.view.ViewGroup)parent).removeView(view);
+                view.removeJavascriptInterface("Trasc");view.destroy();
+                android.widget.Button reopen=new android.widget.Button(MainActivity.this);
+                reopen.setText("Management screen stopped. Tap to reopen.");reopen.setOnClickListener(v->recreate());setContentView(reopen);
+                return true;
+            }
             @Override public WebResourceResponse shouldInterceptRequest(WebView view,WebResourceRequest request){
                 Uri uri=request.getUrl();
                 if("https".equals(uri.getScheme())&&"app.trasc.local".equals(uri.getHost())){
@@ -55,18 +64,19 @@ public final class MainActivity extends Activity {
         web.loadUrl("https://app.trasc.local/index.html");
         if(android.os.Build.VERSION.SDK_INT>=33)requestPermissions(new String[]{Manifest.permission.POST_NOTIFICATIONS},20);
     }
+    private void submit(Runnable task){try{tasks.execute(task);}catch(RejectedExecutionException ignored){/* Activity already closed. */}}
     private void service(){startForegroundService(new Intent(this,ServerService.class));}
     private void reply(String id,Object result,Exception error){
         try {
             JSONObject json=new JSONObject().put("ok",error==null);
             if(error==null)json.put("result",result);else json.put("error",error.getMessage()==null?error.toString():error.getMessage());
             final String script="window.nativeReply("+JSONObject.quote(id)+","+json+")";
-            runOnUiThread(()->{if(!isDestroyed())web.evaluateJavascript(script,null);});
+            runOnUiThread(()->{if(!isDestroyed()&&web!=null)web.evaluateJavascript(script,null);});
         }catch(Exception ignored){}
     }
     final class Bridge {
         @JavascriptInterface public void call(String id,String operation,String input){
-            tasks.execute(()->{
+            submit(()->{
                 try {
                     JSONObject args=new JSONObject(input);Object result;
                     if(runtime.sessionBusy&&!operation.equals("native_state")&&!operation.equals("runtime_log")&&!operation.equals("logs")&&!operation.equals("client_native_state"))throw new IOException("A complete session transfer is in progress");
@@ -146,7 +156,7 @@ public final class MainActivity extends Activity {
         if(id==null)return;
         if(code!=RESULT_OK||data==null||data.getData()==null){reply(id,null,new IOException("File selection cancelled"));return;}
         Uri uri=data.getData();service();
-        tasks.execute(()->{
+        submit(()->{
             File temp=null;
             try {
                 if(request==EXPORT){
@@ -186,6 +196,6 @@ public final class MainActivity extends Activity {
     @Override public void onWindowFocusChanged(boolean focus){super.onWindowFocusChanged(focus);if(!focus&&controller!=null)controller.capture(false);}
     @Override protected void onResume(){super.onResume();if(controller!=null)controller.reload();if(web!=null)web.evaluateJavascript("if(typeof controllerLoaded!=='undefined'){controllerLoaded=false;if(currentTab==='client')loadController(true).catch(e=>notice(e.message,true));}",null);}
     @Override protected void onPause(){if(controller!=null)controller.capture(false);super.onPause();}
-    @Override public void onBackPressed(){if(controller.active()){controller.capture(false);return;}web.evaluateJavascript("window.appBack && window.appBack()",null);}
-    @Override protected void onDestroy(){controller.close();web.removeJavascriptInterface("Trasc");web.destroy();tasks.shutdown();super.onDestroy();}
+    @Override public void onBackPressed(){if(controller.active()){controller.capture(false);return;}if(web!=null)web.evaluateJavascript("window.appBack && window.appBack()",null);}
+    @Override protected void onDestroy(){if(controller!=null)controller.close();if(web!=null){web.removeJavascriptInterface("Trasc");web.destroy();web=null;}tasks.shutdown();super.onDestroy();}
 }

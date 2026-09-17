@@ -7,7 +7,9 @@
 // ROF2 is a sizeable legacy PE32 image; exercise its low-address allocation class.
 static volatile unsigned char legacy_image[20*1024*1024];
 static BOOL pause_render,alternate_color,relative_test;
-static LONG relative_total;
+static LONG relative_total,buffered_total;
+static BOOL chat=TRUE,unclipped;
+static char chat_text[128]="unsent draft";
 
 static void marker(const char *name,const char *value) {
     // Readers use existence as readiness; never expose an empty/partial result.
@@ -18,13 +20,24 @@ static void marker(const char *name,const char *value) {
     if(!MoveFileExA(temporary,name,MOVEFILE_REPLACE_EXISTING|MOVEFILE_WRITE_THROUGH))ExitProcess(91);
 }
 static LRESULT CALLBACK window_proc(HWND window,UINT message,WPARAM key,LPARAM data) {
+    if(message==WM_KEYDOWN&&key==VK_ESCAPE){chat=FALSE;chat_text[0]=0;}
+    if(message==WM_CHAR){
+        if(key=='/'&&!chat){chat=TRUE;chat_text[0]=0;}
+        if(chat){
+            size_t n=strlen(chat_text);
+            if(key==13){marker("D:\\probe-command.txt",chat_text);chat=FALSE;}
+            else if(key==8){if(n)chat_text[n-1]=0;}
+            else if(key>=32&&key<127&&n+1<sizeof(chat_text)){chat_text[n]=(char)key;chat_text[n+1]=0;}
+        }
+    }
+    if(message==WM_KEYDOWN&&key=='U'){ClipCursor(NULL);unclipped=TRUE;}
     if(message==WM_KEYDOWN&&key=='T')marker("D:\\probe-key.txt","T");
     if(message==WM_LBUTTONDOWN)marker("D:\\probe-mouse.txt","left");
     if(message==WM_KEYDOWN&&key=='P'){pause_render=!pause_render;marker("D:\\probe-paused.txt",pause_render?"yes":"no");}
     if(message==WM_KEYDOWN&&key=='V')alternate_color=!alternate_color;
     if(message==WM_KEYDOWN&&key=='R'){
         RECT area;GetWindowRect(window,&area);int x=(area.left+area.right)/2,y=(area.top+area.bottom)/2;
-        SetCursorPos(x,y);RECT clip={x,y,x+1,y+1};ClipCursor(&clip);relative_total=0;relative_test=TRUE;
+        SetCursorPos(x,y);RECT clip={x,y,x+1,y+1};ClipCursor(&clip);relative_total=buffered_total=0;relative_test=TRUE;unclipped=FALSE;
     }
     if(message==WM_KEYDOWN&&key=='E'){relative_test=FALSE;ClipCursor(NULL);}
     if(message==WM_DESTROY){PostQuitMessage(0);return 0;}
@@ -52,7 +65,7 @@ int WINAPI WinMain(HINSTANCE instance,HINSTANCE previous,LPSTR command,int show)
     }
     LoadLibraryA("d3dx9_30.dll");LoadLibraryA("d3dx9_35.dll");
     int (*held_key)(HWND,int)=(void*)GetProcAddress(dll,"TrascHeldKey");
-    int (*mouse_delta)(HWND,LONG*)=(void*)GetProcAddress(dll,"TrascMouseDelta");
+    int (*mouse_delta)(HWND,LONG*,LONG*)=(void*)GetProcAddress(dll,"TrascMouseDelta");
     BOOL saw_hold=FALSE;int previous_held=-99;
     WNDCLASSA cls={0};cls.lpfnWndProc=window_proc;cls.hInstance=instance;cls.lpszClassName="TrascProbe";
     RegisterClassA(&cls);
@@ -92,8 +105,11 @@ int WINAPI WinMain(HINSTANCE instance,HINSTANCE previous,LPSTR command,int show)
             if(saw_hold&&held==0)marker("D:\\probe-released-key.txt","W released");
         }
         if(relative_test&&mouse_delta){
-            LONG dx=0;int result=mouse_delta(window,&dx);
-            if(result==0){marker("D:\\probe-relative-ready.txt","ready");relative_total+=dx;}
+            LONG dx=0,buffered=0;int result=mouse_delta(window,&dx,&buffered);
+            if(result==0){marker("D:\\probe-relative-ready.txt","ready");relative_total+=dx;buffered_total+=buffered;}
+            if(buffered_total>=4096){char total[64];snprintf(total,sizeof(total),"%ld",buffered_total);marker("D:\\probe-buffered.txt",total);}
+            if(unclipped){POINT pos,center;RECT rect;GetCursorPos(&pos);GetClientRect(window,&rect);center.x=(rect.left+rect.right)/2;center.y=(rect.top+rect.bottom)/2;ClientToScreen(window,&center);
+                char value[128];snprintf(value,sizeof(value),"%ld %ld %ld %ld",pos.x,pos.y,center.x,center.y);marker("D:\\probe-warp.txt",value);}
             if(relative_total>=4096){char total[64];snprintf(total,sizeof(total),"%ld",relative_total);marker("D:\\probe-relative.txt",total);}
         }
         Sleep(30);

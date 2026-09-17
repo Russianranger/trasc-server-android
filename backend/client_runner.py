@@ -185,6 +185,7 @@ def pe_machine(path):
 def validate_request(request):
     spell_test = client_spells.verify_installed_test(CLIENT, request.get('spell_test', {}))
     if request.get('npc_rendering', 'compatibility') not in ('standard', 'compatibility', 'compatibility_042', 'direct_043'): raise ValueError('Invalid NPC rendering option')
+    if not isinstance(request.get('mouse_warp', False), bool): raise ValueError('Invalid mouse recentering option')
     if not isinstance(request.get('dxvk_hud', True), bool): raise ValueError('Invalid DXVK HUD option')
     if not isinstance(request.get('audio', False), bool): raise ValueError('Invalid audio option')
     if not isinstance(request.get('sound_diagnostics', False), bool): raise ValueError('Invalid sound diagnostic option')
@@ -496,6 +497,18 @@ class Supervisor:
             trace = (LOGS / 'client-prefix.log').read_text(errors='replace')[-128*1024:]
             raise RuntimeError(f'{label} exited with code {process.returncode}. ' + (fatal_launch_error(trace) or 'See client-prefix.log.'))
 
+    def configure_mouse(self):
+        if self.request['mode'] != 'client': return
+        # Wine reads this per-process key when DirectInput creates the mouse.
+        # Use its own warp bookkeeping, never an external X11 recenter which
+        # could be interpreted by the game as reverse camera movement.
+        value = 'force' if self.request.get('mouse_warp', False) else 'default'
+        key = 'HKCU\\Software\\Wine\\AppDefaults\\' + self.request['executable'] + '\\DirectInput'
+        self.run(['/usr/local/bin/box64', '/opt/wine/bin/wine', 'reg', 'add', key,
+                  '/v', 'MouseWarpOverride', '/t', 'REG_SZ', '/d', value, '/f'],
+                 timeout=30, label='Mouse recentering setup')
+        self.update(mouse_warp=value)
+
     def check_prefix(self):
         report = prefix_diagnostics()
         (LOGS / 'client-prefix.json').write_text(json.dumps(report, indent=2))
@@ -597,6 +610,7 @@ class Supervisor:
             if actual != expected['sha256']: raise RuntimeError('WineD3D compatibility fix failed verification')
             self.update(wined3d_patch=expected['patch'], wined3d_sha256=actual)
         self.prepare_prefix()
+        self.configure_mouse()
         if self.request.get('renderer') == 'turnip':
             self.update(dxvk_d3d9_sha256=client_vulkan.install_d3d9(Path(__file__).parent, PREFIX, CLIENT))
         devices = PREFIX / 'dosdevices'; devices.mkdir(exist_ok=True)

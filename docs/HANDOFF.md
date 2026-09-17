@@ -1,3 +1,9 @@
+# In progress: 0.4.15 input follow-up and crash diagnostics (2026-09-17)
+
+Read [input-crashes-0415.md](input-crashes-0415.md). New device logs prove MIT-SHM capture works but contain no usable crash trace. Gear #tim is changed to paced physical keys; mouse recentering is an optional per-launch Wine comparison, disabled by default. Android exit/Java crash capture and WebView/shutdown lifecycle handling are added. Reconnect stack overflow and stop-crash causes remain unconfirmed. Version0.4.15/code32; local125 Python tests and host JVM/C checks pass. Full CI and verified signed APK remain pending. Keep installed runtimes and preserved signing cache. Public preview is still the old0.4.12; do not claim a public release until verified.
+
+---
+
 # 0.4.14 implemented and verified; public release upload blocked (2026-09-17)
 
 The latest user authorized the model/settings, shared-memory/power and mouse-look milestone. Read [models-capture-0414.md](models-capture-0414.md) for scope, evidence, exact artifact hashes and device checks. Camp remains parked. No tools need installing on the user's work Mac and no subagents were used. The staged INI remains untouched and is not committed.

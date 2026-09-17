@@ -95,7 +95,15 @@ def check_relative_input(display):
                 control.sendall(struct.pack('>IiiI',1,40,0,0));time.sleep(.01)
             wait_for(lambda:Path('/client/probe-relative.txt').exists(),'Relative movement stopped at the clipped screen edge',10)
             total=int(Path('/client/probe-relative.txt').read_text());assert total>=4096,total
-            Path('/logs/relative-input-verification.json').write_text(json.dumps({'directinput_dx':total,'clip_width':1,'injected_dx':6400}))
+            wait_for(lambda:Path('/client/probe-buffered.txt').exists(),'Buffered DirectInput movement stopped at screen edge',10)
+            key(display,'u');time.sleep(.2)
+            for _ in range(40):control.sendall(struct.pack('>IiiI',1,40,0,0));time.sleep(.02)
+            def centered():
+                try:
+                    x,y,cx,cy=map(int,Path('/client/probe-warp.txt').read_text().split());return (x,y)==(cx,cy)
+                except (OSError,ValueError):return False
+            wait_for(centered,'Wine recentering did not restore the client-area center',10)
+            Path('/logs/relative-input-verification.json').write_text(json.dumps({'directinput_dx':total,'buffered_dx':int(Path('/client/probe-buffered.txt').read_text()),'clip_width':1,'injected_dx':6400,'wine_recenter':True}))
         finally:key(display,'e')
     print('PASS: polled Windows DirectInput accumulates over 4096 pixels while the cursor is clipped to one pixel')
 
@@ -126,7 +134,7 @@ def check_idle_frames(display,width,height):
 def main():
     for name in ('/session','/prefix','/logs'): Path(name).mkdir(exist_ok=True)
     renderer=os.environ.get('TRASC_TEST_RENDERER','software')
-    request={'audio':True,'npc_rendering':'compatibility','mode':'client','resolution':'800x600','executable':'eqgame.exe','native_dinput8':True,'native_d3dx':True,'renderer':renderer,'graphics_threading':'single' if renderer=='turnip' else 'opengl_worker','cpu_affinity':'available','presentation_mode':'native_surface','display_fps':60}
+    request={'mouse_warp':True,'audio':True,'npc_rendering':'compatibility','mode':'client','resolution':'800x600','executable':'eqgame.exe','native_dinput8':True,'native_d3dx':True,'renderer':renderer,'graphics_threading':'single' if renderer=='turnip' else 'opengl_worker','cpu_affinity':'available','presentation_mode':'native_surface','display_fps':60}
     if renderer=='turnip': request.update(resolution='1280x720',fullscreen=True,dxvk_hud=False)
     Path('/session/request.json').write_text(json.dumps(request))
     audio_receiver = Receiver('/session/audio.sock')
@@ -232,6 +240,14 @@ def main():
             time.sleep(.35)
             display.sendall(struct.pack('>BBHI',4,0,0,ord('w')))
             wait_for(lambda:Path('/client/probe-released-key.txt').exists(),'DirectInput movement key did not release',15)
+            # Replay the actual Android command schedule emitted by its Java class.
+            previous=0
+            for line in Path('/client/command-keys.txt').read_text().splitlines():
+                delay,symbol,down=map(int,line.split());time.sleep((delay-previous)/1000);previous=delay
+                display.sendall(struct.pack('>BBHI',4,down,0,symbol))
+            wait_for(lambda:Path('/client/probe-command.txt').exists(),'Command Enter was not received',10)
+            assert Path('/client/probe-command.txt').read_text()=='#tim',Path('/client/probe-command.txt').read_text()
+            print('PASS: exact #tim command received through Windows WM_CHAR, no slash or stale draft submitted')
             check_relative_input(display)
             check_idle_frames(display,width,height)
         wait_for(lambda:json.loads(Path('/session/status.json').read_text()).get('model_libraries_loaded')=={'d3dx9_30.dll':'native','d3dx9_35.dll':'native'}, 'Native model load evidence not recognized',15)

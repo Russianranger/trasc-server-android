@@ -28,6 +28,19 @@ class ClientTests(unittest.TestCase):
 
     def tearDown(self): self.temp.cleanup()
 
+    def test_mouse_warp_is_reversible_and_scoped_to_game(self):
+        request={'mode':'client','executable':'eqgame.exe','resolution':'800x600'}
+        for enabled,value in ((True,'force'),(False,'default')):
+            supervisor=client_runner.Supervisor(dict(request,mouse_warp=enabled))
+            with patch.object(supervisor,'run') as run,patch.object(supervisor,'update') as update:
+                supervisor.configure_mouse()
+                args=run.call_args.args[0]
+                self.assertEqual(args[4],r'HKCU\Software\Wine\AppDefaults\eqgame.exe\DirectInput')
+                self.assertEqual(args[-2],value)
+                update.assert_called_once_with(mouse_warp=value)
+        with self.assertRaisesRegex(ValueError,'mouse recentering'):
+            client_runner.validate_request(dict(request,mouse_warp='force'))
+
     def test_runtime_preflight_uses_only_temporary_files_and_verifies_io(self):
         session=self.root/'runtime-preflight';session.mkdir()
         report=runtime_probe.probe(session)
