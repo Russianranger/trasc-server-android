@@ -17,6 +17,8 @@ Device checks after installing in place:
 1. In-world with no chat draft to keep, use gear #tim and check the game response.
 2. Stop client, enable recentering, relaunch, compare held-right-click and toggled mouse look plus inventory pointing. Disable/relaunch if unsuitable. No runtime reinstall or DLL rebuild is needed.
 3. Reproduce character select → server select → reconnect once with the existing Wine diagnostic option enabled for that short attempt, then export Logs. Turn verbose diagnostics off afterward. Restart the client rather than re-entering the same process as a temporary workaround.
-4. Reproduce the stop failure if it recurs; reopen app and export Logs promptly so Android's exit reason is included.
+4. Export Logs after updating; Android may still retain the previous app-exit record. If the stop failure recurs, reopen the app and export promptly.
 
 Pending: full CI and signed candidate verification; Thor acceptance of command/mouse behavior; stack-overflow and shutdown root causes. Existing release publication failures remain separate from application testing. Preserve all release gates and signing identity; do not reinstall the working client runtime.
+
+Initial source bb6685d passed APK compilation/lint,125 Python tests, browser/JVM checks, Microsoft DLL, database, WineD3D, Vulkan, and direct/PRoot DXVK tests. Review then corrected the WebView recovery order: clear the activity reference before releasing controller state, and only destroy the failed WebView. Input-release callbacks must not evaluate JavaScript on the failed renderer. The static footer is also corrected to0.4.15. The initial APK is superseded; deliver only the subsequent verified candidate. All original gates remain required.

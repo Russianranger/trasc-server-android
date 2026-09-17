@@ -37,9 +37,9 @@ public final class MainActivity extends Activity {
         web.setWebViewClient(new WebViewClient(){
             @Override public boolean onRenderProcessGone(WebView view,RenderProcessGoneDetail detail){
                 runtime.recordFailure("management_display",new IOException("WebView renderer exited: crashed="+detail.didCrash()+" priority="+detail.rendererPriorityAtExit()));
-                controller.capture(false);web=null;
+                web=null;controller.capture(false);
                 android.view.ViewParent parent=view.getParent();if(parent instanceof android.view.ViewGroup)((android.view.ViewGroup)parent).removeView(view);
-                view.removeJavascriptInterface("Trasc");view.destroy();
+                view.destroy();
                 android.widget.Button reopen=new android.widget.Button(MainActivity.this);
                 reopen.setText("Management screen stopped. Tap to reopen.");reopen.setOnClickListener(v->recreate());setContentView(reopen);
                 return true;
