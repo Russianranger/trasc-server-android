@@ -18,9 +18,7 @@ final class ControllerManager implements InputManager.InputDeviceListener {
     private final InputManager manager;
     private final Handler handler=new Handler(Looper.getMainLooper());
     private final ControllerInput input;
-    private Map<String,String> bindings=ControllerInput.defaults();
-    private Map<String,String> shifted=ControllerInput.inherited();
-    private String modifier="None";
+    private List<ControllerInput.Layer> layers=ControllerInput.defaultLayers();
     private long lastTick;
     private String loadError="";
     private int device=-1;
@@ -32,6 +30,7 @@ final class ControllerManager implements InputManager.InputDeviceListener {
             public void button(String action,boolean down){emit("button",action,down,0,0);}
             public void pointer(float dx,float dy){emit("pointer","",false,dx,dy);}
             public void wheel(int amount){emit("wheel","",false,0,amount);}
+            public void layer(int index,String name){emit("layer",name,false,index,0);}
         });
         reload();
         manager=(InputManager)context.getSystemService(Context.INPUT_SERVICE);manager.registerInputDeviceListener(this,handler);
@@ -40,38 +39,52 @@ final class ControllerManager implements InputManager.InputDeviceListener {
         try{events.emit(new JSONObject().put("type",type).put("action",action).put("down",down).put("x",x).put("y",y));}catch(JSONException ignored){}
     }
     void reload() {
-        capture(false);bindings=ControllerInput.defaults();shifted=ControllerInput.inherited();modifier="None";input.configure(bindings,.20f,700);loadError="";
+        capture(false);layers=ControllerInput.defaultLayers();input.configure(layers,.20f,700);loadError="";
         if(profile.isFile())try {
-            if(profile.length()>32768)throw new IOException("Controller profile exceeds limits");
+            if(profile.length()>131072)throw new IOException("Controller profile exceeds limits");
             configure(new JSONObject(new String(Files.readAllBytes(profile.toPath()),StandardCharsets.UTF_8)),false);
         } catch(Exception e){loadError="Saved controller profile could not be loaded: "+e.getMessage();}
     }
+    private static JSONObject serialize(List<ControllerInput.Layer> layers,float deadzone,float speed)throws JSONException {
+        JSONArray array=new JSONArray();for(ControllerInput.Layer layer:layers)array.put(new JSONObject().put("name",layer.name).put("bindings",new JSONObject(layer.bindings)));
+        return new JSONObject().put("format",2).put("layers",array).put("deadzone",deadzone).put("sensitivity",speed);
+    }
     JSONObject state()throws JSONException {
-        return new JSONObject().put("bindings",new JSONObject(bindings)).put("sources",new JSONArray(ControllerInput.SOURCES))
-            .put("actions",new JSONArray(ControllerInput.ACTIONS)).put("deadzone",input.deadzone).put("sensitivity",input.sensitivity)
-            .put("modifier",modifier).put("shifted",new JSONObject(shifted)).put("presets",presets()).put("active",input.active()).put("error",loadError);
+        return serialize(layers,input.deadzone,input.sensitivity).put("sources",new JSONArray(ControllerInput.SOURCES))
+            .put("actions",new JSONArray(ControllerInput.ACTIONS)).put("presets",presets()).put("active",input.active()).put("error",loadError)
+            .put("current_layer",input.currentLayer()).put("current_layer_name",input.layerName()).put("max_layers",ControllerInput.MAX_LAYERS);
     }
+    String layerLabel(){return (input.currentLayer()+1)+"/"+input.layerCount()+" · "+input.layerName();}
     static JSONObject preset(String name)throws JSONException {
-        return new JSONObject().put("bindings",new JSONObject(ControllerInput.preset(name,false)))
-            .put("shifted",new JSONObject(ControllerInput.preset(name,true))).put("modifier",name.equals("legacy")?"None":"L1").put("deadzone",.2).put("sensitivity",name.equals("inventory")?450:700);
+        if(name.equals("thor"))return serialize(ControllerInput.defaultLayers(),.2f,700);
+        return serialize(ControllerInput.legacyLayers(ControllerInput.preset(name,false),ControllerInput.preset(name,true),name.equals("legacy")?"None":"L1"),.2f,name.equals("inventory")?450:700);
     }
-    private JSONObject presets()throws JSONException {JSONObject p=new JSONObject();for(String name:new String[]{"legacy","adventure","spells","inventory"})p.put(name,preset(name));return p;}
+    private JSONObject presets()throws JSONException {JSONObject p=new JSONObject();for(String name:new String[]{"thor","legacy","adventure","spells","inventory"})p.put(name,preset(name));return p;}
+    private static Map<String,String> bindings(JSONObject raw)throws JSONException {
+        Map<String,String> result=new LinkedHashMap<>();for(String key:ControllerInput.SOURCES)result.put(key,raw.getString(key));return result;
+    }
     void configure(JSONObject data,boolean save)throws Exception {
-        JSONObject raw=data.getJSONObject("bindings");Map<String,String> next=new LinkedHashMap<>();
-        for(String key:ControllerInput.SOURCES)next.put(key,raw.getString(key));
-        Map<String,String> alternate=ControllerInput.inherited();JSONObject alt=data.optJSONObject("shifted");
-        if(alt!=null)for(String key:ControllerInput.SOURCES)alternate.put(key,alt.getString(key));
-        String mod=data.optString("modifier","None");
+        List<ControllerInput.Layer> next=new ArrayList<>();
+        if(data.has("layers")){
+            if(data.optInt("format",2)!=2)throw new IOException("Unsupported controller profile version");
+            JSONArray array=data.getJSONArray("layers");
+            for(int i=0;i<array.length();i++){JSONObject layer=array.getJSONObject(i);next.add(new ControllerInput.Layer(layer.getString("name").trim(),bindings(layer.getJSONObject("bindings"))));}
+        }else{
+            Map<String,String> alternate=data.has("shifted")?bindings(data.getJSONObject("shifted")):ControllerInput.inherited();
+            next=ControllerInput.legacyLayers(bindings(data.getJSONObject("bindings")),alternate,data.optString("modifier","None"));
+        }
         float deadzone=(float)data.getDouble("deadzone"),speed=(float)data.getDouble("sensitivity");
-        // Validate without changing the active profile until the disk write succeeds.
+        // Validate before changing disk or the active profile. Older saved maps migrate without replacing custom keys.
         ControllerInput check=new ControllerInput(new ControllerInput.Sink(){public void button(String a,boolean b){}public void pointer(float x,float y){}public void wheel(int v){}});
-        check.configure(next,alternate,mod,deadzone,speed);
-        if(save) {
+        check.configure(next,deadzone,speed);
+        if(save){
+            byte[] encoded=serialize(next,deadzone,speed).toString(2).getBytes(StandardCharsets.UTF_8);
+            if(encoded.length>131072)throw new IOException("Controller profile exceeds limits");
             profile.getParentFile().mkdirs();File temp=new File(profile.getParentFile(),"controller.json.new");
-            try(FileOutputStream out=new FileOutputStream(temp)){out.write(new JSONObject().put("bindings",new JSONObject(next)).put("shifted",new JSONObject(alternate)).put("modifier",mod).put("deadzone",deadzone).put("sensitivity",speed).toString(2).getBytes(StandardCharsets.UTF_8));out.getFD().sync();}
+            try(FileOutputStream out=new FileOutputStream(temp)){out.write(encoded);out.getFD().sync();}
             Files.move(temp.toPath(),profile.toPath(),StandardCopyOption.REPLACE_EXISTING,StandardCopyOption.ATOMIC_MOVE);
         }
-        capture(false);input.configure(next,alternate,mod,deadzone,speed);bindings=next;shifted=alternate;modifier=mod;loadError="";
+        capture(false);input.configure(next,deadzone,speed);layers=next;loadError="";
     }
     void capture(boolean active){input.activate(false);digital.clear();analog.clear();input.activate(active);device=-1;handler.removeCallbacks(tick);if(active){lastTick=SystemClock.uptimeMillis();handler.post(tick);}emit("capture","",active,0,0);}
     boolean active(){return input.active();}

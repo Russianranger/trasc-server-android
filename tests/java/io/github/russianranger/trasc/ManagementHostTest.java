@@ -117,7 +117,7 @@ public final class ManagementHostTest {
             check(LocalLogs.inventory(empty.toFile()).isEmpty(),"Symlinked client parent is ignored");
             List<String> emitted=new ArrayList<>();
             ControllerInput input=new ControllerInput(new ControllerInput.Sink(){public void button(String a,boolean d){emitted.add(a+":"+d);}public void pointer(float x,float y){emitted.add("move");}public void wheel(int v){emitted.add("wheel:"+v);}});
-            Map<String,String> bindings=ControllerInput.defaults();bindings.put("A","KeyW");bindings.put("B","KeyW");input.configure(bindings,.2f,700);
+            Map<String,String> bindings=ControllerInput.legacyDefaults();bindings.put("A","KeyW");bindings.put("B","KeyW");input.configure(bindings,.2f,700);
             input.value("A",1);check(emitted.isEmpty(),"Inactive controller must not emit");input.activate(true);
             input.value("A",1);input.value("A",1);input.value("B",1);input.value("A",0);
             check(emitted.equals(Arrays.asList("KeyW:true")),"Shared key must stay down until all sources release");input.value("B",0);

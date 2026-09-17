@@ -32,11 +32,49 @@ def recv(stream, size):
     return data
 
 
+def check_native_frames(path, width, height, label, unshared=False):
+    for attempt in range(2):
+        with socket.socket(socket.AF_UNIX) as frames:
+            frames.settimeout(8);frames.connect(str(path));samples=[]
+            for _ in range(4):
+                frames.sendall(b'\1');header=struct.unpack('>8I',recv(frames,32))
+                magic,fw,fh,stride,capture,seq,length,shm=header
+                assert magic==0x54524631 and (fw,fh)==(width,height) and stride==fw*4 and length==fw*fh*4,header
+                assert shm in (0,1) and (not unshared or shm==0),header
+                raw=recv(frames,length);colors=Counter(raw[i:i+3] for i in range(0,len(raw),4))
+                assert colors[bytes([96,72,24])]>1000,('Native Surface source pixels',header)
+                if width==1280:assert colors[bytes([96,72,24])]>fw*fh*.95,header
+                samples.append({'capture_us':capture,'sequence':seq,'shm':shm,'bytes':length})
+            assert samples[-1]['sequence']>samples[0]['sequence'],samples
+            Path('/logs/'+label+'-'+str(attempt)+'.json').write_text(json.dumps(samples,indent=2))
+
+
+def check_unshared_frames(env,width,height):
+    path=Path('/session/frames-no-shm.sock');log=Path('/logs/client-frame-no-shm.log')
+    with log.open('wb') as output:
+        helper=subprocess.Popen(['/opt/trasc-client/x11-frame-bridge',str(path),'60','--no-shm'],env=env,stdout=output,stderr=output)
+        try:
+            wait_for(lambda:path.exists() or helper.poll() is not None,'Non-SHM frame helper did not start',10)
+            assert helper.poll() is None,log.read_text()
+            assert path.stat().st_mode&0o777==0o600,'Native socket must remain private'
+            check_native_frames(path,width,height,'native-no-shm',True)
+            wait_for(lambda:sum(json.loads(l)['frames'] for l in log.read_text().splitlines() if l.startswith('{'))>=8,'Transfer statistics not recorded after reconnect',5)
+            reports=[json.loads(l) for l in log.read_text().splitlines() if l.startswith('{')]
+            assert 'Capture mode: XGetImage' in log.read_text()
+            assert sum(r['frames'] for r in reports)==8,reports
+            for r in reports:
+                assert r['transport']=='batched-v1' and r['frames']>0 and r['bytes_per_frame']==width*height*4,r
+                assert 2<=r['send_calls_per_frame']<32,('Payload unexpectedly fragmented into row writes',r)
+            print('PASS: actual Wine pixels through non-SHM XGetImage, batched sends and two consumer connections')
+        finally:
+            helper.terminate();helper.wait(timeout=5);path.unlink(missing_ok=True)
+
+
 def main():
     for name in ('/session','/prefix','/logs'): Path(name).mkdir(exist_ok=True)
     renderer=os.environ.get('TRASC_TEST_RENDERER','software')
     request={'audio':True,'npc_rendering':'compatibility','mode':'client','resolution':'800x600','executable':'eqgame.exe','native_dinput8':True,'native_d3dx':True,'renderer':renderer,'graphics_threading':'single' if renderer=='turnip' else 'opengl_worker','cpu_affinity':'available','presentation_mode':'native_surface','display_fps':60}
-    if renderer=='turnip': request.update(resolution='1280x720',fullscreen=True)
+    if renderer=='turnip': request.update(resolution='1280x720',fullscreen=True,dxvk_hud=False)
     Path('/session/request.json').write_text(json.dumps(request))
     audio_receiver = Receiver('/session/audio.sock')
     runner = subprocess.Popen(['python3','/tests/client_runner_diagnostics.py'])
@@ -69,6 +107,7 @@ def main():
                      'Actual DXVK load not observed',30)
             graphics=json.loads(Path('/session/status.json').read_text())
             assert graphics['native_d3d9_loaded'],graphics
+            assert graphics['dxvk_hud'] is False,graphics
             assert graphics['vulkan']['presentation_frames']==3,graphics
             assert graphics['graphics_acceleration']=='software_test',graphics
             geometry=json.loads(Path('/client/probe-display.json').read_text())
@@ -128,21 +167,8 @@ def main():
             if renderer=='turnip': assert colors[bytes([96,72,24])]>width*height*.95,('Fullscreen image does not fill the display',summary)
             # Same real Wine/DXVK pixels through the optional native protocol.
             # Close/reopen the consumer, as Android does on Activity recreation.
-            for attempt in range(2):
-                with socket.socket(socket.AF_UNIX) as frames:
-                    frames.settimeout(8);frames.connect('/session/frames.sock')
-                    samples=[]
-                    for _ in range(4):
-                        frames.sendall(b'\1');header=struct.unpack('>8I',recv(frames,32))
-                        magic,fw,fh,stride,capture,seq,length,shm=header
-                        assert magic==0x54524631 and (fw,fh)==(width,height) and stride==fw*4 and length==fw*fh*4,header
-                        assert shm in (0,1),header
-                        raw=recv(frames,length);colors_native=Counter(raw[i:i+3] for i in range(0,len(raw),4))
-                        assert colors_native[bytes([96,72,24])]>1000,('Native Surface source pixels',header)
-                        if renderer=='turnip':assert colors_native[bytes([96,72,24])]>fw*fh*.95,header
-                        samples.append({'capture_us':capture,'sequence':seq,'shm':shm,'bytes':length})
-                    assert samples[-1]['sequence']>samples[0]['sequence'],samples
-                    Path('/logs/native-presentation-'+str(attempt)+'.json').write_text(json.dumps(samples,indent=2))
+            check_native_frames('/session/frames.sock',width,height,'native-presentation')
+            check_unshared_frames(client_runner.Supervisor(request).env,width,height)
             print('PASS: real Wine pixels, color order, native frame bounds and presentation reconnect')
             # Focus the probe interior, then deliver a keyboard press/release.
             display.sendall(struct.pack('>BBHH',5,1,200,200)+struct.pack('>BBHH',5,0,200,200))

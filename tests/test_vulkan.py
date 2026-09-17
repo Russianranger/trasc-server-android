@@ -27,6 +27,18 @@ class VulkanTests(unittest.TestCase):
 
     def tearDown(self): self.tmp.cleanup()
 
+    def test_hud_on_off_is_explicit_and_validated(self):
+        request={'mode':'desktop','resolution':'1280x720','renderer':'turnip'}
+        for enabled in (True,False):
+            current={**request,'dxvk_hud':enabled}
+            client_runner.validate_request(current)
+            host=client_runner.Supervisor(current)
+            self.assertEqual(host.env['DXVK_HUD'],'devinfo,fps,compiler' if enabled else '0')
+            self.assertEqual(host.status['dxvk_hud'],enabled)
+        self.assertEqual(client_runner.Supervisor(request).env['DXVK_HUD'],'devinfo,fps,compiler')
+        for invalid in ('false',0,None):
+            with self.assertRaisesRegex(ValueError,'HUD'):client_runner.validate_request({**request,'dxvk_hud':invalid})
+
     def test_preflight_rejects_software_wrong_driver_incomplete_presentation(self):
         good={'driver_id':18,'vendor_id':0x5143,'software':False,'api_version':(1<<22|3<<12),'presentation_frames':3}
         self.assertEqual(client_vulkan.parse_probe('diagnostic\n'+json.dumps(good)),good)

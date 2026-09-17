@@ -20,7 +20,8 @@ public final class ClientActivity extends Activity {
     private NativePresentation nativeDisplay;
     private volatile boolean nativeActive;
     private String presentationFallback="";
-    private TextView status;
+    private TextView status,layerBanner;
+    private final Runnable hideLayer=()->{if(layerBanner!=null)layerBanner.animate().alpha(0f).setDuration(250).start();};
     private FrameLayout menuLayer;
     private LinearLayout menu;
     private ImageButton gear;
@@ -36,7 +37,7 @@ public final class ClientActivity extends Activity {
             if(launch!=null&&launch.has("error"))phase=launch.optString("error");
             if(displayError!=null&&(launch==null||!launch.has("error")))phase=displayError;
             status.setText(phase+(launch!=null&&launch.optBoolean("native_loaded")?" · native dinput8 loaded":"")+
-                (launch!=null&&launch.optBoolean("system_dinput8_loaded")?" · system DirectInput loaded":"")+display.measure(launch));
+                (launch!=null&&launch.optBoolean("system_dinput8_loaded")?" · system DirectInput loaded":"")+"\nLayer "+controller.layerLabel()+display.measure(launch));
             if(launch!=null&&launch.has("error")&&!failureShown&&hasWindowFocus()&&!isFinishing()) {
                 failureShown=true;controller.capture(false);display.input.releaseAll();setMenuOpen(true);
                 new AlertDialog.Builder(ClientActivity.this).setTitle("Client startup failed").setMessage(launch.optString("error"))
@@ -79,12 +80,17 @@ public final class ClientActivity extends Activity {
         gear.setOnClickListener(v->setMenuOpen(!menuOpen));
         FrameLayout.LayoutParams gearPosition=new FrameLayout.LayoutParams(dp(48),dp(48),Gravity.TOP|Gravity.RIGHT);
         gearPosition.setMargins(dp(12),dp(12),dp(12),0);layout.addView(gear,gearPosition);
+        layerBanner=new TextView(this);layerBanner.setTextColor(0xb3ffffff);layerBanner.setTextSize(16);layerBanner.setGravity(Gravity.CENTER);layerBanner.setPadding(dp(12),dp(6),dp(12),dp(6));
+        layerBanner.setBackground(panelBackground(0x28081010));layerBanner.setShadowLayer(dp(2),0,dp(1),0x66000000);layerBanner.setAlpha(0f);layerBanner.setMaxLines(1);layerBanner.setEllipsize(android.text.TextUtils.TruncateAt.END);
+        layerBanner.setClickable(false);layerBanner.setFocusable(false);
+        FrameLayout.LayoutParams layerPosition=new FrameLayout.LayoutParams(-2,-2,Gravity.TOP|Gravity.CENTER_HORIZONTAL);layerPosition.topMargin=dp(12);layout.addView(layerBanner,layerPosition);
         // Keep controls clear of display cutouts and temporarily revealed bars.
         layout.setOnApplyWindowInsetsListener((view,insets)->{
             int left=insets.getSystemWindowInsetLeft(),top=insets.getSystemWindowInsetTop(),right=insets.getSystemWindowInsetRight(),bottom=insets.getSystemWindowInsetBottom();
             if(Build.VERSION.SDK_INT>=28&&insets.getDisplayCutout()!=null){DisplayCutout cutout=insets.getDisplayCutout();left=Math.max(left,cutout.getSafeInsetLeft());top=Math.max(top,cutout.getSafeInsetTop());right=Math.max(right,cutout.getSafeInsetRight());bottom=Math.max(bottom,cutout.getSafeInsetBottom());}
             gearPosition.setMargins(dp(12)+left,dp(12)+top,dp(12)+right,0);gear.setLayoutParams(gearPosition);
             panel.setMargins(dp(12)+left,dp(68)+top,dp(12)+right,dp(12)+bottom);scroll.setLayoutParams(panel);
+            layerPosition.topMargin=dp(12)+top;layerBanner.setMaxWidth(Math.max(dp(100),getResources().getDisplayMetrics().widthPixels-dp(140)-left-right));layerBanner.setLayoutParams(layerPosition);
             return insets;
         });
         setContentView(layout);immersive();
@@ -93,10 +99,12 @@ public final class ClientActivity extends Activity {
                 case "button":if(event.optString("action").equals("ClientMenu")){setMenuOpen(true);break;}display.input.action(event.optString("action"),event.optBoolean("down"));break;
                 case "pointer":display.input.move((float)event.optDouble("x"),(float)event.optDouble("y"));break;
                 case "wheel":display.input.wheel(event.optInt("y"));break;
+                case "layer":showLayer(event.optInt("x")+1,event.optString("action"));break;
             }
         });
         setMenuOpen(false);display.connect();handler.post(refresh);
     }
+    private void showLayer(int index,String name){handler.removeCallbacks(hideLayer);layerBanner.animate().cancel();layerBanner.setText("Layer "+index+" · "+name);layerBanner.setAlpha(1f);handler.postDelayed(hideLayer,1500);}
     private int dp(int value){return Math.round(value*getResources().getDisplayMetrics().density);}
     private GradientDrawable panelBackground(int color){GradientDrawable background=new GradientDrawable();background.setColor(color);background.setCornerRadius(dp(16));return background;}
     private void addMenuButton(String title,View.OnClickListener action){Button button=new Button(this);button.setText(title);button.setAllCaps(false);button.setTextColor(Color.WHITE);button.setMinHeight(dp(48));button.setBackground(new RippleDrawable(ColorStateList.valueOf(0x44ffffff),panelBackground(0x18ffffff),null));button.setOnClickListener(action);LinearLayout.LayoutParams params=new LinearLayout.LayoutParams(-1,dp(48));params.topMargin=dp(4);menu.addView(button,params);}
@@ -164,7 +172,7 @@ public final class ClientActivity extends Activity {
     @Override public void onBackPressed(){if(menuOpen)setMenuOpen(false);else super.onBackPressed();}
     @Override public void onWindowFocusChanged(boolean focus){super.onWindowFocusChanged(focus);if(focus&&!keyboardOpen)immersive();if(controller!=null)controller.capture(gameInputActive());if(!focus&&display!=null)display.input.releaseAll();}
     @Override protected void onPause(){if(controller!=null)controller.capture(false);if(display!=null)display.input.releaseAll();super.onPause();}
-    @Override protected void onDestroy(){handler.removeCallbacks(refresh);if(controller!=null)controller.close();if(nativeDisplay!=null)nativeDisplay.close();if(display!=null)display.close();super.onDestroy();}
+    @Override protected void onDestroy(){handler.removeCallbacks(refresh);handler.removeCallbacks(hideLayer);if(layerBanner!=null)layerBanner.animate().cancel();if(controller!=null)controller.close();if(nativeDisplay!=null)nativeDisplay.close();if(display!=null)display.close();super.onDestroy();}
 
     private final class ClientView extends View implements RfbConnection.Screen {
         private final Object pixelsLock=new Object();
@@ -256,7 +264,7 @@ public final class ClientActivity extends Activity {
                     });
                 }catch(org.json.JSONException ignored){}
             }
-            if(launch!=null&&launch.optString("graphics_backend").equals("turnip")) return String.format(java.util.Locale.ROOT," · DXVK FPS in HUD · %s %.1f/s",nativeActive?"Native Surface":"Current display",displayRate)+displayCost;
+            if(launch!=null&&launch.optString("graphics_backend").equals("turnip")) return String.format(java.util.Locale.ROOT," · DXVK HUD "+(launch.optBoolean("dxvk_hud",true)?"on":"off")+" · %s %.1f/s",nativeActive?"Native Surface":"Current display",displayRate)+displayCost;
             return String.format(java.util.Locale.ROOT," · Wine %s/s · Display %.1f/s",fresh?String.format(java.util.Locale.ROOT,"%.1f",wine.optDouble("per_second")):"—",displayRate)+displayCost;
         }
         private boolean position(MotionEvent event) {

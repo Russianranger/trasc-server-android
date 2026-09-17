@@ -16,7 +16,7 @@ public final class ClientHostTest {
         return data.toByteArray();
     }
     public static void main(String[] args)throws Exception {
-        frameMeasurements();reusedPixels();controllerLayers();
+        frameMeasurements();reusedPixels();controllerLayers();namedLayers();
         int[] pixels=new int[6];ByteArrayOutputStream wire=new ByteArrayOutputStream();
         RfbConnection.Screen screen=new RfbConnection.Screen(){public void resize(int w,int h){check(w==3&&h==2,"Display dimensions");}public void pixels(int x,int y,int w,int h,int[] colors){System.arraycopy(colors,0,pixels,0,6);}public void copy(int x,int y,int w,int h,int sx,int sy){}public void updated(){}};
         RfbConnection r=new RfbConnection(new ByteArrayInputStream(server(false)),wire,screen);r.handshake();r.readUpdate();
@@ -37,7 +37,7 @@ public final class ClientHostTest {
         input.action("ShiftLeft",true);input.action("KeyA",true);input.action("ShiftLeft",false);input.action("KeyA",false);check(sent.contains("key:65:true")&&sent.contains("key:65:false"),"Shifted key releases its original symbol");
         input.action("KeyT",true);input.releaseAll();check(sent.contains("key:116:false")&&sent.get(sent.size()-1).endsWith(":0"),"Focus loss releases keyboard and mouse");
         sent.clear();input.text("hello",true);check(sent.get(sent.size()-1).equals("key:65293:false"),"Send + Enter actually sends chat");
-        for(String action:ControllerInput.ACTIONS)if(!action.equals("None")&&!action.startsWith("Pointer")&&!action.startsWith("Mouse")&&!action.startsWith("Wheel")){if(!action.equals("ClientMenu"))for(String atom:action.split("\\+"))check(DisplayInput.symbol(atom)!=0,"Every advertised keyboard binding reaches the client: "+atom);}
+        for(String action:ControllerInput.ACTIONS)if(!action.equals("None")&&!action.startsWith("Pointer")&&!action.startsWith("Mouse")&&!action.startsWith("Wheel")){if(!action.equals("ClientMenu")&&!ControllerInput.isLayerAction(action))for(String atom:action.split("\\+"))check(DisplayInput.symbol(atom)!=0,"Every advertised keyboard binding reaches the client: "+atom);}
         Path tree=Files.createTempDirectory("trasc-prefix-");
         try {
             Path prefix=tree.resolve("prefix"),game=tree.resolve("current");Files.createDirectories(prefix.resolve("dosdevices"));Files.createDirectories(game);
@@ -64,6 +64,29 @@ public final class ClientHostTest {
         events.clear();input.value("A",Float.NaN);check(events.isEmpty(),"Invalid analog value is ignored");
         for(String name:Arrays.asList("legacy","adventure","spells","inventory"))input.configure(ControllerInput.preset(name,false),ControllerInput.preset(name,true),name.equals("legacy")?"None":"L1",.2f,700);
         events.clear();input.activate(true);input.value("Start",1);check(events.equals(Arrays.asList("ClientMenu:true")),"Preset opens app controls without sending a game key");
+    }
+    static void namedLayers(){
+        List<String> events=new ArrayList<>(),names=new ArrayList<>();
+        ControllerInput input=new ControllerInput(new ControllerInput.Sink(){public void button(String a,boolean d){events.add(a+":"+d);}public void pointer(float x,float y){}public void wheel(int n){}public void layer(int i,String name){names.add(i+":"+name);}});
+        List<ControllerInput.Layer> layers=ControllerInput.defaultLayers();Map<String,String> expected=new LinkedHashMap<>();
+        String[] sources={"A","X","Y","B","R1","L1","L2","R2","DpadUp","DpadRight","DpadDown","DpadLeft","Select","Start","L3","R3","LeftUp","LeftDown","LeftLeft","LeftRight","RightUp","RightDown","RightLeft","RightRight"};
+        String[] actions={"KeyF","Digit1","Digit2","Digit3","MouseLeft","MouseRight","LayerNext","Tab","Digit4","Digit5","Digit6","Digit7","Escape","KeyI","Home","KeyC","KeyW","KeyS","KeyA","KeyD","PointerUp","PointerDown","PointerLeft","PointerRight"};
+        for(int i=0;i<sources.length;i++)expected.put(sources[i],actions[i]);check(layers.get(0).bindings.equals(expected),"Thor Main exactly matches all requested bindings");
+        input.configure(layers,.2f,700);input.activate(true);input.value("X",1);input.value("L2",1);input.value("L2",1);input.value("L2",.6f);
+        check(input.currentLayer()==1,"Analog/key repeat does not cycle a held trigger again");check(events.equals(Arrays.asList("Digit1:true","Digit1:false","Digit8:true")),"Cycling releases the old hotkey before rebinding the held button");
+        input.value("L2",0);check(input.currentLayer()==1,"Cycling is persistent on release");input.value("X",0);
+        for(int i=0;i<3;i++){input.value("L2",1);input.value("L2",0);}check(input.currentLayer()==0,"Four layers cycle and wrap");
+        Map<String,String> main=new LinkedHashMap<>(layers.get(0).bindings);main.put("R2","LayerPrevious");main.put("L1","HoldLayer3");main.put("R1","HoldLayer4");main.put("Select","Layer2");
+        layers=new ArrayList<>(layers);layers.set(0,new ControllerInput.Layer("Main",main));input.configure(layers,.2f,700);input.activate(true);
+        input.value("R2",1);input.value("R2",0);check(input.currentLayer()==3,"Previous wraps backward");input.value("Select",1);input.value("Select",0);check(input.currentLayer()==1,"Direct selection reaches a named layer");
+        input.value("L1",1);check(input.currentLayer()==2,"Hold temporarily overrides the selected layer");input.value("R1",1);check(input.currentLayer()==3,"Latest held layer wins");input.value("R1",0);check(input.currentLayer()==2,"Nested hold release restores the earlier hold");input.value("L1",0);check(input.currentLayer()==1,"Hold release restores the selected persistent layer");
+        input.value("L1",1);input.value("X",1);input.activate(false);check(input.currentLayer()==1&&events.get(events.size()-1).equals("AltLeft:false"),"Focus loss releases the chord and temporary layer, retaining selected layer");
+        List<ControllerInput.Layer> invalid=new ArrayList<>(layers);Map<String,String> bad=new LinkedHashMap<>(main);bad.put("A","Layer6");invalid.set(0,new ControllerInput.Layer("Main",bad));
+        try{input.configure(invalid,.2f,700);throw new AssertionError("Missing target accepted");}catch(IllegalArgumentException expectedError){}
+        check(input.currentLayer()==1,"Invalid profile does not mutate active selection");
+        List<ControllerInput.Layer> migrated=ControllerInput.legacyLayers(ControllerInput.legacyDefaults(),ControllerInput.inherited(),"L1");check(migrated.get(0).bindings.get("L1").equals("HoldLayer2")&&migrated.get(0).bindings.get("X").equals("KeyE"),"Old held modifier and custom bindings migrate");
+        check(names.contains("3:Inventory"),"Layer notification carries index and actual name");
+        System.out.println("PASS: exact Thor defaults, named cycling/wrap/direct/held layers, repeat suppression, focus recovery and legacy migration");
     }
     static void frameMeasurements(){
         ClientFrameStats stats=new ClientFrameStats(0);

@@ -61,7 +61,7 @@ final class NativePresentation extends SurfaceView implements SurfaceHolder.Call
             .put("surface_lock_ms_per_frame",frames==0?0:lockNs/1e6/frames).put("native_copy_ms_per_frame",frames==0?0:copyNs/1e6/frames)
             .put("surface_post_ms_per_frame",frames==0?0:postNs/1e6/frames).put("bytes_per_second",bytes/seconds)
             .put("shm_frames",shmFrames).put("frames",frames).put("frame_width",width).put("frame_height",height)
-            .put("last_update_age_seconds",lastFrame==0?-1:(now-lastFrame)/1e9);
+            .put("last_update_age_seconds",lastFrame==0?-1:Math.max(0,now-lastFrame)/1e9);
         since=now;frames=readNs=captureNs=lockNs=copyNs=postNs=bytes=shmFrames=0;return result;
     }
 }

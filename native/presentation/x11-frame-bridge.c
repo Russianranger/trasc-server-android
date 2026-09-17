@@ -1,5 +1,6 @@
 #define _POSIX_C_SOURCE 200809L
 #include "frame.h"
+#include "transfer.h"
 #include <X11/Xlib.h>
 #include <X11/Xutil.h>
 #include <X11/extensions/XShm.h>
@@ -20,7 +21,13 @@
 static int xerror;
 static int error_handler(Display *d,XErrorEvent *e){(void)d;xerror=e->error_code;return 0;}
 static uint64_t now_ns(void){struct timespec t;clock_gettime(CLOCK_MONOTONIC,&t);return (uint64_t)t.tv_sec*1000000000+t.tv_nsec;}
-static int send_all(int fd,const void *buf,size_t n){const char *p=buf;while(n){ssize_t k=send(fd,p,n,MSG_NOSIGNAL);if(k<0&&errno==EINTR)continue;if(k<=0)return -1;p+=k;n-=(size_t)k;}return 0;}
+struct frame_stats {uint64_t since,frames,capture_ns,send_ns,pace_ns,calls,bytes;};
+static void report(struct frame_stats *s,int final){
+    uint64_t now=now_ns();if(!s->frames||(!final&&now-s->since<5000000000ull))return;
+    double count=(double)s->frames;
+    fprintf(stderr,"{\"transport\":\"batched-v1\",\"frames\":%llu,\"seconds\":%.3f,\"capture_ms_per_frame\":%.3f,\"send_ms_per_frame\":%.3f,\"pacing_ms_per_frame\":%.3f,\"send_calls_per_frame\":%.3f,\"bytes_per_frame\":%.0f}\n",(unsigned long long)s->frames,(now-s->since)/1e9,s->capture_ns/1e6/count,s->send_ns/1e6/count,s->pace_ns/1e6/count,s->calls/count,s->bytes/count);fflush(stderr);
+    memset(s,0,sizeof(*s));s->since=now;
+}
 static void cursor(Display *d,XImage *image){
     XFixesCursorImage *c=XFixesGetCursorImage(d);if(!c)return;
     int left=(int)c->x-c->xhot,top=(int)c->y-c->yhot;
@@ -33,7 +40,8 @@ static void cursor(Display *d,XImage *image){
     }XFree(c);
 }
 int main(int argc,char **argv){
-    if(argc!=3){fprintf(stderr,"Usage: x11-frame-bridge socket fps\n");return 2;}
+    if(argc!=3&&(argc!=4||strcmp(argv[3],"--no-shm"))){fprintf(stderr,"Usage: x11-frame-bridge socket fps [--no-shm]\n");return 2;}
+    int no_shm=argc==4;
     int fps=atoi(argv[2]);if(fps!=30&&fps!=60)return 2;
     signal(SIGPIPE,SIG_IGN);XSetErrorHandler(error_handler);
     Display *d=XOpenDisplay(NULL);if(!d){fprintf(stderr,"No X display\n");return 3;}
@@ -46,39 +54,52 @@ int main(int argc,char **argv){
         int fd=accept(listener,NULL,NULL);if(fd<0){if(errno==EINTR)continue;break;}
         struct timeval timeout={.tv_sec=5};setsockopt(fd,SOL_SOCKET,SO_SNDTIMEO,&timeout,sizeof(timeout));
         XImage *image=NULL;XShmSegmentInfo shm={.shmid=-1};int shared=0,lastw=0,lasth=0;uint64_t last=0;
+        unsigned char *packed=NULL;size_t packed_capacity=0;struct frame_stats stats={.since=now_ns()};
         unsigned char request;
         while(recv(fd,&request,1,0)==1&&request==1){
             uint64_t elapsed=now_ns()-last,interval=1000000000u/(unsigned)fps;
-            if(last&&elapsed<interval){struct timespec wait={.tv_nsec=(long)(interval-elapsed)};nanosleep(&wait,NULL);}last=now_ns();
+            uint64_t pacing=now_ns();if(last&&elapsed<interval){struct timespec wait={.tv_nsec=(long)(interval-elapsed)};while(nanosleep(&wait,&wait)&&errno==EINTR){}}stats.pace_ns+=now_ns()-pacing;last=now_ns();
             XWindowAttributes a;if(!XGetWindowAttributes(d,DefaultRootWindow(d),&a))break;
             uint32_t header[8]={TRASC_MAGIC,(uint32_t)a.width,(uint32_t)a.height,(uint32_t)a.width*4,0,++sequence,(uint32_t)a.width*a.height*4,0};
             if(!trasc_frame_valid(header))break;
             if(image&&(a.width!=lastw||a.height!=lasth)){if(shared){XShmDetach(d,&shm);XSync(d,False);shmdt(shm.shmaddr);image->data=NULL;}XDestroyImage(image);image=NULL;shared=0;}
             if(!image){
                 lastw=a.width;lasth=a.height;xerror=0;
-                if(XShmQueryExtension(d)){
+                const char *reason=no_shm?"disabled by diagnostic --no-shm":"MIT-SHM extension unavailable";int reason_errno=0,reason_xerror=0;
+                if(!no_shm&&XShmQueryExtension(d)){
+                    reason="XShmCreateImage failed";
                     image=XShmCreateImage(d,a.visual,(unsigned)a.depth,ZPixmap,NULL,&shm,(unsigned)a.width,(unsigned)a.height);
-                    if(image){shm.shmid=shmget(IPC_PRIVATE,(size_t)image->bytes_per_line*image->height,IPC_CREAT|0600);
-                        if(shm.shmid>=0){shm.shmaddr=shmat(shm.shmid,NULL,0);shm.readOnly=False;
-                            if(shm.shmaddr!=(char *)-1){image->data=shm.shmaddr;shared=XShmAttach(d,&shm);XSync(d,False);if(xerror)shared=0;if(!shared){shmdt(shm.shmaddr);image->data=NULL;}}
+                    if(image){
+                        shm.shmid=shmget(IPC_PRIVATE,(size_t)image->bytes_per_line*image->height,IPC_CREAT|0600);
+                        if(shm.shmid<0){reason="shmget failed";reason_errno=errno;}
+                        else{
+                            shm.shmaddr=shmat(shm.shmid,NULL,0);shm.readOnly=False;
+                            if(shm.shmaddr==(char *)-1){reason="shmat failed";reason_errno=errno;}
+                            else{
+                                image->data=shm.shmaddr;shared=XShmAttach(d,&shm);XSync(d,False);
+                                if(xerror)shared=0;
+                                if(!shared){reason="XShmAttach failed";reason_xerror=xerror;shmdt(shm.shmaddr);image->data=NULL;}
+                            }
                             shmctl(shm.shmid,IPC_RMID,NULL);
                         }
                         if(!shared){image->data=NULL;XDestroyImage(image);image=NULL;}
                     }
                 }
+                fprintf(stderr,"Capture mode: %s; %dx%d; reason=%s; errno=%d; xerror=%d\n",shared?"MIT-SHM":"XGetImage",a.width,a.height,shared?"shared memory attached":reason,reason_errno,reason_xerror);fflush(stderr);
             }
             uint64_t capture=now_ns();xerror=0;
             if(shared){if(!XShmGetImage(d,DefaultRootWindow(d),image,0,0,AllPlanes))break;}
             else {if(image)XDestroyImage(image);image=XGetImage(d,DefaultRootWindow(d),0,0,(unsigned)a.width,(unsigned)a.height,AllPlanes,ZPixmap);}
             if(!image||xerror||image->bits_per_pixel!=32||image->byte_order!=LSBFirst||image->red_mask!=0xff0000||image->green_mask!=0xff00||image->blue_mask!=0xff)break;
             cursor(d,image);if(xerror)break;
-            header[4]=(uint32_t)((now_ns()-capture)/1000);header[7]=(uint32_t)shared;
+            uint64_t captured=now_ns();header[4]=(uint32_t)((captured-capture)/1000);header[7]=(uint32_t)shared;
             uint32_t wire[8];for(int i=0;i<8;i++)wire[i]=htonl(header[i]);
-            if(send_all(fd,wire,sizeof(wire)))break;
-            int failed=0;for(int y=0;y<a.height;y++)if(send_all(fd,image->data+y*image->bytes_per_line,(size_t)a.width*4)){failed=1;break;}if(failed)break;
+            uint64_t sending=now_ns(),calls=0;
+            if(trasc_send_all(fd,wire,sizeof(wire),&calls)||trasc_send_pixels(fd,image->data,header[3],(size_t)image->bytes_per_line,header[2],&packed,&packed_capacity,&calls))break;
+            stats.frames++;stats.capture_ns+=captured-capture;stats.send_ns+=now_ns()-sending;stats.calls+=calls;stats.bytes+=header[6];report(&stats,0);
         }
         if(image){if(shared){XShmDetach(d,&shm);XSync(d,False);shmdt(shm.shmaddr);image->data=NULL;}XDestroyImage(image);}
-        close(fd);
+        report(&stats,1);free(packed);close(fd);
     }
     close(listener);unlink(argv[1]);XCloseDisplay(d);return 0;
 }

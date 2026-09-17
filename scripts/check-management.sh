@@ -2,6 +2,8 @@
 set -euo pipefail
 cc -std=c11 -Wall -Wextra -Werror tests/frame_protocol.c -o /tmp/trasc-frame-test
 /tmp/trasc-frame-test
+cc -std=c11 -Wall -Wextra -Werror tests/frame_transfer.c -o /tmp/trasc-transfer-test
+/tmp/trasc-transfer-test
 classes=$(mktemp -d)
 trap 'rm -rf "$classes"' EXIT
 compiler=(javac)

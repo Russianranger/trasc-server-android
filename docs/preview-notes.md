@@ -1,3 +1,13 @@
+# 0.4.13 — Cycling controller layers, HUD control and native transfer batching
+
+- **Thor defaults / cycling** uses the requested Main controls and LT cycles Main → Hotbar 2 → Spells → Inventory → Main. A faint top-center notification appears briefly. Edit up to six named layers from Client or the in-game gear, with Next/Previous, direct selection and held overrides.
+- Saved mappings are preserved. To adopt the new defaults, choose the Thor preset, **Apply preset → Save** once.
+- **Client → Show DXVK FPS / stats** enables/disables the HUD on the next launch. Stop/relaunch to apply; a live gear toggle is unavailable with the bundled DXVK.
+- Native Surface now batches frame payloads and records transfer timings/SHM fallback reasons. Both SHM and XGetImage capture are tested. It remains optional; a Thor performance gain needs the next comparison.
+- [Controls and device checks](controller-layers-0413.md). Update in place; no server/DLL rebuild or Mac tooling required.
+
+---
+
 # 0.4.12 — Controller presets and optional native presentation
 
 - Edit controller mappings from the in-game gear menu. EQ adventure, spell-gem and inventory presets, held alternate bindings, Shift/Ctrl/Alt combinations, and Start-to-menu access. Existing mappings are retained.

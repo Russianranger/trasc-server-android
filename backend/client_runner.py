@@ -185,6 +185,7 @@ def pe_machine(path):
 def validate_request(request):
     spell_test = client_spells.verify_installed_test(CLIENT, request.get('spell_test', {}))
     if request.get('npc_rendering', 'compatibility') not in ('standard', 'compatibility', 'compatibility_042', 'direct_043'): raise ValueError('Invalid NPC rendering option')
+    if not isinstance(request.get('dxvk_hud', True), bool): raise ValueError('Invalid DXVK HUD option')
     if not isinstance(request.get('audio', False), bool): raise ValueError('Invalid audio option')
     if not isinstance(request.get('sound_diagnostics', False), bool): raise ValueError('Invalid sound diagnostic option')
     if request.get('mode') not in ('desktop', 'client'): raise ValueError('Choose Wine desktop or ROF2 client')
@@ -391,6 +392,8 @@ class Supervisor:
             version = request.get('turnip_driver', client_vulkan.DEFAULT_DRIVER)
             self.status['turnip_driver_requested'] = version
             client_vulkan.configure_environment(self.env, Path(__file__).parent, SESSION, PREFIX, version)
+            self.env['DXVK_HUD'] = 'devinfo,fps,compiler' if request.get('dxvk_hud', True) else '0'
+            self.status['dxvk_hud'] = request.get('dxvk_hud', True)
             self.env['DXVK_CONFIG'] = client_vulkan.npc_configuration(request.get('npc_rendering', 'compatibility'))
             self.status['npc_rendering'] = request.get('npc_rendering', 'compatibility')
             self.status['mesa_glthread_requested'] = False
