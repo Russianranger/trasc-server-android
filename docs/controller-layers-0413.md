@@ -43,7 +43,11 @@ The helper records capture, send and pacing time, actual send-call count and byt
 
 The real Wine integration gate now tests both capture modes, color correctness, 1280×720 fullscreen coverage, private socket permissions and reconnect, including direct and PRoot Software/DXVK/VirGL runs. The forced XGetImage case checks transfer statistics and batched send calls. DXVK integration also launches with the HUD off. These CI software-rendering checks cannot prove Android Surface appearance, Thor performance, heat or controller feel.
 
-Local validation: 119 Python tests; host JVM controller/RFB/management checks; strict C frame/color and transfer tests including padded rows, short writes, EINTR and EPIPE; JavaScript syntax checks. Android compilation/lint/signing, browser validation and all direct/PRoot native integration gates also passed on run35249900083. Final public-release verification is recorded in HANDOFF; Thor acceptance remains pending.
+Local validation: 119 Python tests; host JVM controller/RFB/management checks; strict C frame/color and transfer tests including padded rows, short writes, EINTR and EPIPE; JavaScript syntax checks. Android compilation/lint/signing, browser validation and all direct/PRoot native integration gates also passed on final run35254262724, tested source `f4131dd2d317bc2b279e2318939d9a3c4ffabc6c`. Thor acceptance remains pending.
+
+## Delivery status
+
+The signed0.4.13 APK and matching source archive are verified and available in [Actions artifact10511784814](https://github.com/Russianranger/trasc-server-android/actions/runs/35254262724/artifacts/10511784814). All application tests passed. Public release publishing failed on repeated HTTP500 responses while uploading runtime archives, including a separate publication-only recovery attempt. Public preview remains0.4.12; use the verified candidate provided in this conversation. Keep the installed runtime: fresh runtime downloads are temporarily unavailable because the runtime release is missing its archives. Exact hashes, evidence and recovery instructions are in [HANDOFF](HANDOFF.md).
 
 ## Device check
 
