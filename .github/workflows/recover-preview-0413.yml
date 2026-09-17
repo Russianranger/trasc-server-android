@@ -92,17 +92,42 @@ jobs:
           (out/'preview-build.json').write_text(json.dumps({'commit':os.environ['SOURCE_SHA'],'sha256':digest(apk),'file':'trasc-server-android-preview.apk','version':'0.4.13','application_id':'io.github.russianranger.trasc.preview','signing_certificate_sha256':signing},indent=2))
           print('Exact signed candidate, sources and runtime checksum verified')
           PY
-      - name: Publish the verified files over HTTP/1.1 with bounded retries
+      - name: Publish verified files through the direct upload API
         run: |
           set -euo pipefail
           test "$(gh api "repos/$GITHUB_REPOSITORY/git/ref/heads/main" --jq .object.sha)" = "$SOURCE_SHA"
           upload() {
-            local tag="$1" asset="$2" attempt
+            local tag="$1" asset="$2" attempt asset_name asset_sha asset_bytes release_id existing remote_id remote_bytes remote_sha
+            asset_name=$(basename "$asset")
+            asset_sha=$(sha256sum "$asset" | cut -d' ' -f1)
+            asset_bytes=$(stat -c '%s' "$asset")
+            release_id=$(gh api "repos/$GITHUB_REPOSITORY/releases/tags/$tag" --jq .id)
             for attempt in 1 2; do
-              echo "Uploading $asset over HTTP/1.1 (attempt $attempt/2)"
-              if timeout --kill-after=15s 5m gh release upload "$tag" "$asset" --clobber; then return 0; fi
+              existing=$(gh api "repos/$GITHUB_REPOSITORY/releases/tags/$tag" --jq ".assets[] | select(.name == \"$asset_name\") | [.id,.size,.digest] | @tsv")
+              if [ -n "$existing" ]; then
+                read -r remote_id remote_bytes remote_sha <<< "$existing"
+                if [ "$remote_bytes" = "$asset_bytes" ] && [ "$remote_sha" = "sha256:$asset_sha" ]; then
+                  echo "Already verified: $asset_name"
+                  return 0
+                fi
+                gh api --method DELETE "repos/$GITHUB_REPOSITORY/releases/assets/$remote_id"
+              fi
+              echo "Direct upload of $asset_name: $asset_bytes bytes (attempt $attempt/2)"
+              if timeout --kill-after=15s 4m curl --http1.1 --connect-timeout 20 --max-time 180 --fail-with-body --silent --show-error \
+                --request POST --header "Authorization: Bearer $GH_TOKEN" --header 'Accept: application/vnd.github+json' \
+                --header 'X-GitHub-Api-Version: 2022-11-28' --header 'Content-Type: application/octet-stream' --header 'Expect:' \
+                --data-binary "@$asset" --output upload-result.json \
+                --write-out '\nHTTP %{http_code}; sent %{size_upload} bytes; speed %{speed_upload} B/s; elapsed %{time_total}s\n' \
+                "https://uploads.github.com/repos/$GITHUB_REPOSITORY/releases/$release_id/assets?name=$asset_name"; then
+                if python3 - "$asset_sha" "$asset_bytes" "$asset_name" <<'PY'
+          import json,sys
+          asset=json.load(open('upload-result.json'))
+          assert asset['name']==sys.argv[3] and asset['size']==int(sys.argv[2]) and asset['digest']=='sha256:'+sys.argv[1],asset
+          PY
+                then return 0; fi
+              fi
             done
-            echo "::error::Upload failed: $asset"
+            echo "::error::Upload failed: $asset_name"
             return 1
           }
           upload client-runtime-v1 runtime-release/client-runtime-arm64.tar.gz
