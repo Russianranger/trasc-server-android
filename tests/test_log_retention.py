@@ -3,6 +3,7 @@ from pathlib import Path
 import sys
 import tempfile
 import unittest
+from unittest.mock import patch
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1] / 'backend'))
 import log_retention as logs
@@ -49,6 +50,21 @@ class RetentionTests(unittest.TestCase):
                 self.assertEqual(logs.count(root/'logs'), 5)
             setting.write_text('3')
             self.assertEqual(logs.count(root/'server/logs'), 3)
+
+    def test_native_cleanup_during_rotation_does_not_fail_launch(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            path = Path(tmp)/'client.log'
+            path.write_text('current')
+            older = logs.history(path, 3)
+            older.write_text('excess history')
+            replace = os.replace
+            def concurrent(source, target):
+                if source == older:
+                    source.unlink()
+                return replace(source, target)
+            with patch.object(logs.os, 'replace', side_effect=concurrent):
+                logs.rotate(path)
+            self.assertEqual(logs.history(path, 1).read_text(), 'current')
 
 
 if __name__ == '__main__': unittest.main()

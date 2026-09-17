@@ -34,10 +34,15 @@ def shift(path):
             raise ValueError('Log history cannot contain a symlink')
         if not old.is_file():
             continue
-        if index >= keep:
-            old.unlink()
-        else:
-            os.replace(old, history(path, index + 1))
+        try:
+            if index >= keep:
+                old.unlink()
+            else:
+                os.replace(old, history(path, index + 1))
+        except FileNotFoundError:
+            # Native cleanup may have removed excess history after the user
+            # lowered the limit. A missing old archive must not fail a launch.
+            continue
     return history(path, 1)
 
 
