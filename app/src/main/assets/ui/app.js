@@ -63,8 +63,18 @@ action('file-go',browse);action('file-up',async()=>{$('file-path').value=$('file
 action('file-upload',async()=>{const f=await api('pick',{kind:'file'});$('selected-file').value=f.path;$('file-path').value='incoming';await browse();notice('File imported. Set its destination, then Copy or Move.');});
 for(const op of ['copy','move'])action('file-'+op,async()=>{await job('edit_file',{action:op,path:$('selected-file').value,destination:$('destination-file').value.trim()});await browse();});
 action('file-export',()=>api('export',{path:$('selected-file').value}));
-async function loadLogRetention(){const r=await api('log_retention');$('log-retention').value=String(r.count);}
-action('save-log-retention',async()=>{const r=await api('log_retention',{count:Number($('log-retention').value)});$('log-retention-status').textContent=r.message+' Freed '+bytes(r.removed_bytes)+'.';await logs();});
+let logRetentionRead=0,logRetentionWrite=Promise.resolve();
+async function loadLogRetention(){
+ const request=++logRetentionRead,select=$('log-retention'),save=$('save-log-retention');select.disabled=save.disabled=true;
+ try{await logRetentionWrite;const r=await api('log_retention');if(request===logRetentionRead)select.value=String(r.count);}
+ finally{if(request===logRetentionRead)select.disabled=save.disabled=false;}
+}
+action('save-log-retention',async()=>{
+ const select=$('log-retention');if(select.disabled)return;const request=++logRetentionRead;select.disabled=true;
+ const write=api('log_retention',{count:Number(select.value)});logRetentionWrite=write.catch(()=>{});
+ try{const r=await write;$('log-retention-status').textContent=r.message+' Freed '+bytes(r.removed_bytes)+'.';await logs();}
+ finally{if(request===logRetentionRead)select.disabled=false;}
+});
 async function logs(){const name=$('log-name').value;const r=await api('logs',{name});const view=$('log-output');view.textContent=r.text;if(r.names){$('log-name').replaceChildren();for(const entry of [...new Set([name,...r.names])].filter(Boolean)){const option=document.createElement('option');option.value=option.textContent=entry;$('log-name').append(option);}$('log-name').value=name;}if($('follow-log').checked)view.scrollTop=view.scrollHeight;}
 action('refresh-log',logs);$('log-name').addEventListener('change',()=>logs().catch(e=>notice(e.message,true)));
 action('export-runtime-log',()=>api('export',{path:'logs/runtime.log'}));
