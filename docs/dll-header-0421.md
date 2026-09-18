@@ -1,5 +1,7 @@
 # 0.4.21: deploy the display-loading header before DLL compilation
 
+**Device confirmation:** the subsequent `logs-7280042745619990780.zip` contains a successful Thor build and deployment with the display header/adapter. See [the device result](loading-0421-device.md). The retry instructions and pending-device statements below describe release-time status; the compile failure is now resolved.
+
 ## Failure and cause
 
 The Thor screenshot reports `[Errno 2] No such file or directory: '/opt/trasc/eq_display_loading.h'` when compiling the DLL with 0.4.20. The supplied `logs-1377593214237903447.zip` retains the previous successful 0.4.19 DLL build/deployment; it does not contain a successful display-adapter build. The failed attempt does not replace the installed or staged DLL.

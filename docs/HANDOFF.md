@@ -1,3 +1,15 @@
+# Device-confirmed: 0.4.21 DLL build repaired; particles depend on camera state (2026-09-18)
+
+Read [loading-0421-device.md](loading-0421-device.md) first. New bundle `logs-7280042745619990780.zip` confirms successful on-device DLL compilation/deployment, SHA256 `1be0374b5c8d323057ba6c665203309645f8a0d71c27780158e3677da53ef96e`, with all three adapters including display V1. The missing-header failure is resolved. No further update/compile/reimport is needed for the next test.
+
+With Faster spell loading enabled throughout, the model-pause off/on pair records server-selection to character UI **32s → 29s**; a later enabled diagnostic session takes 30s. Global scope is 12.214s → 10.189s, but the direct wait saving is only **94.523ms** across 89 calls. Do not attribute the entire three seconds to the wait patch or present single samples as averages. UI/XML and global model work remain the larger targets; all spell counters/hashes remain consistent. Published APK stays 0.4.21; this is documentation only with [skip ci].
+
+User reports Minor Healing particles absent for three first-person casts, visible in third person, then working in first person; the initial failure repeats after relogging. Camera-dependent setup/visibility is a hypothesis, not a proven cause. The latest session has no texture-load error. Earlier `zapmuze.dds` failures remain, but that file is present and the previously inspected Minor Healing definition references three other textures. The off-mode run never enters the world, so it cannot establish a particles-off/on comparison.
+
+**Next:** disable Sound diagnostics (61.6MB cumulative trace in this run), keep working settings fixed, and after a fresh login compare first-person casting before/after a brief third-person view **without casting there**. Only if still broken, cast once in third person and retest first person. Ask which step restores particles. This separates displaying the character from creating the effect; do not force camera changes or replace assets speculatively. Keep camp parked and preserve the working controller/reconnect fixes. No subagents used.
+
+---
+
 # Released: 0.4.21 repairs omitted runtime header deployment (2026-09-18)
 
 Read [dll-header-0421.md](dll-header-0421.md) before the historical 0.4.20 release note. The user could not compile the new DLL: `/opt/trasc/eq_display_loading.h` was missing. The APK included the header, but RuntimeManager's explicit backend-copy list omitted it. ClientRuntime mounts that copied directory for the compiler. Added the header to that list; restarting the existing runtime after updating copies it automatically. No adapter or game behavior changes.
