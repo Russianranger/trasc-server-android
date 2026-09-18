@@ -1,3 +1,13 @@
+# 0.4.21: repair omitted runtime header deployment (2026-09-18)
+
+Read [dll-header-0421.md](dll-header-0421.md) before the historical 0.4.20 release note. The user could not compile the new DLL: `/opt/trasc/eq_display_loading.h` was missing. The APK included the header, but RuntimeManager's explicit backend-copy list omitted it. ClientRuntime mounts that copied directory for the compiler. Added the header to that list; restarting the existing runtime after updating copies it automatically. No adapter or game behavior changes.
+
+The new Android deployment-contract regression fails on 0.4.20 with precisely this missing header and passes with the fix; all 136 Python tests pass locally. Version 0.4.21/code38. Existing seven release gates and signing are unchanged; publication is pending in this initial note. No subagents used.
+
+Next: verify the main release workflow and published APK identity, then have the user update in place, restart the server runtime with the game server stopped, compile and deploy a newly successful DLL using the existing SDK/source. Keep Faster spell loading enabled and resume the model-wait off/on comparison, with a separate particle test. No runtime/SDK/source reinstall or Mac tools. The failed attempt preserved the earlier DLL. Physical Thor compilation and the model/particle tests remain unconfirmed.
+
+---
+
 # Released: 0.4.20 loading-pause experiment and particle diagnostics (2026-09-18)
 
 Read [loading-0420.md](loading-0420.md). User authorized the next optimization and reports first-person spell particles begin working after switching to third person and back. Added independent, default-off **Reduce model-loading pauses (experimental)**, scoped to 18 verified Sleep(1) sites in global model loading; it retains scheduler yields and all model/service calls. New UI/XML/model/wait timings will identify the remaining larger costs. Camera V2 and spell loader V2 headers/behavior are unchanged. Keep the device-confirmed Faster spell loading enabled. No Thor speed claim yet; the new wait optimization may provide only a modest gain.

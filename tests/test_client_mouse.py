@@ -1,5 +1,6 @@
 import hashlib
 from pathlib import Path
+import re
 import sys
 import tempfile
 import unittest
@@ -10,6 +11,25 @@ import client_mouse
 
 
 class CameraMouseTests(unittest.TestCase):
+    def test_android_runtime_deploys_all_dll_adapter_headers(self):
+        # The hosted DLL build sees backend/ directly; Android sees only assets
+        # copied by RuntimeManager into the directory mounted at /opt/trasc.
+        # Check that boundary, which APK asset-presence checks cannot cover.
+        repo = Path(__file__).resolve().parents[1]
+        manager = (repo / 'app/src/main/java/io/github/russianranger/trasc/RuntimeManager.java').read_text()
+        deployment = re.search(
+            r'for\(String name:new String\[\]\{([^}]+)\}\)\s*'
+            r'try\(InputStream in=context.getAssets\(\).open\(name\)\)\s*'
+            r'\{ copy\(in,new File\(backend,name\)\); \}', manager)
+        self.assertIsNotNone(deployment, 'Review the Android backend deployment contract')
+        deployed = set(re.findall(r'"([^"]+)"', deployment.group(1)))
+        self.assertIn('client_mouse.py', deployed)
+        self.assertIn('client_dll.py', deployed)
+        missing = set(client_mouse.HEADERS) - deployed
+        self.assertFalse(missing, 'DLL adapter headers missing from /opt/trasc: ' + ', '.join(sorted(missing)))
+        for name in deployed:
+            self.assertTrue((repo / 'backend' / name).is_file(), 'Missing packaged backend asset: ' + name)
+
     def test_launch_requires_opt_in_matching_executable_and_new_native_dll(self):
         with tempfile.TemporaryDirectory() as temporary:
             root = Path(temporary)

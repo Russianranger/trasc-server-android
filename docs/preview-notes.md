@@ -1,3 +1,12 @@
+# 0.4.21 — Fix on-device DLL compilation
+
+- Fixes the missing `/opt/trasc/eq_display_loading.h` error by deploying the bundled header when the server runtime starts.
+- Stop client/runtime, update the APK in place, start the runtime with the game server stopped, then **Compile dinput8.dll → Deploy staged DLL** after a successful build.
+- Keep your existing SDK, source, client and runtimes. No downloads or reimports are needed. Failed builds retain the previous DLL.
+- Resume the model-loading off/on comparison and separate particle test after deployment. This correction does not claim a particle fix or a measured loading gain. [Retry instructions](https://github.com/Russianranger/trasc-server-android/blob/main/docs/dll-header-0421.md).
+
+---
+
 # 0.4.20 — Model-loading pause experiment
 
 - Adds **Reduce model-loading pauses (experimental)**, default off, to test shorter waits between global model loads. Keep Faster spell loading at its working setting. Actual Thor improvement is not yet measured.
