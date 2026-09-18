@@ -12,7 +12,7 @@ Gradle packages every `backend/*.py` and `backend/*.h` asset, so `eq_display_loa
 
 The new `test_android_runtime_deploys_all_dll_adapter_headers` checks the Android runtime's asset-copy list against the adapter headers required by the actual DLL preparation code, and checks that each deployed backend asset exists. This covers the APK-to-runtime boundary that hosted builds using `backend/` directly missed.
 
-Before the fix, the regression test fails with exactly `eq_display_loading.h` missing; after the fix, all 136 Python tests pass. APK compilation, preserved signing and the existing seven release jobs must still succeed before using the new preview. Publication and device retry are not claimed by this initial implementation note.
+Before the fix, the regression test fails with exactly `eq_display_loading.h` missing; after the fix, all 136 Python tests pass. Native/JVM checks also pass locally. [Release run 35372949456](https://github.com/Russianranger/trasc-server-android/actions/runs/35372949456) completed successfully on implementation `9700df77e1924b841c7f7e61740166123ad32609`: all seven jobs passed, including APK/lint/signing, Microsoft DLL, database and the full ARM64 Software/DXVK/VirGL/direct/PRoot/session checks. Physical Thor compilation still needs the retry below.
 
 ## Thor retry
 
@@ -23,3 +23,14 @@ Before the fix, the regression test fails with exactly `eq_display_loading.h` mi
 5. Export Logs after the comparison, or immediately if compilation still fails.
 
 No source pull, SDK reimport, runtime download, server rebuild, client reimport or Mac tools are needed. Particle cause and the model-wait option's actual Thor benefit remain open; camp remains parked.
+
+## Published artifact verification
+
+The public preview tag and `preview-build.json` identify implementation `9700df77e1924b841c7f7e61740166123ad32609`, version 0.4.21/code38. The downloaded Actions candidate APK matches the public release asset size/SHA256 and build manifest. The APK manifest confirms the version, code and existing application ID. All 25 bundled Python/header assets match the source; `classes.dex` contains the corrected `eq_display_loading.h` deployment string. CI verified the preserved signing certificate; the candidate certificate record and release manifest agree with the repository certificate.
+
+- APK: 10,531,871 bytes; SHA256 `0871b26ec39cf4d49bd8d761092ab46cea17b1f0aeb42b03a37dbe5157a04a2c`.
+- Candidate artifact `10559601455`; ZIP SHA256 `6d60ee9ee5dc68413693f7516759587734313df2be9ea0ae0a01a486e6e815ec`.
+- Native source archive: 114,558,423 bytes; SHA256 `f11522ca2fd62461762c62951e5a2eefb3c1bef722e7c3fc6a64459ebaaa6e3b`.
+- Signing certificate: `ff9c09cdc3e2404d1d7f72d61ce2f8651464f5e03dff340f70bd4df28c70e869`.
+
+Downloaded candidate, manifest and verification script/report are under ignored `runtime-work/0421`. This final evidence update is documentation only with `[skip ci]`. Device compile success, model-loading gain and particle behavior remain for the Thor retry; no gameplay fix is claimed.
