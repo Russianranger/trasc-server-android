@@ -1,5 +1,7 @@
 # 0.4.21 Thor result: DLL build repaired, faster sample, camera-dependent particles
 
+**Follow-up completed:** the user confirms a third-person view **without casting** restores subsequent first-person Minor Healing particles. See [the view-only result and source review](particles-0421-view.md). The device test below is historical and should not be requested again.
+
 Input: `logs-7280042745619990780.zip`, exported September 18, 2026 at 18:13:39 UTC, and the user's accompanying Minor Healing observations. This review changes documentation only. Keep the published 0.4.21 APK and current DLL; another compile, deployment or runtime install is unnecessary for the next test.
 
 ## DLL compilation is confirmed on the device

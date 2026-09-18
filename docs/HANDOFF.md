@@ -1,3 +1,11 @@
+# Particle follow-up: a view-only switch restores first-person effects (2026-09-18)
+
+Read [particles-0421-view.md](particles-0421-view.md) first. The user completed the requested test: one first-person Minor Healing cast had no particles; a few seconds in third person **without casting**, followed by a first-person cast, produced particles. A third-person spell cast is not required. The view-only recovery sequence works; the exact state change remains unproven, and a matched elapsed-time control was not performed. Do not request the same cast/view comparison or another audio trace.
+
+Bounded review of the CI-pinned add-on finds camera-switch/actor declarations and conditional forwarding stubs, not verified engine implementations or addresses for those paths. The current launcher camera adapter only reads state/recenters the cursor. Next development work is to recover the previously supplied exact executable, verify its view-switch/player-actor path, and capture bounded state transitions before choosing a patch. Full evidence, source links and acceptance criteria are in the note. Do not blindly call actor creation or silently force camera changes. Existing 0.4.21 and deployed DLL remain current; no new APK or particle fix is claimed. Documentation-only [skip ci], no subagents.
+
+---
+
 # Device-confirmed: 0.4.21 DLL build repaired; particles depend on camera state (2026-09-18)
 
 Read [loading-0421-device.md](loading-0421-device.md) first. New bundle `logs-7280042745619990780.zip` confirms successful on-device DLL compilation/deployment, SHA256 `1be0374b5c8d323057ba6c665203309645f8a0d71c27780158e3677da53ef96e`, with all three adapters including display V1. The missing-header failure is resolved. No further update/compile/reimport is needed for the next test.
