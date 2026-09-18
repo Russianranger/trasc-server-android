@@ -48,6 +48,7 @@ __declspec(dllexport) int TrascHeldKey(HWND window,int scan) {
 }
 
 static IDirectInputDevice8A *relative_mouse;
+void TrascCameraRead(void *, HRESULT, void *);
 __declspec(dllexport) int TrascMouseDelta(HWND window,LONG *dx,LONG *buffered) {
     if(!relative_mouse){
         if(!held_input)return -1;
@@ -63,7 +64,9 @@ __declspec(dllexport) int TrascMouseDelta(HWND window,LONG *dx,LONG *buffered) {
         if(FAILED(IDirectInputDevice8_SetCooperativeLevel(relative_mouse,window,DISCL_FOREGROUND|DISCL_NONEXCLUSIVE)))return -4;
     }
     DIMOUSESTATE2 state={0};IDirectInputDevice8_Acquire(relative_mouse);
-    if(FAILED(IDirectInputDevice8_GetDeviceState(relative_mouse,sizeof(state),&state)))return -5;
+    HRESULT polled=IDirectInputDevice8_GetDeviceState(relative_mouse,sizeof(state),&state);
+    if(FAILED(polled))return -5;
+    TrascCameraRead(relative_mouse,polled,&state);
     *dx=state.lX;*buffered=0;
     DIDEVICEOBJECTDATA events[512];DWORD count=512;
     HRESULT result=IDirectInputDevice8_GetDeviceData(relative_mouse,sizeof(events[0]),events,&count,0);

@@ -1,0 +1,27 @@
+# Camera follow-up and optional spell parsing, 0.4.18
+
+The September 18 bundle `logs-7057105716911952164.zip` proves that the user compiled and deployed the 0.4.17 adapter: DLL SHA256 `f101f0ec7b45738dcef68b6c4a8d4a2e1e91ae4c26da01c0dd11d2eda0bf8659`, V1 marker, matching header checksum, native DLL load, and `camera_mouse=enabled`. This was not a missed deployment. Gameplay reached East Cabilis, so startup pointing was no longer the reported blocker.
+
+## Mouse failure
+
+V1 calls `GetProperty(DIPROP_AXISMODE)` before recentering. [Wine 10's device implementation](https://github.com/wine-mirror/wine/blob/wine-10.0/dlls/dinput/device.c) validates this property but does not implement its getter; it returns `DIERR_UNSUPPORTED`. Consequently the V1 adapter exits without a warp. The earlier live fixture called `recenter` directly and did not exercise that gate. Its passing result was insufficient.
+
+V2 removes that unsupported query. It accepts only the exact verified ROF2 `DIMOUSESTATE2` output buffer (RVA `0xa67884`, size 20), a real mouse device, in-world held/toggled look, hidden cursor, and the game's foreground window. Static inspection confirms this client sets `DIDF_RELAXIS` at RVA `0x60056c` and reads this buffer at RVA `0x1f9e8e`. The adapter leaves input values and device settings unchanged. Old V1 DLLs now report that rebuilding is required. Wine's global force mode remains disabled.
+
+`client-camera.log` records poll/look/warp totals and the latest gating reason every five seconds, bounded to 256 KiB. The launcher now says "requested" rather than implying observed camera activity. The full production `processRead` path runs in the live Wine fixture; only game state/buffer addresses are synthetic. Native Windows state tests cover menu, wrong buffer/device and unsuccessful reads. Actual EQ/Thor rotation still needs device acceptance.
+
+## Loading evidence and experiment
+
+Latest first load: server selection 10:59:41, authentication granted 10:59:45, last file-check message 10:59:47, race/display initialization 11:00:30, character UI 11:00:55. Total 74 seconds, including a 43-second gap before display initialization and another 25 seconds for display/models. The game main thread uses 97–100% of one core during the gap, on CPU 7; capture is mostly idle. Normal logging is already selected. The subsequent camp return to character select takes about five seconds after authentication and retains assets; it is not a comparable fresh server-select load.
+
+The exact executable's spell-loading virtual method is RVA `0x673f0`, invoked through vtable slot RVA `0x5c6144`. It calls the text loader before race/display initialization. A lightweight wrapper measures this method with the original argument/return ABI and writes `client-loading.log`. This will establish how much of the gap really belongs to spells; static proximity alone is not a measurement.
+
+Client → Graphics, audio & launch options adds **Faster spell loading (experimental)**, off by default. On the supported executable and new source DLL, this redirects 121 existing numeric-reader CALLs inside the spell constructor to a small ASCII integer parser. It avoids temporary field copies and the legacy CRT conversion for ordinary integer fields. Empty fields and integers with at most nine digits are handled directly; whitespace, unusual separators, long fields, overflow-sized values, floating-point text, and malformed values fall back to the original reader with its input pointer untouched. Files, spell IDs, models, checksums and server rules are not changed. There is no cache to become stale after client-data synchronization.
+
+Each CALL opcode/target and the loader vtable entry must match before installation. Only this supplied executable (full SHA256 `4a456734af62b465660610794780e48ac3b0161f7b96e13aee86267c45ea49a3`) is enabled by the launcher, with additional in-process PE/layout checks. The alternative remains opt-in and lasts only for that client process. Turning it off and restarting restores the original numeric reader; lightweight spell-load timing remains. No binary executable is distributed or edited on disk.
+
+The helper's compiler optimization is local to its functions; the original add-on's Microsoft v142 `/Od` and packing/runtime ABI stay intact. The [MSVC optimize pragma](https://learn.microsoft.com/en-us/cpp/preprocessor/optimize?view=msvc-170) restores command-line options afterwards. Differential fixtures compare return values and cursor advancement over edge cases plus 200,000 generated fields. An executable x86 fixture verifies redirected calls, fallback, rejection of changed layouts and the loader calling convention. Microbenchmarks are evidence of parser cost only, not an EQ loading-speed claim.
+
+Both new logs use existing rotation/retention. No runtime reinstall, Mac tools, source reimport, server rebuild, database edits or camp changes are needed. Install the APK, compile and deploy the DLL once using the existing on-device SDK, then relaunch with recentering enabled. Compare two fresh client launches with faster spell loading off/on, reaching the same character screen; export logs afterwards. Test full camera rotations, return to inventory pointing, character-select reconnect and normal spells before keeping the experimental parser enabled.
+
+Validation/release details will be recorded after all release gates complete. No physical-device result is claimed yet.

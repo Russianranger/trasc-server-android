@@ -3,6 +3,12 @@
 #include <assert.h>
 #include <stdio.h>
 
+struct Mouse {
+    DWORD type = DI8DEVTYPE_MOUSE;
+    HRESULT GetCapabilities(DIDEVCAPS *caps) { caps->dwDevType = type; return S_OK; }
+    // Deliberately no GetProperty. Wine 10 cannot query DIPROP_AXISMODE.
+};
+
 int main() {
     BYTE *image = static_cast<BYTE *>(VirtualAlloc(NULL, 0x12c3000, MEM_COMMIT | MEM_RESERVE, PAGE_READWRITE));
     assert(image);
@@ -25,7 +31,16 @@ int main() {
         assert(trasc_camera::looking(image) == (state == 5));
     }
     *reinterpret_cast<DWORD *>(game + 0x5c8) = 5;
+    Mouse mouse;
+    void *buffer = image + 0xa67884;
+    assert(!strcmp(trasc_camera::processRead(&mouse, DIERR_INPUTLOST, 20, buffer, image), "read_failed"));
+    assert(!strcmp(trasc_camera::processRead(&mouse, S_OK, 20, game, image), "other_buffer"));
+    mouse.type = DI8DEVTYPE_KEYBOARD;
+    assert(!strcmp(trasc_camera::processRead(&mouse, S_OK, 20, buffer, image), "not_mouse"));
+    mouse.type = DI8DEVTYPE_MOUSE;
+    assert(!strcmp(trasc_camera::processRead(&mouse, S_OK, 20, buffer, image), "cursor_or_focus"));
     image[0x9df702] = 0;
+    assert(!strcmp(trasc_camera::processRead(&mouse, S_OK, 20, buffer, image), "menu"));
     assert(!trasc_camera::looking(image)); // Inventory/menu pointer.
     alternate[8] = 1; assert(trasc_camera::looking(image)); // Held look.
     alternate[8] = 0; assert(!trasc_camera::looking(image)); // Release.

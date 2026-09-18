@@ -186,6 +186,7 @@ def validate_request(request):
     spell_test = client_spells.verify_installed_test(CLIENT, request.get('spell_test', {}))
     if request.get('npc_rendering', 'compatibility') not in ('standard', 'compatibility', 'compatibility_042', 'direct_043'): raise ValueError('Invalid NPC rendering option')
     if not isinstance(request.get('mouse_warp', False), bool): raise ValueError('Invalid mouse recentering option')
+    if not isinstance(request.get('fast_spell_parse', False), bool): raise ValueError('Invalid spell loading option')
     if not isinstance(request.get('dxvk_hud', True), bool): raise ValueError('Invalid DXVK HUD option')
     if not isinstance(request.get('audio', False), bool): raise ValueError('Invalid audio option')
     if not isinstance(request.get('sound_diagnostics', False), bool): raise ValueError('Invalid sound diagnostic option')
@@ -375,6 +376,8 @@ class Supervisor:
         self.status['mesa_glthread_requested'] = self.env['mesa_glthread'] == 'true'
         self.env['TRASC_CLIENT_LAUNCH'] = self.launch_token
         self.env['TRASC_EQ_CAMERA_MOUSE_V1'] = '0'
+        self.env['TRASC_EQ_CAMERA_MOUSE_V2'] = '0'
+        self.env['TRASC_EQ_LOAD_V1'] = 'off'
         if request.get('renderer','software') == 'virgl':
             # swrast's virpipe transport forwards rendering to the native GLES
             # server. LIBGL_ALWAYS_SOFTWARE selects that headless DRI loader;
@@ -516,6 +519,12 @@ class Supervisor:
         self.update(mouse_warp=value, camera_mouse=mode)
         print('Camera-only mouse recentering: ' + mode, flush=True)
 
+    def configure_loading(self):
+        import client_mouse
+        mode = client_mouse.loading_mode(self.request, CLIENT)
+        self.env[client_mouse.LOADING_MARKER] = mode if mode in ('fast', 'profile') else 'off'
+        self.update(spell_loading=mode)
+
     def check_prefix(self):
         report = prefix_diagnostics()
         (LOGS / 'client-prefix.json').write_text(json.dumps(report, indent=2))
@@ -587,7 +596,7 @@ class Supervisor:
         self.update(runtime_acceleration_observed=observed)
         if self.request.get('runtime_acceleration') == 'seccomp' and not observed:
             raise RuntimeError('Runtime acceleration was not confirmed. Select Compatibility runtime mode and export Logs.')
-        for name in ('client-wine.log', 'client-prefix.log', 'client-display.log', 'client-graphics.log', 'client-threads.log', 'client-vulkan.log', 'client-frame-bridge.log', 'eqgame_d3d9.log'):
+        for name in ('client-wine.log', 'client-prefix.log', 'client-display.log', 'client-graphics.log', 'client-threads.log', 'client-vulkan.log', 'client-frame-bridge.log', 'client-camera.log', 'client-loading.log', 'eqgame_d3d9.log'):
             archive_log(LOGS / name)
         sound_report = LOGS / 'client-wine.sound.json'
         if sound_report.is_file(): sound_report.replace(LOGS / 'client-wine.sound.previous.json')
@@ -618,6 +627,7 @@ class Supervisor:
             self.update(wined3d_patch=expected['patch'], wined3d_sha256=actual)
         self.prepare_prefix()
         self.configure_mouse()
+        self.configure_loading()
         if self.request.get('renderer') == 'turnip':
             self.update(dxvk_d3d9_sha256=client_vulkan.install_d3d9(Path(__file__).parent, PREFIX, CLIENT))
         devices = PREFIX / 'dosdevices'; devices.mkdir(exist_ok=True)

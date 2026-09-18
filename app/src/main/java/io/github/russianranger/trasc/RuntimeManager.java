@@ -50,7 +50,7 @@ public final class RuntimeManager {
         File proot=new File(nativeDir,"libproot.so"), loader=new File(nativeDir,"libproot-loader.so");
         if (!proot.canExecute() || !loader.exists()) throw new IOException("This APK is missing its ARM64 runtime launcher");
         File backend=new File(home,"backend"); backend.mkdirs();
-        for(String name:new String[]{"engine.py","log_retention.py","rule_catalog.py","managed_content.py","client_display.py","client_settings.py","client_spells.py","client_addons.py","client_dll.py","client_mouse.py","eq_camera_mouse.h","player_data.py","player_tables.py","client_compile_runner.py"})
+        for(String name:new String[]{"engine.py","log_retention.py","rule_catalog.py","managed_content.py","client_display.py","client_settings.py","client_spells.py","client_addons.py","client_dll.py","client_mouse.py","eq_camera_mouse.h","eq_client_loading.h","eq_fast_decimal.h","player_data.py","player_tables.py","client_compile_runner.py"})
             try(InputStream in=context.getAssets().open(name)) { copy(in,new File(backend,name)); }
         byte[] secret=new byte[32]; new SecureRandom().nextBytes(secret); token=hex(secret);
         write(new File(work,"run/api-token"),token);

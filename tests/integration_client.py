@@ -273,6 +273,10 @@ def main():
         # A negative control must reproduce the old native-only bug. Each check
         # is a separate Windows process while the private X display is alive.
         production_env=client_runner.Supervisor(request).env
+        if Path('/client/decimal.exe').exists():
+            with Path('/logs/spell-parser-benchmark.log').open('wb') as output:
+                parsed=subprocess.run(['/usr/local/bin/box64','/opt/wine/bin/wine',r'D:\decimal.exe'],cwd='/client',env=production_env,stdout=output,stderr=output,timeout=60)
+                assert parsed.returncode==0, 'Spell parser differential test failed'
         # CI-only teardown evidence for every small auxiliary Windows process.
         # The supervised game retains production logging and all exit checks.
         env=dict(production_env,BOX64_LOG='1',WINEDEBUG=production_env.get('WINEDEBUG','')+',trace+process,trace+thread,trace+module')

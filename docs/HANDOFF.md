@@ -1,3 +1,11 @@
+# In progress: 0.4.18 camera correction and loading experiment (2026-09-18)
+
+Read [loading-0418.md](loading-0418.md) first. Latest bundle logs-7057105716911952164 confirms V1 DLL deployment, normal startup/gameplay and failed camera recentering. Root cause: Wine 10 does not implement GetProperty(DIPROP_AXISMODE), so V1 always exits. V2 uses the verified game mouse buffer/relative format and now tests the full input handler in live Wine. Bounded client-camera.log records real activity.
+
+First server-to-character load is 74s: 43s before race/display init with the main thread saturated, then 25s display/models. Added precise spell-loader timing and an optional, default-off faster integer parser for this exact executable. Original reader handles every non-simple field; spell/client/server data unchanged. Requires APK update and one on-device DLL compile/deploy; existing SDK/runtime/source suffice. No Mac tools. Keep camp parked and preserve the user-confirmed source-DLL reconnect fix. All release gates must pass before marking released. No subagents used.
+
+---
+
 # Released: 0.4.17 camera-only recentering (2026-09-18)
 
 Read [camera-mouse-0417.md](camera-mouse-0417.md) first. Latest user confirms force recentering traps startup menus with the working compiled DLL. Uploaded exact eqgame.exe SHA256 `4a456734af62b465660610794780e48ac3b0161f7b96e13aee86267c45ea49a3` was inspected read-only. 0.4.17/code34 resets Wine force to default even for saved-on settings, and replaces it with an optional camera-only adapter compiled into dinput8. It requires the verified executable, in-world held/toggled look, hidden cursor and a game-owned foreground window. Imported source and game code stay intact; only two forwarding source files are overlaid in the build directory.

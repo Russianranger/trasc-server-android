@@ -42,6 +42,16 @@ class ClientTests(unittest.TestCase):
         with self.assertRaisesRegex(ValueError,'mouse recentering'):
             client_runner.validate_request(dict(request,mouse_warp='force'))
 
+    def test_loading_experiment_is_independent_and_clears_inherited_mode(self):
+        for mode, expected in [('fast','fast'),('profile','profile'),('needs_dll','off'),('off','off')]:
+            supervisor=client_runner.Supervisor({'mode':'client','resolution':'800x600'})
+            with patch('client_mouse.loading_mode',return_value=mode),patch.object(supervisor,'update') as update:
+                supervisor.configure_loading()
+                self.assertEqual(supervisor.env['TRASC_EQ_LOAD_V1'],expected)
+                update.assert_called_once_with(spell_loading=mode)
+        with self.assertRaisesRegex(ValueError,'spell loading'):
+            client_runner.validate_request({'fast_spell_parse':'yes'})
+
     def test_runtime_preflight_uses_only_temporary_files_and_verifies_io(self):
         session=self.root/'runtime-preflight';session.mkdir()
         report=runtime_probe.probe(session)

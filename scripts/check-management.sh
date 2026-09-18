@@ -4,6 +4,8 @@ cc -std=c11 -Wall -Wextra -Werror tests/frame_protocol.c -o /tmp/trasc-frame-tes
 /tmp/trasc-frame-test
 cc -std=c11 -Wall -Wextra -Werror tests/frame_transfer.c -o /tmp/trasc-transfer-test
 /tmp/trasc-transfer-test
+g++ -std=c++14 -O2 -Wall -Wextra -Werror tests/fast_decimal.cpp -o /tmp/trasc-decimal-test
+/tmp/trasc-decimal-test
 classes=$(mktemp -d)
 trap 'rm -rf "$classes"' EXIT
 compiler=(javac)

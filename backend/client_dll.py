@@ -120,8 +120,9 @@ def build_dll(engine,args):
                 '/LTCG','/opt:noref','/opt:noicf',*('/libpath:'+winpath(p) for p in libraries),*(winpath(p) for p in objects),
                 'kernel32.lib','user32.lib','gdi32.lib','winspool.lib','comdlg32.lib','advapi32.lib','shell32.lib','ole32.lib','oleaut32.lib','uuid.lib','odbc32.lib','odbccp32.lib'],cwd=project.parent)
     validate_dll(output)
-    if client_mouse.MARKER.encode() not in output.read_bytes(): raise ValueError('Compiled DLL is missing the camera mouse adapter')
-    metadata={'sha256':digest(output),'bytes':output.stat().st_size,'project_sha256':digest(project),'compiler':'Microsoft v142 14.29, Hostx64/x86, static runtime','patches':[client_mouse.MARKER],'camera_mouse_header_sha256':digest(Path(__file__).with_name('eq_camera_mouse.h')),'built_at':time.time(),'file':str(output.relative_to(engine.work))}
+    if any(marker.encode() not in output.read_bytes() for marker in (client_mouse.MARKER, client_mouse.LOADING_MARKER)):
+        raise ValueError('Compiled DLL is missing a client adapter')
+    metadata={'sha256':digest(output),'bytes':output.stat().st_size,'project_sha256':digest(project),'compiler':'Microsoft v142 14.29, Hostx64/x86, static runtime','patches':[client_mouse.MARKER,client_mouse.LOADING_MARKER],'adapter_headers_sha256':{name:digest(Path(__file__).with_name(name)) for name in ('eq_camera_mouse.h','eq_client_loading.h','eq_fast_decimal.h')},'built_at':time.time(),'file':str(output.relative_to(engine.work))}
     atomic_json(build/'build.json',metadata)
     staged=engine.work/'builds/client-dll-staged';staged.mkdir(exist_ok=True)
     # A failed build never replaces the last successful staged DLL.
