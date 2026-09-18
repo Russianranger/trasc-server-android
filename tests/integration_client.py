@@ -96,14 +96,30 @@ def check_relative_input(display):
             wait_for(lambda:Path('/client/probe-relative.txt').exists(),'Relative movement stopped at the clipped screen edge',10)
             total=int(Path('/client/probe-relative.txt').read_text());assert total>=4096,total
             wait_for(lambda:Path('/client/probe-buffered.txt').exists(),'Buffered DirectInput movement stopped at screen edge',10)
+            def menu_moved():
+                try:
+                    x,y,cx,cy=map(int,Path('/client/probe-menu.txt').read_text().split())
+                    return abs(x-cx)>20
+                except (OSError,ValueError):return False
+            key(display,'n');time.sleep(.2)
+            control.sendall(struct.pack('>IiiI',1,-80,0,0))
+            wait_for(menu_moved,'Startup/menu pointer trapped before camera look',10)
+            look_before=int(Path('/client/probe-relative.txt').read_text())
             key(display,'u');time.sleep(.2)
             for _ in range(40):control.sendall(struct.pack('>IiiI',1,40,0,0));time.sleep(.02)
             def centered():
                 try:
                     x,y,cx,cy=map(int,Path('/client/probe-warp.txt').read_text().split());return (x,y)==(cx,cy)
                 except (OSError,ValueError):return False
-            wait_for(centered,'Wine recentering did not restore the client-area center',10)
-            Path('/logs/relative-input-verification.json').write_text(json.dumps({'directinput_dx':total,'buffered_dx':int(Path('/client/probe-buffered.txt').read_text()),'clip_width':1,'injected_dx':6400,'wine_recenter':True}))
+            wait_for(centered,'Camera recentering did not restore the client-area center',10)
+            look_delta=int(Path('/client/probe-relative.txt').read_text())-look_before
+            assert look_delta>=1000,('Recentering cancelled relative camera movement',look_delta)
+            Path('/client/probe-menu.txt').unlink(missing_ok=True)
+            key(display,'m');time.sleep(.2)
+            control.sendall(struct.pack('>IiiI',1,80,0,0))
+            wait_for(menu_moved,'Pointer remains trapped after leaving camera look',10)
+            time.sleep(.3);assert menu_moved(),'Menu pointer snapped back to center'
+            Path('/logs/relative-input-verification.json').write_text(json.dumps({'directinput_dx':total,'buffered_dx':int(Path('/client/probe-buffered.txt').read_text()),'clip_width':1,'injected_dx':6400,'camera_only_recenter':True,'camera_dx':look_delta,'menu_pointer_free':True}))
         finally:key(display,'e')
     print('PASS: polled Windows DirectInput accumulates over 4096 pixels while the cursor is clipped to one pixel')
 

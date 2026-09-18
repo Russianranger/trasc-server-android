@@ -8,7 +8,7 @@
 static volatile unsigned char legacy_image[20*1024*1024];
 static BOOL pause_render,alternate_color,relative_test;
 static LONG relative_total,buffered_total;
-static BOOL chat=TRUE,unclipped;
+static BOOL chat=TRUE,unclipped,camera_look;
 static char chat_text[128]="unsent draft";
 
 static void marker(const char *name,const char *value) {
@@ -30,7 +30,9 @@ static LRESULT CALLBACK window_proc(HWND window,UINT message,WPARAM key,LPARAM d
             else if(key>=32&&key<127&&n+1<sizeof(chat_text)){chat_text[n]=(char)key;chat_text[n+1]=0;}
         }
     }
-    if(message==WM_KEYDOWN&&key=='U'){ClipCursor(NULL);unclipped=TRUE;}
+    if(message==WM_KEYDOWN&&key=='U'){ClipCursor(NULL);unclipped=TRUE;camera_look=TRUE;while(ShowCursor(FALSE)>=0){}}
+    if(message==WM_KEYDOWN&&key=='N'){ClipCursor(NULL);unclipped=TRUE;camera_look=FALSE;while(ShowCursor(TRUE)<0){}}
+    if(message==WM_KEYDOWN&&key=='M'){camera_look=FALSE;while(ShowCursor(TRUE)<0){};}
     if(message==WM_KEYDOWN&&key=='T')marker("D:\\probe-key.txt","T");
     if(message==WM_LBUTTONDOWN)marker("D:\\probe-mouse.txt","left");
     if(message==WM_KEYDOWN&&key=='P'){pause_render=!pause_render;marker("D:\\probe-paused.txt",pause_render?"yes":"no");}
@@ -39,7 +41,7 @@ static LRESULT CALLBACK window_proc(HWND window,UINT message,WPARAM key,LPARAM d
         RECT area;GetWindowRect(window,&area);int x=(area.left+area.right)/2,y=(area.top+area.bottom)/2;
         SetCursorPos(x,y);RECT clip={x,y,x+1,y+1};ClipCursor(&clip);relative_total=buffered_total=0;relative_test=TRUE;unclipped=FALSE;
     }
-    if(message==WM_KEYDOWN&&key=='E'){relative_test=FALSE;ClipCursor(NULL);}
+    if(message==WM_KEYDOWN&&key=='E'){relative_test=FALSE;camera_look=FALSE;ClipCursor(NULL);while(ShowCursor(TRUE)<0){}}
     if(message==WM_DESTROY){PostQuitMessage(0);return 0;}
     return DefWindowProc(window,message,key,data);
 }
@@ -66,6 +68,7 @@ int WINAPI WinMain(HINSTANCE instance,HINSTANCE previous,LPSTR command,int show)
     LoadLibraryA("d3dx9_30.dll");LoadLibraryA("d3dx9_35.dll");
     int (*held_key)(HWND,int)=(void*)GetProcAddress(dll,"TrascHeldKey");
     int (*mouse_delta)(HWND,LONG*,LONG*)=(void*)GetProcAddress(dll,"TrascMouseDelta");
+    int (*camera_recenter)(HWND,int)=(void*)GetProcAddress(dll,"TrascCameraRecenter");
     BOOL saw_hold=FALSE;int previous_held=-99;
     WNDCLASSA cls={0};cls.lpfnWndProc=window_proc;cls.hInstance=instance;cls.lpszClassName="TrascProbe";
     RegisterClassA(&cls);
@@ -108,8 +111,8 @@ int WINAPI WinMain(HINSTANCE instance,HINSTANCE previous,LPSTR command,int show)
             LONG dx=0,buffered=0;int result=mouse_delta(window,&dx,&buffered);
             if(result==0){marker("D:\\probe-relative-ready.txt","ready");relative_total+=dx;buffered_total+=buffered;}
             if(buffered_total>=4096){char total[64];snprintf(total,sizeof(total),"%ld",buffered_total);marker("D:\\probe-buffered.txt",total);}
-            if(unclipped){POINT pos,center;RECT rect;GetCursorPos(&pos);GetClientRect(window,&rect);center.x=(rect.left+rect.right)/2;center.y=(rect.top+rect.bottom)/2;ClientToScreen(window,&center);
-                char value[128];snprintf(value,sizeof(value),"%ld %ld %ld %ld",pos.x,pos.y,center.x,center.y);marker("D:\\probe-warp.txt",value);}
+            if(unclipped){if(!camera_recenter)return 7;camera_recenter(window,camera_look);POINT pos,center;RECT rect;GetCursorPos(&pos);GetClientRect(window,&rect);center.x=(rect.left+rect.right)/2;center.y=(rect.top+rect.bottom)/2;ClientToScreen(window,&center);
+                char value[128];snprintf(value,sizeof(value),"%ld %ld %ld %ld",pos.x,pos.y,center.x,center.y);marker(camera_look?"D:\\probe-warp.txt":"D:\\probe-menu.txt",value);}
             if(relative_total>=4096){char total[64];snprintf(total,sizeof(total),"%ld",relative_total);marker("D:\\probe-relative.txt",total);}
         }
         Sleep(30);

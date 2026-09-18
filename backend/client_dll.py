@@ -10,6 +10,7 @@ import time
 import xml.etree.ElementTree as ET
 from client_addons import target_path, policy
 from managed_content import digest
+import client_mouse
 
 
 def compiler_status(engine,args=None):
@@ -95,9 +96,10 @@ def build_dll(engine,args):
     recipe=project_recipe(project)
     sdk=engine.work/'client/toolchain'; sdk_layout(sdk)
     build=engine.work/'builds'/('client-dll-'+time.strftime('%Y%m%d-%H%M%S')+'-'+secrets.token_hex(4));build.mkdir()
+    camera_sources=client_mouse.prepare_sources(project,build)
     def winpath(path):
         return str(path) if os.name == 'nt' else 'Z:'+str(path).replace('/', '\\')
-    includes=[sdk/'include'/n for n in ('msvc','ucrt','shared','um','winrt')]
+    includes=[project.parent]+[sdk/'include'/n for n in ('msvc','ucrt','shared','um','winrt')]
     for entry in recipe['includes']:
         path=(project.parent/entry).resolve()
         if not path.is_relative_to(root.resolve()): raise ValueError('Project include escapes client source')
@@ -108,6 +110,7 @@ def build_dll(engine,args):
     for i,name in enumerate(recipe['sources']):
         source=(project.parent/name).resolve()
         if not source.is_relative_to(root.resolve()) or not source.is_file(): raise ValueError('Invalid project source path')
+        source=camera_sources.get(name,source)
         obj=build/(str(i)+'.obj');objects.append(obj)
         engine.log('Client DLL: '+str(i+1)+'/'+str(len(recipe['sources']))+' '+name)
         engine.run(common+['/Fo'+winpath(obj),winpath(source)],cwd=project.parent,timeout=900)
@@ -117,7 +120,8 @@ def build_dll(engine,args):
                 '/LTCG','/opt:noref','/opt:noicf',*('/libpath:'+winpath(p) for p in libraries),*(winpath(p) for p in objects),
                 'kernel32.lib','user32.lib','gdi32.lib','winspool.lib','comdlg32.lib','advapi32.lib','shell32.lib','ole32.lib','oleaut32.lib','uuid.lib','odbc32.lib','odbccp32.lib'],cwd=project.parent)
     validate_dll(output)
-    metadata={'sha256':digest(output),'bytes':output.stat().st_size,'project_sha256':digest(project),'compiler':'Microsoft v142 14.29, Hostx64/x86, static runtime, original source','built_at':time.time(),'file':str(output.relative_to(engine.work))}
+    if client_mouse.MARKER.encode() not in output.read_bytes(): raise ValueError('Compiled DLL is missing the camera mouse adapter')
+    metadata={'sha256':digest(output),'bytes':output.stat().st_size,'project_sha256':digest(project),'compiler':'Microsoft v142 14.29, Hostx64/x86, static runtime','patches':[client_mouse.MARKER],'camera_mouse_header_sha256':digest(Path(__file__).with_name('eq_camera_mouse.h')),'built_at':time.time(),'file':str(output.relative_to(engine.work))}
     atomic_json(build/'build.json',metadata)
     staged=engine.work/'builds/client-dll-staged';staged.mkdir(exist_ok=True)
     # A failed build never replaces the last successful staged DLL.

@@ -30,14 +30,15 @@ class ClientTests(unittest.TestCase):
 
     def test_mouse_warp_is_reversible_and_scoped_to_game(self):
         request={'mode':'client','executable':'eqgame.exe','resolution':'800x600'}
-        for enabled,value in ((True,'force'),(False,'default')):
+        for enabled,value in ((True,'default'),(False,'default')):
             supervisor=client_runner.Supervisor(dict(request,mouse_warp=enabled))
-            with patch.object(supervisor,'run') as run,patch.object(supervisor,'update') as update:
+            with patch.object(supervisor,'run') as run,patch.object(supervisor,'update') as update,patch('client_mouse.launch_mode',return_value='off'):
                 supervisor.configure_mouse()
                 args=run.call_args.args[0]
                 self.assertEqual(args[4],r'HKCU\Software\Wine\AppDefaults\eqgame.exe\DirectInput')
                 self.assertEqual(args[-2],value)
-                update.assert_called_once_with(mouse_warp=value)
+                update.assert_called_once_with(mouse_warp=value,camera_mouse='off')
+                self.assertEqual(supervisor.env['TRASC_EQ_CAMERA_MOUSE_V1'],'0')
         with self.assertRaisesRegex(ValueError,'mouse recentering'):
             client_runner.validate_request(dict(request,mouse_warp='force'))
 

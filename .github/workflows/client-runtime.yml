@@ -49,7 +49,7 @@ jobs:
       - name: Compile our own Windows 32-bit test program and DLL
         run: |
           sudo apt-get update
-          sudo apt-get install -y gcc-mingw-w64-i686
+          sudo apt-get install -y gcc-mingw-w64-i686 g++-mingw-w64-i686
           mkdir -p runtime-work/client-test/client runtime-work/client-test/logs
           javac -d runtime-work/command-test app/src/main/java/io/github/russianranger/trasc/{GameCommand,DisplayInput}.java tests/java/io/github/russianranger/trasc/GameCommandHostTest.java
           java -cp runtime-work/command-test io.github.russianranger.trasc.GameCommandHostTest runtime-work/client-test/client/command-keys.txt
@@ -58,7 +58,9 @@ jobs:
           i686-w64-mingw32-gcc tests/client_textures.c -o runtime-work/client-test/client/textures.exe -mwindows -ld3d9
           i686-w64-mingw32-gcc tests/client_audio.c -o runtime-work/client-test/client/audio.exe -lwinmm -ldsound -ldxguid -lm
           i686-w64-mingw32-gcc tests/client_models.c -o runtime-work/client-test/client/models.exe -mwindows -ld3d9
-          i686-w64-mingw32-gcc tests/client_probe_dll.c -shared -o runtime-work/client-test/client/dinput8.dll -ldxguid
+          i686-w64-mingw32-gcc -c tests/client_probe_dll.c -o runtime-work/probe-dll.o
+          i686-w64-mingw32-g++ -std=c++14 -c tests/camera_mouse_probe.cpp -o runtime-work/camera-probe.o
+          i686-w64-mingw32-g++ -static-libgcc -static-libstdc++ runtime-work/probe-dll.o runtime-work/camera-probe.o -shared -o runtime-work/client-test/client/dinput8.dll -ldxguid
           python3 - <<'PYPE'
           import pathlib,struct
           p=pathlib.Path('runtime-work/client-test/client/eqgame.exe');data=bytearray(p.read_bytes())

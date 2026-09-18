@@ -1,3 +1,11 @@
+# 0.4.17 — Camera-only mouse recentering
+
+- Removes always-on recentering that trapped the startup pointer, including when the old option was saved on.
+- Optional camera-only handling activates in-world and leaves menu/inventory pointing free. Requires compiling and deploying dinput8.dll with this app and the verified ROF2 executable.
+- Keep the existing toolchain, source and runtimes. Update in place, then compile/deploy the DLL before enabling the option. See [setup and device checks](camera-mouse-0417.md). Actual Thor camera acceptance remains required.
+
+---
+
 # 0.4.16 — File search and complete folder browsing
 
 - Search every filename in the open folder, ignoring capitalization. Find `dinput8.dll` or any part of a name, then Select → Export file.

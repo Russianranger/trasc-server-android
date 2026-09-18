@@ -18,6 +18,15 @@ with tempfile.TemporaryDirectory() as temp:
     client_dll.import_sdk(engine,{'file':'sdk.zip'})
     shutil.copytree(source/'Release-NMS-Client',work/'sources/current/Release-NMS-Client')
     try:
+        # The same header is compiled by MSVC with production packing and tested
+        # against allocated state, including inaccessible pointers and menus.
+        compiler=work/'client/toolchain'; obj=work/'camera-state.obj'; test=work/'camera-state.exe'
+        engine.run([compiler/'bin/cl.exe','/nologo','/c','/MT','/Zp1','/DWINDOWS_IGNORE_PACKING_MISMATCH','/std:c++14',
+                    *('/I'+str(compiler/'include'/n) for n in ('msvc','ucrt','shared','um','winrt')),
+                    '/Fo'+str(obj),Path(__file__).with_name('camera_mouse_state.cpp').resolve()])
+        engine.run([compiler/'bin/link.exe','/nologo','/machine:x86','/subsystem:console','/out:'+str(test),str(obj),
+                    *('/libpath:'+str(compiler/'lib'/n) for n in ('msvc','ucrt','um')),'kernel32.lib','user32.lib'])
+        engine.run([test])
         result=client_dll.build_dll(engine,{})
         assert result['build']['bytes']>100000
         print('PASS: actual Triptych source compiled with the original Microsoft v142 toolset as an x86 PE32 DLL; installed client untouched')

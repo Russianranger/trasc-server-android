@@ -374,6 +374,7 @@ class Supervisor:
         self.env['mesa_glthread'] = 'true' if request.get('graphics_threading') == 'opengl_worker' else 'false'
         self.status['mesa_glthread_requested'] = self.env['mesa_glthread'] == 'true'
         self.env['TRASC_CLIENT_LAUNCH'] = self.launch_token
+        self.env['TRASC_EQ_CAMERA_MOUSE_V1'] = '0'
         if request.get('renderer','software') == 'virgl':
             # swrast's virpipe transport forwards rendering to the native GLES
             # server. LIBGL_ALWAYS_SOFTWARE selects that headless DRI loader;
@@ -502,12 +503,18 @@ class Supervisor:
         # Wine reads this per-process key when DirectInput creates the mouse.
         # Use its own warp bookkeeping, never an external X11 recenter which
         # could be interpreted by the game as reverse camera movement.
-        value = 'force' if self.request.get('mouse_warp', False) else 'default'
+        # Reset earlier app versions' force setting even when the saved checkbox
+        # remains enabled. Force warps during menus and makes startup unusable.
+        import client_mouse
+        value = 'default'
         key = 'HKCU\\Software\\Wine\\AppDefaults\\' + self.request['executable'] + '\\DirectInput'
         self.run(['/usr/local/bin/box64', '/opt/wine/bin/wine', 'reg', 'add', key,
                   '/v', 'MouseWarpOverride', '/t', 'REG_SZ', '/d', value, '/f'],
                  timeout=30, label='Mouse recentering setup')
-        self.update(mouse_warp=value)
+        mode = client_mouse.launch_mode(self.request, CLIENT)
+        self.env[client_mouse.MARKER] = '1' if mode == 'enabled' else '0'
+        self.update(mouse_warp=value, camera_mouse=mode)
+        print('Camera-only mouse recentering: ' + mode, flush=True)
 
     def check_prefix(self):
         report = prefix_diagnostics()

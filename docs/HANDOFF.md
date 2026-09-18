@@ -1,3 +1,9 @@
+# Camera-only recentering candidate 0.4.17 (2026-09-18)
+
+Read [camera-mouse-0417.md](camera-mouse-0417.md) first. Latest user confirms force recentering traps startup menus with the working compiled DLL. Uploaded exact eqgame.exe SHA256 4a456734af62b465660610794780e48ac3b0161f7b96e13aee86267c45ea49a3 was inspected read-only. 0.4.17/code34 replaces force with an opt-in camera-only adapter built into dinput8, guarded by exact executable identity, in-world held/toggled look, cursor visibility and foreground ownership. Saved true settings now safely reset Wine force to default. Requires recompiling/deploying the source DLL with the updated app; existing SDK/source/runtime remain usable. Local 131 Python and native/JVM checks pass; cloud release gates pending. Do not claim released or Thor acceptance yet. Preserve the user-confirmed reconnect fix, #tim, capture and signing. Loading profiling remains open; no performance speedup claimed. No subagents or tools on the work Mac.
+
+---
+
 # Reconnect resolved with compiled DLL; CPU-heavy loading and mouse look next (2026-09-18)
 
 Read [reconnect-resolved-loading-0416.md](reconnect-resolved-loading-0416.md) first. User confirms deploying the source-built DLL fixed reconnect. New bundle logs-4436019274023234972 confirms deployed SHA256 `556ead4699b1af797eb2c676ef40dacc92ade932526ebe551f36382de7424c28`, backup `backups/client-setup/20260918-004503-d062b1`, and three successful character-select initializations after server selections in one process. The previous binary came from the NMS/Project Triune patcher; its exclusive features were not usable locally. Its nms_crash.txt is zero bytes: do not request it again. The earlier unidentified-DLL/reconnect-blocker notes below are historical.
