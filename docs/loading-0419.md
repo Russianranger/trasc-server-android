@@ -1,5 +1,7 @@
 # 0.4.19: equivalent spell checksums and stage timings
 
+**Device result:** [The subsequent off/on comparison](loading-0419-device.md) confirms 43.296s → 2.107s spell loading and 73s → 31s from server selection to character-select UI in the recorded runs. The release-time notes below describe the implementation and original validation.
+
 The user authorized the next loading optimization after confirming that camera/controller input works. Preserve camera V2 unchanged. [The 0.4.18 device comparison](loading-0418-device.md) measures42.302s/41.405s inside spell loading with the integer optimization off/on. It does not yet identify the cost of individual substages.
 
 ## Concrete source finding
