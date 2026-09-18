@@ -1,3 +1,11 @@
+# Device-confirmed controller fix; 41s pre-screen spell-loader work remains (2026-09-18)
+
+Read [loading-0418-device.md](loading-0418-device.md) first. User confirms controller works; preserve camera V2 and the source-DLL reconnect fix. New bundle logs-3542532455672139460 contains off/on tests. Before-screen waits are58s/55s, visible-screen phases14s/12s, totals72s/67s; retained0.4.17 is59s/15s/74s. The recorded landmarks show no pre-screen regression, although they do not measure the physical button press. One run per mode is not a controlled speedup result.
+
+The actual spell-loader wrapper takes42,302ms off and41,405ms on. Fast parser processes8,960,166 fields with zero fallbacks; it works but saves only897ms in these samples. Main thread remains near100% of one CPU; MIT-SHM/idle skips work and seven five-second windows have zero new frames. Next isolate the main text/record pass, association load, file checksums and post-load mapping using exact call boundaries documented in the new note. Their individual costs are not yet measured; do not guess which consumes41s or claim the parser microbenchmark ratio for EQ. No product changes/new APK in this review; published0.4.18 remains16e989b. No rebuild/reimport/Mac tools needed. Camp remains parked. Documentation-only [skip ci], no subagents.
+
+---
+
 # Released: 0.4.18 camera correction and loading experiment (2026-09-18)
 
 Read [loading-0418.md](loading-0418.md) first. Latest bundle logs-7057105716911952164 confirms V1 DLL deployment, normal startup/gameplay and failed camera recentering. Root cause: Wine 10 does not implement GetProperty(DIPROP_AXISMODE), so V1 always exits. V2 uses the verified game mouse buffer/relative format and now tests the full input handler in live Wine. Bounded client-camera.log records real activity.
