@@ -68,7 +68,7 @@ static bool __fastcall fixtureLoad(void *self, void *, const char *a, const char
 static void jump(DWORD rva, const void *function) {
     fixtureImage[rva]=0xe9;writeCall(fixtureImage,rva,function);
 }
-static void stub(DWORD rva, unsigned args, bool cdecl) {
+static void stub(DWORD rva, unsigned args, bool callerCleansStack) {
     BYTE *p=entry(rva);
     for(unsigned i=0;i<args;++i) {
         const BYTE push[]={0xff,0x74,0x24,static_cast<BYTE>(args*4)};
@@ -79,8 +79,8 @@ static void stub(DWORD rva, unsigned args, bool cdecl) {
     *p=0xe8;
     DWORD displacement=target-static_cast<DWORD>(reinterpret_cast<ULONG_PTR>(p+5));
     memcpy(p+1,&displacement,4);p+=5;
-    if(cdecl && args) { *p++=0x83;*p++=0xc4;*p++=static_cast<BYTE>(args*4); }
-    if(!cdecl && args) { *p++=0xc2;*p++=static_cast<BYTE>(args*4);*p=0; }
+    if(callerCleansStack && args) { *p++=0x83;*p++=0xc4;*p++=static_cast<BYTE>(args*4); }
+    if(!callerCleansStack && args) { *p++=0xc2;*p++=static_cast<BYTE>(args*4);*p=0; }
     else *p=0xc3;
 }
 static void prepare() {
@@ -91,11 +91,11 @@ static void prepare() {
     }
     for(const StageCall &site:stageCalls) {
         fixtureImage[site.rva]=0xe8;*reinterpret_cast<DWORD *>(fixtureImage+site.rva+1)=site.target-site.rva-5;
-        unsigned args=0;bool cdecl=false;
+        unsigned args=0;bool callerCleansStack=false;
         if(site.rva==0x6740e) args=3;
         if(site.rva==0x1c1e9c) args=2;
-        if(site.rva==0x6741e || site.rva==0x6742a || site.rva==0x1c1dbe) { args=1;cdecl=true; }
-        stub(site.rva,args,cdecl);
+        if(site.rva==0x6741e || site.rva==0x6742a || site.rva==0x1c1dbe) { args=1;callerCleansStack=true; }
+        stub(site.rva,args,callerCleansStack);
     }
     stub(numberCalls[0],2,true);
     *reinterpret_cast<DWORD *>(fixtureImage+0x5c6144)=static_cast<DWORD>(reinterpret_cast<ULONG_PTR>(fixtureImage+0x673f0));
@@ -112,7 +112,8 @@ static void prepare() {
 }
 int main() {
     static_assert(sizeof(void *)==4,"This fixture exercises the real x86 ABI");
-    for(bool fast : {false,true}) {
+    const bool modes[] = {false, true};
+    for(bool fast : modes) {
         expectFast=fast;prepare();
         fixtureImage[stageCalls[1].rva]=0x90;
         assert(!patchLayout(fixtureImage,fast));
@@ -123,11 +124,11 @@ int main() {
         assert(!patchLayout(fixtureImage,fast));
         stub(numberCalls[0],2,true);
         for(const StageCall &site:stageCalls) {
-            unsigned args=0;bool cdecl=false;
+            unsigned args=0;bool callerCleansStack=false;
             if(site.rva==0x6740e) args=3;
             if(site.rva==0x1c1e9c) args=2;
-            if(site.rva==0x6741e || site.rva==0x6742a || site.rva==0x1c1dbe) { args=1;cdecl=true; }
-            stub(site.rva,args,cdecl);
+            if(site.rva==0x6741e || site.rva==0x6742a || site.rva==0x1c1dbe) { args=1;callerCleansStack=true; }
+            stub(site.rva,args,callerCleansStack);
             DWORD displacement=*reinterpret_cast<DWORD *>(fixtureImage+site.rva+1);
             assert(reinterpret_cast<ULONG_PTR>(fixtureImage+site.rva+5)+displacement==reinterpret_cast<ULONG_PTR>(site.replacement));
         }
