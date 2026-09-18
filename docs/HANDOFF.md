@@ -1,3 +1,13 @@
+# Verified view routines: first-person entry enables hidden-actor particles (2026-09-18)
+
+Read [particles-view-routine-0421.md](particles-view-routine-0421.md) first. Recovered and hash-verified the user's original `eqgame.exe`; no repeat executable upload is needed. Actual mode dispatcher is VA `0x48ADF0`; first-person enter/leave are `0x797220`/`0x7971B0`. Enter calls local graphics actor vtable `+0x23C` with true, leave with false. Matching public RoF2 definitions name this method **ShowParticlesWhenInvisible**. First-person frame paths hide the player model. Entry skips the setter if player/actor is absent; the inspected actor-assignment code does not reapply it. A missed/reset flag is now a concrete hypothesis, not yet a measured device root cause.
+
+Added read-only `tools/verify-client-view.py`: six scenarios execute the exact original x86 dispatcher/callbacks in Unicorn and pass, including absent actor, later entry, view roundtrip, absent player, other-camera transition and original restriction. It checks stack/register preservation and callback ordering (global mode changes after callbacks). Graphics calls are recording stubs: no live rendering or login-order claim. Notes pin all addresses, source provenance and limits. No executable/SDK included; no app or installed DLL change, no APK, analysis/tool-only [skip ci]. No subagents.
+
+**Next:** inspect the installed `eqgraphicsdx9.dll` (1,604,608 bytes, SHA256 `164fc072547aab752567ba88bf6936d0e328c44a16a1480f340d27aef0ba6290`), which was not found among available prior artifacts. User can export from Files → `client/current` → search `eqgraphicsdx9.dll` → select → Export file. Verify actual setter/getter, flag initialization and render gate, then capture bounded actor/flag transitions on the game thread before choosing a repair. Do not write an unverified actor field, force camera toggles, recreate actors, request duplicate spell tests or another audio trace. Keep 0.4.21/current deployed DLL and working loading/controller/reconnect behavior; camp stays parked. Full acceptance plan is in the new note.
+
+---
+
 # Particle follow-up: a view-only switch restores first-person effects (2026-09-18)
 
 Read [particles-0421-view.md](particles-0421-view.md) first. The user completed the requested test: one first-person Minor Healing cast had no particles; a few seconds in third person **without casting**, followed by a first-person cast, produced particles. A third-person spell cast is not required. The view-only recovery sequence works; the exact state change remains unproven, and a matched elapsed-time control was not performed. Do not request the same cast/view comparison or another audio trace.

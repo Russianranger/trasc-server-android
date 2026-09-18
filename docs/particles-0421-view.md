@@ -1,5 +1,7 @@
 # 0.4.21 particle follow-up: third-person casting is not required
 
+**Investigation update:** the original executable has now been recovered and its camera dispatcher/first-person callbacks verified. Entry calls `ShowParticlesWhenInvisible(true)` only if the local graphics actor already exists. See [exact-client view routines](particles-view-routine-0421.md) for addresses, six original-code emulator checks, and the next targeted graphics-DLL analysis. The historical recovery step below is complete; the live cause remains unproven.
+
 September 18, 2026. The user completed the discriminating test from [the loading/device review](loading-0421-device.md):
 
 1. Cast Minor Healing once in first person: no particles.
@@ -31,7 +33,7 @@ The launcher's current [camera adapter](../backend/eq_camera_mouse.h) reads game
 
 ## Next development work and acceptance
 
-1. Recover the previously supplied exact `eqgame.exe` (recorded SHA256 `4a456734af62b465660610794780e48ac3b0161f7b96e13aee86267c45ea49a3`) and trace the actual view-switch path and local-player setup. It is not present in this turn's local attachments. Do not substitute offsets from a different client or ask for another upload before checking available prior artifacts. If the relevant path enters `eqgraphicsdx9.dll`, obtain and verify that exact binary only as needed; the previous report records its hash, not its implementation.
+1. **Executable recovery and view-callback trace completed:** the previously supplied exact `eqgame.exe` (SHA256 `4a456734af62b465660610794780e48ac3b0161f7b96e13aee86267c45ea49a3`) was recovered from the earlier workspace. The relevant actor call enters `eqgraphicsdx9.dll`; the [new routine note](particles-view-routine-0421.md) records verified addresses and the exact graphics file still needed. Do not request another executable upload or substitute another client's offsets.
 2. Add bounded, exact-client diagnostics for viewpoint and verified actor/attachment state before/after the view-only recovery. Prefer transition/cast events over per-frame or audio trace spam. Verify calling conventions, thread/lifetime constraints and read safety before adding any hook.
 3. Once a missing/stale state transition is identified, implement the smallest guarded correction and retain opt-out. Do not call `CreatePlayerActor` blindly, fabricate an actor pointer, or silently perform automatic camera toggles as though that proved an initialization fix.
 4. Acceptance should start with a fresh login directly into first person: the first Minor Healing cast must show particles without changing views. Repeat after relogging and zoning, and check ordinary third-person effects, controller input, loading and reconnect behavior.
