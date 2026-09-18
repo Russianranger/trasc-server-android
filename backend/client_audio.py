@@ -28,6 +28,18 @@ def wav_format(data):
     return 'unrecognized'
 
 
+def dds_header(data):
+    """Describe a DDS header, not whether Direct3D can successfully load it."""
+    if len(data) < 128 or data[:4] != b'DDS ': return {'status': 'unrecognized_or_short_header'}
+    if struct.unpack_from('<I', data, 4)[0] != 124 or struct.unpack_from('<I', data, 76)[0] != 32:
+        return {'status': 'unexpected_header_size'}
+    height, width = struct.unpack_from('<II', data, 12)
+    return {'status': 'header_read', 'width': width, 'height': height,
+            'mipmaps': struct.unpack_from('<I', data, 28)[0],
+            'pixel_flags': struct.unpack_from('<I', data, 80)[0],
+            'fourcc_hex': data[84:88].hex(), 'rgb_bits': struct.unpack_from('<I', data, 88)[0]}
+
+
 def pfs_crc(name):
     crc = 0
     for byte in name.lower().encode('ascii') + b'\0':
@@ -37,8 +49,8 @@ def pfs_crc(name):
     return crc
 
 
-def inspect_pfs(path, wanted, budget):
-    """Read the index and selected WAV headers, with a shared I/O budget.
+def inspect_pfs(path, wanted, budget, header_format=wav_format):
+    """Read the index and selected asset headers, with a shared I/O budget.
 
     Match entries by CRC, not directory order. Never trust archive paths,
     advertised inflate sizes, duplicate names/CRCs, or symlinks.
@@ -107,7 +119,7 @@ def inspect_pfs(path, wanted, budget):
             if name in names or crc in seen or crc not in entries: raise ValueError('ambiguous_filename')
             seen.add(crc); names[name] = entries[crc]
         if offset != len(data): raise ValueError('filename_trailing_data')
-        headers = {name: wav_format(inflate(names[name], 4096)) for name in wanted if name in names}
+        headers = {name: header_format(inflate(names[name], 4096)) for name in wanted if name in names}
         return set(names), headers
 
 
@@ -150,7 +162,7 @@ def inspect_client(client, logs, packed=False):
     Missing loose files may be packed in an archive; report that distinction
     instead of declaring the user's installation broken. Wine resolves case.
     """
-    report = {'format': 2, 'settings': {}, 'files': {}, 'loose_wav_count': 0,
+    report = {'format': 3, 'settings': {}, 'files': {}, 'loose_wav_count': 0,
               'wav_formats': {}, 'wav_references': 0, 'resolved_loose': 0,
               'unresolved_loose': [], 'unresolved_count': 0, 'unsafe_references': 0,
               'inventory_truncated': False, 'packed_scan_requested': packed,
@@ -180,6 +192,37 @@ def inspect_client(client, logs, packed=False):
             path = root.get(name)
             report['files'][name] = {'present': bool(path and path.is_file())}
             if path and path.is_file(): report['files'][name]['bytes'] = path.stat().st_size
+        # This exact texture was named by the game's particle warning. Check
+        # only fixed locations; no recursive client scan or rendering changes.
+        particle = {'texture': 'zapmuze.dds', 'loose': {}, 'archives': {},
+                    'packed_scan_requested': packed,
+                    'note': 'Presence/header metadata does not prove a successful GPU load. Unlocated here is not proof of a missing asset; other archive/search paths are not scanned.'}
+        report['particle_texture'] = particle
+        for location in ('root', 'spelleffects', 'resources'):
+            mapping = root if location == 'root' else directory(root[location], 20000) if root.get(location) else {}
+            path = mapping.get('zapmuze.dds')
+            entry = {'status': 'not_found_in_location'}
+            if 'zapmuze.dds' in mapping and path is None: entry['status'] = 'ambiguous_or_symlink'
+            elif path and path.is_file():
+                with path.open('rb') as source: header = source.read(128)
+                entry = dict(status='present', bytes=path.stat().st_size, header=dds_header(header))
+            particle['loose'][location] = entry
+        if packed:
+            budget = [2*1024*1024]
+            # Bounded metadata probe of explicitly named spell archives only.
+            # Never extract their assets or enumerate unrelated game archives.
+            for name in ('spellsnew.s3d', 'spellsnew.eqg', 'spelleffects.s3d', 'spelleffects.eqg'):
+                path = root.get(name)
+                if not path or not path.is_file(): continue
+                try:
+                    names, headers = inspect_pfs(path, {'zapmuze.dds'}, budget, dds_header)
+                    particle['archives'][name] = {'status': 'indexed', 'contains_texture': 'zapmuze.dds' in names,
+                                                  'header': headers.get('zapmuze.dds')}
+                except (OSError, ValueError, zlib.error) as error:
+                    particle['archives'][name] = {'status': 'unreadable', 'reason': type(error).__name__}
+            path = root.get('eqgraphicsdx9.dll')
+            if path and path.is_file() and path.stat().st_size <= 16*1024*1024:
+                particle['graphics_dll_sha256'] = hashlib.sha256(path.read_bytes()).hexdigest()
         ini = root.get('eqclient.ini')
         allowed = {'sound', 'music', 'soundvolume', 'musicvolume', 'soundrealism',
                    'envsounds', 'combatmusic', 'speakertype', 'sound44k', 'sound16bit',

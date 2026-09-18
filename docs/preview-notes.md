@@ -1,3 +1,12 @@
+# 0.4.20 — Model-loading pause experiment
+
+- Adds **Reduce model-loading pauses (experimental)**, default off, to test shorter waits between global model loads. Keep Faster spell loading at its working setting. Actual Thor improvement is not yet measured.
+- Records UI/XML, model-load and scheduler-wait timings to identify the next bottleneck.
+- Adds focused read-only diagnostics for the particle texture warning. The first-person particle issue is not yet fixed.
+- Update in place, then compile/deploy dinput8.dll once with the existing SDK/source. No Mac tools or runtime reinstall. See [comparison and particle test steps](https://github.com/Russianranger/trasc-server-android/blob/main/docs/loading-0420.md).
+
+---
+
 # 0.4.19 — Spell-loading checksum optimization
 
 - Optional Faster spell loading reduces repeated patch-list searches during spell checksums while producing the same results. Overlapping buffers keep the original handling.

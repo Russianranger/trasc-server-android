@@ -1,3 +1,11 @@
+# In progress: 0.4.20 loading-pause experiment and particle diagnostics (2026-09-18)
+
+Read [loading-0420.md](loading-0420.md). User authorized the next optimization and reports first-person spell particles begin working after switching to third person and back. Implemented an independent default-off Reduce model-loading pauses option, scoped to 18 verified Sleep(1) sites in global model loading; it retains scheduler yields and all model/service calls. Added UI/XML/model/wait timings to locate the remaining delay. Existing camera V2 and spell loading V2 behavior stays intact. This candidate has no Thor speed claim yet.
+
+The particle report now checks zapmuze.dds loose/header metadata and optionally named archives. No rendering cause/fix is proven; do not label the texture missing or automatically change camera/particle settings. DLL rebuild needed once for new loading measurements/experiment; existing SDK/source/runtime suffice. Full seven-job release/signing gates remain required; release verification pending. No subagents used. Camp remains parked.
+
+---
+
 # Device-confirmed: 0.4.19 cuts the recorded character-select wait from 73s to 31s (2026-09-18)
 
 Read [loading-0419-device.md](loading-0419-device.md) first. The user says the enabled option is much faster; bundle `logs-3472540275696201050.zip` confirms it. In the paired 0.4.19 off/on sessions, spell loading is **43,296ms → 2,107ms**, before-screen wait **58s → 18s**, and server-selected → character-select UI **73s → 31s**. These are one run per mode and engine landmarks, not averaged physical-button-to-frame timings.

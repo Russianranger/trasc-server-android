@@ -126,6 +126,32 @@ class AudioTests(unittest.TestCase):
             client_audio.inspect_client(client,logs)
             self.assertFalse(json.loads((logs/'client-sound-assets.json').read_text())['packed_scan_complete'])
 
+    def test_particle_probe_is_read_only_bounded_and_does_not_claim_gpu_success(self):
+        with tempfile.TemporaryDirectory() as directory:
+            root=Path(directory);client=root/'client';client.mkdir();logs=root/'logs';logs.mkdir()
+            effects=client/'SpellEffects';effects.mkdir()
+            dds=bytearray(128);dds[:4]=b'DDS ';struct.pack_into('<I',dds,4,124)
+            struct.pack_into('<II',dds,12,64,128);struct.pack_into('<I',dds,76,32);dds[84:88]=b'DXT5'
+            path=effects/'ZapMuze.DDS';path.write_bytes(dds)
+            (client/'eqgraphicsdx9.dll').write_bytes(b'GRAPHICS_FIXTURE')
+            client_audio.inspect_client(client,logs)
+            report=json.loads((logs/'client-sound-assets.json').read_text())['particle_texture']
+            self.assertEqual(report['loose']['spelleffects']['header']['width'],128)
+            self.assertEqual(report['loose']['spelleffects']['header']['fourcc_hex'],'44585435')
+            self.assertEqual(report['loose']['root']['status'],'not_found_in_location')
+            self.assertNotIn('graphics_dll_sha256',report)
+            self.assertEqual(path.read_bytes(),dds)
+            (effects/'zapmuze.dds').write_bytes(b'collision')
+            (client/'zapmuze.dds').symlink_to(path)
+            client_audio.inspect_client(client,logs,packed=True)
+            report=json.loads((logs/'client-sound-assets.json').read_text())['particle_texture']
+            self.assertEqual(report['loose']['spelleffects']['status'],'ambiguous_or_symlink')
+            self.assertEqual(report['loose']['root']['status'],'ambiguous_or_symlink')
+            self.assertIn('graphics_dll_sha256',report)
+            self.assertEqual(client_audio.dds_header(b'bad')['status'],'unrecognized_or_short_header')
+            struct.pack_into('<I',dds,76,999)
+            self.assertEqual(client_audio.dds_header(dds)['status'],'unexpected_header_size')
+
     def test_sound_lifecycle_survives_mixer_rotation_and_is_bounded(self):
         with tempfile.TemporaryDirectory() as directory:
             root=Path(directory);path=root/'client-wine.log'

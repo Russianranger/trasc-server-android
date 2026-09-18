@@ -4,6 +4,8 @@ from pathlib import Path
 
 MARKER = 'TRASC_EQ_CAMERA_MOUSE_V2'
 LOADING_MARKER = 'TRASC_EQ_LOAD_V2'
+DISPLAY_MARKER = 'TRASC_EQ_DISPLAY_V1'
+HEADERS = ('eq_camera_mouse.h', 'eq_client_loading.h', 'eq_fast_decimal.h', 'eq_spell_checksum.h', 'eq_display_loading.h')
 EXE_SHA256 = '4a456734af62b465660610794780e48ac3b0161f7b96e13aee86267c45ea49a3'
 
 
@@ -17,6 +19,12 @@ def loading_mode(request, client):
     if request.get('mode') != 'client': return 'off'
     mode = adapter_mode(request, client, LOADING_MARKER)
     return ('fast' if request.get('fast_spell_parse', False) else 'profile') if mode == 'enabled' else mode
+
+
+def display_mode(request, client):
+    if request.get('mode') != 'client': return 'off'
+    mode = adapter_mode(request, client, DISPLAY_MARKER)
+    return ('yield' if request.get('reduce_load_pauses', False) else 'profile') if mode == 'enabled' else mode
 
 
 def adapter_mode(request, client, marker):
@@ -34,7 +42,7 @@ def adapter_mode(request, client, marker):
 def prepare_sources(project, build):
     """Overlay input, loading and equivalent checksums. Imported sources stay intact."""
     generated = build / 'camera-mouse'; generated.mkdir()
-    for name in ('eq_camera_mouse.h', 'eq_client_loading.h', 'eq_fast_decimal.h', 'eq_spell_checksum.h'):
+    for name in HEADERS:
         header = Path(__file__).with_name(name)
         (generated / name).write_bytes(header.read_bytes())
     sources = {}
@@ -63,7 +71,7 @@ def prepare_sources(project, build):
     target = generated / name
     # Include after upstream Windows/DirectInput declarations, before the export.
     target.write_text('// Altered by TRASC: optional measured spell loading.\n' + content.replace(
-        original, '#include "eq_client_loading.h"\n\n' + original + '\n  trasc_loading::install();'), encoding='utf-8')
+        original, '#include "eq_display_loading.h"\n\n' + original + '\n  trasc_loading::install();\n  trasc_display::install();'), encoding='utf-8')
     sources[name] = target
     name = 'MQ2DetourAPI.cpp'
     content = (project.parent / name).read_text(encoding='utf-8-sig')

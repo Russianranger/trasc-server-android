@@ -186,6 +186,7 @@ def validate_request(request):
     spell_test = client_spells.verify_installed_test(CLIENT, request.get('spell_test', {}))
     if request.get('npc_rendering', 'compatibility') not in ('standard', 'compatibility', 'compatibility_042', 'direct_043'): raise ValueError('Invalid NPC rendering option')
     if not isinstance(request.get('mouse_warp', False), bool): raise ValueError('Invalid mouse recentering option')
+    if not isinstance(request.get('reduce_load_pauses', False), bool): raise ValueError('Invalid model loading option')
     if not isinstance(request.get('fast_spell_parse', False), bool): raise ValueError('Invalid spell loading option')
     if not isinstance(request.get('dxvk_hud', True), bool): raise ValueError('Invalid DXVK HUD option')
     if not isinstance(request.get('audio', False), bool): raise ValueError('Invalid audio option')
@@ -379,6 +380,7 @@ class Supervisor:
         self.env['TRASC_EQ_CAMERA_MOUSE_V2'] = '0'
         self.env['TRASC_EQ_LOAD_V1'] = 'off'
         self.env['TRASC_EQ_LOAD_V2'] = 'off'
+        self.env['TRASC_EQ_DISPLAY_V1'] = 'off'
         if request.get('renderer','software') == 'virgl':
             # swrast's virpipe transport forwards rendering to the native GLES
             # server. LIBGL_ALWAYS_SOFTWARE selects that headless DRI loader;
@@ -524,7 +526,9 @@ class Supervisor:
         import client_mouse
         mode = client_mouse.loading_mode(self.request, CLIENT)
         self.env[client_mouse.LOADING_MARKER] = mode if mode in ('fast', 'profile') else 'off'
-        self.update(spell_loading=mode)
+        display = client_mouse.display_mode(self.request, CLIENT)
+        self.env[client_mouse.DISPLAY_MARKER] = display if display in ('yield', 'profile') else 'off'
+        self.update(spell_loading=mode, display_loading=display)
 
     def check_prefix(self):
         report = prefix_diagnostics()

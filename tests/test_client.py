@@ -1,6 +1,7 @@
 import json
 import hashlib
 import io
+import os
 from pathlib import Path
 import struct
 import sys
@@ -45,13 +46,26 @@ class ClientTests(unittest.TestCase):
     def test_loading_experiment_is_independent_and_clears_inherited_mode(self):
         for mode, expected in [('fast','fast'),('profile','profile'),('needs_dll','off'),('off','off')]:
             supervisor=client_runner.Supervisor({'mode':'client','resolution':'800x600'})
-            with patch('client_mouse.loading_mode',return_value=mode),patch.object(supervisor,'update') as update:
+            with patch('client_mouse.loading_mode',return_value=mode),patch('client_mouse.display_mode',return_value='profile'),patch.object(supervisor,'update') as update:
                 supervisor.configure_loading()
                 self.assertEqual(supervisor.env['TRASC_EQ_LOAD_V2'],expected)
                 self.assertEqual(supervisor.env['TRASC_EQ_LOAD_V1'],'off')
-                update.assert_called_once_with(spell_loading=mode)
+                update.assert_called_once_with(spell_loading=mode,display_loading='profile')
+                self.assertEqual(supervisor.env['TRASC_EQ_DISPLAY_V1'],'profile')
         with self.assertRaisesRegex(ValueError,'spell loading'):
             client_runner.validate_request({'fast_spell_parse':'yes'})
+
+    def test_model_loading_mode_is_scoped_validated_and_clears_inherited_settings(self):
+        with self.assertRaisesRegex(ValueError,'model loading'):
+            client_runner.validate_request({'reduce_load_pauses':'yes'})
+        for mode in ('yield','profile','off','needs_dll','unsupported_executable'):
+            with patch.dict(os.environ,{'TRASC_EQ_DISPLAY_V1':'yield'}):
+                supervisor=client_runner.Supervisor({'mode':'desktop','resolution':'800x600'})
+                self.assertEqual(supervisor.env['TRASC_EQ_DISPLAY_V1'],'off')
+            with patch('client_mouse.loading_mode',return_value='fast'),patch('client_mouse.display_mode',return_value=mode),patch.object(supervisor,'update'):
+                supervisor.configure_loading()
+                self.assertEqual(supervisor.env['TRASC_EQ_DISPLAY_V1'],mode if mode in ('yield','profile') else 'off')
+                self.assertEqual(supervisor.env['TRASC_EQ_LOAD_V2'],'fast')
 
     def test_runtime_preflight_uses_only_temporary_files_and_verifies_io(self):
         session=self.root/'runtime-preflight';session.mkdir()
