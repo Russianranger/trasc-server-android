@@ -183,6 +183,7 @@ def pe_machine(path):
 
 
 def validate_request(request):
+    if request.get('particle_mode', 'off') not in ('off', 'profile', 'repair'): raise ValueError('Invalid particle option')
     spell_test = client_spells.verify_installed_test(CLIENT, request.get('spell_test', {}))
     if request.get('npc_rendering', 'compatibility') not in ('standard', 'compatibility', 'compatibility_042', 'direct_043'): raise ValueError('Invalid NPC rendering option')
     if not isinstance(request.get('mouse_warp', False), bool): raise ValueError('Invalid mouse recentering option')
@@ -381,6 +382,7 @@ class Supervisor:
         self.env['TRASC_EQ_LOAD_V1'] = 'off'
         self.env['TRASC_EQ_LOAD_V2'] = 'off'
         self.env['TRASC_EQ_DISPLAY_V1'] = 'off'
+        self.env['TRASC_EQ_PARTICLES_V1'] = 'off'
         if request.get('renderer','software') == 'virgl':
             # swrast's virpipe transport forwards rendering to the native GLES
             # server. LIBGL_ALWAYS_SOFTWARE selects that headless DRI loader;
@@ -528,7 +530,9 @@ class Supervisor:
         self.env[client_mouse.LOADING_MARKER] = mode if mode in ('fast', 'profile') else 'off'
         display = client_mouse.display_mode(self.request, CLIENT)
         self.env[client_mouse.DISPLAY_MARKER] = display if display in ('yield', 'profile') else 'off'
-        self.update(spell_loading=mode, display_loading=display)
+        particles = client_mouse.particle_mode(self.request, CLIENT)
+        self.env[client_mouse.PARTICLE_MARKER] = particles if particles in ('profile', 'repair') else 'off'
+        self.update(spell_loading=mode, display_loading=display, particle_mode=particles)
 
     def check_prefix(self):
         report = prefix_diagnostics()
@@ -601,7 +605,7 @@ class Supervisor:
         self.update(runtime_acceleration_observed=observed)
         if self.request.get('runtime_acceleration') == 'seccomp' and not observed:
             raise RuntimeError('Runtime acceleration was not confirmed. Select Compatibility runtime mode and export Logs.')
-        for name in ('client-wine.log', 'client-prefix.log', 'client-display.log', 'client-graphics.log', 'client-threads.log', 'client-vulkan.log', 'client-frame-bridge.log', 'client-camera.log', 'client-loading.log', 'eqgame_d3d9.log'):
+        for name in ('client-wine.log', 'client-prefix.log', 'client-display.log', 'client-graphics.log', 'client-threads.log', 'client-vulkan.log', 'client-frame-bridge.log', 'client-camera.log', 'client-loading.log', 'client-particles.log', 'eqgame_d3d9.log'):
             archive_log(LOGS / name)
         sound_report = LOGS / 'client-wine.sound.json'
         if sound_report.is_file(): sound_report.replace(LOGS / 'client-wine.sound.previous.json')

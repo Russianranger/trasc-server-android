@@ -50,7 +50,7 @@ class ClientTests(unittest.TestCase):
                 supervisor.configure_loading()
                 self.assertEqual(supervisor.env['TRASC_EQ_LOAD_V2'],expected)
                 self.assertEqual(supervisor.env['TRASC_EQ_LOAD_V1'],'off')
-                update.assert_called_once_with(spell_loading=mode,display_loading='profile')
+                update.assert_called_once_with(spell_loading=mode,display_loading='profile',particle_mode='off')
                 self.assertEqual(supervisor.env['TRASC_EQ_DISPLAY_V1'],'profile')
         with self.assertRaisesRegex(ValueError,'spell loading'):
             client_runner.validate_request({'fast_spell_parse':'yes'})
@@ -66,6 +66,20 @@ class ClientTests(unittest.TestCase):
                 supervisor.configure_loading()
                 self.assertEqual(supervisor.env['TRASC_EQ_DISPLAY_V1'],mode if mode in ('yield','profile') else 'off')
                 self.assertEqual(supervisor.env['TRASC_EQ_LOAD_V2'],'fast')
+
+    def test_particle_mode_is_validated_and_clears_inherited_repair(self):
+        with self.assertRaisesRegex(ValueError,'particle option'):
+            client_runner.validate_request({'particle_mode':'force'})
+        for mode in ('off','profile','repair','needs_dll','unsupported_graphics','unsupported_executable'):
+            with patch.dict(os.environ,{'TRASC_EQ_PARTICLES_V1':'repair'}):
+                supervisor=client_runner.Supervisor({'mode':'desktop','resolution':'800x600'})
+                self.assertEqual(supervisor.env['TRASC_EQ_PARTICLES_V1'],'off')
+            with patch('client_mouse.loading_mode',return_value='fast'),patch('client_mouse.display_mode',return_value='yield'),patch('client_mouse.particle_mode',return_value=mode),patch.object(supervisor,'update') as update:
+                supervisor.configure_loading()
+                self.assertEqual(supervisor.env['TRASC_EQ_PARTICLES_V1'],mode if mode in ('profile','repair') else 'off')
+                self.assertEqual(supervisor.env['TRASC_EQ_LOAD_V2'],'fast')
+                self.assertEqual(supervisor.env['TRASC_EQ_DISPLAY_V1'],'yield')
+                self.assertEqual(update.call_args.kwargs['particle_mode'],mode)
 
     def test_runtime_preflight_uses_only_temporary_files_and_verifies_io(self):
         session=self.root/'runtime-preflight';session.mkdir()

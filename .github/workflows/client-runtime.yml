@@ -64,6 +64,7 @@ jobs:
           i686-w64-mingw32-g++ -O2 -static-libgcc -static-libstdc++ tests/fast_decimal.cpp -o runtime-work/client-test/client/decimal.exe
           i686-w64-mingw32-g++ -std=c++14 -O2 -static-libgcc -static-libstdc++ tests/loading_patch.cpp -o runtime-work/client-test/client/loading.exe -luser32
           i686-w64-mingw32-g++ -std=c++14 -O2 -static-libgcc -static-libstdc++ tests/display_loading.cpp -o runtime-work/client-test/client/display-loading.exe -luser32
+          i686-w64-mingw32-g++ -std=c++14 -O2 -static-libgcc -static-libstdc++ tests/first_person_particles.cpp -o runtime-work/client-test/client/particles.exe -luser32
           python3 tests/build_checksum_fixture.py runtime-work/checksum-fixture.cpp
           i686-w64-mingw32-g++ -std=c++14 -O0 -Ibackend -static-libgcc -static-libstdc++ runtime-work/checksum-fixture.cpp -o runtime-work/client-test/client/checksum.exe
           python3 - <<'PYPE'

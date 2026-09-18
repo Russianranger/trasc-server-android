@@ -1,3 +1,13 @@
+# 0.4.22 candidate: optional first-person particle repair (2026-09-18)
+
+Read [particles-0422.md](particles-0422.md). User authorized proceeding with the fix. Added default-off particle diagnostics/repair, wrapping the verified original first-person update and calling the original permission setter only for a hidden, unpermitted, current local root actor. Original update runs first; exact-binary/layout, thread, lifetime, scope and writable-memory guards apply. Profile is read-only; repair attempts and transition logs are bounded. Existing controller/reconnect/loading code remains intact; camp parked. New header is covered by Android deployment contract. Version0.4.22/code39.
+
+Local 138 Python tests, native/JVM checks, x86 fixture compilation and original two-binary 11-case verifier pass. Windows and ARM64 Wine execution of the new fixture and every existing release gate are required next; no gate waived. Local browser CDN download failed, so CI browser/screenshots must supply UI verification. Publication is not yet verified. Record implementation/run/APK hashes here after successful CI. No subagents used; no private binaries/SDK committed.
+
+Device next, after verified publication: update in place, restart server runtime with server stopped, compile/deploy DLL once using existing SDK/source, then fresh first-person Minor Healing comparison: Diagnostics only versus Repair + diagnostics. Export each short run, repeat repaired relog/zone, preserve other settings. No runtime/SDK/source reinstall. The flag mechanism is verified in controlled original-code tests; actual Thor startup cause and visible repair remain unmeasured. If baseline permission is already true, trace emitter state instead of expanding this patch.
+
+---
+
 # Graphics DLL verified: hidden-actor particle suppression reproduced (2026-09-18)
 
 Read [particles-graphics-0421.md](particles-graphics-0421.md) first. User supplied the installed `EQGraphicsDX9.dll`; size/hash exactly match the recorded 1,604,608-byte binary. No more game-file uploads are needed. Actual actor constructor `0x1003AB80` clears the permission byte; setter/getter `0x1003B1A0`/`0x1003B190` access actor `+0x5C`. Five actual actor vtables/RTTI classes confirm slots `+0x23C`/`+0x240`. The particle processing branch at `0x100726E4` suppresses hidden actors lacking permission, subject to existing effect-sentinel/disabled-state conditions.

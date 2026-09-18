@@ -1,3 +1,12 @@
+# 0.4.22 — First-person particle repair experiment
+
+- Adds **First-person spell particles**: Original behavior (default), Diagnostics only, or Repair + diagnostics (experimental).
+- Targets the verified permission flag for a hidden local character, without switching views. A live Thor fix still needs confirmation.
+- Update in place, restart the server runtime with the game server stopped, then **Compile dinput8.dll → Deploy staged DLL** once with your existing SDK/source. No runtime reinstall or client reimport.
+- Compare fresh first-person Minor Healing casts with Diagnostics only and Repair; export each short run. Keep working loading/controller settings. [Installation and test steps](https://github.com/Russianranger/trasc-server-android/blob/main/docs/particles-0422.md).
+
+---
+
 # 0.4.21 — Fix on-device DLL compilation
 
 - Fixes the missing `/opt/trasc/eq_display_loading.h` error by deploying the bundled header when the server runtime starts.

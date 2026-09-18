@@ -121,6 +121,8 @@ final class ClientRuntime {
             String mode=options.optString("mode","client"),resolution=options.optString("resolution","800x600"),renderer=options.optString("renderer","software");
             String cpuProfile=options.optString("cpu_profile","balanced");
             String npcRendering=options.optString("npc_rendering","compatibility");
+            String particleMode=options.optString("particle_mode","off");
+            if(!Arrays.asList("off","profile","repair").contains(particleMode))throw new IOException("Unsupported particle option");
             String presentation=options.optString("presentation_mode","rfb");
             int displayFps=options.optInt("display_fps",30);
             if(!Arrays.asList("rfb","native_surface").contains(presentation)||(displayFps!=30&&displayFps!=60))throw new IOException("Unsupported display presentation option");
@@ -169,6 +171,7 @@ final class ClientRuntime {
             request.put("mouse_warp",options.optBoolean("mouse_warp",false));
             request.put("reduce_load_pauses",options.optBoolean("reduce_load_pauses",false));
             request.put("fast_spell_parse",options.optBoolean("fast_spell_parse",false));
+            request.put("particle_mode",mode.equals("client")?particleMode:"off");
             request.put("turnip_driver",turnipDriver).put("presentation_mode",presentation).put("display_fps",displayFps);
             File spellJournal=new File(server.work,"backups/client-spell-test/current.json");
             if(spellJournal.exists())request.put("spell_test",json(spellJournal));

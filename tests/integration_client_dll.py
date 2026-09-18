@@ -29,7 +29,7 @@ with tempfile.TemporaryDirectory() as temp:
                     *('/libpath:'+str(compiler/'lib'/n) for n in ('msvc','ucrt','um')),'kernel32.lib','user32.lib'])
         engine.run([test])
         checksum_source=work/'checksum-fixture.cpp'; generate(checksum_source)
-        for name in ('fast_decimal', 'loading_patch', 'display_loading', 'checksum-fixture'):
+        for name in ('fast_decimal', 'loading_patch', 'display_loading', 'first_person_particles', 'checksum-fixture'):
             obj=work/(name+'.obj'); test=work/(name+'.exe')
             source_file=checksum_source if name=='checksum-fixture' else Path(__file__).with_name(name+'.cpp').resolve()
             engine.run([compiler/'bin/cl.exe','/nologo','/c','/Od' if name=='checksum-fixture' else '/O2','/MT','/Zp1','/DWINDOWS_IGNORE_PACKING_MISMATCH','/std:c++14',

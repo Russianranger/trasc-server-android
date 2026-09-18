@@ -273,7 +273,7 @@ def main():
         # A negative control must reproduce the old native-only bug. Each check
         # is a separate Windows process while the private X display is alive.
         production_env=client_runner.Supervisor(request).env
-        for executable, log in [('decimal.exe','spell-parser-benchmark.log'), ('loading.exe','spell-loading-adapter.log'), ('display-loading.exe','display-loading-adapter.log'), ('checksum.exe','spell-checksum-benchmark.log')]:
+        for executable, log in [('decimal.exe','spell-parser-benchmark.log'), ('loading.exe','spell-loading-adapter.log'), ('display-loading.exe','display-loading-adapter.log'), ('particles.exe','particle-adapter.log'), ('checksum.exe','spell-checksum-benchmark.log')]:
             if Path('/client', executable).exists():
                 with Path('/logs', log).open('wb') as output:
                     parsed=subprocess.run(['/usr/local/bin/box64','/opt/wine/bin/wine','D:\\'+executable],cwd='/client',env=production_env,stdout=output,stderr=output,timeout=60)

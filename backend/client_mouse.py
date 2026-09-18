@@ -5,8 +5,10 @@ from pathlib import Path
 MARKER = 'TRASC_EQ_CAMERA_MOUSE_V2'
 LOADING_MARKER = 'TRASC_EQ_LOAD_V2'
 DISPLAY_MARKER = 'TRASC_EQ_DISPLAY_V1'
-HEADERS = ('eq_camera_mouse.h', 'eq_client_loading.h', 'eq_fast_decimal.h', 'eq_spell_checksum.h', 'eq_display_loading.h')
+PARTICLE_MARKER = 'TRASC_EQ_PARTICLES_V1'
+HEADERS = ('eq_camera_mouse.h', 'eq_client_loading.h', 'eq_fast_decimal.h', 'eq_spell_checksum.h', 'eq_display_loading.h', 'eq_first_person_particles.h')
 EXE_SHA256 = '4a456734af62b465660610794780e48ac3b0161f7b96e13aee86267c45ea49a3'
+GRAPHICS_SHA256 = '164fc072547aab752567ba88bf6936d0e328c44a16a1480f340d27aef0ba6290'
 
 
 def launch_mode(request, client):
@@ -37,6 +39,20 @@ def adapter_mode(request, client, marker):
     if len(dlls) != 1 or dlls[0].stat().st_size > 64*1024**2 or marker.encode() not in dlls[0].read_bytes():
         return 'needs_dll'
     return 'enabled'
+
+
+def particle_mode(request, client):
+    requested = request.get('particle_mode', 'off')
+    if request.get('mode') != 'client' or requested not in ('profile', 'repair'):
+        return 'off'
+    mode = adapter_mode(request, client, PARTICLE_MARKER)
+    if mode != 'enabled': return mode
+    graphics = [p for p in client.iterdir() if p.name.lower() == 'eqgraphicsdx9.dll']
+    if (len(graphics) != 1 or graphics[0].is_symlink() or not graphics[0].is_file()
+            or graphics[0].stat().st_size != 1604608
+            or hashlib.sha256(graphics[0].read_bytes()).hexdigest() != GRAPHICS_SHA256):
+        return 'unsupported_graphics'
+    return requested
 
 
 def prepare_sources(project, build):
@@ -71,7 +87,7 @@ def prepare_sources(project, build):
     target = generated / name
     # Include after upstream Windows/DirectInput declarations, before the export.
     target.write_text('// Altered by TRASC: optional measured spell loading.\n' + content.replace(
-        original, '#include "eq_display_loading.h"\n\n' + original + '\n  trasc_loading::install();\n  trasc_display::install();'), encoding='utf-8')
+        original, '#include "eq_display_loading.h"\n#include "eq_first_person_particles.h"\n\n' + original + '\n  trasc_loading::install();\n  trasc_display::install();\n  trasc_particles::install();'), encoding='utf-8')
     sources[name] = target
     name = 'MQ2DetourAPI.cpp'
     content = (project.parent / name).read_text(encoding='utf-8-sig')
