@@ -28,6 +28,9 @@ class CameraMouseTests(unittest.TestCase):
                 self.assertEqual(client_mouse.loading_mode(dict(request, fast_spell_parse=True, mouse_warp=False), root), 'fast')
                 self.assertEqual(client_mouse.loading_mode(dict(request, native_dinput8=False), root), 'needs_dll')
                 self.assertEqual(client_mouse.loading_mode(dict(request, mode='desktop'), root), 'off')
+                dll.write_bytes(client_mouse.MARKER.encode()+b'TRASC_EQ_LOAD_V1')
+                self.assertEqual(client_mouse.launch_mode(request, root), 'enabled')
+                self.assertEqual(client_mouse.loading_mode(request, root), 'needs_dll')
                 dll.write_bytes(b'TRASC_EQ_CAMERA_MOUSE_V1')
                 self.assertEqual(client_mouse.launch_mode(request, root), 'needs_dll')
 
@@ -44,14 +47,25 @@ class CameraMouseTests(unittest.TestCase):
                 '                                  REFIID riidltf, LPVOID *ppvOut,\n'
                 '                                  LPUNKNOWN punkOuter) {\nreturn S_OK;\n}')
             (root / 'eqgame.cpp').write_text(original['eqgame.cpp'])
+            original['MQ2DetourAPI.cpp'] = Path(__file__).with_name('fixtures').joinpath('checksum_upstream.cpp').read_text()
+            (root / 'MQ2DetourAPI.cpp').write_text(original['MQ2DetourAPI.cpp'])
             build = root / 'build'; build.mkdir()
             prepared = client_mouse.prepare_sources(root / 'project.vcxproj', build)
             for name, target in prepared.items():
                 self.assertEqual((root / name).read_text(), original[name])
                 content = target.read_text()
                 if name == 'eqgame.cpp': self.assertIn('trasc_loading::install();', content)
+                elif name == 'MQ2DetourAPI.cpp': self.assertEqual(content.count('trasc_checksum::disjoint'), 2)
                 else: self.assertLess(content.index('HRESULT result = ProxyInterface->GetDeviceState'), content.index('trasc_camera::afterRead'))
             (root / 'IDirectInputDevice8W.cpp').write_text('// custom wrapper')
             second = root / 'second'; second.mkdir()
             with self.assertRaisesRegex(ValueError, 'wrapper changed'):
                 client_mouse.prepare_sources(root / 'project.vcxproj', second)
+
+    def test_checksum_overlay_rejects_semantic_source_changes(self):
+        source = Path(__file__).with_name('fixtures').joinpath('checksum_upstream.cpp').read_text()
+        self.assertEqual(client_mouse.checksum_overlay(source).count('CAutoLock lock(&gDetourCS)'), 2)
+        for old, new in [('return ~eax;', 'return eax;'), ('eax = 0xffffffff;', 'eax = 0;'),
+                         ('struct mckey key) \n{', 'struct mckey key)\n{')]:
+            with self.assertRaisesRegex(ValueError, 'changed'):
+                client_mouse.checksum_overlay(source.replace(old, new))

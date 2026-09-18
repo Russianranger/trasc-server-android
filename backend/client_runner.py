@@ -378,6 +378,7 @@ class Supervisor:
         self.env['TRASC_EQ_CAMERA_MOUSE_V1'] = '0'
         self.env['TRASC_EQ_CAMERA_MOUSE_V2'] = '0'
         self.env['TRASC_EQ_LOAD_V1'] = 'off'
+        self.env['TRASC_EQ_LOAD_V2'] = 'off'
         if request.get('renderer','software') == 'virgl':
             # swrast's virpipe transport forwards rendering to the native GLES
             # server. LIBGL_ALWAYS_SOFTWARE selects that headless DRI loader;

@@ -11,6 +11,7 @@ import shutil
 sys.path.insert(0,str(Path(__file__).resolve().parents[1]/'backend'))
 from engine import Engine
 import client_dll
+from build_checksum_fixture import generate
 source=Path(sys.argv[1]).resolve();sdk=Path(sys.argv[2]).resolve()
 with tempfile.TemporaryDirectory() as temp:
     work=Path(temp);engine=Engine(work)
@@ -27,11 +28,13 @@ with tempfile.TemporaryDirectory() as temp:
         engine.run([compiler/'bin/link.exe','/nologo','/machine:x86','/subsystem:console','/out:'+str(test),str(obj),
                     *('/libpath:'+str(compiler/'lib'/n) for n in ('msvc','ucrt','um')),'kernel32.lib','user32.lib'])
         engine.run([test])
-        for name in ('fast_decimal', 'loading_patch'):
+        checksum_source=work/'checksum-fixture.cpp'; generate(checksum_source)
+        for name in ('fast_decimal', 'loading_patch', 'checksum-fixture'):
             obj=work/(name+'.obj'); test=work/(name+'.exe')
-            engine.run([compiler/'bin/cl.exe','/nologo','/c','/O2','/MT','/Zp1','/DWINDOWS_IGNORE_PACKING_MISMATCH','/std:c++14',
+            source_file=checksum_source if name=='checksum-fixture' else Path(__file__).with_name(name+'.cpp').resolve()
+            engine.run([compiler/'bin/cl.exe','/nologo','/c','/Od' if name=='checksum-fixture' else '/O2','/MT','/Zp1','/DWINDOWS_IGNORE_PACKING_MISMATCH','/std:c++14',
                         *('/I'+str(compiler/'include'/n) for n in ('msvc','ucrt','shared','um','winrt')),
-                        '/Fo'+str(obj),Path(__file__).with_name(name+'.cpp').resolve()])
+                        '/I'+str(Path(__file__).resolve().parents[1]/'backend'), '/Fo'+str(obj),source_file])
             engine.run([compiler/'bin/link.exe','/nologo','/machine:x86','/subsystem:console','/out:'+str(test),str(obj),
                         *('/libpath:'+str(compiler/'lib'/n) for n in ('msvc','ucrt','um')),'kernel32.lib','user32.lib'])
             engine.run([test])

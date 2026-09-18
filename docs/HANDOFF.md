@@ -1,3 +1,11 @@
+# In progress: 0.4.19 spell checksum optimization (2026-09-18)
+
+Read [loading-0419.md](loading-0419.md) first. User authorized next optimization. Found actual upstream checksum functions scanning the entire registered-patch list for every byte, including disjoint spell records/files. New optional path checks overlap once under the existing lock and computes identical CRC; any overlap retains original handling. Scoped to exact-client spell checksum calls on the loading thread, with the existing checkbox on. Camera V2 remains unchanged and confirmed working. Loader V2 adds per-stage timing including per-record CRC, which the0.4.18 logs lacked. Block-reader prototype was removed in favor of this source-backed target. No device gain claimed yet.
+
+Host same-source differential/benchmark fixture passed:4,096 records ×1,256 bytes,120 patches,1,108ms original versus22ms fast, identical2089226240 checksum.133 Python tests and management/native/JVM checks passed. All12 stage-call targets match the supplied executable. Windows and full runtime/Android publication gates are still required; do not mark released until complete. Requires APK update and one on-device DLL compile/deploy using existing SDK/source. No Mac tools/runtime reinstall/server rebuild. Preserve controller/reconnect/#tim/shared-memory capture; camp parked. No subagents used.
+
+---
+
 # Device-confirmed controller fix; 41s pre-screen spell-loader work remains (2026-09-18)
 
 Read [loading-0418-device.md](loading-0418-device.md) first. User confirms controller works; preserve camera V2 and the source-DLL reconnect fix. New bundle logs-3542532455672139460 contains off/on tests. Before-screen waits are58s/55s, visible-screen phases14s/12s, totals72s/67s; retained0.4.17 is59s/15s/74s. The recorded landmarks show no pre-screen regression, although they do not measure the physical button press. One run per mode is not a controlled speedup result.

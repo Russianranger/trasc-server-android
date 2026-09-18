@@ -2,14 +2,116 @@
 #pragma once
 #include "eq_camera_mouse.h"
 #include "eq_fast_decimal.h"
+#include "eq_spell_checksum.h"
 
 namespace trasc_loading {
-static const char marker[] = "TRASC_EQ_LOAD_V1";
+static const char marker[] = "TRASC_EQ_LOAD_V2";
 typedef int (__cdecl *NumberReader)(const char **, int);
 typedef bool (__thiscall *SpellLoader)(void *, const char *, const char *);
+typedef bool (__thiscall *TextLoader)(void *, const char *, const char *, void *);
+typedef int (__thiscall *Associations)(void *, const char *, int);
+typedef void (__thiscall *MapLoader)(void *);
+typedef void *(__cdecl *RecordLoader)(const char *);
+typedef DWORD (__cdecl *Checksum)(const char *);
+typedef int (__thiscall *NextLine)(void *);
+typedef DWORD (__thiscall *RecordChecksum)(void *);
 static NumberReader originalNumber = NULL;
 static SpellLoader originalLoad = NULL;
+static TextLoader originalText = NULL;
+static Associations originalAssociations = NULL;
+static MapLoader originalMap = NULL;
+static RecordLoader originalRecord = NULL;
+static Checksum originalChecksum = NULL;
+static NextLine originalNext = NULL;
+static RecordChecksum originalRecordChecksum = NULL;
 static unsigned fastCount = 0, fallbackCount = 0;
+static volatile LONG profileThread = 0;
+static bool fastMode = false;
+static unsigned checksumDepth = 0, fastChecksums = 0, fallbackChecksums = 0;
+static unsigned checksumBytes = 0;
+struct LineContext {
+    unsigned lines = 0, records = 0, recordChecksums = 0;
+    DWORD readMs = 0, recordMs = 0, recordChecksumMs = 0;
+    void reset() { lines = records = recordChecksums = 0; readMs = recordMs = recordChecksumMs = 0; }
+};
+static LineContext spellLines, associationLines;
+static LineContext *activeLines = NULL;
+inline bool profiling() { return static_cast<DWORD>(InterlockedCompareExchange(&profileThread, 0, 0)) == GetCurrentThreadId(); }
+
+inline void stageLog(const char *stage, DWORD start, int success, const LineContext *lines = NULL) {
+    char line[384];
+    snprintf(line, sizeof(line), "ticks=%lu stage=%s elapsed_ms=%lu result=%d read_ms=%lu record_ms=%lu record_checksum_ms=%lu records=%u record_checksums=%u lines=%u\r\n",
+        GetTickCount(), stage, GetTickCount()-start, success, lines ? lines->readMs : 0,
+        lines ? lines->recordMs : 0, lines ? lines->recordChecksumMs : 0,
+        lines ? lines->records : 0, lines ? lines->recordChecksums : 0, lines ? lines->lines : 0);
+    trasc_camera::logLine("Z:\\logs\\client-loading.log", line);
+}
+
+static int __fastcall nextLine(void *reader, void *) {
+    if (!profiling() || !activeLines) return originalNext(reader);
+    DWORD start = GetTickCount();
+    int result = originalNext(reader);
+    activeLines->readMs += GetTickCount() - start;
+    ++activeLines->lines;
+    return result;
+}
+
+static DWORD __fastcall recordChecksum(void *record, void *) {
+    if (!profiling() || !activeLines) return originalRecordChecksum(record);
+    DWORD start = GetTickCount();
+    ++checksumDepth;
+    DWORD result = originalRecordChecksum(record);
+    --checksumDepth;
+    activeLines->recordChecksumMs += GetTickCount() - start;
+    ++activeLines->recordChecksums;
+    return result;
+}
+
+static void *__cdecl record(const char *line) {
+    if (!profiling() || !activeLines) return originalRecord(line);
+    DWORD start = GetTickCount();
+    void *result = originalRecord(line);
+    activeLines->recordMs += GetTickCount() - start;
+    ++activeLines->records;
+    return result;
+}
+
+static bool __fastcall textLoad(void *self, void *, const char *spells, const char *associations, void *table) {
+    if (!profiling() || activeLines) return originalText(self, spells, associations, table);
+    spellLines.reset(); activeLines = &spellLines;
+    DWORD start = GetTickCount();
+    bool result = originalText(self, spells, associations, table);
+    activeLines = NULL;
+    stageLog("text_and_associations", start, result, &spellLines);
+    return result;
+}
+
+static int __fastcall associationsLoad(void *self, void *, const char *path, int flags) {
+    if (!profiling() || activeLines != &spellLines) return originalAssociations(self, path, flags);
+    associationLines.reset(); activeLines = &associationLines;
+    DWORD start = GetTickCount();
+    int result = originalAssociations(self, path, flags);
+    activeLines = &spellLines;
+    stageLog("associations", start, result, &associationLines);
+    return result;
+}
+
+static DWORD checksum(const char *path, const char *stage) {
+    DWORD start = GetTickCount();
+    bool active = profiling();
+    if (active) ++checksumDepth;
+    DWORD result = originalChecksum(path);
+    if (active) --checksumDepth;
+    if (profiling()) stageLog(stage, start, result != 0);
+    return result;
+}
+static DWORD __cdecl spellChecksum(const char *path) { return checksum(path, "spell_checksum"); }
+static DWORD __cdecl associationChecksum(const char *path) { return checksum(path, "association_checksum"); }
+static void __fastcall mapLoad(void *self, void *) {
+    DWORD start = GetTickCount();
+    originalMap(self);
+    if (profiling()) stageLog("post_load_mapping", start, 1);
+}
 
 // This helper alone is optimized; the upstream add-on keeps its original ABI
 // and /Od recipe. No assumptions about locale, overflow or malformed fields.
@@ -27,15 +129,20 @@ static int __cdecl number(const char **cursor, int separator) {
 #endif
 
 static bool __fastcall load(void *self, void *, const char *spells, const char *associations) {
+    if (InterlockedCompareExchange(&profileThread, static_cast<LONG>(GetCurrentThreadId()), 0))
+        return originalLoad(self, spells, associations);
     DWORD start = GetTickCount();
     unsigned beforeFast = fastCount, beforeFallback = fallbackCount;
-    char line[256];
+    fastChecksums = fallbackChecksums = checksumBytes = checksumDepth = 0;
+    char line[384];
     snprintf(line, sizeof(line), "ticks=%lu spell_load=start\r\n", start);
     trasc_camera::logLine("Z:\\logs\\client-loading.log", line);
     bool result = originalLoad(self, spells, associations);
-    snprintf(line, sizeof(line), "ticks=%lu spell_load=end elapsed_ms=%lu success=%d fast_fields=%u fallback_fields=%u\r\n",
-        GetTickCount(), GetTickCount() - start, result, fastCount - beforeFast, fallbackCount - beforeFallback);
+    snprintf(line, sizeof(line), "ticks=%lu spell_load=end elapsed_ms=%lu success=%d fast_fields=%u fallback_fields=%u fast_checksums=%u fallback_checksums=%u checksum_bytes=%u\r\n",
+        GetTickCount(), GetTickCount() - start, result, fastCount - beforeFast, fallbackCount - beforeFallback, fastChecksums, fallbackChecksums, checksumBytes);
     trasc_camera::logLine("Z:\\logs\\client-loading.log", line);
+    activeLines = NULL;
+    InterlockedExchange(&profileThread, 0);
     return result;
 }
 
@@ -72,19 +179,72 @@ inline bool validateCalls(const BYTE *image) {
     return true;
 }
 
-inline bool patchCalls(BYTE *image, NumberReader replacement) {
-    if (!validateCalls(image)) return false;
-    BYTE *start = image + numberCalls[0];
-    SIZE_T size = numberCalls[sizeof(numberCalls)/sizeof(numberCalls[0])-1] + 5 - numberCalls[0];
-    DWORD protection = 0, ignored = 0;
-    if (!VirtualProtect(start, size, PAGE_EXECUTE_READWRITE, &protection)) return false;
-    for (DWORD rva : numberCalls) {
-        DWORD displacement = static_cast<DWORD>(reinterpret_cast<ULONG_PTR>(replacement)
-            - reinterpret_cast<ULONG_PTR>(image + rva + 5));
-        memcpy(image + rva + 1, &displacement, sizeof(displacement));
+struct StageCall { DWORD rva, target; const void *replacement; };
+static const StageCall stageCalls[] = {
+    {0x6740e, 0x1c1c30, reinterpret_cast<const void *>(textLoad)},
+    {0x1c1e9c, 0x3d50b0, reinterpret_cast<const void *>(associationsLoad)},
+    {0x6741e, 0x408d90, reinterpret_cast<const void *>(spellChecksum)},
+    {0x6742a, 0x408d90, reinterpret_cast<const void *>(associationChecksum)},
+    {0x6743a, 0x67300, reinterpret_cast<const void *>(mapLoad)},
+    {0x1c1dbe, 0xafaf0, reinterpret_cast<const void *>(record)},
+    {0x1c1dd3, 0xaca30, reinterpret_cast<const void *>(recordChecksum)},
+    {0x1c1d5d, 0x408860, reinterpret_cast<const void *>(nextLine)},
+    {0x1c1e6b, 0x408860, reinterpret_cast<const void *>(nextLine)},
+    {0x3d4e5f, 0x408860, reinterpret_cast<const void *>(nextLine)},
+    {0x3d4e66, 0x408860, reinterpret_cast<const void *>(nextLine)},
+    {0x3d4fcf, 0x408860, reinterpret_cast<const void *>(nextLine)}
+};
+
+inline bool callMatches(const BYTE *image, DWORD rva, DWORD target) {
+    BYTE opcode = 0; DWORD displacement = 0;
+    return trasc_camera::read(image+rva, opcode) && opcode == 0xe8
+        && trasc_camera::read(image+rva+1, displacement) && rva+5+displacement == target;
+}
+
+inline bool validateLayout(const BYTE *image) {
+    DWORD current = 0;
+    if (!trasc_camera::read(image+0x5c6144, current)
+        || current != static_cast<DWORD>(reinterpret_cast<ULONG_PTR>(image+0x673f0))
+        || !validateCalls(image)) return false;
+    for (const StageCall &site : stageCalls)
+        if (!callMatches(image, site.rva, site.target)) return false;
+    return true;
+}
+
+inline void writeCall(BYTE *image, DWORD rva, const void *replacement) {
+    DWORD displacement = static_cast<DWORD>(reinterpret_cast<ULONG_PTR>(replacement)
+        - reinterpret_cast<ULONG_PTR>(image+rva+5));
+    memcpy(image+rva+1, &displacement, sizeof(displacement));
+}
+
+inline bool patchLayout(BYTE *image, bool fast) {
+    if (!validateLayout(image)) return false;
+    // Acquire both write permissions before any mutation. All sites are in the
+    // same executable text section and are installed once at startup.
+    BYTE *start = image+0x6740e;
+    SIZE_T size = 0x3d4fcf+5-0x6740e;
+    DWORD textProtection = 0, slotProtection = 0, ignored = 0;
+    if (!VirtualProtect(start, size, PAGE_EXECUTE_READWRITE, &textProtection)) return false;
+    if (!VirtualProtect(image+0x5c6144, sizeof(DWORD), PAGE_READWRITE, &slotProtection)) {
+        VirtualProtect(start, size, textProtection, &ignored);
+        return false;
     }
+    originalNumber = reinterpret_cast<NumberReader>(image+0x4089a0);
+    originalLoad = reinterpret_cast<SpellLoader>(image+0x673f0);
+    originalText = reinterpret_cast<TextLoader>(image+0x1c1c30);
+    originalAssociations = reinterpret_cast<Associations>(image+0x3d50b0);
+    originalMap = reinterpret_cast<MapLoader>(image+0x67300);
+    originalRecord = reinterpret_cast<RecordLoader>(image+0xafaf0);
+    originalChecksum = reinterpret_cast<Checksum>(image+0x408d90);
+    originalNext = reinterpret_cast<NextLine>(image+0x408860);
+    originalRecordChecksum = reinterpret_cast<RecordChecksum>(image+0xaca30);
+    fastMode = fast;
+    for (const StageCall &site : stageCalls) writeCall(image, site.rva, site.replacement);
+    if (fast) for (DWORD rva : numberCalls) writeCall(image, rva, reinterpret_cast<const void *>(number));
+    *reinterpret_cast<SpellLoader *>(image+0x5c6144) = reinterpret_cast<SpellLoader>(&load);
     FlushInstructionCache(GetCurrentProcess(), start, size);
-    VirtualProtect(start, size, protection, &ignored);
+    VirtualProtect(start, size, textProtection, &ignored);
+    VirtualProtect(image+0x5c6144, sizeof(DWORD), slotProtection, &ignored);
     return true;
 }
 
@@ -98,20 +258,21 @@ inline void install() {
     if (!fast && strcmp(mode, "profile")) return;
     BYTE *image = reinterpret_cast<BYTE *>(GetModuleHandleW(NULL));
     if (!GetProcAddress(GetModuleHandleW(L"ntdll.dll"), "wine_get_version") || !trasc_camera::supported(image)) return;
-    DWORD current = 0;
-    const DWORD slot = 0x5c6144, expected = static_cast<DWORD>(reinterpret_cast<ULONG_PTR>(image + 0x673f0));
-    if (!trasc_camera::read(image + slot, current) || current != expected || !validateCalls(image)) {
-        trasc_camera::logLine("Z:\\logs\\client-loading.log", "adapter=v1 status=layout_mismatch\r\n");
+    if (!patchLayout(image, fast)) {
+        trasc_camera::logLine("Z:\\logs\\client-loading.log", "adapter=v2 status=layout_or_protection_mismatch\r\n");
         return;
     }
-    originalNumber = reinterpret_cast<NumberReader>(image + 0x4089a0);
-    originalLoad = reinterpret_cast<SpellLoader>(image + 0x673f0);
-    DWORD protection = 0, ignored = 0;
-    if (!VirtualProtect(image + slot, sizeof(DWORD), PAGE_READWRITE, &protection)) return;
-    *reinterpret_cast<SpellLoader *>(image + slot) = reinterpret_cast<SpellLoader>(&load);
-    VirtualProtect(image + slot, sizeof(DWORD), protection, &ignored);
-    bool applied = fast && patchCalls(image, number);
-    trasc_camera::logLine("Z:\\logs\\client-loading.log", applied
-        ? "adapter=v1 mode=fast status=installed\r\n" : "adapter=v1 mode=profile status=installed\r\n");
+    trasc_camera::logLine("Z:\\logs\\client-loading.log", fast
+        ? "adapter=v2 mode=fast status=installed checksum_range_check=once\r\n" : "adapter=v2 mode=profile status=installed\r\n");
 }
+}
+
+// Defined only in the eqgame.cpp overlay; the checksum source uses these
+// narrow callbacks without a second copy of the loading state.
+extern "C" bool trasc_spell_checksum_fast() {
+    return trasc_loading::fastMode && trasc_loading::profiling() && trasc_loading::checksumDepth;
+}
+extern "C" void trasc_spell_checksum_result(bool fast, unsigned bytes) {
+    if (fast) { ++trasc_loading::fastChecksums; trasc_loading::checksumBytes += bytes; }
+    else ++trasc_loading::fallbackChecksums;
 }

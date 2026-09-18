@@ -47,7 +47,8 @@ class ClientTests(unittest.TestCase):
             supervisor=client_runner.Supervisor({'mode':'client','resolution':'800x600'})
             with patch('client_mouse.loading_mode',return_value=mode),patch.object(supervisor,'update') as update:
                 supervisor.configure_loading()
-                self.assertEqual(supervisor.env['TRASC_EQ_LOAD_V1'],expected)
+                self.assertEqual(supervisor.env['TRASC_EQ_LOAD_V2'],expected)
+                self.assertEqual(supervisor.env['TRASC_EQ_LOAD_V1'],'off')
                 update.assert_called_once_with(spell_loading=mode)
         with self.assertRaisesRegex(ValueError,'spell loading'):
             client_runner.validate_request({'fast_spell_parse':'yes'})

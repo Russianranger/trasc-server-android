@@ -1,3 +1,12 @@
+# 0.4.19 — Spell-loading checksum optimization
+
+- Optional Faster spell loading reduces repeated patch-list searches during spell checksums while producing the same results. Overlapping buffers keep the original handling.
+- Adds timings for line reading, record construction, record/file checksums, associations and mapping to identify the remaining pre-screen delay.
+- Preserves the device-confirmed controller/camera fix. Install in place, then compile/deploy dinput8.dll with the existing SDK/source before testing the loading option. No Mac tools or runtime reinstall. See [loading details and comparison](loading-0419.md).
+- Actual Thor loading improvement requires an off/on comparison; component benchmarks are not a device-speed claim.
+
+---
+
 # 0.4.17 — Camera-only mouse recentering
 
 - Removes always-on recentering that trapped the startup pointer, including when the old option was saved on.

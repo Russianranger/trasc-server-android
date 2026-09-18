@@ -8,6 +8,9 @@ g++ -std=c++14 -O2 -Wall -Wextra -Werror tests/fast_decimal.cpp -o /tmp/trasc-de
 /tmp/trasc-decimal-test
 classes=$(mktemp -d)
 trap 'rm -rf "$classes"' EXIT
+python3 tests/build_checksum_fixture.py "$classes/checksum.cpp"
+g++ -std=c++14 -O0 -Ibackend "$classes/checksum.cpp" -o "$classes/checksum"
+"$classes/checksum"
 compiler=(javac)
 if ! command -v javac >/dev/null; then compiler=(java -m jdk.compiler/com.sun.tools.javac.Main); fi
 "${compiler[@]}" -d "$classes" tests/java/android/system/Os.java \
