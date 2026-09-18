@@ -27,14 +27,20 @@ The compiler overlays only the two ANSI/Unicode DirectInput forwarding source fi
 
 ## Installation and device checks
 
-After the release passes its gates, update the APK in place with game and server stopped. Open the server runtime, compile `dinput8.dll` with the already imported source/SDK, then deploy it using the existing separate Deploy action. Leave the installed runtimes and imported client files in place. Enable camera-only recentering and relaunch.
+Update the verified APK in place with game and server stopped. Open the server runtime, compile `dinput8.dll` with the already imported source/SDK, then deploy it using the existing separate Deploy action. Leave the installed runtimes and imported client files in place. Enable camera-only recentering and relaunch.
 
 Check free pointing at startup/server/character selection, held and toggled camera turns past a full revolution, return to inventory pointing, focus loss, and another server-select reconnect. If camera behavior is unsuitable, turn the checkbox off and relaunch; the adapter becomes inactive without reverting the confirmed reconnect fix.
 
 ## Validation status
 
-Local Python and native/JVM checks pass. Cloud validation is pending at this commit. Added checks cover saved force-setting reset, old/new DLL and executable gating, unchanged source overlays, Microsoft-compiled held/toggled/game-state handling, plus real Wine relative movement and free menu pointing before/after camera recentering. These fixtures cannot establish actual EQ/Thor camera feel; device acceptance remains required.
+Implementation commit `4d03e4c95cf17499cc5c508b265fe6a1527b0f9c`, workflow run `35332966690`. All 131 local Python tests and native/JVM checks pass. Microsoft v142 builds the actual patched upstream DLL and passes allocated-state checks. Android compilation, lint, preserved signing and browser tests pass. Direct ARM64 Wine, DXVK and PRoot fixtures verify relative movement plus free menu pointing before/after camera look. All seven jobs succeeded, including runtime/session roundtrips, direct/PRoot Software/DXVK/VirGL checks and preview publication. The public preview tag points to the tested implementation, and both release asset digests match the downloaded candidate.
+
+Fixture polled movement with a one-pixel clip: 6,400 (software), 6,280 (DXVK), 6,320 (DXVK/PRoot) pixels. During camera recentering, another 1,480 / 1,440 / 1,360 pixels accumulate; menu-pointer recovery passes for all three. These are open fixtures, not actual EQ/Thor camera acceptance.
+
+Released APK: 10,518,492 bytes, SHA256 `f27d9c7ede46db38694b11bec5ebff6171f228c61bbabd2d572de3817555fcd2`. APK v2 signature and content digest were independently verified; certificate remains `ff9c09cdc3e2404d1d7f72d61ce2f8651464f5e03dff340f70bd4df28c70e869`. All 35 bundled Python/header/UI assets match the tested sources. Phone options layout reviewed. Corresponding native source archive: 114,558,375 bytes, SHA256 `6fb4380f8b48a86326717b0af8912289123002f7f6331beb8a30f6d41e1431db`.
 
 ## Loading investigation
 
 The latest session never reaches server selection. Earlier retained timings remain 69/88/86 seconds, dominated by 41/62/60 seconds of single-thread CPU work before display initialization. The supplied executable locates the `Check 1sa.` file-check/report sequence and following load paths, but a nearby log message does not identify which function consumes that whole interval. No loading speedup, checksum bypass, or speculative executable patch is part of this update. Runtime profiling of that interval remains the next performance step.
+
+Static loading landmarks for later profiling: `0x561e50` authenticates; `0x51c2d0` calls it and then loads `spells_%s.txt` (`0x467190` constructor, virtual loader), `Resources\SpellRequirementAssociations.txt`, `racedata.txt`, and `AnimationSounds.txt` (`0x407c10`) before display init. These are candidate measurement boundaries, not measured hotspots.
