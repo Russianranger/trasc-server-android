@@ -1,5 +1,7 @@
 # Exact-client view routines and first-person particle state
 
+**Graphics follow-up completed:** the user supplied the exact matching DLL. Its constructor, setter/getter, vtables and particle visibility gate are now verified, with 11 combined original-code checks. See [the graphics investigation](particles-graphics-0421.md). No further graphics-file upload is needed; the original request below is historical.
+
 September 18, 2026. Follow-up to [the user's view-only recovery test](particles-0421-view.md). The normal camera-mode dispatcher and its first-person callbacks have now been identified in the previously supplied executable. The first-person entry callback calls the graphics actor method named **`ShowParticlesWhenInvisible(true)`** by the matching RoF2 interface definitions. It skips this call if the local player or its graphics actor is absent.
 
 This is a concrete mechanism consistent with the reported recovery: first-person camera updates hide the player model, while re-entering first person enables particles on that hidden actor. A skipped entry call, a subsequently replaced actor, or a later reset of its flag could leave the initial actor state wrong. **The device's actual flag and initialization order have not been captured, so the root cause and a repair are not yet proven.** No product code, APK or installed DLL changed in this investigation.
@@ -102,13 +104,13 @@ The roundtrip also verifies that callbacks see the old global mode. Calls return
 
 ## Next targeted step
 
-The exact `eqgraphicsdx9.dll` implementation was not located among available prior artifacts. `logs/client-sound-assets.json` in `logs-7280042745619990780.zip` identifies it as **1,604,608 bytes**, SHA256:
+The exact `eqgraphicsdx9.dll` implementation was subsequently supplied and verified in [the graphics follow-up](particles-graphics-0421.md). `logs/client-sound-assets.json` in `logs-7280042745619990780.zip` identifies it as **1,604,608 bytes**, SHA256:
 
 ```text
 164fc072547aab752567ba88bf6936d0e328c44a16a1480f340d27aef0ba6290
 ```
 
-Obtain this installed file using the existing app: **Files → Folder path `client/current` → Open folder → search `eqgraphicsdx9.dll` → Search → select the match → Export file**, then attach it. Filename search ignores capitalization. No new APK, compiler import, DLL build, audio trace, or repeated spell test is needed for this step.
+The user completed the export/upload request. Do not request this file again. No new APK, compiler import, DLL build, audio trace, or repeated spell test was needed for the binary investigation.
 
 Then:
 
