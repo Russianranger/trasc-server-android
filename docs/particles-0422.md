@@ -1,6 +1,6 @@
 # 0.4.22 — Optional first-person particle repair
 
-September 18, 2026. Implementation follows the [verified graphics mechanism](particles-graphics-0421.md). Version 0.4.22/code39 adds **First-person spell particles** with Original behavior (default), Diagnostics only, and Repair + diagnostics (experimental). The live Thor startup sequence and visible result still require the comparison below.
+September 18, 2026. Implementation follows the [verified graphics mechanism](particles-graphics-0421.md). Version 0.4.22/code39 adds **First-person spell particles** with Original behavior (default), Diagnostics only, and Repair + diagnostics (experimental). The [device follow-up](particles-0422-device.md) now confirms the missing permission and successful visible repair on Thor. The comparison below is retained as the original test procedure.
 
 ## What changes
 
@@ -33,9 +33,11 @@ The downloaded candidate passes independent APK v2 RSA/SHA256 signature and cont
 | APK | 10,537,055 | `5b7ec5d94dbe5afb2678b8dab6a42987df2f7a6b4805a5e3e1d61b31fb794cdc` |
 | Corresponding native source archive | 114,558,421 | `29fe73561a1f48e3210cdb6fb6b6ed935e4194ea7544d8d8203a4eee2442e1f0` |
 
-Signing certificate SHA256 remains `ff9c09cdc3e2404d1d7f72d61ce2f8651464f5e03dff340f70bd4df28c70e869`. Evidence and independent verifiers are under ignored `runtime-work/0422`; no private client binaries or Microsoft SDK files were committed. The public preview tag resolves to the implementation commit and the published APK/native-source asset sizes and SHA256 digests match the verified downloads. The deterministic build-manifest JSON was reconstructed from the release workflow; its complete SHA256 matches the published 368-byte asset (`1ba3507d658a15cebcd7e203a95982d772b446efb999cb82fc33f24c09e1067e`). The build manifest and binary APK manifest agree. Physical Thor compilation, login ordering and visible particles remain device acceptance work.
+Signing certificate SHA256 remains `ff9c09cdc3e2404d1d7f72d61ce2f8651464f5e03dff340f70bd4df28c70e869`. Evidence and independent verifiers are under ignored `runtime-work/0422`; no private client binaries or Microsoft SDK files were committed. The public preview tag resolves to the implementation commit and the published APK/native-source asset sizes and SHA256 digests match the verified downloads. The deterministic build-manifest JSON was reconstructed from the release workflow; its complete SHA256 matches the published 368-byte asset (`1ba3507d658a15cebcd7e203a95982d772b446efb999cb82fc33f24c09e1067e`). The build manifest and binary APK manifest agree. The subsequent [device acceptance](particles-0422-device.md) confirms on-device compilation/deployment and the reported visible fix, with native permission evidence. The exact earlier initialization ordering remains untraced.
 
-## Install and compare on Thor
+## Original install and comparison procedure
+
+The supplied comparison is complete; keep Repair + diagnostics enabled as described in the device follow-up. These steps remain for reference.
 
 1. Stop the client and game server, then stop the server runtime. Update the APK in place and start the existing server runtime with the game server stopped.
 2. **Compile dinput8.dll → Deploy staged DLL** once, using the existing imported SDK/source. Wait for a successful compile before deployment. Keep native dinput8 enabled. No runtime/SDK/source reinstall or client reimport is needed; failed builds preserve the installed DLL.

@@ -1,3 +1,13 @@
+# Device-confirmed: 0.4.22 fixes the reported first-person particles (2026-09-18)
+
+Read [particles-0422-device.md](particles-0422-device.md) first. User reports the fix worked. Bundles `logs-1107241098681185606.zip` (diagnostics) and `logs-8361952957421422627.zip` (repair) confirm `install=ready` in both: hidden root actor with permission0 and attempts0 in profile, then `repaired hidden=1 before=0 after=1 attempts=1`, followed by `permitted before=1 after=1 attempts=1` in repair. The second bundle preserves the first particle log as previous. This is live device confirmation of the missing permission and correction, supported by visible success; the earlier initialization sequence itself remains untraced.
+
+On-device build/deploy succeeded: DLL1,716,224 bytes, SHA256 `a5bda1fe2af6367e8fbeacc3054bb8089fbb33681d5c8b61eb73f869a73a6566`; all six adapter-header hashes match released source. Working loading/controller/Turnip26/Native Surface settings remain active. Spell loading1.752s/2.067s, identical counts/checksum bytes and zero fallbacks; no particle speedup claim. No adapter failure/retry loop or current unhandled-exception signature. Both logs still show disconnect-to-character-select and return, so keep camp separate and parked. The captured pair does not establish a second in-world login or zone-to-zone transition; do not invent that acceptance or repeat the completed baseline.
+
+**Current action:** keep Repair + diagnostics enabled; its logs are bounded and this pair is only221/379bytes. No new APK, DLL rebuild, runtime/SDK/source reinstall or client reimport. Preserve the successful fix and other settings. Further loading optimization is separate work, guided by UI/XML/global-model timings. This update only records acceptance with [skip ci]; implementation `dde9476e9a82950bf497a0082fbb94579cdb2db6` and the published0.4.22 APK remain current. No subagents used.
+
+---
+
 # Released: 0.4.22 optional first-person particle repair (2026-09-18)
 
 Read [particles-0422.md](particles-0422.md). User authorized proceeding with the fix. Added default-off **First-person spell particles**: Original behavior, Diagnostics only, Repair + diagnostics (experimental). Wraps the verified first-person update, calls the original first, then uses the original permission setter only for a hidden, unpermitted current local root actor. Exact-binary/layout, thread, lifetime, scope and writable-memory guards apply; attempts/logs are bounded. Profile observes without repair; off does not hook. The new header is included in the Android deployment contract. Existing controller/reconnect/loading code is preserved; camp parked.
