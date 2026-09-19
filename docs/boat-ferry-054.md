@@ -25,12 +25,12 @@ Coordinates in this table are **X, Y, Z**. The client diagnostic log prints **Y,
 | Model | race 72, gender 0, texture 0, body type 1 |
 | Size / flymode | 0 / 0, matching the successful `#spawn` initialization |
 | Dock origin / heading | 607.125, -1782.000, -39.500 / 308.500 |
-| Far origin / heading | 407.125, -1782.000, -39.500 / -1 (travel heading) |
+| Far origin / heading | 625.304, -1939.820, -39.500 / -1 (travel heading) |
 | Route / pause type | circular / full pause |
 | Dock / far pause | 90 / 15 seconds |
 | Run / walk speed | 0.5 / 0.5 |
 
-The server resolves size zero to its race/gender default, as it did for the successful command; this is not a zero-sized rendered model. Fixed waypoint Z avoids accidentally using the passenger’s deck height as the ship’s destination. The dock heading restores the successful boarding orientation; departure and return exercise ordinary boat rotation. The 200-unit X displacement is a proposed short route, not a device-verified clearance or transit time. Check actual travel and deck support in the new capture.
+The server resolves size zero to its race/gender default, as it did for the successful command; this is not a zero-sized rendered model. Fixed waypoint Z avoids accidentally using the passenger’s deck height as the ship’s destination. The dock heading restores the successful boarding orientation; departure and return exercise ordinary boat rotation. The far point uses the pinned seed’s existing grid-59 waypoint-2 X/Y, following its dock departure corridor while retaining the lower Z. This roughly 159-unit leg still needs device acceptance for clearance and deck support with the SHIP model; no exact transit time is promised.
 
 ## Implementation and safeguards
 

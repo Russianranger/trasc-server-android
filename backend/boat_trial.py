@@ -95,8 +95,10 @@ def content(ids):
         'spawn2': [dict(id=s, spawngroupID=g, zone=ZONE, version=0, **DOCK,
                        respawntime=60, variance=0, pathgrid=r, path_when_zone_idle=0)],
         'grid': [dict(id=r, zoneid=ZONE_ID, type=0, type2=1)],
+        # Follow the existing grid-59 dock departure corridor (waypoint 2's
+        # X/Y), preserving the successful lower SHIP origin's Z throughout.
         'grid_entries': [dict(gridid=r, zoneid=ZONE_ID, number=1, **DOCK, pause=90),
-                         dict(gridid=r, zoneid=ZONE_ID, number=2, x=407.125, y=DOCK['y'],
+                         dict(gridid=r, zoneid=ZONE_ID, number=2, x=625.304, y=-1939.82,
                               z=DOCK['z'], heading=-1, pause=15)],
     }
 
