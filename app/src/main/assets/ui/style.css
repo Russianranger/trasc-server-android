@@ -36,3 +36,22 @@ body[data-scene=client]::before,body[data-scene=gameplay]::before,body[data-scen
 @media(min-width:1050px){#client-options .option-grid{grid-template-columns:repeat(3,minmax(0,1fr))}}
 @media(max-width:680px){.runtime-toolbar .buttons{width:100%}.runtime-toolbar button{flex:1;padding:10px 8px}}
 @media(max-width:599px){.option-grid,.option-checks{grid-template-columns:minmax(0,1fr)}}
+/* Spire content workspace: compact controls, readable records and touch targets. */
+.spire-toolbar{display:grid;grid-template-columns:minmax(150px,1fr) minmax(180px,2fr) auto;gap:12px;align-items:end}
+.spire-toolbar label{margin-top:0}.spire-toolbar input,.spire-toolbar select{margin-bottom:0}
+.spire-layout{display:grid;grid-template-columns:minmax(0,1fr);gap:18px}
+.spire-layout>.card{min-width:0}.spire-layout table{font-size:16px}
+#spire-results td{max-width:260px;overflow-wrap:anywhere}#spire-results button{min-height:44px;padding:8px 14px}
+.spire-fields{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:14px}
+.spire-field{min-width:0}.spire-field[hidden]{display:none}.spire-field label{margin:0 0 4px}
+.spire-field input,.spire-field textarea{margin:0;box-sizing:border-box;width:100%;min-height:44px}
+.spire-field textarea{min-height:76px;resize:vertical}.spire-field input[readonly]{opacity:.7}
+.spire-field .check{min-height:32px;margin:4px 0}.spire-field .check input{width:20px;min-height:20px}
+.spire-field small{display:block;font-size:13px;margin-top:4px}
+#spire-links{gap:8px}#spire-links button{font-size:14px;padding:8px 12px;min-height:44px}
+#spire-preview-panel{border:1px solid var(--gold,#ac9564);padding:16px;margin-top:20px;border-radius:10px}
+#spire-diff td{white-space:pre-wrap;overflow-wrap:anywhere;max-width:260px}
+#spire-other,#spire-history pre{max-height:300px;overflow:auto;white-space:pre-wrap;overflow-wrap:anywhere}
+#spire-status,#spire-export-status,#spire-warning{overflow-wrap:anywhere}
+@media(min-width:1200px){.spire-layout:has(#spire-record:not([hidden])){grid-template-columns:minmax(340px,.8fr) minmax(0,1.2fr)}}
+@media(max-width:600px){.spire-toolbar{grid-template-columns:1fr}.spire-fields{grid-template-columns:1fr}.spire-layout table{font-size:14px}}

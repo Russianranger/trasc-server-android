@@ -34,6 +34,7 @@ import client_addons
 import client_dll
 import client_settings
 import player_data
+import spire
 from log_retention import rotate
 
 VERSION = '0.3.4'
@@ -879,6 +880,7 @@ class Engine(ManagedContent):
             result.update(local_client_synced=False, copied_files=0,
                           message='Client data ZIP generated. No local client is imported, so no local files were copied.')
         atomic_json(self.work / 'logs/client-data-sync.json', result)
+        spire.record_export(self, result)
         self.log(result['message'])
         return result
 
@@ -992,6 +994,8 @@ class Engine(ManagedContent):
             'nektulos':self.nektulos_status(), 'client':self.client_status()}
 
     def dispatch(self,op,args):
+        if op in ('spire_catalog','spire_search','spire_detail','spire_preview','spire_apply','spire_history'):
+            return spire.dispatch(self,op,args)
         methods={'client_settings':lambda a:client_settings.inspect(self,a),'client_settings_save':lambda a:client_settings.save(self,a),
             'client_addons_scan':lambda a:client_addons.scan(self,a),
             'client_addons_lock':lambda a:client_addons.set_lock(self,a),'client_addons_copy':lambda a:client_addons.copy_files(self,a),
