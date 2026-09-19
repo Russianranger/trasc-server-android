@@ -35,7 +35,7 @@ Boat repair is explicitly shelved. Future work should separate deck collision, p
 
 ## Verification record
 
-Local baseline: all 145 Python tests pass, including new field-validation and Android backend-deployment checks. CI exercises real MariaDB saves, backup/error paths, concurrency rollback, audit, composite keys, character isolation and filtered/full client exports; browser checks cover preview invalidation, failed saves, linked records and responsive layouts. The full existing Android/runtime release gates remain required. Update this record with completed run IDs and any remaining limitations before review/publication.
+[Focused verification run 35437991661](https://github.com/Russianranger/trasc-server-android/actions/runs/35437991661) passed on implementation commit `0c98032`: all 145 Python tests, real MariaDB saves, backup/error paths, concurrency rollback, audit, composite keys, character isolation and filtered/full client exports. All twelve tables in the published seed support the editors. Browser checks passed for existing management flows plus preview invalidation, failed saves, linked records, composite insertion, history, export and responsive Spire layouts. Phone, Thor-landscape and wide screenshots were reviewed. The full Android/ARM64 database, DLL and graphics regressions remain required; their current results are attached to PR #3. Physical device acceptance remains outstanding.
 
 Implementation/review: [PR #3](https://github.com/Russianranger/trasc-server-android/pull/3). PR APKs use a CI debug certificate; the preserved upgrade certificate is applied only on main. Do not uninstall the existing app to install a PR artifact. Physical acceptance requires a release-signed candidate after merge approval.
 
