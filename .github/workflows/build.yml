@@ -71,6 +71,10 @@ jobs:
           docker run --rm --network none --hostname localhost \
             -v "$PWD/backend:/opt/trasc:ro" -v "$PWD/tests:/tests:ro" \
             trasc-database-test:1 python3 /tests/integration_spire.py
+          docker run --rm --network none --hostname localhost \
+            -v "$PWD/database-test/fixtures:/fixtures:ro" \
+            -v "$PWD/backend:/opt/trasc:ro" -v "$PWD/tests:/tests:ro" \
+            trasc-database-test:1 python3 /tests/integration_boat_trial.py --seed /fixtures/release-peq.zip
       - uses: actions/upload-artifact@v4
         if: always()
         with:
@@ -133,6 +137,7 @@ jobs:
           npx playwright install --with-deps chromium
           node tests/ui_management.cjs
           node tests/ui_spire.cjs
+          node tests/ui_boats.cjs
       - uses: actions/upload-artifact@v4
         if: always()
         with:
