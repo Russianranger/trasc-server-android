@@ -7,7 +7,7 @@ const server=http.createServer((req,res)=>{const name=req.url==='/'?'index.html'
  try{
   const page=await browser.newPage({viewport:{width:854,height:480}}),errors=[];page.on('pageerror',e=>errors.push(e.message));page.on('dialog',d=>d.accept());
   await page.addInitScript(()=>{
-   let jobs=[],seq=0,name="Traveller's blade",hp='10',pending=0;window.spireCalls=[];window.spireSaves=[];window.spireFailSave=false;window.spireHistory=[];
+   let jobs=[],seq=0,name="Traveller's blade",hp='10',pending=0;window.spireCalls=[];window.spireSaves=[];window.spireFailSave=false;window.spireHistoryEntries=[];
    const field=(name,type,key=false)=>({name,label:name,type,key,editable:!key,nullable:false,required:true,length:type.startsWith('varchar')?64:0,min:null,max:null});
    const meta=table=>({table,label:table==='items'?'Items':table==='merchantlist'?'Merchant inventory':'Spells',key:table==='merchantlist'?['merchantid','slot']:['id'],read_only:'',add:table==='merchantlist',remove:table==='merchantlist',impact:'Restart the server. Export spells with the saved RoF2 policy.',fields:table==='merchantlist'?[field('merchantid','int',true),field('slot','int',true),field('item','int')]:table==='spells_new'?[field('id','int',true),field('name','varchar(64)'),field('mana','int')]:[field('id','int',true),field('Name','varchar(64)'),field('hp','int')]});
    const state=()=>({settings:{ip:'127.0.0.1',repo:'https://github.com/Russianranger/Triptych-Triumvirate',ref:'main',workers:3,jobs:2},source:{},running:false,processes:{},jobs,free_bytes:50e9,nektulos:{},client:{}});
@@ -26,9 +26,9 @@ const server=http.createServer((req,res)=>{const name=req.url==='/'?'index.html'
      else if(op==='spire_preview')r={token:'token-'+(++seq),table:a.table,action:a.action,key:a.key,changes:Object.entries(a.values).map(([field,after])=>({field,before:field==='hp'?hp:name,after})),warnings:[],impact:'Restart after save.',message:'Backup before saving.'};
      else if(op==='spire_apply'){
       if(window.spireFailSave)throw Error('Record changed after preview; reload and preview again');
-      const preview=[...window.spireCalls].reverse().find(c=>c.op==='spire_preview').args;name=preview.values.Name||name;hp=preview.values.hp||hp;window.spireSaves.push(preview);window.spireHistory.push(preview);
+      const preview=[...window.spireCalls].reverse().find(c=>c.op==='spire_preview').args;name=preview.values.Name||name;hp=preview.values.hp||hp;window.spireSaves.push(preview);window.spireHistoryEntries.push(preview);
       r={table:preview.table,key:preview.key,action:preview.action,backup:'backups/database-fixture.sql.gz',message:'Saved.',pending_export:pending};
-     }else if(op==='spire_history')r={entries:window.spireHistory.map((x,i)=>({id:String(i),created:'2026-09-19 01:00:00',change:{...x,before:{hp:'10'},after:x.values},backup:'backups/database-fixture.sql.gz'})),next_offset:null,pending_export:pending};
+     }else if(op==='spire_history')r={entries:window.spireHistoryEntries.map((x,i)=>({id:String(i),created:'2026-09-19 01:00:00',change:{...x,before:{hp:'10'},after:x.values},backup:'backups/database-fixture.sql.gz'})),next_offset:null,pending_export:pending};
      else if(op==='export_client'){pending=0;r={file:'exports/client-data.zip',local_client_synced:true,message:'Saved compatibility preserved.'};}
      const j={id:String(++seq),operation:op,status:'done',result:r};jobs.push(j);result=j;
     }
@@ -42,7 +42,7 @@ const server=http.createServer((req,res)=>{const name=req.url==='/'?'index.html'
   assert((await page.locator('#spire-diff').textContent()).includes('20'));assert.equal(await page.evaluate(()=>window.spireSaves.length),0);
   await page.locator('#spire-field-hp').fill('21');assert(await page.locator('#spire-preview-panel').isHidden());assert(await page.locator('#spire-save').isDisabled());
   await page.locator('#spire-preview').click();await page.waitForFunction(()=>!spireState.working&&spireState.preview);await page.locator('#spire-save').click();await page.waitForFunction(()=>!spireState.working&&window.spireSaves.length===1);
-  assert.equal(await page.locator('#spire-field-hp').inputValue(),'21');assert.equal(await page.locator('#spire-field-id').getAttribute('readonly'),'');
+  assert.equal(await page.evaluate(()=>spireState.dirty),false);assert.equal(await page.evaluate(()=>window.spireHistoryEntries.length),1);assert.equal(await page.locator('#spire-field-hp').inputValue(),'21');assert.equal(await page.locator('#spire-field-id').getAttribute('readonly'),'');
   await page.locator('#spire-field-hp').fill('22');await page.locator('#spire-preview').click();await page.waitForFunction(()=>!spireState.working&&spireState.preview);await page.evaluate(()=>window.spireFailSave=true);await page.locator('#spire-save').click();await page.waitForFunction(()=>!spireState.working);assert((await page.locator('#spire-status').textContent()).includes('changed after preview'));assert.equal(await page.evaluate(()=>window.spireSaves.length),1);assert(await page.locator('#spire-save').isDisabled());
   await page.locator('#spire-links button').click();await page.waitForFunction(()=>!spireState.working&&spireState.table==='merchantlist');assert((await page.locator('#spire-filter-text').textContent()).includes('item = 100'));
   await page.locator('#spire-new').click();await page.waitForFunction(()=>!spireState.working&&spireState.record?.isNew);await page.locator('#spire-field-merchantid').fill('7');await page.locator('#spire-field-slot').fill('2');await page.locator('#spire-field-item').fill('101');await page.locator('#spire-preview').click();await page.waitForFunction(()=>!spireState.working&&spireState.preview);assert.equal(await page.evaluate(()=>window.spireCalls.filter(c=>c.op==='spire_preview').at(-1).args.action),'insert');

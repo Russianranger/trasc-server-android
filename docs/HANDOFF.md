@@ -1,12 +1,12 @@
 # Authorized development: Spire content workspace; boats deferred (2026-09-19 UTC)
 
-The user authorized all three selected Spire milestones and a dedicated **Spire** tab. This supersedes the older planning-only restriction below for those features. Development is on `codex/spire-content`, version0.5.1/code41. Read [spire-051.md](spire-051.md) for scope, safeguards, limits and device acceptance. Beta version0.5 remains the released0.4.23/code40 APK until a new candidate completes verification and publication is addressed.
+The user authorized all three selected Spire milestones and a dedicated **Spire** tab. This supersedes the older planning-only restriction below for those features. Development is on `codex/spire-content`, version 0.5.1/code 41. Read [spire-051.md](spire-051.md) for scope, safeguards, limits and device acceptance. Beta version 0.5 remains the released 0.4.23/code 40 APK until a new candidate completes verification and publication is addressed.
 
 Native launcher/Python implementation includes linked content browsing; common item/NPC, merchant and loot edits; spell/string/AA editing; save previews, live-schema validation, backup, stale-edit protection and transactional change history. It reuses the existing client export and preserves the current RoF2 filtering/restore behavior. High-ID compatibility remains separate. Preserve working particles, camera, controller, reconnect, graphics, loading and player restoration. Camping remains closed as user-confirmed.
 
 **Boats are shelved at the user's direction.** Record collision, passenger attachment/carrying, rotation and zone handoff as a future investigation. The client/server references from the discussion are leads, not a diagnosis or implemented repair. Begin with one ship inside one zone when this is reopened. No boat code changes belong in this milestone.
 
-Verification is in progress. The new MariaDB and UI checks supplement every existing release gate. No subagents used. Update this entry and the feature note with the final PR/build results before handing off.
+Implementation is in [PR #3](https://github.com/Russianranger/trasc-server-android/pull/3). Verification is in progress; check the PR checks for the final result. The new MariaDB and UI checks supplement every existing release gate. A PR-built APK uses a CI debug certificate and must not be installed over the existing app; the preserved release certificate is applied by the main build after merge approval. Do not uninstall the app to test a differently signed candidate. No subagents used.
 
 ---
 

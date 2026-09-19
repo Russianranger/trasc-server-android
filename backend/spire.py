@@ -8,7 +8,7 @@ import secrets
 import subprocess
 import time
 from player_data import ident, rows
-from spire_catalog import CATALOG, REFERENCES, PAIRS, bounds, impact
+from spire_catalog import CATALOG, REFERENCES, PAIRS, AA_STRING_TYPES, RELATED_NAMES, bounds, impact
 
 AUDIT = '_trasc_spire_changes'
 MAX_TEXT = 32768
@@ -74,10 +74,11 @@ def catalog(engine, args):
             **export_status(engine,names)}
 
 
-def query_rows(engine, s, where='1', columns=None, limit=51, offset=0):
+def query_rows(engine, s, where='1', columns=None, limit=51, offset=0, expressions=None):
     columns=columns or list(s['columns'])
-    expr=','.join(literal(c)+',IF('+ident(c)+" IS NULL,NULL,HEX(CAST("+ident(c)+' AS BINARY)))' for c in columns)
-    order=','.join(ident(c) for c in (s['key'] or columns))
+    expressions=expressions or {}
+    expr=','.join(literal(c)+',HEX(CAST('+expressions.get(c,ident(c))+' AS BINARY))' for c in columns)
+    order=','.join(ident(c) for c in (s['key'] or [c for c in columns if c in s['columns']]))
     output=engine.mysql('SELECT JSON_OBJECT('+expr+') FROM '+ident(s['table'])+' WHERE '+where+
         ' ORDER BY '+order+f' LIMIT {limit} OFFSET {offset};')
     records=[]
@@ -138,7 +139,7 @@ def validate(table, c, value):
         return text
     lo,hi=bounds(table,name)
     if (lo is not None and Decimal(text)<Decimal(lo)) or (hi is not None and Decimal(text)>Decimal(hi)):
-        raise ValueError(name+': allowed range '+str(lo or 'unbounded')+' to '+str(hi or 'unbounded'))
+        raise ValueError(name+': allowed range '+str(lo if lo is not None else 'unbounded')+' to '+str(hi if hi is not None else 'unbounded'))
     return text
 
 
@@ -154,7 +155,19 @@ def search(engine,args):
     term=str(args.get('query','')).strip()
     if len(term)>160: raise ValueError('Search is too long')
     columns=list(dict.fromkeys(s['key']+[c for c in spec['summary'] if c in s['columns']]))
-    where=[]
+    where=[]; expressions={}; name_search=[]
+    relations=RELATED_NAMES.get(s['table'],[])
+    if relations:
+        targets={r[2] for r in relations} | ({'npc_types'} if s['table']=='merchantlist' else set())
+        installed={}
+        for target,column in rows(engine,'SELECT TABLE_NAME,COLUMN_NAME FROM information_schema.COLUMNS WHERE TABLE_SCHEMA=DATABASE() AND TABLE_NAME IN ('+','.join(literal(t) for t in sorted(targets))+');'):
+            installed.setdefault(target,set()).add(column)
+        for alias,source,target,target_key,name in relations:
+            if source not in s['columns'] or not {target_key,name}<=installed.get(target,set()): continue
+            expressions[alias]='(SELECT '+ident(name)+' FROM '+ident(target)+' WHERE '+ident(target_key)+'='+ident(s['table'])+'.'+ident(source)+' LIMIT 1)'
+            if term: name_search.append(ident(source)+' IN (SELECT '+ident(target_key)+' FROM '+ident(target)+' WHERE LOCATE(LOWER('+literal(term)+'),LOWER('+ident(name)+'))>0)')
+        if term and s['table']=='merchantlist' and {'merchant_id','name'}<=installed.get('npc_types',set()):
+            name_search.append('merchantid IN (SELECT merchant_id FROM npc_types WHERE LOCATE(LOWER('+literal(term)+'),LOWER(name))>0)')
     filters=args.get('filters',{})
     if not isinstance(filters,dict) or len(filters)>4: raise ValueError('Invalid related-record filter')
     for k,v in filters.items():
@@ -162,8 +175,9 @@ def search(engine,args):
         where.append(ident(k)+'='+literal(validate(s['table'],s['columns'][k],v)))
     if term:
         # LOCATE treats %, _, apostrophes and backslashes as literal search text.
-        where.append('('+' OR '.join('LOCATE(LOWER('+literal(term)+'),LOWER(CAST('+ident(c)+' AS CHAR)))>0' for c in columns)+')')
-    found=query_rows(engine,s,' AND '.join(where) or '1',columns=columns,offset=offset)
+        where.append('('+' OR '.join(['LOCATE(LOWER('+literal(term)+'),LOWER(CAST('+ident(c)+' AS CHAR)))>0' for c in columns]+name_search)+')')
+    columns+=list(expressions)
+    found=query_rows(engine,s,' AND '.join(where) or '1',columns=columns,offset=offset,expressions=expressions)
     records=[]
     for raw in found[:50]:
         v=values(raw)
@@ -176,8 +190,11 @@ def links(table,v):
     for source,column,target,target_column,empty in REFERENCES:
         if source==table and target in CATALOG and v.get(column) not in (None,''):
             if int(v[column]) not in empty:
-                out.append(dict(label=column+' → '+CATALOG[target]['label'],table=target,filters={target_column:v[column]}))
+                filters={target_column:v[column]}
+                if source=='aa_ranks' and target=='db_str': filters['type']=str(AA_STRING_TYPES[column])
+                out.append(dict(label=column+' → '+CATALOG[target]['label'],table=target,filters=filters))
         if target==table and source in CATALOG and v.get(target_column) not in (None,''):
+            if table=='db_str' and source=='aa_ranks' and str(v.get('type'))!=str(AA_STRING_TYPES[column]): continue
             out.append(dict(label='Used by '+CATALOG[source]['label']+' ('+column+')',table=source,filters={column:v[target_column]}))
     if table=='merchantlist': out.append(dict(label='This merchant inventory',table=table,filters={'merchantid':v['merchantid']}))
     return out
@@ -205,7 +222,9 @@ def reference_checks(engine,table,changed,after):
     checks=[]
     for source,col,target,targetcol,empty in REFERENCES:
         if source!=table or col not in changed or after.get(col) is None or int(after[col]) in empty: continue
-        condition='EXISTS(SELECT 1 FROM '+ident(target)+' WHERE '+ident(targetcol)+'='+literal(after[col])+')'
+        condition='EXISTS(SELECT 1 FROM '+ident(target)+' WHERE '+ident(targetcol)+'='+literal(after[col])
+        if table=='aa_ranks' and target=='db_str': condition+=' AND `type`='+str(AA_STRING_TYPES[col])
+        condition+=')'
         if rows(engine,'SELECT '+condition+';')[0][0]!='1': raise ValueError(col+': referenced '+target+' record does not exist')
         checks.append(condition)
     for low,high in PAIRS:

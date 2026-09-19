@@ -37,7 +37,7 @@ INSERT INTO loottable_entries VALUES(10,20,100,1,0,0);
 INSERT INTO lootdrop_entries VALUES(20,100,1,100,0);
 INSERT INTO merchantlist VALUES(7,1,100,100,0,255,42);
 INSERT INTO spells_new VALUES(26,'Minor Healing',5,17),(44999,'Last supported',5,17),(45000,'Excluded',5,17);
-INSERT INTO db_str VALUES(30,1,'Ability'),(30,4,'Description');
+INSERT INTO db_str VALUES(30,1,'Ability'),(30,4,'Description'),(31,1,'Title only');
 INSERT INTO aa_ranks VALUES(40,30,30,1,26,0,0);
 INSERT INTO aa_ability VALUES(50,'Healing AA',40,1);
 INSERT INTO aa_rank_effects VALUES(40,1,0,1,0);
@@ -66,6 +66,10 @@ def run():
                 p=preview(table,key,changed,action);return spire.apply(engine,{'token':p['token']})
             assert all(e['available'] for e in spire.catalog(engine,{})['entities'])
             assert spire.search(engine,{'table':'items','query':'Sword'})['records'][0]['key']=={'id':'100'}
+            assert spire.search(engine,{'table':'merchantlist','query':'Sword'})['records'][0]['values']['item_name']=='Sword'
+            assert spire.search(engine,{'table':'merchantlist','query':'Merchant'})['records'][0]['key']=={'merchantid':'7','slot':'1'}
+            assert spire.search(engine,{'table':'lootdrop_entries','query':'Weapons'})['records'][0]['values']['item_name']=='Sword'
+            assert spire.search(engine,{'table':'loottable_entries','query':'Treasures'})['records'][0]['values']['drop_name']=='Weapons'
             assert not spire.search(engine,{'table':'items','query':"%' OR 1=1 --"})['records']
             assert any(l['table']=='merchantlist' for l in spire.detail(engine,{'table':'npc_types','key':{'id':1}})['links'])
             # Full-row concurrency token includes custom/binary fields; untouched values survive.
@@ -110,6 +114,7 @@ def run():
             edit('db_str',{'id':30,'type':4},{'value':"Healing's description"})
             assert spire.detail(engine,{'table':'db_str','key':{'id':30,'type':1}})['values']['value']=='Ability'
             expect_error(lambda:preview('db_str',{'id':30,'type':4},{'value':'broken^export'}),'corrupt client export')
+            expect_error(lambda:preview('aa_ranks',{'id':40},{'desc_sid':'31'}),'does not exist')
             edit('aa_ability',{'id':50},{'name':'Improved Healing'})
             edit('aa_ranks',{'id':40},{'cost':'3','spell':'45000'})
             edit('aa_rank_effects',{'rank_id':40,'slot':1},{'base1':'5'})
@@ -146,6 +151,8 @@ def run():
             assert engine.mysql('SELECT level FROM character_data;').splitlines()[1]=='50'
             engine.mysql('ALTER TABLE lootdrop ENGINE=MyISAM;')
             expect_error(lambda:preview('lootdrop',{'id':20},{'name':'unsafe'}),'InnoDB')
+            engine.mysql('ALTER TABLE merchantlist DROP PRIMARY KEY;')
+            assert spire.search(engine,{'table':'merchantlist','query':'Potion'})['read_only']
             print('PASS: real content browse/link/edit/insert/delete, validation, composite keys, backup, concurrent edit rollback, durable audit, character isolation, AA/string edits and filtered/full client export',flush=True)
         finally:
             if os.environ.get('TRASC_TEST_MYSQL_PORT'):engine.mysql('DROP DATABASE IF EXISTS spire_test;',database=False)

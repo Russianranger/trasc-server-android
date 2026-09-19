@@ -71,8 +71,20 @@ REFERENCES = [
 PAIRS = [('mincash', 'maxcash'), ('mindmg', 'maxdmg'), ('min_status', 'max_status'),
          ('trivial_min_level', 'trivial_max_level'), ('npc_min_level', 'npc_max_level')]
 
+AA_STRING_TYPES = {'title_sid': 1, 'lower_hotkey_sid': 2, 'upper_hotkey_sid': 3, 'desc_sid': 4}
+
+# Friendly names for entry tables without their own name column.
+RELATED_NAMES = {
+    'merchantlist': [('item_name', 'item', 'items', 'id', 'Name')],
+    'lootdrop_entries': [('item_name', 'item_id', 'items', 'id', 'Name'),
+                         ('drop_name', 'lootdrop_id', 'lootdrop', 'id', 'name')],
+    'loottable_entries': [('table_name', 'loottable_id', 'loottable', 'id', 'name'),
+                          ('drop_name', 'lootdrop_id', 'lootdrop', 'id', 'name')],
+}
+
 
 def bounds(table, name):
+    if table == 'items' and name == 'mana': return (None, None)
     if name in ('chance', 'disabled_chance', 'probability'): return ('0', '100')
     if name in ('mincash', 'maxcash', 'avgcoin', 'cost', 'mana', 'cast_time', 'recast_time',
                 'recovery_time', 'level_req', 'level_required', 'multiplier', 'mindrop', 'droplimit'):

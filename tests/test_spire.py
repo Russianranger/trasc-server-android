@@ -16,6 +16,7 @@ class SpireValidationTests(unittest.TestCase):
         for value in ('18446744073709551616','-1','1.5',True):
             with self.assertRaises(ValueError): spire.validate('items',c,value)
         with self.assertRaises(ValueError): spire.validate('aa_ability',self.column('enabled','tinyint'),'2')
+        self.assertEqual(spire.validate('items',self.column('mana','int'),'-10'),'-10')
 
     def test_probability_and_nonfinite_numbers(self):
         for value in ('-0.01','100.01','NaN','Infinity','1e99'):
@@ -45,6 +46,10 @@ class SpireValidationTests(unittest.TestCase):
     def test_links_keep_composite_string_types_and_related_records(self):
         links=spire.links('db_str',{'id':'20','type':'4','value':'Description'})
         self.assertTrue(any(x['table']=='aa_ranks' and x['filters']=={'desc_sid':'20'} for x in links))
+        self.assertFalse(any('title_sid' in x['filters'] for x in links))
+        links=spire.links('aa_ranks',{'id':'1','desc_sid':'20','title_sid':'20'})
+        self.assertTrue(any(x['filters']=={'id':'20','type':'4'} for x in links))
+        self.assertTrue(any(x['filters']=={'id':'20','type':'1'} for x in links))
         links=spire.links('npc_types',{'id':'1','loottable_id':'10','merchant_id':'7'})
         self.assertTrue(any(x['table']=='merchantlist' and x['filters']=={'merchantid':'7'} for x in links))
 

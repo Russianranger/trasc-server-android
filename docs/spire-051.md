@@ -5,7 +5,8 @@ The user authorized the three previously selected Spire milestones and a dedicat
 ## Included
 
 - Search and paginate items, NPCs, loot tables, loot drops, both loot-entry tables, merchant inventories, spells, database strings, AA abilities, AA ranks and rank effects.
-- Open related records in either direction: NPC → loot/merchant, table → drop → item, item → merchant/loot, AA → rank → spell/strings/effects. Composite database keys are preserved.
+- Merchant inventories also search by item/NPC name; loot-entry lists show related item/drop/table names.
+- Open related records in either direction: NPC → loot/merchant, table → drop → item, item → merchant/loot, AA → rank → spell/strings/effects. Composite database keys are preserved. AA string links and validation include the title/hotkey/description type.
 - Edit common item/NPC fields and the supported loot, merchant, spell, string and AA fields. Other installed fields are displayed read-only and preserved. Record IDs cannot be changed.
 - Add loot tables/drops, merchant slots, loot entries, database strings and AA effects using explicit keys. Remove merchant slots, loot entries and AA effects through a removal preview. Existing item/NPC/spell/AA base records are edited in place; creating/deleting those entities and rewriting AA rank chains are outside this focused editor.
 - Preview before/after values, validate supported fields against the live schema and references, require a stopped server for saving, back up the full database first, then commit the edit and durable change-history entry together. Stale records/previews fail without overwriting later edits.
@@ -35,5 +36,7 @@ Boat repair is explicitly shelved. Future work should separate deck collision, p
 ## Verification record
 
 Local baseline: all 145 Python tests pass, including new field-validation and Android backend-deployment checks. CI exercises real MariaDB saves, backup/error paths, concurrency rollback, audit, composite keys, character isolation and filtered/full client exports; browser checks cover preview invalidation, failed saves, linked records and responsive layouts. The full existing Android/runtime release gates remain required. Update this record with completed run IDs and any remaining limitations before review/publication.
+
+Implementation/review: [PR #3](https://github.com/Russianranger/trasc-server-android/pull/3). PR APKs use a CI debug certificate; the preserved upgrade certificate is applied only on main. Do not uninstall the existing app to install a PR artifact. Physical acceptance requires a release-signed candidate after merge approval.
 
 The existing Beta version 0.5 release remains the verified 0.4.23/code40 APK. This branch uses 0.5.1/code41 and has not replaced that release.
