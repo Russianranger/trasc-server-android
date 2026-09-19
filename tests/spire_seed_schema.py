@@ -34,6 +34,8 @@ with tempfile.TemporaryDirectory(prefix='spire-schema-') as temp:
             assert not s['read_only'],(table,s['read_only'])
             if table=='items':
                 assert {'clickeffect','proceffect','worneffect','focuseffect','scrolleffect'}<=set(s['editable'])
+            if table=='npc_types': assert {'_INT','Accuracy','Avoidance'}<=set(s['editable'])
+            if table=='spells_new': assert {'AEDuration','Activated','zonetype'}<=set(s['editable'])
             assert spire.search(engine,{'table':table})['records']==[]
         print('PASS: real published seed schemas support all twelve content editors',flush=True)
     finally:

@@ -17,8 +17,8 @@ CATALOG = {
         'clickeffect proceffect worneffect focuseffect scrolleffect '
         'click_effect proc_effect worn_effect focus_effect', 'id Name icon itemtype'),
     'npc_types': entity('NPCs', 'name lastname level race class bodytype hp mana gender '
-        'texture helmtexture size runspeed walkspeed AC STR STA DEX AGI INT WIS CHA '
-        'MR CR DR FR PR mindmg maxdmg attack_count attack_delay accuracy avoidance '
+        'texture helmtexture size runspeed walkspeed AC STR STA DEX AGI _INT INT WIS CHA '
+        'MR CR DR FR PR mindmg maxdmg attack_count attack_delay Accuracy Avoidance accuracy avoidance '
         'loottable_id merchant_id npc_spells_id npc_faction_id aggroradius assistradius',
         'id name level race loottable_id merchant_id'),
     'loottable': entity('Loot tables', 'name mincash maxcash avgcoin', 'id name mincash maxcash', add=True),
@@ -33,8 +33,8 @@ CATALOG = {
         'merchantid slot item probability', add=True, remove=True),
     'spells_new': entity('Spells', 'name player_1 teleport_zone you_cast other_casts cast_on_you cast_on_other '
         'spell_fades range aoerange pushback pushup cast_time recovery_time recast_time '
-        'buffdurationformula buffduration AE_duration mana targettype resisttype goodEffect '
-        'activated skill zone_type EnvironmentType TimeOfDay '
+        'buffdurationformula buffduration AEDuration AE_duration mana targettype resisttype goodEffect '
+        'Activated activated skill zonetype zone_type EnvironmentType TimeOfDay '
         + ' '.join(f'{prefix}{i}' for prefix in ('effect_base_value', 'effect_limit_value',
                  'max', 'formula', 'effectid') for i in range(1, 13)) + ' '
         + ' '.join(f'classes{i}' for i in range(1, 17)), 'id name mana targettype', export=True),

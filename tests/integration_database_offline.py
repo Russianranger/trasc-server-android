@@ -53,6 +53,8 @@ def verify(seed, work):
             assert not definition['read_only'], (table,definition['read_only'])
             if table=='items':
                 assert {'clickeffect','proceffect','worneffect','focuseffect','scrolleffect'}<=set(definition['editable'])
+            if table=='npc_types': assert {'_INT','Accuracy','Avoidance'}<=set(definition['editable'])
+            if table=='spells_new': assert {'AEDuration','Activated','zonetype'}<=set(definition['editable'])
             result=spire.search(engine,{'table':table})
             if result['records']:
                 record=spire.detail(engine,{'table':table,'key':result['records'][0]['key']})
