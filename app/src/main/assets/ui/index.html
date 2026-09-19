@@ -1,5 +1,5 @@
 <!doctype html>
-<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover"><title>TRASC Server</title><link rel="stylesheet" href="style.css"><script src="app.js" defer></script><script src="rules.js" defer></script><script src="client.js" defer></script><script src="workspace.js" defer></script><script src="spire.js" defer></script><script src="game-settings.js" defer></script></head>
+<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover"><title>TRASC Server</title><link rel="stylesheet" href="style.css"><script src="app.js" defer></script><script src="rules.js" defer></script><script src="client.js" defer></script><script src="workspace.js" defer></script><script src="spire.js" defer></script><script src="boats.js" defer></script><script src="game-settings.js" defer></script></head>
 <body>
 <header><div class="mark">TL</div><div><strong>TRASC <span>SERVER</span></strong><small>Your world, on your device</small></div><span id="badge" class="badge">OFFLINE</span></header>
 <main>
@@ -67,6 +67,14 @@
 <details class="options-help"><summary>Other fields (read only)</summary><pre id="spire-other"></pre></details>
 <section id="spire-preview-panel" hidden aria-label="Save preview"><h3>Review changes</h3><p id="spire-preview-message"></p><div class="table-wrap"><table><thead><tr><th>Field</th><th>Before</th><th>After</th></tr></thead><tbody id="spire-diff"></tbody></table></div><p id="spire-preview-warning"></p><div class="buttons"><button id="spire-save">Save reviewed changes</button><button id="spire-discard" class="secondary">Discard preview</button></div><small>Stop the server before saving. A full database backup and a permanent change-history entry are created for each save.</small></section>
 </article></div>
+<details class="card fold" id="boat-trial-panel"><summary>Erud’s Crossing ferry trial</summary>
+<p>A solid ship with a short return route for testing passenger movement and turning. It waits 90 seconds at the dock and 15 seconds offshore.</p>
+<p class="hint">This installs a separate ferry named TRASC Ferry. The existing cross-zone routes stay as they are. Stop the server before saving; a full database backup is created first.</p>
+<p id="boat-trial-status" role="status" aria-live="polite">Open this panel to check the ferry.</p>
+<div class="buttons"><button id="boat-trial-refresh" class="secondary">Refresh ferry</button><button id="boat-trial-install" disabled>Preview installation</button><button id="boat-trial-reset" class="secondary" disabled>Preview reset to dock</button><button id="boat-trial-remove" class="danger" disabled>Preview removal</button></div>
+<section id="boat-trial-preview" hidden aria-label="Ferry change preview"><h3>Review ferry change</h3><p id="boat-trial-summary"></p><p id="boat-trial-warning" class="hint"></p><div class="buttons"><button id="boat-trial-save" disabled>Save reviewed ferry change</button><button id="boat-trial-discard" class="secondary">Discard preview</button></div></section>
+<p class="hint">After installation, start the server and visit the Erud’s Crossing dock. Board the ferry and release movement controls as it leaves. Use Boat investigation in Client settings to record the ride, then export logs.</p>
+</details>
 <details class="card fold" id="spire-history-panel"><summary>Change history</summary><button id="spire-history-load" class="secondary">Refresh history</button><div id="spire-history"></div><button id="spire-history-more" class="secondary" hidden>Older changes</button><small>History records the before/after values and the database backup path. Restore a complete database backup from the Database tab if necessary; it also restores other data to that snapshot.</small></details>
 </section>
 

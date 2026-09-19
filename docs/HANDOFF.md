@@ -1,3 +1,13 @@
+# 0.5.4 implementation: solid ferry with a timed single-zone route (2026-09-19 UTC)
+
+The user authorized moving forward with the fix. Read [boat-ferry-054.md](boat-ferry-054.md) for scope, safeguards and the next device procedure. Development is on `codex/boat-ferry-trial`, version 0.5.4/code 44. The earlier authorization to review, merge and deliver a signed APK remains applicable; complete all existing release gates. Publication status will be recorded above this entry after verification.
+
+Spire now offers a previewed, backed-up install/reset/removal of one separate Erud’s Crossing ferry. It uses the confirmed solid race-72/gender-0 `SHIP` at the successful origin X 607.125, Y -1782, Z -39.5, heading 308.5, then follows a fixed-height two-stop route with a 90-second dock pause and 15-second far pause. The new route prepares movement/turning acceptance without requiring GM movement privileges. No original disabled route, account permission, player record, quest or client/DLL behavior is changed. Passenger carrying and cross-zone service remain unaccepted; do not call automated database checks proof of either.
+
+The user’s collision observations are final for these tested variants: solid higher/lower gender-0 ship, boarding accepted when lower, pass-through gender-2 ship. **Do not repeat the withdrawn PRE/gender-2 test.** Use the existing deployed 0.5.3 DLL with the new APK; no DLL/server recompile is needed. Preserve closed milestones and settings. Raw private inputs remain uncommitted; no subagents used.
+
+---
+
 # User clarification: retire the repeated failed collision test (2026-09-19 UTC)
 
 The user explicitly rejects repeating the unchanged gender-2 (`PRE`) collision test. They clarify that the higher spawn of the working gender-0 (`SHIP`) variant was solid and blocked entry even when level with the deck; the lower spawn remained solid and allowed boarding. The original gender-2 variant allows pass-through. Accept this user-observed distinction. **Do not ask for the previously proposed `TBTLow` / gender-2 height comparison again.** Any such instructions in historical entries below are withdrawn.
