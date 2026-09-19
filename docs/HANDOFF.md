@@ -1,3 +1,31 @@
+# Current: 0.4.23 launcher layout; camp and player migration confirmed (2026-09-19 UTC)
+
+The user authorized launcher UI changes: enclose the sticky Server runtime panel, replace the raw `start started` message with clear server status, and condense Gameplay and client launch options with dropdowns grouped separately from checkboxes. Read [launcher-0423.md](launcher-0423.md). This is a launcher-only update; preserve the working 0.4.22 DLL, particle repair, camera, reconnect, loading, controller, graphics and runtime settings. No server/DLL build, runtime reinstall, source/SDK refresh or client reimport is required. Version0.4.23/code40 preserves application ID and signing identity. Release verification is pending; do not claim an APK published until recorded below. No subagents used.
+
+**Review candidate:** implementation `65bba40dfca0698383c8708e3d28b2e2deadd991` is on `codex/launcher-layout-0423`, [draft PR1](https://github.com/Russianranger/trasc-server-android/pull/1). [Run35408972837](https://github.com/Russianranger/trasc-server-android/actions/runs/35408972837) passed database, real MSVC add-on build, WineD3D, Vulkan and APK jobs (including138 Python tests, host/JVM, browser flows, Android build and lint). Responsive phone/Thor-landscape/wide screenshots were reviewed. The client-runtime compatibility job is still running at this checkpoint. UI artifact10574100251 SHA256 `c92a33b92523832a908d149211b21f0fce87fdc05396738c343c072d5c6e301b`; one early phone checkbox capture had incomplete paint, while the later full-page capture shows all controls correctly. Local evidence is under ignored `runtime-work/0423`.
+
+**Publication blocked pending approval:** automatic approval review rejected the direct push to main because the user had not explicitly authorized that publication target. Main remains6cb1658 and published preview remains0.4.22. The safer draft PR is ready for the user to approve merging/publishing after required gates pass. No failed gate is waived. The branch APK uses ordinary CI debug signing, so it is not offered as an in-place preview update; main's existing preserved-key release workflow must produce the installable update. This follow-up is documentation-only `[skip ci]`, not a second implementation build.
+
+## Newly closed device milestones
+
+- [x] **Player/account snapshot restoration across a database update:** user explicitly confirms inventory and progression survived. This is separate from the previously confirmed complete-session backup/restore. Do not request the same migration test again.
+- [x] **Camping:** user reports the camp fix worked after changing `Custom:CampTimerMs` from2900 (2.9s) to30000 (30s) and restarting. Screenshots showed Berolinen and Yehaos with `character_data.gm=0`, account `eqemu` with `status=0`, and ruleset1 with `Character:EnableHackedFastCampForGM=false`. No evidence restoration granted GM status. Close the reported camp issue; older entries saying camp is parked/unresolved are historical. This is user-confirmed behavior, not a newly captured packet trace or proof of which update introduced2900. No new camp code/automatic database edits are needed.
+- [x] **First-person particles:** retain the 0.4.22 device acceptance below. Additional lifecycle regression coverage can accompany normal play without repeating the successful baseline.
+
+## Future development: selected Spire features (planning only)
+
+User selected recommendations1–3 from `Russianranger/spire-valorith`. These are backlog milestones, not part of0.4.23 and not authorization to implement them now. Prefer integrating focused screens into the existing Android launcher/Python backend; no separate full Spire service has been selected.
+
+1. **Content browser:** searchable items, NPCs, loot and merchants; follow relationships between records. Read-only first, with pagination, useful names/icons where available, and mobile-friendly linked detail views.
+2. **Focused content editing:** common item/NPC fields, merchant inventories and loot. Preview changes, validate against the installed schema, back up before writes and record changes. Preserve custom fork fields; define when restart/reload is needed.
+3. **Spells, database strings and AA editing:** connected editors with reference checks and the existing four-file Export & sync workflow. Retain RoF2 compatibility filtering. Full high-ID support/remapping is separate work: an editor must not imply excluded IDs>=45000 are usable. Confirm which data needs client export versus server reload/restart before enabling edits.
+
+Not selected: full Spire replacement, Sage/3D world editing, live telnet/API management and additional character-recovery tools. Keep the existing player snapshot tools.
+
+Other open work remains: high-ID spell compatibility, intermittent cold-start name corruption, actual zone-state persistence acceptance, the older unproven server-stop/app-exit report, longer background/power/thermal validation, and separately scoped UI/XML/global-model loading optimization. Do not reopen working camera/reconnect/controller/particle fixes or conflate game FPS with presentation rate.
+
+---
+
 # Device-confirmed: 0.4.22 fixes the reported first-person particles (2026-09-18)
 
 Read [particles-0422-device.md](particles-0422-device.md) first. User reports the fix worked. Bundles `logs-1107241098681185606.zip` (diagnostics) and `logs-8361952957421422627.zip` (repair) confirm `install=ready` in both: hidden root actor with permission0 and attempts0 in profile, then `repaired hidden=1 before=0 after=1 attempts=1`, followed by `permitted before=1 after=1 attempts=1` in repair. The second bundle preserves the first particle log as previous. This is live device confirmation of the missing permission and correction, supported by visible success; the earlier initialization sequence itself remains untraced.

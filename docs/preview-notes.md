@@ -1,3 +1,15 @@
+# 0.4.23 — compact launcher controls
+
+- Server runtime panel now has a complete border, inset spacing and an opaque background while scrolling.
+- Server startup reads “Starting server…” followed by “Server started.” after success.
+- Client launch options group dropdowns and checkboxes into compact responsive layouts. Detailed explanations remain available under expandable help; values and defaults are retained.
+- Gameplay settings use compact controls and expandable help.
+- Handoff records successful camping and player/account migration, plus the three selected Spire milestones for future development.
+
+Update in place after stopping the game and runtime. Reopen the existing runtime and keep the current DLL and working settings. No recompilation, runtime download or client import is needed.
+
+---
+
 # 0.4.22 — First-person particle repair experiment
 
 - Adds **First-person spell particles**: Original behavior (default), Diagnostics only, or Repair + diagnostics (experimental).

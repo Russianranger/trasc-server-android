@@ -15,3 +15,24 @@ button{font-family:Cinzel,Georgia,serif;font-size:12px;background:linear-gradien
 @media(max-width:680px){h1{font-size:27px}.section-title h2{font-size:20px}.overview{padding-top:28px}.fold>summary{font-size:14px;padding:20px}.fold>:not(summary){margin-left:20px;margin-right:20px}.fold input,.fold select{width:calc(100% - 40px)}.card.client-launch-card{padding:22px!important}.client-launch-card h3{font-size:20px}.grid .fold{margin-bottom:0}body{font-size:17px}}
 body[data-scene=database]::before,body[data-scene=build]::before,body[data-scene=logs]::before{background-image:linear-gradient(180deg,#09141235,#0c1717bc 70%),url('fantasy-library.webp')}
 body[data-scene=client]::before,body[data-scene=gameplay]::before,body[data-scene=files]::before{background-image:linear-gradient(180deg,#09141235,#0c1717bc 70%),url('fantasy-forest.webp')}
+
+/* Enclosed sticky runtime panel and compact launch controls. */
+.runtime-toolbar{top:8px;margin:12px 0;padding:10px 14px;border:1px solid #8b774a;border-radius:4px 12px 4px 12px;background:#10211a;box-shadow:inset 0 0 0 3px #0f201a88,0 5px 16px #0005}
+.runtime-toolbar>div:first-child{min-width:0}.runtime-toolbar small{overflow-wrap:anywhere}
+.options-body{padding-bottom:18px}.options-intro{margin:0 0 14px}
+.option-group{min-width:0;margin:0 0 18px;padding:0;border:0}
+.option-group legend{padding:0 0 10px;font-family:Cinzel,Georgia,serif;font-size:14px;color:var(--gold)}
+.option-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px 16px}
+.option-field{min-width:0}.option-field label{margin:0 0 5px;line-height:1.4;font-size:14px}
+.option-field select,.option-field input{width:100%;min-width:0;padding:10px 9px;font-size:13px}
+.option-checks{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:4px 16px}
+.option-checks .check{min-width:0;min-height:44px;margin:0;line-height:1.4;font-size:14px;padding:6px 0}
+.option-group>.hint{margin:10px 0 0}.options-help{border-top:1px solid var(--line);margin:12px 0 0}
+.options-help>summary{cursor:pointer;min-height:44px;padding:12px 0;font-size:13px;color:#e6cf95}
+.options-help p,.options-help dl{font:12px/1.7 system-ui,sans-serif;color:var(--muted);margin:0 0 12px}
+.options-help dt{font-weight:600;color:var(--text);margin-top:14px}.options-help dd{margin:4px 0 0}
+.option-actions{border-top:1px solid var(--line);margin-top:6px;padding-top:2px}
+.gameplay-controls .check{min-height:44px;margin:8px 0}.gameplay-controls .hint:empty{display:none}
+@media(min-width:1050px){#client-options .option-grid{grid-template-columns:repeat(3,minmax(0,1fr))}}
+@media(max-width:680px){.runtime-toolbar .buttons{width:100%}.runtime-toolbar button{flex:1;padding:10px 8px}}
+@media(max-width:599px){.option-grid,.option-checks{grid-template-columns:minmax(0,1fr)}}
