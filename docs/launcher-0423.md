@@ -14,4 +14,8 @@ The latest handoff also closes user-confirmed player/account migration and campi
 
 ## Verification
 
-Local validation:138 existing Python tests passed; JavaScript syntax and diff whitespace checks passed. An HTML inventory check confirms every existing control ID and attribute is retained without duplicate IDs. The local browser package has no Chromium executable; responsive screenshots and the existing browser flows will run in CI, along with the unchanged release gates. Publication remains pending.
+Implementation65bba40 on [draft PR1](https://github.com/Russianranger/trasc-server-android/pull/1), [run35408972837](https://github.com/Russianranger/trasc-server-android/actions/runs/35408972837):138 existing Python tests, host/JVM checks, browser management flows, Android build and lint passed. Database, real Microsoft add-on compilation, WineD3D and Vulkan jobs passed. The client-runtime job remains in progress at this checkpoint. Every existing control ID/attribute is retained without duplicates.
+
+Reviewed phone412×915, Thor landscape854×480 and wide1280×720 screenshots. Runtime borders are enclosed, dropdowns follow the intended one/two/three-column layout, and checkbox labels fit. One early phone checkbox screenshot had incomplete paint; the later full-page capture shows every checkbox correctly. UI artifact10574100251 matches SHA256 `c92a33b92523832a908d149211b21f0fce87fdc05396738c343c072d5c6e301b`.
+
+Automatic approval review blocked direct main publication because that target needs explicit user approval. The draft PR is reviewable;0.4.23 is not merged or published. Keep0.4.22 installed. After approval, retain every existing release gate and publish using main's preserved signing key; the branch's ordinary debug-signed APK is not an in-place update.
