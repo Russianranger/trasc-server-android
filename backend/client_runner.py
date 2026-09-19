@@ -385,6 +385,7 @@ class Supervisor:
         self.env['TRASC_EQ_DISPLAY_V1'] = 'off'
         self.env['TRASC_EQ_PARTICLES_V1'] = 'off'
         self.env['TRASC_EQ_BOATS_V1'] = 'off'
+        self.env['TRASC_EQ_BOATS_V2'] = 'off'
         if request.get('renderer','software') == 'virgl':
             # swrast's virpipe transport forwards rendering to the native GLES
             # server. LIBGL_ALWAYS_SOFTWARE selects that headless DRI loader;
@@ -609,7 +610,7 @@ class Supervisor:
         self.update(runtime_acceleration_observed=observed)
         if self.request.get('runtime_acceleration') == 'seccomp' and not observed:
             raise RuntimeError('Runtime acceleration was not confirmed. Select Compatibility runtime mode and export Logs.')
-        for name in ('client-wine.log', 'client-prefix.log', 'client-display.log', 'client-graphics.log', 'client-threads.log', 'client-vulkan.log', 'client-frame-bridge.log', 'client-camera.log', 'client-loading.log', 'client-particles.log', 'client-boats.log', 'eqgame_d3d9.log'):
+        for name in ('client-wine.log', 'client-prefix.log', 'client-display.log', 'client-graphics.log', 'client-threads.log', 'client-vulkan.log', 'client-frame-bridge.log', 'client-camera.log', 'client-loading.log', 'client-particles.log', 'client-boats.log', 'client-boats-rollover.log', 'eqgame_d3d9.log'):
             archive_log(LOGS / name)
         sound_report = LOGS / 'client-wine.sound.json'
         if sound_report.is_file(): sound_report.replace(LOGS / 'client-wine.sound.previous.json')

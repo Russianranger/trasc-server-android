@@ -5,8 +5,40 @@
 #include <cmath>
 
 namespace trasc_boats {
-static const char marker[] = "TRASC_EQ_BOATS_V1";
+static const char marker[] = "TRASC_EQ_BOATS_V2";
 using trasc_camera::read;
+// Keep recording for long sessions while bounding disk use to two segments.
+// The caller serializes writes; a sharing/I/O failure simply drops this sample.
+inline bool appendLog(const char *path,const char *rollover,const char *line,DWORD limit=256*1024) {
+    size_t length=strlen(line);
+    if(!length||length>limit)return false;
+    HANDLE file=CreateFileA(path,FILE_APPEND_DATA|FILE_READ_ATTRIBUTES,
+        FILE_SHARE_READ|FILE_SHARE_WRITE|FILE_SHARE_DELETE,NULL,OPEN_ALWAYS,FILE_ATTRIBUTE_NORMAL,NULL);
+    if(file==INVALID_HANDLE_VALUE)return false;
+    LARGE_INTEGER size={};
+    if(!GetFileSizeEx(file,&size)){CloseHandle(file);return false;}
+    if(size.QuadPart+static_cast<LONGLONG>(length)>limit){
+        CloseHandle(file);
+        if(!MoveFileExA(path,rollover,MOVEFILE_REPLACE_EXISTING))return false;
+        file=CreateFileA(path,FILE_APPEND_DATA|FILE_READ_ATTRIBUTES,
+            FILE_SHARE_READ|FILE_SHARE_WRITE|FILE_SHARE_DELETE,NULL,CREATE_NEW,FILE_ATTRIBUTE_NORMAL,NULL);
+        if(file==INVALID_HANDLE_VALUE)return false;
+    }
+    DWORD written=0;
+    bool ok=WriteFile(file,line,static_cast<DWORD>(length),&written,NULL)&&written==length;
+    CloseHandle(file);return ok;
+}
+struct CaptureSchedule {
+    DWORD lastPoll=0,lastReport=0;bool started=false;
+    bool poll(DWORD now) {
+        if(started&&now-lastPoll<500)return false;
+        lastPoll=now;return true;
+    }
+    bool record(DWORD now,bool active) {
+        if(started&&!active&&now-lastReport<5000)return false;
+        started=true;lastReport=now;return true;
+    }
+};
 inline DWORD u32(const BYTE *p) { DWORD v; memcpy(&v,p,4); return v; }
 inline float f32(const BYTE *p) { float v; memcpy(&v,p,4); return v; }
 inline DWORD address(const void *p) { return static_cast<DWORD>(reinterpret_cast<ULONG_PTR>(p)); }
@@ -65,14 +97,14 @@ inline bool inspect(const BYTE *image,Sample &s) {
 inline void report(const Sample &s,bool valid,DWORD now) {
     char line[1200];
     snprintf(line,sizeof(line),
-        "ticks=%lu boats=v1 valid=%u zone=%lu state=%lu player=%lu pos_yxz=%.3f,%.3f,%.3f heading=%.3f speed_yxz=%.4f,%.4f,%.4f floor=%.3f cached_floor=%.3f cache=%lu wet=%u passenger=%u mount=%08lx vehicle_ptr=%08lx vehicle_valid=%u vehicle_id=%lu vehicle_yxz=%.3f,%.3f,%.3f vehicle_heading=%.3f vehicle_flags=%lu target_valid=%u target_id=%lu target_name=%s target_race=%lu target_flags_known=%u target_flags=%lu target_actor=%08lx target_yxz=%.3f,%.3f,%.3f target_heading=%.3f\r\n",
+        "ticks=%lu boats=v2 valid=%u zone=%lu state=%lu player=%lu pos_yxz=%.3f,%.3f,%.3f heading=%.3f speed_yxz=%.4f,%.4f,%.4f floor=%.3f cached_floor=%.3f cache=%lu wet=%u passenger=%u mount=%08lx vehicle_ptr=%08lx vehicle_valid=%u vehicle_id=%lu vehicle_yxz=%.3f,%.3f,%.3f vehicle_heading=%.3f vehicle_flags=%lu target_valid=%u target_id=%lu target_name=%s target_race=%lu target_flags_known=%u target_flags=%lu target_actor=%08lx target_yxz=%.3f,%.3f,%.3f target_heading=%.3f\r\n",
         now,valid,s.zone,s.state,s.player.id,s.player.y,s.player.x,s.player.z,s.player.heading,
         s.player.dy,s.player.dx,s.player.dz,s.player.floor,s.player.cachedFloor,s.player.cache,
         s.player.wet,s.player.passenger,s.player.mount,s.player.vehicle,s.vehicleValid,s.vehicle.id,
         s.vehicle.y,s.vehicle.x,s.vehicle.z,s.vehicle.heading,s.vehicle.flags,s.targetValid,s.target.id,
         s.targetValid?s.target.name:"-",s.target.race,s.target.flagsKnown,s.target.flags,s.target.actor,
         s.target.y,s.target.x,s.target.z,s.target.heading);
-    trasc_camera::logLine("Z:\\logs\\client-boats.log",line);
+    appendLog("Z:\\logs\\client-boats.log","Z:\\logs\\client-boats-rollover.log",line);
 }
 inline void afterRead(HRESULT result,DWORD size,void *data) {
     if(FAILED(result)||size!=sizeof(DIMOUSESTATE2))return;
@@ -82,13 +114,13 @@ inline void afterRead(HRESULT result,DWORD size,void *data) {
         return GetEnvironmentVariableA(marker,v,sizeof(v))==7&&!strcmp(v,"profile")
             &&GetProcAddress(GetModuleHandleW(L"ntdll.dll"),"wine_get_version")&&supported(image);}();
     if(!enabled)return;
-    static volatile LONG busy=0;static DWORD last=0;static unsigned reports=0;
+    static volatile LONG busy=0;static CaptureSchedule schedule;
     if(InterlockedCompareExchange(&busy,1,0))return;
     DWORD now=GetTickCount();
-    if(reports<512&&(!reports||now-last>=500)){
+    if(schedule.poll(now)){
         Sample s={};bool valid=inspect(image,s);
         // Sample a selected/attached boat twice a second; otherwise a heartbeat.
-        if(!reports||s.targetValid||s.vehicleValid||now-last>=5000){last=now;++reports;report(s,valid,now);}
+        if(schedule.record(now,s.targetValid||s.vehicleValid))report(s,valid,now);
     }
     InterlockedExchange(&busy,0);
 }

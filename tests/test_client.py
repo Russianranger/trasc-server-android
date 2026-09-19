@@ -85,12 +85,14 @@ class ClientTests(unittest.TestCase):
         with self.assertRaisesRegex(ValueError,'boat option'):
             client_runner.validate_request({'boat_mode':'repair'})
         for mode in ('off','profile','needs_dll','unsupported_executable'):
-            with patch.dict(os.environ,{'TRASC_EQ_BOATS_V1':'profile'}):
+            with patch.dict(os.environ,{'TRASC_EQ_BOATS_V1':'profile','TRASC_EQ_BOATS_V2':'profile'}):
                 supervisor=client_runner.Supervisor({'mode':'desktop','resolution':'800x600'})
                 self.assertEqual(supervisor.env['TRASC_EQ_BOATS_V1'],'off')
+                self.assertEqual(supervisor.env['TRASC_EQ_BOATS_V2'],'off')
             with patch('client_mouse.boat_mode',return_value=mode),patch.object(supervisor,'update') as update:
                 supervisor.configure_loading()
-                self.assertEqual(supervisor.env['TRASC_EQ_BOATS_V1'],'profile' if mode=='profile' else 'off')
+                self.assertEqual(supervisor.env['TRASC_EQ_BOATS_V1'],'off')
+                self.assertEqual(supervisor.env['TRASC_EQ_BOATS_V2'],'profile' if mode=='profile' else 'off')
                 self.assertEqual(update.call_args.kwargs['boat_mode'],mode)
 
     def test_runtime_preflight_uses_only_temporary_files_and_verifies_io(self):
