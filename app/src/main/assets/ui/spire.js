@@ -1,5 +1,5 @@
 'use strict';
-const spireState={loaded:false,working:false,table:'items',filters:{},offset:0,next:null,record:null,preview:null,dirty:false,historyNext:null};
+const spireState={loaded:false,working:false,table:'items',filters:{},offset:0,next:null,record:null,preview:null,dirty:false,historyNext:null,itemOffset:0,itemNext:null};
 const spireText=value=>value===null?'NULL':value===undefined?'—':String(value);
 function spireElement(tag,text,className){const e=document.createElement(tag);if(text!==undefined)e.textContent=text;if(className)e.className=className;return e;}
 function spireInvalidate(){spireState.preview=null;$('spire-preview-panel').hidden=true;$('spire-save').disabled=true;}
@@ -13,6 +13,7 @@ async function spireRun(fn){
 function spireControls(){
  $('spire-prev').disabled=spireState.offset===0;$('spire-next').disabled=spireState.next===null;
  $('spire-save').disabled=!spireState.preview;
+ $('spire-item-prev').disabled=spireState.itemOffset===0;$('spire-item-next').disabled=spireState.itemNext===null;
  if(spireState.record){$('spire-preview').disabled=!!spireState.record.read_only;$('spire-delete').disabled=!!spireState.record.read_only;}
 }
 function spireBind(id,fn){$(id).addEventListener('click',()=>spireRun(fn));}
@@ -29,7 +30,7 @@ async function spireSearch(offset){
  const r=await job('spire_search',{table:spireState.table,query:$('spire-query').value,filters:spireState.filters,offset});
  spireState.offset=r.offset;spireState.next=r.next_offset;spireState.schema=r;
  $('spire-filter').hidden=!Object.keys(spireState.filters).length;$('spire-filter-text').textContent='Related records: '+Object.entries(spireState.filters).map(([k,v])=>k+' = '+v).join(', ');
- $('spire-new').hidden=!r.add;$('spire-status').textContent=r.records.length?`Showing ${r.offset+1}–${r.offset+r.records.length}${r.next_offset===null?' · end of results':''}. ${r.read_only||''}`:'No matching records. '+(r.read_only||'');
+ $('spire-new').hidden=!r.add;$('spire-new').textContent=r.table==='merchantlist'?'Add item to merchant':'Add record';$('spire-status').textContent=r.records.length?`Showing ${r.offset+1}–${r.offset+r.records.length}${r.next_offset===null?' · end of results':''}. ${r.read_only||''}`:'No matching records. '+(r.read_only||'');
  const head=spireElement('tr');for(const c of r.columns)head.append(spireElement('th',c.replaceAll('_',' ')));head.append(spireElement('th',''));$('spire-columns').replaceChildren(head);$('spire-results').replaceChildren();
  for(const item of r.records){const row=spireElement('tr');for(const c of r.columns){const text=spireText(item.values[c]);const cell=spireElement('td',text.length>140?text.slice(0,140)+'…':text);row.append(cell);}const cell=spireElement('td');const button=spireElement('button','Open','secondary');button.disabled=!r.key.length;button.onclick=()=>spireRun(async()=>{if(spireDiscardAllowed())await spireOpen(item.key);});cell.append(button);row.append(cell);$('spire-results').append(row);}
  spireControls();
@@ -41,6 +42,12 @@ function spireShowRecord(r,isNew){
  $('spire-impact').textContent=r.impact;$('spire-warning').textContent=(r.warnings||[]).join(' ');$('spire-readonly').textContent=r.read_only||'Only the fields below can be changed. Other fields are preserved.';
  $('spire-delete').hidden=isNew||!r.remove;$('spire-links').replaceChildren();
  for(const link of r.links||[]){const b=spireElement('button',link.label,'secondary');b.onclick=()=>spireRun(async()=>{if(!spireDiscardAllowed())return;spireState.dirty=false;spireState.table=link.table;spireState.filters=link.filters;$('spire-type').value=link.table;$('spire-query').value='';spireClose();await spireSearch(0);});$('spire-links').append(b);}
+ if(r.table==='merchantlist'&&!isNew&&!r.read_only){const b=spireElement('button','Add another item to this merchant');b.onclick=()=>spireRun(async()=>{if(spireDiscardAllowed())await spireNewMerchant(r.values.merchantid);});$('spire-links').prepend(b);}
+ if(r.table==='npc_types'&&Number(r.values?.merchant_id)>0){const b=spireElement('button','Add item to this merchant');b.onclick=()=>spireRun(async()=>{if(!spireDiscardAllowed())return;await spireNewMerchant(r.values.merchant_id);});$('spire-links').prepend(b);}
+ $('spire-item-picker').hidden=r.table!=='merchantlist'||!!r.read_only;
+ $('spire-merchant-slot').hidden=!isNew;
+ $('spire-item-results').replaceChildren();$('spire-item-query').value='';spireState.itemOffset=0;spireState.itemNext=null;
+ $('spire-item-selected').textContent=r.values?.item?'Current item ID: '+r.values.item:'Choose an item below or enter its ID in the Item field.';
  $('spire-fields').replaceChildren();$('spire-field-filter').value='';
  for(const field of r.fields){
   const box=spireElement('div',undefined,'spire-field');box.dataset.field=field.name;
@@ -48,7 +55,7 @@ function spireShowRecord(r,isNew){
   const value=(r.values||{})[field.name];const input=spireElement(/text|value|description/.test(field.type+' '+field.name)?'textarea':'input');input.id=id;input.name=field.name;input.value=value??'';input.dataset.touched='false';
   input.readOnly=!!r.read_only||(!isNew&&!field.editable);if(input.tagName==='INPUT'){input.type='text';if(/int|float|double|decimal/.test(field.type))input.inputMode='decimal';}
   if(field.length)input.maxLength=Math.min(field.length,32768);if(isNew)input.placeholder=field.required?'Required':'Database default';
-  input.addEventListener('input',()=>{input.dataset.touched='true';spireDirty();});box.append(label,input);
+  input.addEventListener('input',()=>{input.dataset.touched='true';spireDirty();if(r.table==='merchantlist'&&field.name==='item')$('spire-item-selected').textContent='Item ID: '+input.value;if(r.table==='merchantlist'&&isNew&&field.name==='merchantid')$('spire-warning').textContent='Inventory changed. Use next free slot before previewing. This inventory may be shared by several NPCs.';});box.append(label,input);
   if(field.nullable&&!input.readOnly){const l=spireElement('label',undefined,'check');const n=spireElement('input');n.type='checkbox';n.className='spire-null';n.checked=value===null;n.onchange=()=>{input.disabled=n.checked;input.dataset.touched='true';spireDirty();};input.disabled=n.checked;l.append(n,document.createTextNode('NULL'));box.append(l);}
   box.append(spireElement('small',field.type+(field.min!==null&&field.min!==undefined?' · minimum '+field.min:'')+(field.max!==null&&field.max!==undefined?' · maximum '+field.max:'')));$('spire-fields').append(box);
  }
@@ -56,6 +63,19 @@ function spireShowRecord(r,isNew){
  spireControls();$('spire-record').scrollIntoView({block:'start',behavior:'smooth'});
 }
 function spireClose(){spireState.record=null;spireState.dirty=false;spireInvalidate();$('spire-record').hidden=true;}
+function spireSetField(name,value){const e=$('spire-field-'+name);e.value=value;e.dataset.touched='true';const n=e.closest('.spire-field').querySelector('.spire-null');if(n){n.checked=false;e.disabled=false;}spireDirty();}
+async function spireNewMerchant(merchant){
+ const r=await job('spire_merchant_draft',{merchantid:merchant});
+ spireState.table='merchantlist';spireState.filters={merchantid:merchant};$('spire-type').value='merchantlist';$('spire-query').value='';await spireSearch(0);
+ spireShowRecord(r,true);$('spire-item-query').focus();
+}
+async function spireItems(offset){
+ const r=await job('spire_search',{table:'items',query:$('spire-item-query').value,offset});
+ spireState.itemOffset=r.offset;spireState.itemNext=r.next_offset;$('spire-item-results').replaceChildren();
+ if(!r.records.length)$('spire-item-results').append(spireElement('p','No matching items. Try another name or ID.'));
+ for(const item of r.records){const v=item.values,b=spireElement('button',`${v.Name||v.name||'Item'} · ID ${v.id}`,'secondary');b.type='button';b.onclick=()=>spireRun(async()=>{spireSetField('item',v.id);$('spire-item-selected').textContent='Selected: '+(v.Name||v.name||'Item')+' · ID '+v.id;});$('spire-item-results').append(b);}
+ spireControls();
+}
 function spireChanges(){const r=spireState.record,result={};for(const f of r.fields){if(!r.isNew&&!f.editable)continue;const input=$('spire-field-'+f.name),box=input.closest('.spire-field');if(r.isNew&&input.dataset.touched!=='true'&&input.value==='')continue;const v=box.querySelector('.spire-null')?.checked?null:input.value;if(r.isNew||v!==r.values[f.name])result[f.name]=v;}return result;}
 async function spirePreview(action){
  const r=spireState.record;if(!r)throw new Error('Open a record first');spireInvalidate();
@@ -70,7 +90,10 @@ $('spire-query').addEventListener('keydown',e=>{if(e.key==='Enter'){e.preventDef
 $('spire-type').addEventListener('change',()=>{const selected=$('spire-type').value;spireRun(async()=>{if(!spireDiscardAllowed()){$('spire-type').value=spireState.table;return;}spireClose();spireState.table=selected;spireState.filters={};$('spire-query').value='';await spireSearch(0);});});
 spireBind('spire-clear-filter',async()=>{if(!spireDiscardAllowed())return;spireClose();spireState.filters={};await spireSearch(0);});
 for(const [id,next] of [['spire-prev',false],['spire-next',true]])spireBind(id,async()=>{if(!spireDiscardAllowed())return;spireClose();await spireSearch(next?spireState.next:Math.max(0,spireState.offset-50));});
-spireBind('spire-new',async()=>{if(spireDiscardAllowed())spireShowRecord({...spireState.schema,values:{},links:[]},true);});
+spireBind('spire-new',async()=>{if(!spireDiscardAllowed())return;const merchant=spireState.filters.merchantid;if(spireState.table==='merchantlist'&&merchant)await spireNewMerchant(merchant);else spireShowRecord({...spireState.schema,values:{...spireState.filters},links:[]},true);});
+spireBind('spire-item-search',()=>spireItems(0));spireBind('spire-item-prev',()=>spireItems(Math.max(0,spireState.itemOffset-50)));spireBind('spire-item-next',()=>spireItems(spireState.itemNext));
+$('spire-item-query').addEventListener('keydown',e=>{if(e.key==='Enter'){e.preventDefault();$('spire-item-search').click();}});
+spireBind('spire-merchant-slot',async()=>{const r=await job('spire_merchant_draft',{merchantid:$('spire-field-merchantid').value});spireSetField('slot',r.values.slot);$('spire-warning').textContent=r.warnings.join(' ');});
 spireBind('spire-close',async()=>{if(spireDiscardAllowed())spireClose();});
 $('spire-field-filter').addEventListener('input',()=>{const q=$('spire-field-filter').value.toLowerCase();$('spire-fields').querySelectorAll('.spire-field').forEach(e=>e.hidden=!e.dataset.field.toLowerCase().includes(q));});
 $('spire-form').addEventListener('submit',e=>{e.preventDefault();spireRun(()=>spirePreview());});

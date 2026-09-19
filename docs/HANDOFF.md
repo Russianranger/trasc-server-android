@@ -1,3 +1,15 @@
+# Authorized follow-up: merchant item picker and reopened boat investigation (2026-09-19 UTC)
+
+The user reports the 0.5.1 Spire release working and requests easier merchant sell-list additions and attempting boats now. This supersedes older boat deferrals. Branch `codex/merchant-boats`, version 0.5.2/code 42. Read [boat-investigation-052.md](boat-investigation-052.md) for implementation, exact-client evidence, current limits and the device test.
+
+Merchant helper: NPC/inventory → Add item → searchable item picker → suggested free slot → existing Preview/Save/backup/audit. A shared merchant inventory affects all linked NPCs; suggestions never reserve or overwrite an occupied slot. Existing manual editing and saved compatibility/export behavior remain.
+
+Boat work: recovered the exact private executable, traced vehicle classification, collision attachment, floor cache and coordinate conversion. Ten original-code checks pass using synthetic graphics objects. Standard ship race flags already enable the original attachment path. No demonstrated general boat repair follows from these isolated checks. This candidate adds a default-off, read-only diagnostic option and bounded `client-boats.log` to locate a real single-zone failure. No force-attach/coordinate/collision override is implemented or claimed. Compile/deploy dinput8 once only for the boat test; no server/runtime/source rebuild or reimport is needed. Existing working particle/camera/input/loading settings are preserved.
+
+Spire base functionality is now user-reported working; the specific new picker and boat diagnostics still need device acceptance. Camping, player restoration and first-person particles remain closed as user-confirmed. CI and release status will be updated after validation. No subagents used.
+
+---
+
 # Released: 0.5.1 Spire content workspace (2026-09-19 UTC)
 
 The user explicitly authorized review, merge and delivery of an APK with testing instructions. Review found no blocking issues, the tested PR head and base were unchanged, and [PR #3](https://github.com/Russianranger/trasc-server-android/pull/3) merged at `c2a35e0acfccef1d3114093c78d4718bbc583e63`. The **signed 0.5.1/code 41 preview is published**. Earlier statements that this feature is awaiting merge approval or has only a PR-signed candidate are historical. The existing official Beta 0.5 release remains available separately.

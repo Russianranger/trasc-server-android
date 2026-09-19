@@ -50,7 +50,7 @@ class ClientTests(unittest.TestCase):
                 supervisor.configure_loading()
                 self.assertEqual(supervisor.env['TRASC_EQ_LOAD_V2'],expected)
                 self.assertEqual(supervisor.env['TRASC_EQ_LOAD_V1'],'off')
-                update.assert_called_once_with(spell_loading=mode,display_loading='profile',particle_mode='off')
+                update.assert_called_once_with(spell_loading=mode,display_loading='profile',particle_mode='off',boat_mode='off')
                 self.assertEqual(supervisor.env['TRASC_EQ_DISPLAY_V1'],'profile')
         with self.assertRaisesRegex(ValueError,'spell loading'):
             client_runner.validate_request({'fast_spell_parse':'yes'})
@@ -80,6 +80,18 @@ class ClientTests(unittest.TestCase):
                 self.assertEqual(supervisor.env['TRASC_EQ_LOAD_V2'],'fast')
                 self.assertEqual(supervisor.env['TRASC_EQ_DISPLAY_V1'],'yield')
                 self.assertEqual(update.call_args.kwargs['particle_mode'],mode)
+
+    def test_boat_mode_is_validated_and_never_inherits_enablement(self):
+        with self.assertRaisesRegex(ValueError,'boat option'):
+            client_runner.validate_request({'boat_mode':'repair'})
+        for mode in ('off','profile','needs_dll','unsupported_executable'):
+            with patch.dict(os.environ,{'TRASC_EQ_BOATS_V1':'profile'}):
+                supervisor=client_runner.Supervisor({'mode':'desktop','resolution':'800x600'})
+                self.assertEqual(supervisor.env['TRASC_EQ_BOATS_V1'],'off')
+            with patch('client_mouse.boat_mode',return_value=mode),patch.object(supervisor,'update') as update:
+                supervisor.configure_loading()
+                self.assertEqual(supervisor.env['TRASC_EQ_BOATS_V1'],'profile' if mode=='profile' else 'off')
+                self.assertEqual(update.call_args.kwargs['boat_mode'],mode)
 
     def test_runtime_preflight_uses_only_temporary_files_and_verifies_io(self):
         session=self.root/'runtime-preflight';session.mkdir()

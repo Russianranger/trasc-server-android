@@ -53,5 +53,10 @@ body[data-scene=client]::before,body[data-scene=gameplay]::before,body[data-scen
 #spire-diff td{white-space:pre-wrap;overflow-wrap:anywhere;max-width:260px}
 #spire-other,#spire-history pre{max-height:300px;overflow:auto;white-space:pre-wrap;overflow-wrap:anywhere}
 #spire-status,#spire-export-status,#spire-warning{overflow-wrap:anywhere}
+.spire-picker-search{display:flex;align-items:end;gap:12px;flex-wrap:wrap}.spire-picker-search>div{flex:1;min-width:180px}
+.spire-picker-search input{margin-bottom:0}.spire-item-results{display:grid;gap:8px;max-height:320px;overflow:auto}
+.spire-item-results button{text-align:left;white-space:normal;overflow-wrap:anywhere;min-height:44px;padding:10px 12px}
+#spire-item-picker{border:1px solid var(--line);border-radius:10px;padding:14px;margin:12px 0}
+#spire-item-selected{overflow-wrap:anywhere}
 @media(min-width:1200px){.spire-layout:has(#spire-record:not([hidden])){grid-template-columns:minmax(340px,.8fr) minmax(0,1.2fr)}}
 @media(max-width:600px){.spire-toolbar{grid-template-columns:1fr}.spire-fields{grid-template-columns:1fr}.spire-layout table{font-size:14px}}

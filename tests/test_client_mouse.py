@@ -122,3 +122,17 @@ class CameraMouseTests(unittest.TestCase):
                          ('struct mckey key) \n{', 'struct mckey key)\n{')]:
             with self.assertRaisesRegex(ValueError, 'changed'):
                 client_mouse.checksum_overlay(source.replace(old, new))
+
+    def test_boat_diagnostics_require_opt_in_exact_exe_and_new_dll(self):
+        with tempfile.TemporaryDirectory() as temp:
+            root=Path(temp);exe=root/'eqgame.exe';exe.write_bytes(b'\0'*8774656)
+            dll=root/'dinput8.dll';dll.write_bytes(b'old')
+            request={'mode':'client','executable':'eqgame.exe','boat_mode':'profile'}
+            self.assertEqual(client_mouse.boat_mode(request,root),'unsupported_executable')
+            with patch.object(client_mouse,'EXE_SHA256',hashlib.sha256(exe.read_bytes()).hexdigest()):
+                self.assertEqual(client_mouse.boat_mode(request,root),'needs_dll')
+                dll.write_bytes(client_mouse.BOAT_MARKER.encode())
+                self.assertEqual(client_mouse.boat_mode(request,root),'profile')
+                for changes in ({'mode':'desktop'},{'boat_mode':'off'},{'boat_mode':'repair'}):
+                    self.assertEqual(client_mouse.boat_mode(dict(request,**changes),root),'off')
+                self.assertEqual(client_mouse.boat_mode(dict(request,native_dinput8=False),root),'needs_dll')
