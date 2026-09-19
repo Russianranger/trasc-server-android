@@ -42,7 +42,7 @@ CATALOG = {
         'charges grant_only first_rank_id enabled reset_on_death auto_grant_enabled',
         'id name first_rank_id enabled', export=True),
     'aa_ranks': entity('AA ranks', 'upper_hotkey_sid lower_hotkey_sid title_sid desc_sid cost level_req '
-        'spell spell_type recast_time expansion prev_id next_id', 'id title_sid cost level_req spell', export=True),
+        'spell spell_type recast_time expansion', 'id title_sid cost level_req spell', export=True),
     'aa_rank_effects': entity('AA rank effects', 'rank_id slot effect_id base1 base2',
         'rank_id slot effect_id base1 base2', add=True, remove=True, export=True),
 }

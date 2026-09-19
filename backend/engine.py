@@ -211,7 +211,7 @@ class Engine(ManagedContent):
             job = {'id': secrets.token_hex(6), 'operation': op, 'status': 'queued', 'started': time.time()}
             self.jobs.append(job)
             for old in self.jobs[:-1]:
-                if old['operation'] == 'gameplay': old.pop('result', None)
+                if old['operation'] == 'gameplay' or old['operation'].startswith('spire_'): old.pop('result', None)
             self.jobs = self.jobs[-20:]
             self.queue.put((job, args))
             return job

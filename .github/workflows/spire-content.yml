@@ -28,6 +28,8 @@ jobs:
         run: |
           python3 -m unittest discover -s tests -v
           python3 tests/integration_spire.py
+          curl --fail --location --retry 3 -o /tmp/release-peq.zip https://raw.githubusercontent.com/Russianranger/Triptych-Triumvirate/18141ae0c9a11813733f08fa77db986951b853d6/Release-NMS-Server/database/release-peq.zip
+          python3 tests/spire_seed_schema.py /tmp/release-peq.zip
       - uses: actions/setup-node@v4
         with:
           node-version: '22'

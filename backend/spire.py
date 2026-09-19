@@ -5,6 +5,7 @@ import json
 from pathlib import Path
 import re
 import secrets
+import subprocess
 import time
 from player_data import ident, rows
 from spire_catalog import CATALOG, REFERENCES, PAIRS, bounds, impact
@@ -118,7 +119,9 @@ def validate(table, c, value):
         except InvalidOperation: raise ValueError(name+': enter a number') from None
         if not number.is_finite(): raise ValueError(name+': enter a finite number')
         max_value=Decimal('3.4028234663852886e38' if typ.startswith('float') else '1.7976931348623157e308')
-        if abs(number)>max_value or ('unsigned' in typ and number<0): raise ValueError(name+': number exceeds database range')
+        minimum=Decimal('1.401298464324817e-45' if typ.startswith('float') else '4.9406564584124654e-324')
+        if abs(number)>max_value or ('unsigned' in typ and number<0) or (not typ.startswith('decimal') and number and abs(number)<minimum):
+            raise ValueError(name+': number exceeds database range')
         dec=re.match(r'decimal\((\d+),(\d+)\)',typ)
         if dec:
             precision,scale=map(int,dec.groups())
@@ -245,6 +248,9 @@ def preview(engine,args):
             if not c['nullable'] and not c['default'] and not c['extra'] and name not in normalized:
                 raise ValueError('Required field '+name+' is missing; this schema may need the SQL workspace')
         if not all(k in normalized for k in s['key']): raise ValueError('Enter every unique key field; IDs are never assigned automatically')
+        for low,high in PAIRS:
+            if (low in normalized or high in normalized) and low in s['columns'] and high in s['columns'] and not {low,high}<=set(normalized):
+                raise ValueError('Enter both '+low+' and '+high+' so their range can be validated')
         key={k:normalized[k] for k in s['key']}
         if query_rows(engine,s,key_where(s,key),columns=s['key'],limit=1): raise ValueError('That record key already exists')
     checks=reference_checks(engine,table,normalized,after or {})
@@ -268,7 +274,8 @@ def audit_exists(engine):
 
 
 def export_status(engine,names=None):
-    if (AUDIT not in names) if names is not None else not audit_exists(engine): return {'pending_export':0}
+    exists=AUDIT in names if names is not None else audit_exists(engine)
+    if not exists: return {'pending_export':0}
     return {'pending_export':int(rows(engine,'SELECT COUNT(*) FROM '+ident(AUDIT)+' WHERE client_data=1 AND exported_file IS NULL;')[0][0])}
 
 
@@ -314,7 +321,7 @@ def apply(engine,args):
         ','.join((literal(token),'UTC_TIMESTAMP(6)',literal(table),literal(p['action']),literal(json.dumps(payload,ensure_ascii=False)),literal(backup),'1' if CATALOG[table]['export'] else '0'))+');')
     statements.append('COMMIT;')
     try: engine.mysql(''.join(statements),timeout=120)
-    except (ValueError,TimeoutError) as e:
+    except (ValueError,TimeoutError,subprocess.TimeoutExpired) as e:
         # If the response was lost after COMMIT, the durable audit ID resolves the outcome.
         if not rows(engine,'SELECT id FROM '+ident(AUDIT)+' WHERE id='+literal(token)+';'):
             raise ValueError('Save did not commit. The record may have changed or validation failed. Reload and preview again. '+str(e)) from e

@@ -50,7 +50,7 @@ const server=http.createServer((req,res)=>{const name=req.url==='/'?'index.html'
   fs.mkdirSync('ui-reports',{recursive:true});
   for(const [label,width,height]of [['phone',412,915],['thor',854,480],['wide',1280,720]]){await page.setViewportSize({width,height});await page.locator('#spire').scrollIntoViewIfNeeded();await page.screenshot({path:'ui-reports/spire-'+label+'.png',fullPage:true});assert(await page.evaluate(()=>document.documentElement.scrollWidth<=window.innerWidth+1),'page overflow '+label);}
   await page.locator('#spire-export').click();await page.waitForFunction(()=>!spireState.working);assert(await page.evaluate(()=>window.spireCalls.some(c=>c.op==='export_client')));assert((await page.locator('#spire-export-status').textContent()).includes('compatibility is ON'));
-  await page.locator('#spire-history-panel summary').click();await page.waitForFunction(()=>!spireState.working);assert((await page.locator('#spire-history').textContent()).includes('backups/database-fixture.sql.gz'));
+  await page.locator('#spire-history-panel summary').click();await page.waitForFunction(()=>!spireState.working&&document.querySelector('#spire-history').textContent.includes('backups/database-fixture.sql.gz'));
   assert.deepEqual(errors,[]);console.log('PASS: Spire tab, preview invalidation, save/error, related filters, composite insert, high-ID warning, existing export, audit and responsive layouts');
  }finally{await browser.close();server.close();}
 })().catch(e=>{console.error(e);server.close();process.exit(1);});

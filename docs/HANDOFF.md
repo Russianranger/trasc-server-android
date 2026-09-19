@@ -1,3 +1,15 @@
+# Authorized development: Spire content workspace; boats deferred (2026-09-19 UTC)
+
+The user authorized all three selected Spire milestones and a dedicated **Spire** tab. This supersedes the older planning-only restriction below for those features. Development is on `codex/spire-content`, version0.5.1/code41. Read [spire-051.md](spire-051.md) for scope, safeguards, limits and device acceptance. Beta version0.5 remains the released0.4.23/code40 APK until a new candidate completes verification and publication is addressed.
+
+Native launcher/Python implementation includes linked content browsing; common item/NPC, merchant and loot edits; spell/string/AA editing; save previews, live-schema validation, backup, stale-edit protection and transactional change history. It reuses the existing client export and preserves the current RoF2 filtering/restore behavior. High-ID compatibility remains separate. Preserve working particles, camera, controller, reconnect, graphics, loading and player restoration. Camping remains closed as user-confirmed.
+
+**Boats are shelved at the user's direction.** Record collision, passenger attachment/carrying, rotation and zone handoff as a future investigation. The client/server references from the discussion are leads, not a diagnosis or implemented repair. Begin with one ship inside one zone when this is reopened. No boat code changes belong in this milestone.
+
+Verification is in progress. The new MariaDB and UI checks supplement every existing release gate. No subagents used. Update this entry and the feature note with the final PR/build results before handing off.
+
+---
+
 # Official release: Beta version 0.5 (2026-09-19 UTC)
 
 The user requested promotion of the verified APK to an official release labelled Beta version .5. [Beta version 0.5](https://github.com/Russianranger/trasc-server-android/releases/tag/v0.5) is published as a regular GitHub release (not draft or prerelease) and marked Latest. Tag `v0.5` points to the tested implementation `095fcc9137f2d671986b90718dde975cd7c58a51`. Read [beta-05-release.md](beta-05-release.md).
