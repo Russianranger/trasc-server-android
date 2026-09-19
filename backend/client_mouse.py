@@ -6,7 +6,8 @@ MARKER = 'TRASC_EQ_CAMERA_MOUSE_V2'
 LOADING_MARKER = 'TRASC_EQ_LOAD_V2'
 DISPLAY_MARKER = 'TRASC_EQ_DISPLAY_V1'
 PARTICLE_MARKER = 'TRASC_EQ_PARTICLES_V1'
-HEADERS = ('eq_camera_mouse.h', 'eq_client_loading.h', 'eq_fast_decimal.h', 'eq_spell_checksum.h', 'eq_display_loading.h', 'eq_first_person_particles.h')
+BOAT_MARKER = 'TRASC_EQ_BOATS_V1'
+HEADERS = ('eq_camera_mouse.h', 'eq_client_loading.h', 'eq_fast_decimal.h', 'eq_spell_checksum.h', 'eq_display_loading.h', 'eq_first_person_particles.h', 'eq_boat_diagnostics.h')
 EXE_SHA256 = '4a456734af62b465660610794780e48ac3b0161f7b96e13aee86267c45ea49a3'
 GRAPHICS_SHA256 = '164fc072547aab752567ba88bf6936d0e328c44a16a1480f340d27aef0ba6290'
 
@@ -41,6 +42,12 @@ def adapter_mode(request, client, marker):
     return 'enabled'
 
 
+def boat_mode(request, client):
+    if request.get('mode') != 'client' or request.get('boat_mode', 'off') != 'profile': return 'off'
+    mode = adapter_mode(request, client, BOAT_MARKER)
+    return 'profile' if mode == 'enabled' else mode
+
+
 def particle_mode(request, client):
     requested = request.get('particle_mode', 'off')
     if request.get('mode') != 'client' or requested not in ('profile', 'repair'):
@@ -70,10 +77,11 @@ def prepare_sources(project, build):
                     '{\n\treturn ProxyInterface->GetDeviceState(cbData, lpvData);\n}')
         replacement = (f'HRESULT m_IDirectInputDevice8{suffix}::GetDeviceState(DWORD cbData, LPVOID lpvData)\n'
                        '{\n\tHRESULT result = ProxyInterface->GetDeviceState(cbData, lpvData);\n'
-                       '\ttrasc_camera::afterRead(ProxyInterface, result, cbData, lpvData);\n\treturn result;\n}')
+                       '\ttrasc_camera::afterRead(ProxyInterface, result, cbData, lpvData);\n'
+                       '\ttrasc_boat_after_read(result, cbData, lpvData);\n\treturn result;\n}')
         if content.count(original) != 1 or content.count('#include "dinput8.h"') != 1:
             raise ValueError('Client mouse wrapper changed; review the camera adapter before compiling: ' + name)
-        content = content.replace('#include "dinput8.h"', '#include "dinput8.h"\n#include "eq_camera_mouse.h"')
+        content = content.replace('#include "dinput8.h"', '#include "dinput8.h"\n#include "eq_camera_mouse.h"\nextern "C" void trasc_boat_after_read(HRESULT, DWORD, void *);')
         target = generated / name
         target.write_text('// Altered by TRASC: optional camera-only recentering after input delivery.\n' + content.replace(original, replacement), encoding='utf-8')
         sources[name] = target
@@ -87,7 +95,7 @@ def prepare_sources(project, build):
     target = generated / name
     # Include after upstream Windows/DirectInput declarations, before the export.
     target.write_text('// Altered by TRASC: optional measured spell loading.\n' + content.replace(
-        original, '#include "eq_display_loading.h"\n#include "eq_first_person_particles.h"\n\n' + original + '\n  trasc_loading::install();\n  trasc_display::install();\n  trasc_particles::install();'), encoding='utf-8')
+        original, '#include "eq_display_loading.h"\n#include "eq_first_person_particles.h"\n#include "eq_boat_diagnostics.h"\n\n' + original + '\n  trasc_loading::install();\n  trasc_display::install();\n  trasc_particles::install();'), encoding='utf-8')
     sources[name] = target
     name = 'MQ2DetourAPI.cpp'
     content = (project.parent / name).read_text(encoding='utf-8-sig')

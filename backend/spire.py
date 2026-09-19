@@ -208,6 +208,23 @@ def detail(engine,args):
     return dict(metadata(s),values=v,revision=fingerprint(raw),links=links(s['table'],v),warnings=warnings(s['table'],v))
 
 
+def merchant_draft(engine,args):
+    """Suggest a free slot without reserving or writing it; normal preview/save guards apply."""
+    ready(engine); s=schema(engine,'merchantlist')
+    if s['read_only']: raise ValueError(s['read_only'])
+    if set(s['key'])!={'merchantid','slot'} or 'item' not in s['editable']:
+        raise ValueError('This merchant schema needs the record editor')
+    merchant=validate('merchantlist',s['columns']['merchantid'],args.get('merchantid'))
+    if int(merchant)<=0: raise ValueError('Choose a merchant inventory with an ID above zero')
+    # First hole, including slot 1. Query stays bounded even on large inventories.
+    where='merchantid='+literal(merchant)
+    sql=('SELECT MIN(candidate) FROM (SELECT 1 AS candidate UNION ALL SELECT slot+1 FROM merchantlist WHERE '+where+
+         ') AS slots WHERE NOT EXISTS (SELECT 1 FROM merchantlist WHERE '+where+' AND slot=slots.candidate);')
+    slot=validate('merchantlist',s['columns']['slot'],rows(engine,sql)[0][0])
+    return dict(metadata(s),values={'merchantid':merchant,'slot':slot},links=[],warnings=[
+        'This inventory may be shared by several NPCs. Changes affect every merchant using inventory '+merchant+'.'])
+
+
 def warnings(table,v):
     result=[]
     if table=='spells_new' and int(v.get('id') or 0)>=45000:
@@ -263,6 +280,7 @@ def preview(engine,args):
     if operation=='update' and not normalized: raise ValueError('No changed fields to save')
     after=None if operation=='delete' else dict(before or {},**normalized)
     if operation=='insert':
+        if table=='merchantlist' and 'item' not in normalized: raise ValueError('Choose an item for this merchant')
         for name,c in s['columns'].items():
             if not c['nullable'] and not c['default'] and not c['extra'] and name not in normalized:
                 raise ValueError('Required field '+name+' is missing; this schema may need the SQL workspace')
@@ -368,4 +386,4 @@ def record_export(engine,result):
 
 def dispatch(engine,operation,args):
     return {'spire_catalog':catalog,'spire_search':search,'spire_detail':detail,'spire_preview':preview,
-            'spire_apply':apply,'spire_history':history}[operation](engine,args)
+            'spire_apply':apply,'spire_history':history,'spire_merchant_draft':merchant_draft}[operation](engine,args)

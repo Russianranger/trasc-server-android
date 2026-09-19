@@ -31,7 +31,9 @@ Save previews expire after 30 minutes, are confined to the app workspace, and ca
 5. Edit a known low-ID spell/string and an existing AA field. Export & sync, restart the server and relaunch ROF2. Confirm spell/string changes and AA refresh. With compatibility on, a high-ID edit must remain excluded from the client; this does not solve high-ID spell support.
 6. Verify ordinary play and existing player inventory/progression. Account/player tables are not Spire edit targets. Physical Thor acceptance is separate from automated checks.
 
-## Deferred boats
+## Deferred boats (historical; reopened in 0.5.2)
+
+The latest user request reopens boat investigation. See [0.5.2 investigation and merchant picker](boat-investigation-052.md); the original deferral below describes the 0.5.1 scope.
 
 Boat repair is explicitly shelved. Future work should separate deck collision, passenger attachment, movement/rotation and cross-zone handoff. Reuse the exact RoF2 executable/graphics references from the particle investigation; begin with one named ship inside one zone before attempting whole routes. Existing client vehicle/passenger definitions and server vehicle-relative coordinate handling are investigation leads, not a proven diagnosis. Do not implement boat hooks as part of Spire.
 

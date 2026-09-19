@@ -72,6 +72,20 @@ def run():
             assert spire.search(engine,{'table':'loottable_entries','query':'Treasures'})['records'][0]['values']['drop_name']=='Weapons'
             assert not spire.search(engine,{'table':'items','query':"%' OR 1=1 --"})['records']
             assert any(l['table']=='merchantlist' for l in spire.detail(engine,{'table':'npc_types','key':{'id':1}})['links'])
+            draft=engine.dispatch('spire_merchant_draft',{'merchantid':'7'})
+            assert draft['values']=={'merchantid':'7','slot':'2'} and draft['warnings']
+            assert spire.merchant_draft(engine,{'merchantid':8})['values']['slot']=='1'
+            engine.mysql('INSERT INTO merchantlist(merchantid,slot,item) VALUES(7,3,101);')
+            assert spire.merchant_draft(engine,{'merchantid':7})['values']['slot']=='2'
+            engine.mysql('DELETE FROM merchantlist WHERE merchantid=7 AND slot=3;')
+            expect_error(lambda:spire.merchant_draft(engine,{'merchantid':0}),'above zero')
+            expect_error(lambda:spire.merchant_draft(engine,{'merchantid':"7 OR 1=1"}),'whole number')
+            expect_error(lambda:preview('merchantlist',{}, {'merchantid':'7','slot':'2'},'insert'),'Choose an item')
+            # A suggestion is not a reservation: an occupied slot still cannot overwrite stock.
+            suggested=preview('merchantlist',{},dict(draft['values'],item='101'),'insert')
+            engine.mysql('INSERT INTO merchantlist(merchantid,slot,item) VALUES(7,2,100);')
+            expect_error(lambda:spire.apply(engine,{'token':suggested['token']}),'Record changed')
+            engine.mysql('DELETE FROM merchantlist WHERE merchantid=7 AND slot=2;')
             item=spire.detail(engine,{'table':'items','key':{'id':101}})
             assert any(f['name']=='clickeffect' and f['editable'] for f in item['fields'])
             assert any(l['table']=='spells_new' and l['filters']=={'id':'26'} for l in item['links'])

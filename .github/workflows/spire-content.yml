@@ -1,7 +1,7 @@
 name: Verify Spire content
 on:
   push:
-    branches: [codex/spire-content]
+    branches: [codex/spire-content, codex/merchant-boats]
     paths: ['backend/**', 'tests/**', 'app/src/main/assets/ui/**', '.github/workflows/spire-content.yml']
 permissions:
   contents: read

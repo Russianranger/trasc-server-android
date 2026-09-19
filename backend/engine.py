@@ -994,7 +994,7 @@ class Engine(ManagedContent):
             'nektulos':self.nektulos_status(), 'client':self.client_status()}
 
     def dispatch(self,op,args):
-        if op in ('spire_catalog','spire_search','spire_detail','spire_preview','spire_apply','spire_history'):
+        if op in ('spire_catalog','spire_search','spire_detail','spire_preview','spire_apply','spire_history','spire_merchant_draft'):
             return spire.dispatch(self,op,args)
         methods={'client_settings':lambda a:client_settings.inspect(self,a),'client_settings_save':lambda a:client_settings.save(self,a),
             'client_addons_scan':lambda a:client_addons.scan(self,a),
