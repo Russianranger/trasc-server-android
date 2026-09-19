@@ -1,5 +1,30 @@
 # TRASC Server for Android
 
+**Russianranger foreword;**
+
+This app is vibe coded utilizing ChatGPT's Codex with Astra "Extra High" thinking model. As of the time of this foreword (9/18/26) I have been working on this for about 1 week. This app is a way for me to easily replicate what I was doing manually in Termux with server compilation/running and then running the client in Winlator/GameNative and tinkering with those settings. I just wanted an easier, and more intuitive way to pull the custom Triune fork (forked off Saltmontes5k fork) that had ascendant and other custom additions and integrate it into the server. This project turned out to be a lot more lucrative than just that. So what does this app do, and what was it meant for?
+
+**This app allows you to do the following;**
+- Pull my server fork which is geared for Arm64 architecture and has all the toolchains needed to compile a server on Android ARM
+- Pull a map repository
+- Import a database from the server repo
+- Build the server *in the app*
+- Backup/export server/database
+- Deploy a server on the device
+- Import your legally obtained ROF2 client *to play inside the app*
+- Controller support with mapping layers (you can change mappings at the click of a button)
+- Has an SQL editor to alter the database
+- Has a GUI for all the server rules that you can change in the app
+
+**What was it meant for?**
+- A device running Android, with at least 8gb of RAM, and a Snapdragon 8 Gen 2 SOC
+- I play this on my AYN Thor Max (16gb of RAM) with *no* issues in terms of FPS and stability* (*still have to stress test this more)
+- Someone with a little bit of knowledge into the workings of server, its not idiot proof
+
+Hopefully someone else out there, with the same niche interest as me can find value in this and enjoy it too.
+
+**AI Description Below**
+
 A standalone Android control app for [Russianranger/Triptych-Triumvirate](https://github.com/Russianranger/Triptych-Triumvirate), initially targeting the AYN Thor's ARM64 Android environment. The app owns its runtime, database, source, builds and server files. It does **not** require installing Termux, root, a PC-hosted server or a web service.
 
 **Status: device testing preview.** On the AYN Thor, the user has confirmed compilation, database import and connection from the existing client. The user has also confirmed complete session backup/restore, controller bindings and client input on 0.2.1. On 0.3.4, the user confirms visible character models, animations and movement inside embedded ROF2. The 0.3.6 device pass confirms correct graphics using the Adreno 740 through VirGL; performance and loading remain poor. Version 0.3.7 improved repeat startup and asset loading on-device, but performance remains inadequate. Version 0.3.8 substantially improved loading on the Thor with verified PRoot acceleration, but world FPS is still poor. Version 0.3.9 added display-buffer reuse and separate Wine/display measurements; the first device comparison favors Single thread, but FPS remains poor. Version 0.3.10 adds an experimental native OpenGL worker alongside Single thread, records its activity and preserves both runs' startup logs for the next comparison. The 0.3.10 worker comparison did not improve performance and revealed game threads restricted to CPU 0. Version 0.4.0 adds Turnip/DXVK and a reversible available-core affinity option. Playable performance and zone-state restoration still require verification.
