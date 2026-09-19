@@ -51,6 +51,8 @@ def verify(seed, work):
         for table in spire.CATALOG:
             definition=spire.schema(engine,table)
             assert not definition['read_only'], (table,definition['read_only'])
+            if table=='items':
+                assert {'clickeffect','proceffect','worneffect','focuseffect','scrolleffect'}<=set(definition['editable'])
             result=spire.search(engine,{'table':table})
             if result['records']:
                 record=spire.detail(engine,{'table':table,'key':result['records'][0]['key']})

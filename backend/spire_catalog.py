@@ -14,7 +14,8 @@ CATALOG = {
     'items': entity('Items', 'Name lore idfile icon itemtype slots classes races deity '
         'weight size ac hp mana endur astr asta aagi adex awis aint acha mr fr cr dr pr '
         'damage delay range price nodrop norent stackable stacksize reqlevel reclevel '
-        'click_effect proc_effect worn_effect focus_effect scrolleffect', 'id Name icon itemtype'),
+        'clickeffect proceffect worneffect focuseffect scrolleffect '
+        'click_effect proc_effect worn_effect focus_effect', 'id Name icon itemtype'),
     'npc_types': entity('NPCs', 'name lastname level race class bodytype hp mana gender '
         'texture helmtexture size runspeed walkspeed AC STR STA DEX AGI INT WIS CHA '
         'MR CR DR FR PR mindmg maxdmg attack_count attack_delay accuracy avoidance '
@@ -64,7 +65,8 @@ REFERENCES = [
     ('aa_ranks', 'next_id', 'aa_ranks', 'id', (0, -1)),
     ('aa_rank_effects', 'rank_id', 'aa_ranks', 'id', ()),
 ] + [('items', c, 'spells_new', 'id', (0, -1, 65535)) for c in
-     ('click_effect', 'proc_effect', 'worn_effect', 'focus_effect', 'scrolleffect')] + [
+     ('clickeffect', 'proceffect', 'worneffect', 'focuseffect', 'scrolleffect',
+      'click_effect', 'proc_effect', 'worn_effect', 'focus_effect')] + [
     ('aa_ranks', c, 'db_str', 'id', (0, -1)) for c in
     ('upper_hotkey_sid', 'lower_hotkey_sid', 'title_sid', 'desc_sid')]
 

@@ -15,7 +15,7 @@ import spire
 
 SEED='''
 CREATE TABLE items(id int PRIMARY KEY, Name varchar(64), hp int NOT NULL DEFAULT 0, price bigint unsigned NOT NULL DEFAULT 0,
- click_effect int DEFAULT -1, custom_field varchar(100), raw_data varbinary(20)) ENGINE=InnoDB;
+ clickeffect int DEFAULT -1, custom_field varchar(100), raw_data varbinary(20)) ENGINE=InnoDB;
 CREATE TABLE npc_types(id int PRIMARY KEY,name varchar(64),level tinyint unsigned,hp int,loottable_id int,merchant_id int) ENGINE=InnoDB;
 CREATE TABLE loottable(id int PRIMARY KEY,name varchar(64),mincash int unsigned DEFAULT 0,maxcash int unsigned DEFAULT 0) ENGINE=InnoDB;
 CREATE TABLE lootdrop(id int PRIMARY KEY,name varchar(64)) ENGINE=InnoDB;
@@ -72,6 +72,10 @@ def run():
             assert spire.search(engine,{'table':'loottable_entries','query':'Treasures'})['records'][0]['values']['drop_name']=='Weapons'
             assert not spire.search(engine,{'table':'items','query':"%' OR 1=1 --"})['records']
             assert any(l['table']=='merchantlist' for l in spire.detail(engine,{'table':'npc_types','key':{'id':1}})['links'])
+            item=spire.detail(engine,{'table':'items','key':{'id':101}})
+            assert any(f['name']=='clickeffect' and f['editable'] for f in item['fields'])
+            assert any(l['table']=='spells_new' and l['filters']=={'id':'26'} for l in item['links'])
+            expect_error(lambda:preview('items',{'id':101},{'clickeffect':'999'}),'does not exist')
             # Full-row concurrency token includes custom/binary fields; untouched values survive.
             p=preview('items',{'id':100},{'Name':"Zöe's blade",'hp':'12'})
             assert 'Sword' in engine.mysql('SELECT Name FROM items WHERE id=100;')

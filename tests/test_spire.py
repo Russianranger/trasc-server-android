@@ -42,6 +42,8 @@ class SpireValidationTests(unittest.TestCase):
         self.assertFalse(spire.warnings('spells_new',{'id':'44999'}))
         self.assertTrue(spire.warnings('aa_ranks',{'spell':'45000'}))
         self.assertFalse(spire.warnings('aa_ranks',{'spell':'65535'}))
+        self.assertTrue(spire.warnings('items',{'clickeffect':'45000'}))
+        self.assertTrue(any(x['table']=='spells_new' and x['filters']=={'id':'26'} for x in spire.links('items',{'id':'1','clickeffect':'26'})))
 
     def test_links_keep_composite_string_types_and_related_records(self):
         links=spire.links('db_str',{'id':'20','type':'4','value':'Description'})
