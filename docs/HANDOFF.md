@@ -1,3 +1,13 @@
+# User clarification: retire the repeated failed collision test (2026-09-19 UTC)
+
+The user explicitly rejects repeating the unchanged gender-2 (`PRE`) collision test. They clarify that the higher spawn of the working gender-0 (`SHIP`) variant was solid and blocked entry even when level with the deck; the lower spawn remained solid and allowed boarding. The original gender-2 variant allows pass-through. Accept this user-observed distinction. **Do not ask for the previously proposed `TBTLow` / gender-2 height comparison again.** Any such instructions in historical entries below are withdrawn.
+
+The existing evidence already accepts stationary boarding and vehicle attachment for race 72/gender 0: 63 valid attached samples in `logs-642380592878288980.zip`. The earlier original-model attempt has no attachment and user-confirmed absent collision in this installation. Its underlying asset/client cause is still unknown; another identical device test is unnecessary. Keep the existing APK/DLL and closed settings/milestones.
+
+Next investigation uses the known solid gender-0 ship for controlled rotation and passenger carrying. [Updated boarding notes](boat-boarding-053.md) record the source-checked rotation command, differing command access requirements, acceptance criteria and why translation needs a fixed-height endpoint. No new device test is requested by this correction; prepare its setup before requesting one. No permissions, routes, client assets, product code or APK changed. Documentation and source-review follow-up only; no subagents used.
+
+---
+
 # Device result: stationary boarding and vehicle attachment confirmed (2026-09-19 UTC)
 
 Read [boat-boarding-053.md](boat-boarding-053.md) first. The user reports collision and successful boarding of the gender-0 ship after spawning it lower. `logs-642380592878288980.zip` confirms **63 samples with a valid vehicle pointer to the second ship**, including 46 consecutive samples spanning 22.926 seconds. The video shows movement aboard the wooden model. This accepts stationary boarding/attachment on the existing signed 0.5.3 APK and deployed DLL; no new code or APK was needed.

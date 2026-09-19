@@ -1,6 +1,6 @@
 # TBT device capture — 2026-09-19
 
-**Subsequent result:** [Stationary ship boarding confirmed](boat-boarding-053.md). The gender-0 replacement attaches the player after lower placement (63 samples). The original gender-2 model has not yet been tested at that successful lower location; the results below do not prove it lacks collision.
+**Subsequent result and user clarification:** [Stationary ship boarding confirmed](boat-boarding-053.md). Gender 0 has solid sides and attaches the player after lower placement (63 samples). The user confirms the original gender-2 model allows pass-through and explicitly rejects repeating that unchanged failed collision test. The earlier height-comparison proposal is withdrawn. Use the working gender-0 model for the next movement/carrying investigation; the source of the original model's failure still needs investigation.
 
 The user's TBT video shows a visible, selected ship and movement through its wooden model. The accompanying 0.5.3 capture records that exact target with working vehicle classification and no sampled passenger attachment. Boat collision remains unresolved. This supersedes the missing-target evidence in [boat-capture-053.md](boat-capture-053.md).
 
