@@ -1,3 +1,13 @@
+# Boat collision reproduced; 0.5.3 capture correction in verification (2026-09-19 UTC)
+
+The user can target the corrected synthetic race-72 ship but walks through it. The original body-type-11 spawn command was unsuitable for targeting; use body type 1 for this isolated diagnostic. The four actual Qeynos/Erudin route spawns are disabled in the installed screenshot and pinned seed, explaining the unsuccessful dock waits. Do not enable complete routes yet. Read [boat-capture-053.md](boat-capture-053.md) first for source findings, log evidence and exact next steps.
+
+Latest export `logs-904919649256838973.zip` confirms native DLL/profile mode, but `client-boats.log` stopped at exactly 512 mostly idle samples after 43.04 minutes, before late-session activity. It contains no selected/attached ship. Do not claim it diagnoses missing collision or absent race flags. 0.5.3/code 43 removes that quota and the boat-specific permanent file ceiling by keeping two rolling 256 KiB segments; it requires a freshly compiled/deployed V2 DLL. It preserves the read-only guards, working client options and existing shared loggers. No boat repair is claimed.
+
+Local Python tests (147), JavaScript syntax and whitespace checks pass. Added Microsoft x86 coverage exercises prolonged idle/active capture, tick wrap, repeated bounded rotation and I/O recovery. CI/release verification is pending; do not install a PR debug-signed APK over the existing app. The signed 0.5.2 release below remains current until publication succeeds. No subagents used. The next device test needs only an in-place APK update and one DLL compile/deploy with the existing SDK/source, then 30–40 seconds targeting the same test ship while attempting to board, followed by immediate Export Logs. Detailed commands and cleanup are in the linked note. Boat collision/attachment and physical V2 capture acceptance remain open.
+
+---
+
 # Released: 0.5.2 merchant item picker and reopened boat investigation (2026-09-19 UTC)
 
 The user reports the 0.5.1 Spire release working and requests easier merchant sell-list additions and attempting boats now. This supersedes older boat deferrals. Review found no blocking issues or outstanding review threads; [PR #4](https://github.com/Russianranger/trasc-server-android/pull/4) merged at `3fd8136341aaa76d55d5957a6eed3d462952d75c`. The **signed 0.5.2/code 42 preview is published**. Read [boat-investigation-052.md](boat-investigation-052.md) for implementation, exact-client evidence, current limits and the device test. The existing official Beta 0.5 release remains separate.

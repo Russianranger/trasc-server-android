@@ -131,7 +131,7 @@ async function clientRuntimeState(){
  const cameraNote={enabled:'Camera-only recentering requested; activity is recorded in client-camera.log.',needs_dll:'Camera recentering inactive: compile and deploy dinput8.dll with this app, then relaunch.',unsupported_executable:'Camera recentering inactive: this executable has not been verified. Normal mouse movement is retained.'}[launch?.camera_mouse];
  if(cameraNote)$('client-launch-status').textContent+=' '+cameraNote;
  if(launch?.boat_mode==='profile')$('client-launch-status').textContent+=' Boat diagnostics active; select the ship, test boarding and riding, then export logs.';
- if(launch?.boat_mode==='needs_dll')$('client-launch-status').textContent+=' Compile and deploy dinput8.dll with 0.5.2 or newer for boat diagnostics.';
+ if(launch?.boat_mode==='needs_dll')$('client-launch-status').textContent+=' Compile and deploy dinput8.dll with this app for boat diagnostics, then relaunch.';
  if(launch?.boat_mode==='unsupported_executable')$('client-launch-status').textContent+=' Boat diagnostics inactive: this executable is not supported.';
  if(launch?.particle_mode==='repair')$('client-launch-status').textContent+=' Particle repair requested; export logs after testing the first cast.';
  if(launch?.particle_mode==='profile')$('client-launch-status').textContent+=' Particle diagnostics only; game behavior is unchanged.';

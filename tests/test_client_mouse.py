@@ -131,6 +131,8 @@ class CameraMouseTests(unittest.TestCase):
             self.assertEqual(client_mouse.boat_mode(request,root),'unsupported_executable')
             with patch.object(client_mouse,'EXE_SHA256',hashlib.sha256(exe.read_bytes()).hexdigest()):
                 self.assertEqual(client_mouse.boat_mode(request,root),'needs_dll')
+                dll.write_bytes(b'TRASC_EQ_BOATS_V1')
+                self.assertEqual(client_mouse.boat_mode(request,root),'needs_dll')
                 dll.write_bytes(client_mouse.BOAT_MARKER.encode())
                 self.assertEqual(client_mouse.boat_mode(request,root),'profile')
                 for changes in ({'mode':'desktop'},{'boat_mode':'off'},{'boat_mode':'repair'}):
