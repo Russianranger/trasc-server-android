@@ -1,0 +1,46 @@
+name: Verify Spire content
+on:
+  push:
+    branches: [codex/spire-content]
+    paths: ['backend/**', 'tests/**', 'app/src/main/assets/ui/**', '.github/workflows/spire-content.yml']
+permissions:
+  contents: read
+jobs:
+  content:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    services:
+      mariadb:
+        image: mariadb:11.4
+        env:
+          MARIADB_ROOT_PASSWORD: test
+        ports: ['33306:3306']
+        options: >-
+          --health-cmd="healthcheck.sh --connect --innodb_initialized"
+          --health-interval=5s --health-timeout=5s --health-retries=20
+    steps:
+      - uses: actions/checkout@v4
+      - name: Install database client
+        run: sudo apt-get update -qq && sudo apt-get install -y mariadb-client
+      - name: Python and real MariaDB content tests
+        env:
+          TRASC_TEST_MYSQL_PORT: '33306'
+        run: |
+          python3 -m unittest discover -s tests -v
+          python3 tests/integration_spire.py
+          curl --fail --location --retry 3 -o /tmp/release-peq.zip https://raw.githubusercontent.com/Russianranger/Triptych-Triumvirate/18141ae0c9a11813733f08fa77db986951b853d6/Release-NMS-Server/database/release-peq.zip
+          python3 tests/spire_seed_schema.py /tmp/release-peq.zip
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Browser checks
+        run: |
+          npm install --no-save --package-lock=false playwright@1.55.0
+          npx playwright install --with-deps chromium
+          node tests/ui_management.cjs
+          node tests/ui_spire.cjs
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: spire-verification
+          path: ui-reports/

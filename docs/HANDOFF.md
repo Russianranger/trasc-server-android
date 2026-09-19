@@ -1,3 +1,15 @@
+# Authorized development: Spire content workspace; boats deferred (2026-09-19 UTC)
+
+The user authorized all three selected Spire milestones and a dedicated **Spire** tab. This supersedes the older planning-only restriction below for those features. Development is on `codex/spire-content`, version 0.5.1/code 41. Read [spire-051.md](spire-051.md) for scope, safeguards, limits and device acceptance. Beta version 0.5 remains the released 0.4.23/code 40 APK until a new candidate completes verification and publication is addressed.
+
+Native launcher/Python implementation includes linked content browsing; common item/NPC, merchant and loot edits; spell/string/AA editing; save previews, live-schema validation, backup, stale-edit protection and transactional change history. It reuses the existing client export and preserves the current RoF2 filtering/restore behavior. High-ID compatibility remains separate. Preserve working particles, camera, controller, reconnect, graphics, loading and player restoration. Camping remains closed as user-confirmed.
+
+**Boats are shelved at the user's direction.** Record collision, passenger attachment/carrying, rotation and zone handoff as a future investigation. The client/server references from the discussion are leads, not a diagnosis or implemented repair. Begin with one ship inside one zone when this is reopened. No boat code changes belong in this milestone.
+
+Implementation is in [PR #3](https://github.com/Russianranger/trasc-server-android/pull/3). The focused [Spire verification run 35437991661](https://github.com/Russianranger/trasc-server-android/actions/runs/35437991661) passed on implementation commit `0c98032`: 145 Python tests, real MariaDB edit/rollback/export integration, all twelve bundled schemas, existing management/browser flows and responsive Spire workflows. Phone, Thor-landscape and wide screenshots were reviewed. Final schema review also added the standard item spell columns (`clickeffect`, `proceffect`, `worneffect`, `focuseffect`, `scrolleffect`), retaining underscore aliases for custom forks, with real-seed coverage to prevent silent omissions. Full Android/ARM64 regression results are tracked in the PR checks and must pass before merge/release. The new checks supplement every existing release gate. A PR-built APK uses a CI debug certificate and must not be installed over the existing app; the preserved release certificate is applied by the main build after merge approval. Do not uninstall the app to test a differently signed candidate. No subagents used.
+
+---
+
 # Official release: Beta version 0.5 (2026-09-19 UTC)
 
 The user requested promotion of the verified APK to an official release labelled Beta version .5. [Beta version 0.5](https://github.com/Russianranger/trasc-server-android/releases/tag/v0.5) is published as a regular GitHub release (not draft or prerelease) and marked Latest. Tag `v0.5` points to the tested implementation `095fcc9137f2d671986b90718dde975cd7c58a51`. Read [beta-05-release.md](beta-05-release.md).

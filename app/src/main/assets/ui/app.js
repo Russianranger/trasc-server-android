@@ -6,11 +6,11 @@ function api(op,args={}){return new Promise((resolve,reject)=>{const id=String(+
 function notice(text,error=false){$('notice').hidden=false;$('notice').classList.toggle('error',error);$('notice').textContent=text;}
 function bytes(n){if(n==null)return '—';return n>=1073741824?(n/1073741824).toFixed(1)+' GB':n>=1048576?(n/1048576).toFixed(1)+' MB':(n/1024).toFixed(0)+' KB';}
 function ready(id,ok){$(id).textContent=ok?'Ready':'Required';$(id).classList.toggle('done',ok);}
-function tab(name){if(currentTab==='client'&&name!=='client')api('controller_capture',{active:false}).catch(()=>{});currentTab=name;document.body.dataset.scene=name;document.querySelectorAll('.tab').forEach(e=>e.classList.toggle('active',e.id===name));document.querySelectorAll('nav button').forEach(e=>e.classList.toggle('active',e.dataset.tab===name));if(name==='client'&&typeof loadController==='function')loadController().catch(e=>notice(e.message,true));if(name==='files')browse().catch(e=>notice(e.message,true));if(name==='logs'){logs().catch(()=>{});loadLogRetention().catch(e=>notice(e.message,true));}}
+function tab(name){if(currentTab==='client'&&name!=='client')api('controller_capture',{active:false}).catch(()=>{});currentTab=name;document.body.dataset.scene=name;document.querySelectorAll('.tab').forEach(e=>e.classList.toggle('active',e.id===name));document.querySelectorAll('nav button').forEach(e=>e.classList.toggle('active',e.dataset.tab===name));if(name==='client'&&typeof loadController==='function')loadController().catch(e=>notice(e.message,true));if(name==='spire'&&typeof loadSpire==='function')loadSpire().catch(e=>notice(e.message,true));if(name==='files')browse().catch(e=>notice(e.message,true));if(name==='logs'){logs().catch(()=>{});loadLogRetention().catch(e=>notice(e.message,true));}}
 window.appBack=()=>tab('server');
 document.querySelectorAll('[data-tab]').forEach(b=>b.addEventListener('click',()=>tab(b.dataset.tab)));
 function action(id,fn){$(id).addEventListener('click',async()=>{const b=$(id);b.disabled=true;busy++;try{await fn();}catch(e){notice(e.message,true);}finally{busy--;b.disabled=false;poll().catch(()=>{});}});}
-const operationLabels={start:'Starting server',stop:'Stopping server'};
+const operationLabels={start:'Starting server',stop:'Stopping server',spire_catalog:'Loading Spire',spire_search:'Searching content',spire_detail:'Loading record',spire_preview:'Validating changes',spire_apply:'Saving content',spire_history:'Loading change history'};
 function operationLabel(operation){return operationLabels[operation]||operation.replaceAll('_',' ');}
 // Keep scrolled/focused controls clear of the sticky runtime panel in either orientation.
 const runtimeToolbar=document.querySelector('.runtime-toolbar');

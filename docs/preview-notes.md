@@ -1,3 +1,15 @@
+# 0.5.1 — Spire content workspace
+
+- Dedicated Spire tab for searchable items, NPCs, loot, merchants, spells, strings and AA, with related-record links and name searches.
+- Focused edits show a save preview, validate fields and references, reject stale records, create a full database backup and record changes. Stop the server before saving.
+- Merchant inventory, loot entries and AA effects support additions and removals. Existing item/NPC/spell/AA records are edited in place; custom fields are preserved.
+- Export & sync follows the existing client-data workflow and preserves the saved RoF2 spell compatibility setting. AA definitions/effects refresh after restarting the server and logging back in.
+- Boats remain deferred. Camping, particles, player restoration and working client settings are retained.
+
+Development candidate; see [scope and device checks](spire-051.md). Once a release-signed build is available, stop the game/runtime and update in place. No server/DLL rebuild, runtime reinstall or client reimport is needed.
+
+---
+
 # 0.4.23 — compact launcher controls
 
 - Server runtime panel now has a complete border, inset spacing and an opaque background while scrolling.

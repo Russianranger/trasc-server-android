@@ -17,6 +17,7 @@ sys.path.insert(0, '/opt/trasc')
 from engine import Engine, atomic_json, CLIENT_FILES
 from client_spells import inspect_data
 import player_data
+import spire
 
 
 def verify(seed, work):
@@ -45,7 +46,20 @@ def verify(seed, work):
         counts = {}
         for table in ('items', 'npc_types', 'zone', 'spells_new', 'rule_values'):
             counts[table] = int(engine.mysql(f'SELECT COUNT(*) FROM `{table}`;').splitlines()[1])
-            assert counts[table] > 0, table + ' is empty'
+        assert counts[table] > 0, table + ' is empty'
+        # Validate the content workspace against the actual fork schema, not only fixtures.
+        for table in spire.CATALOG:
+            definition=spire.schema(engine,table)
+            assert not definition['read_only'], (table,definition['read_only'])
+            if table=='items':
+                assert {'clickeffect','proceffect','worneffect','focuseffect','scrolleffect'}<=set(definition['editable'])
+            if table=='npc_types': assert {'_INT','Accuracy','Avoidance'}<=set(definition['editable'])
+            if table=='spells_new': assert {'AEDuration','Activated','zonetype'}<=set(definition['editable'])
+            result=spire.search(engine,{'table':table})
+            if result['records']:
+                record=spire.detail(engine,{'table':table,'key':result['records'][0]['key']})
+                assert record['revision'] and 'links' in record
+        print('PASS: Spire catalog, record keys, editable schemas and relationship browsing on all twelve real seed content tables',flush=True)
         # Exercise actual MariaDB CONCAT_WS spell serialization on the pinned
         # seed, without modifying any server row or needing a server rebuild.
         columns = [line.split('\t')[0] for line in engine.mysql('SHOW COLUMNS FROM spells_new;').splitlines()[1:]]
