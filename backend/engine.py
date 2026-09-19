@@ -684,7 +684,7 @@ class Engine(ManagedContent):
             if failed: raise ValueError('Processes stopped during startup: ' + ', '.join(failed))
             self.config['rules_pending_restart'] = False
             self.save()
-            return {'message': 'Processes started. Verify zone readiness in server logs.', 'endpoint': f"{self.config['ip']}:{self.config['login_port']}"}
+            return {'message': 'Server started. Verify zone readiness in server logs.', 'endpoint': f"{self.config['ip']}:{self.config['login_port']}"}
         except Exception:
             self.stop({})
             raise

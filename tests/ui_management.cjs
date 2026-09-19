@@ -101,6 +101,16 @@ for(const [name,type,value,min,max]of [['Character:RaidExpMultiplier','real','0.
   assert(await page.locator('#client-launch').isVisible(),'Launch is visible without opening settings');
   assert(!(await page.locator('#client-resolution').isVisible()),'Settings start collapsed');
   await page.screenshot({path:'ui-reports/client-collapsed-mobile.png',fullPage:true});
+  await page.locator('#client-options > summary').click();
+  for(const [name,width,height] of [['mobile',412,915],['landscape',854,480],['wide',1280,720]]){
+   await page.setViewportSize({width,height});
+   await page.locator('#client-options').evaluate(el=>el.scrollIntoView({block:'start'}));
+   await page.screenshot({path:'ui-reports/launch-options-'+name+'.png'});
+   assert(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth),'Launch options fit the viewport');
+   await page.locator('.option-checks').evaluate(el=>el.scrollIntoView({block:'start'}));
+   await page.screenshot({path:'ui-reports/launch-checkboxes-'+name+'.png'});
+  }
+  await page.setViewportSize({width:412,height:915});
   await page.locator('#client details').evaluateAll(ds=>ds.forEach(d=>d.open=true));
   await page.locator('#client-particles').scrollIntoViewIfNeeded();
   await page.screenshot({path:'ui-reports/particles-mobile.png'});
