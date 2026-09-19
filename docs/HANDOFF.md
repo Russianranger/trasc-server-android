@@ -1,3 +1,13 @@
+# Official release: Beta version 0.5 (2026-09-19 UTC)
+
+The user requested promotion of the verified APK to an official release labelled Beta version .5. [Beta version 0.5](https://github.com/Russianranger/trasc-server-android/releases/tag/v0.5) is published as a regular GitHub release (not draft or prerelease) and marked Latest. Tag `v0.5` points to the tested implementation `095fcc9137f2d671986b90718dde975cd7c58a51`. Read [beta-05-release.md](beta-05-release.md).
+
+This is a release-label promotion of the **identical 0.4.23/code 40 APK**, not a new app build. Android and the launcher still show 0.4.23. Package ID, signature, settings and all source/runtime/DLL behavior are unchanged. Existing 0.4.23 users do not need to reinstall. The release APK is named `trasc-server-android-beta-0.5.apk`, 10,538,843 bytes, SHA256 `f6c27a924033d435dae5c88eff0436508d8bb1357486e5ec8ebf681b3bcc1c9f`; corresponding native sources and `beta-build.json` are attached. Manifest SHA256: `84255c7cf6e04713a2fad92f5c24ebc808ad8a7f0af41f316c184d7875bc0c52`.
+
+[Promotion run 35412824812](https://github.com/Russianranger/trasc-server-android/actions/runs/35412824812) succeeded. It downloaded immutable main artifact10574102684 from successful run35410359686, required the approved source commit, checked APK/source hashes and the preserved certificate, uploaded all assets to a draft, then published and checked the tag, release flags and every public asset digest. The one-time workflow is retained on `codex/publish-beta-05`; it is not part of main's build pipeline. Preview/runtime releases are unchanged. The 0.4.23 verification and remaining device/backlog milestones below still apply. No subagents used. This handoff update is documentation-only `[skip ci]`.
+
+---
+
 # Released: 0.4.23 launcher layout; camping and player migration confirmed (2026-09-19 UTC)
 
 The user explicitly approved merging PR #1 and publishing 0.4.23. [PR #1](https://github.com/Russianranger/trasc-server-android/pull/1) is merged at `095fcc9137f2d671986b90718dde975cd7c58a51`; the signed preview is published. The earlier publication-approval block is resolved for this release. Read [launcher-0423.md](launcher-0423.md).
