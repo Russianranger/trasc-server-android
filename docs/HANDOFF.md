@@ -1,3 +1,15 @@
+# Device result: stationary boarding and vehicle attachment confirmed (2026-09-19 UTC)
+
+Read [boat-boarding-053.md](boat-boarding-053.md) first. The user reports collision and successful boarding of the gender-0 ship after spawning it lower. `logs-642380592878288980.zip` confirms **63 samples with a valid vehicle pointer to the second ship**, including 46 consecutive samples spanning 22.926 seconds. The video shows movement aboard the wooden model. This accepts stationary boarding/attachment on the existing signed 0.5.3 APK and deployed DLL; no new code or APK was needed.
+
+The first gender-0 spawn (entity 107, Z -20.375) has no attached samples. Its replacement (entity 108, Z -39.500) attaches; X/Y/heading also changed. Thus the original gender-2 model is not proven to lack collision: the earlier attempt used a higher origin. Both new commands were `#spawn TBT0 72 1 0 10000 0 1 0 0 0 1`; the server strips numeric name characters, so the log calls both `TBT000`. Both cleanup commands are recorded. The `passenger` byte stays zero even when `vehicle_valid=1`; do not use that byte as the boarding gate.
+
+**Next:** keep the current build and settings. Test the original gender-2 model at the same successful lower location and facing with `#spawn TBTLow 72 1 0 10000 2 1 0 0 0 1`, then `/target TBTLow`. Desired ship X,Y,Z is 607.125,-1782.000,-39.500, heading 308.500; the logger prints Y,X,Z. Try reaching the deck from above/dock for 20–30 seconds, remove the selected temporary ship, stop the client and export. The spawn uses the player's current position; confirm actual placement in the next log. The successful stationary ship is a positive control; movement, rotation and route handoff remain untested. Do not enable all disabled routes or replace their models from this result.
+
+Documentation-only follow-up; video/log inspection, command correlation, matching deployed header hashes and whitespace checks completed. No product code, database or settings changed. Private inputs remain uncommitted. No subagents used. Previous no-attachment entries below are historical for their individual test attempts, not the current overall milestone.
+
+---
+
 # Device result: TBT captured; no sampled attachment (2026-09-19 UTC)
 
 Read [boat-tbt-053.md](boat-tbt-053.md) first. The latest user video and `logs-1735854186408412618.zip` show a visible, selected race-72 ship named TBT, pass-through during the attempt, and 112 V2 target samples over 56.595 seconds. Its race flags are already 3 and its graphics actor pointer is nonzero; the player's vehicle pointer and passenger field stay zero. Native dinput8 and the correct 0.5.3 headers are confirmed. Selected-ship V2 capture is now accepted on-device; collision, carrying and route handoff remain open. This supersedes the older no-target capture immediately below. Short-session capture does not prove on-device rollover, and side pass-through alone does not establish a deck approach from above.
