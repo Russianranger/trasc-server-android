@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Verify original RoF2 boat classification/attachment and floor-cache control flow.
+"""Verify original RoF2 boat models, collision filter/attachment and floor cache.
 
 Requires the user's exact private eqgame.exe, pefile and unicorn. Graphics actors
 are synthetic recording stubs: this does not render a ship or prove deck geometry.
@@ -103,6 +103,41 @@ def main():
         f.call(0x507230,PLAYER,args,cleanup=16,stop_at_query=attached)
         assert f.queries==int(attached)
         cases.append(dict(case='floor_cache',attached=attached,fresh_query=attached))
-    print(json.dumps(dict(executable_sha256=actual,verified=True,scope='Original classification, collision callback and floor-cache branch; synthetic graphics, no live boat repair claim',cases=cases),indent=2))
+    # The floor-query filter tests the graphics actor's restriction mask before
+    # the attachment callback. This is separate from the race's vehicle flags.
+    for mask in (0,1,2,3,0x80,0x81):
+        f=Fixture(image);f.put(INFO+0x2c,3)
+        f.stub(TABLE+0x100+0x54,mask)  # GetCollisionRestrictionMask
+        f.stub(TABLE+0x100+0x3c,1)    # Model collision volume
+        before=bytes(f.u.mem_read(PLAYER,0x1100))
+        f.call(0x476280,0,(HIT,SOURCE))
+        accepted=not bool(mask&1)
+        assert f.u.reg_read(UC_X86_REG_EAX)==int(accepted)
+        assert bytes(f.u.mem_read(PLAYER,0x1100))==before
+        if accepted:f.call(0x475f40,0,(HIT,SOURCE,1,0))
+        assert f.get(PLAYER+0x150)==(BOAT if accepted else 0)
+        cases.append(dict(case='floor_actor_filter',race_flags=3,collision_mask=mask,accepted=accepted))
+    # Execute the original race-72 registration call sites, recording their
+    # arguments instead of allocating the game's entire race table. The native
+    # constructor initializes EDI to zero before these uninterrupted call sites.
+    f=Fixture(image);registrations=[]
+    f.u.reg_write(UC_X86_REG_ESP,STACK)
+    f.u.emu_start(0x50a60a,0x50a60c,count=1)
+    assert f.u.reg_read(UC_X86_REG_EDI)==0
+    def register(u,address,size,_):
+        if address!=0x50a440:return
+        sp=u.reg_read(UC_X86_REG_ESP)
+        race,gender,tag,flags,option=(f.get(sp+4+i*4) for i in range(5))
+        name=bytes(u.mem_read(tag,16)).split(b'\0',1)[0].decode('ascii')
+        registrations.append(dict(race=race,gender=gender,model_tag=name,flags=flags,option=option))
+        u.reg_write(UC_X86_REG_EIP,f.get(sp));u.reg_write(UC_X86_REG_ESP,sp+24)
+    f.u.hook_add(UC_HOOK_CODE,register)
+    f.u.emu_start(0x50a834,0x50a86f,count=100)
+    assert f.u.reg_read(UC_X86_REG_EIP)==0x50a86f
+    assert f.u.reg_read(UC_X86_REG_ESP)==STACK
+    assert registrations==[dict(race=72,gender=g,model_tag=t,flags=3,option=1)
+                           for g,t in ((0,'SHIP'),(1,'PRE'),(2,'PRE'))]
+    cases.append(dict(case='race_72_model_variants',registrations=registrations))
+    print(json.dumps(dict(executable_sha256=actual,verified=True,scope='Original model registration, classification, floor filter, attachment callback and cache branch; synthetic graphics, no live boat repair claim',cases=cases),indent=2))
 
 if __name__=='__main__':main()

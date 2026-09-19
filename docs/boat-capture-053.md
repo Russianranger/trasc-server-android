@@ -1,5 +1,7 @@
 # Boat capture follow-up — 0.5.3
 
+**Subsequent device result:** [TBT capture and next comparison](boat-tbt-053.md) records a successful V2 capture of the selected ship, with race flags 3 and no sampled attachment. The earlier missing-target capture below is historical. Do not repeat its completed compile/deploy steps for that device.
+
 The user can now target the temporary ship but reports walking through it. This confirms a failed solid-collision test, not a successful boarding or passenger test. Collision, attachment, movement and route handoff remain unresolved.
 
 ## Device and source findings, 2026-09-19
@@ -49,4 +51,4 @@ A useful new log has `boats=v2`, `target_valid=1`, `target_name=TRASCBoatTarget.
 
 ## Verification
 
-Local Python regression suite: 147 tests pass, including old-DLL rejection and inherited-mode clearing. JavaScript syntax and whitespace checks pass. The Microsoft x86 fixture now covers two idle hours followed by ship capture, another active hour, tick wrap, repeated log rollover, exact segment bounds, a locked rollover file and recovery, alongside existing read-only snapshot and client-identity checks. Full CI and publication status are recorded at the top of [HANDOFF.md](HANDOFF.md); physical-device V2 acceptance and the collision repair remain outstanding.
+Local Python regression suite: 147 tests pass, including old-DLL rejection and inherited-mode clearing. JavaScript syntax and whitespace checks pass. The Microsoft x86 fixture now covers two idle hours followed by ship capture, another active hour, tick wrap, repeated log rollover, exact segment bounds, a locked rollover file and recovery, alongside existing read-only snapshot and client-identity checks. Full CI and publication status are recorded in [HANDOFF.md](HANDOFF.md). Subsequent TBT evidence accepts selected-ship V2 capture on the device; on-device long-session rollover and the collision repair remain unproven.

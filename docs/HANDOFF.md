@@ -1,3 +1,15 @@
+# Device result: TBT captured; no sampled attachment (2026-09-19 UTC)
+
+Read [boat-tbt-053.md](boat-tbt-053.md) first. The latest user video and `logs-1735854186408412618.zip` show a visible, selected race-72 ship named TBT, pass-through during the attempt, and 112 V2 target samples over 56.595 seconds. Its race flags are already 3 and its graphics actor pointer is nonzero; the player's vehicle pointer and passenger field stay zero. Native dinput8 and the correct 0.5.3 headers are confirmed. Selected-ship V2 capture is now accepted on-device; collision, carrying and route handoff remain open. This supersedes the older no-target capture immediately below. Short-session capture does not prove on-device rollover, and side pass-through alone does not establish a deck approach from above.
+
+The exact original executable/graphics DLL were recovered. The offline verifier now passes 17 cases, including the floor filter's separate graphics collision mask and the original model registrations: race 72/gender 2 (TBT) selects `PRE`, while gender 0 selects `SHIP`, both with race flags 3. The live collision mask/model geometry remains unknown; no flag override or force-attachment fix is justified.
+
+**Next device action:** keep the existing 0.5.3 APK and deployed DLL. At the same Erud's Crossing dock/spawn point, use `#spawn TBT0 72 1 0 10000 0 1 0 0 0 1`, then `/target TBT0`. This changes only the gender/model argument from the recorded command. Try boarding, including approaching the deck from above where possible, for 20–30 seconds; record whether it renders as a ship and supports the player. Remove the selected temporary ship with `#depop`, stop the client and export logs. The previous TBT cleanup command is already present in the supplied server log. No recompile, reinstall or route enablement is needed.
+
+This follow-up updates only documentation and the offline private-input verifier; no new APK was built or repair claimed. All 17 verifier cases, Python syntax and whitespace checks pass. Private binaries, logs and video remain uncommitted. Preserve closed player restoration, camping, particles, controller, camera and loading behavior. No subagents used.
+
+---
+
 # Released: 0.5.3 continuous boat capture; collision remains open (2026-09-19 UTC)
 
 The user can target the corrected synthetic race-72 ship but walks through it. The latest export (`logs-904919649256838973.zip`) contains exactly 512 mostly idle boat samples over 43.04 minutes, then stops before later session activity; no selected/attached ship was captured. The recorder exhausted its quota. The four actual Qeynos/Erudin route spawns are disabled in the installed screenshot and pinned seed. Read [boat-capture-053.md](boat-capture-053.md) first for evidence, corrected body-type-1 spawn command, cleanup and next testing steps. Do not enable complete routes or claim a collision diagnosis from this trace.
