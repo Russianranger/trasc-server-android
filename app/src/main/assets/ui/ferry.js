@@ -6,6 +6,7 @@ function renderFerryService(){
  $('ferry-service-refresh').disabled=f.working;
  $('ferry-service-install').disabled=f.working||!known||f.active||!f.ready;
  $('ferry-service-reset').disabled=f.working||!known||!f.active||!f.ready;
+ $('ferry-service-update').disabled=f.working||!known||!f.active||!f.ready;
  $('ferry-service-remove').disabled=f.working||!known||!f.active;
  $('ferry-service-save').disabled=f.working||!f.preview||!!lastState?.running;
  $('ferry-service-discard').disabled=f.working;
@@ -20,6 +21,7 @@ async function ferryRefresh(){
  ferryInvalidate();ferryService.active=null;
  const r=await job('ferry_service_status');ferryService.active=!!r.active;ferryService.ready=!!r.server_ready;
  let text=r.message;
+ if(r.update_available)text+=' A route update is available. Stop the server and preview the update.';
  if(!r.server_ready)text+=' Build and deploy the server with this app version to enable route support.';
  if(r.active&&!r.running)text+=' The next server start begins at Qeynos.';
  if(r.active&&r.running&&r.route){
@@ -33,7 +35,7 @@ async function ferryRefresh(){
 function ferryBind(id,fn){$(id).addEventListener('click',()=>ferryRun(fn));}
 ferryBind('ferry-service-refresh',ferryRefresh);
 $('ferry-service-panel').addEventListener('toggle',()=>{if($('ferry-service-panel').open)ferryRun(ferryRefresh);});
-for(const action of ['install','reset','remove'])ferryBind('ferry-service-'+action,async()=>{
+for(const action of ['install','update','reset','remove'])ferryBind('ferry-service-'+action,async()=>{
  ferryInvalidate();const r=await job('ferry_service_preview',{action});ferryService.preview=r;
  $('ferry-service-summary').textContent=r.summary;$('ferry-service-warning').textContent=r.message;
  $('ferry-service-preview').hidden=false;

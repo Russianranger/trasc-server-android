@@ -60,6 +60,25 @@ public final class LogRetentionHostTest {
             try(RandomAccessFile f=new RandomAccessFile(archived.toFile(),"r")){byte[] start=new byte[5];f.readFully(start);check(new String(start).equals("START"),"Startup kept");f.seek(f.length()-3);byte[] end=new byte[3];f.readFully(end);check(new String(end).equals("END"),"Tail kept");}
             Files.createSymbolicLink(work.resolve("logs/unsafe.log"),outside);
             try{LogRetention.rotate(work.resolve("logs/unsafe.log").toFile());throw new AssertionError("Symlink accepted");}catch(IOException expected){}
+            long now=System.currentTimeMillis();
+            Path old=write(work,"logs/old.log","OLD",now-LogCleanup.TWO_DAYS-1);
+            Path recent=write(work,"logs/recent.log","RECENT",now-1000);
+            Path boundary=write(work,"logs/boundary.log","BOUNDARY",now-LogCleanup.TWO_DAYS);
+            Path metadata=write(work,"logs/client-dll-deploy.json","BUILD RECORD",0);
+            Path diagnostic=write(work,"client/current/Logs/dbg.txt","DIAGNOSTIC",now);
+            Path export=write(work,"exports/logs.zip","EXPORT",0);
+            try{LogCleanup.clear(directory,"reset",now,true);throw new AssertionError("Active writers accepted");}catch(IOException expected){}
+            check(Files.readString(old).equals("OLD"),"Active-writer rejection happens before any truncation");
+            LogCleanup.clear(directory,"older_2_days",now,false);
+            check(Files.exists(old)&&Files.size(old)==0,"Old log is emptied in place");
+            check(Files.readString(recent).equals("RECENT")&&Files.readString(boundary).equals("BOUNDARY"),"Recent and exact-boundary logs retained");
+            LogCleanup.clear(directory,"reset",now,false);
+            for(Path p:new Path[]{recent,boundary,diagnostic})check(Files.size(p)==0,"Reset diagnostic "+p);
+            check(Files.readString(metadata).equals("BUILD RECORD"),"Deployment manifest retained");
+            check(Files.readString(chat).equals("CHAT")&&Files.readString(export).equals("EXPORT")&&Files.readString(backup).equals("BACKUP"),"User files retained");
+            check(Files.readString(outside).equals("OUTSIDE"),"Symlink target is not reset");
+            check(LogRetention.count(directory)==2,"Retention setting retained");
+            check(LogCleanup.clear(directory,"reset",now,false)[0]==0,"Reset is idempotent");
             System.out.println("Log retention: defaults, 2–5 histories, active PID protection, legacy cleanup, size bounds and symlink isolation passed");
         }finally{TarExtractor.remove(tmp.toFile());}
     }

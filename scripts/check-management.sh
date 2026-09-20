@@ -21,6 +21,7 @@ if ! command -v javac >/dev/null; then compiler=(java -m jdk.compiler/com.sun.to
     app/src/main/java/io/github/russianranger/trasc/SessionArchive.java \
     app/src/main/java/io/github/russianranger/trasc/LocalLogs.java \
     app/src/main/java/io/github/russianranger/trasc/LogRetention.java \
+    app/src/main/java/io/github/russianranger/trasc/LogCleanup.java \
     tests/java/io/github/russianranger/trasc/LogRetentionHostTest.java \
     app/src/main/java/io/github/russianranger/trasc/ControllerInput.java \
     app/src/main/java/io/github/russianranger/trasc/RelativeInput.java \

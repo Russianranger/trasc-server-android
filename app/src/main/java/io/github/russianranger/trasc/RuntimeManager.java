@@ -80,9 +80,12 @@ public final class RuntimeManager {
         throw new IOException("Runtime did not become ready. Open Runtime log.");
     }
     JSONObject request(String op, JSONObject args) throws Exception {
+        return request(op,args,120000);
+    }
+    JSONObject request(String op, JSONObject args,int timeout) throws Exception {
         if(token==null) throw new IOException("Open the runtime first");
         HttpURLConnection c=(HttpURLConnection)new URL("http://127.0.0.1:18775/").openConnection();
-        c.setConnectTimeout(2500); c.setReadTimeout(120000); c.setRequestMethod("POST"); c.setDoOutput(true);
+        c.setConnectTimeout(2500); c.setReadTimeout(timeout); c.setRequestMethod("POST"); c.setDoOutput(true);
         c.setRequestProperty("Authorization","Bearer "+token); c.setRequestProperty("Content-Type","application/json");
         byte[] body=new JSONObject().put("operation",op).put("args",args).toString().getBytes(StandardCharsets.UTF_8);
         c.setFixedLengthStreamingMode(body.length);
@@ -94,6 +97,7 @@ public final class RuntimeManager {
     }
     synchronized void stop() throws Exception {
         if(!alive()) {status="Runtime stopped"; return;}
+        captureFerryDiagnostics();
         status="Saving server state and stopping database…";
         try {request("exit",new JSONObject());} catch(Exception ignored) {}
         Process p=process;
@@ -124,10 +128,25 @@ public final class RuntimeManager {
         return new JSONObject().put("text",LocalLogs.tail(work,name))
             .put("names",new org.json.JSONArray(LocalLogs.inventory(work).keySet()));
     }
+    synchronized JSONObject clearLogs(JSONObject args,boolean clientActive)throws Exception {
+        long[] cleared=LogCleanup.clear(work,args.optString("mode"),System.currentTimeMillis(),
+            alive()||installing||sessionBusy||clientActive);
+        return new JSONObject().put("cleared_files",cleared[0]).put("cleared_bytes",cleared[1])
+            .put("message","Reset "+cleared[0]+" diagnostic log files to 0 bytes.");
+    }
+    private void captureFerryDiagnostics() {
+        if(!alive())return;
+        try {
+            JSONObject snapshot=request("ferry_diagnostics",new JSONObject(),5000);
+            if(!snapshot.optBoolean("ok"))throw new IOException(snapshot.optString("error"));
+        }catch(Exception e){recordFailure("ferry_diagnostics",e);}
+    }
     synchronized JSONObject exportLogs()throws Exception {
         if(sessionBusy)throw new IOException("Wait for the complete session transfer before exporting logs");
         try{AndroidExitDiagnostics.collect(context,work);}catch(Exception e){recordFailure("android_exit_diagnostics",e);}
-        // Only native diagnostics: no credentials, settings, API token or backend request.
+        // Export still works offline. When available, refresh only the bounded
+        // ferry diagnostic snapshot; no settings, credentials or API token.
+        captureFerryDiagnostics();
         JSONObject metadata=new JSONObject().put("version",BuildConfig.VERSION_NAME)
             .put("created_utc",java.time.Instant.now().toString()).put("native",nativeState())
             .put("client",ClientRuntime.get(context).state())

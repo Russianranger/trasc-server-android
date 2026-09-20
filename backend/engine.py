@@ -40,7 +40,7 @@ import ferry_service
 import server_ferry
 from log_retention import rotate
 
-VERSION = '0.5.5'
+VERSION = '0.5.6'
 DEFAULT_REPO = 'https://github.com/Russianranger/Triptych-Triumvirate'
 BINARIES = ('world', 'zone', 'loginserver', 'shared_memory', 'ucs', 'eqlaunch', 'queryserv', 'export_client_files')
 CLIENT_FILES = ('spells_us.txt', 'dbstr_us.txt', 'SkillCaps.txt', 'BaseData.txt')
@@ -1008,6 +1008,7 @@ class Engine(ManagedContent):
             'nektulos':self.nektulos_status(), 'client':self.client_status()}
 
     def dispatch(self,op,args):
+        if op=='ferry_diagnostics':return ferry_service.diagnostics(self,args)
         if op in ('boat_trial_status','boat_trial_preview','boat_trial_apply'):
             return boat_trial.dispatch(self,op,args)
         if op in ('ferry_service_status','ferry_service_preview','ferry_service_apply'):
@@ -1054,7 +1055,7 @@ def serve(work, port, token):
                     threading.Thread(target=server.shutdown,daemon=True).start()
                     result={'message':'Stopping all processes and database'}
                 elif op=='cancel': engine.cancel.set(); result={'message':'Cancellation requested'}
-                elif op in ('state','files','logs','databases','client_dll_status'): result=engine.dispatch(op,args)
+                elif op in ('state','files','logs','databases','client_dll_status','ferry_diagnostics'): result=engine.dispatch(op,args)
                 else: result=engine.enqueue(op,args)
                 payload=json.dumps({'ok':True,'result':result}).encode()
             except Exception as e:
