@@ -2,11 +2,13 @@
 
 **Published:** [signed 0.5.4/code 44 APK](https://github.com/Russianranger/trasc-server-android/releases/download/preview/trasc-server-android-preview.apk?build=b45a028), merge `b45a02831f74cb14ad7f57c15ec3e963d5e27986`. All [main release checks](https://github.com/Russianranger/trasc-server-android/actions/runs/35473487713) passed. APK SHA256: `c5d0d6e2680039dcc1e035b2adb93b4569a1da5d8d2f0ec3c4646b2e793673aa`. The existing signing certificate is preserved.
 
-This build adds a reversible **Erud’s Crossing ferry trial** in Spire. It uses the race-72/gender-0 `SHIP` model that the user boarded successfully, at the recorded successful origin and heading. A two-stop route exercises translation, return travel and turning through the server’s existing boat movement manager. Passenger carrying on the device remains the acceptance gate. This is not a completed Qeynos–Erudin cross-zone service.
+This build adds a reversible **Erud’s Crossing ferry trial** in Spire. It uses the race-72/gender-0 `SHIP` model that the user boarded successfully, at the recorded successful origin and heading. A two-stop route exercises translation, return travel and turning through the server’s existing boat movement manager. **Passenger carrying and turning are now accepted on-device:** the user reports success and the latest capture includes over 5½ minutes of continuous attachment. Height is correct; dock XY/heading alignment and a modest speed increase remain to be tuned. Read [the device result and next tuning constraints](boat-ride-054.md). This is not a completed Qeynos–Erudin cross-zone service.
 
 The user’s observed collision distinction is accepted: the original gender-2 `PRE` ship allowed pass-through; the higher gender-0 ship was solid but blocked boarding; the lower gender-0 ship was solid and boardable. Do not repeat the withdrawn unchanged gender-2 test. See [the boarding evidence](boat-boarding-053.md), including 63 valid vehicle-attachment samples. Race flags were already correct; no client flag override, forced attachment or graphics/DLL patch is introduced.
 
-## Device procedure
+## Original device procedure (completed)
+
+The user's supplied ride completes this validation. The steps below document installation and the completed test; they are not a request to repeat it. Continue using the installed ferry while the horizontal placement and speed refinement are prepared.
 
 1. Stop ROF2, the game server and the runtime. Install the signed 0.5.4 APK over the existing app, then start the existing runtime. No runtime reinstall, source/client reimport, server build or DLL recompile is required. Keep the working client settings and deployed 0.5.3 DLL.
 2. Keep the game server stopped. Open **Spire → Erud’s Crossing ferry trial → Preview installation → Save reviewed ferry change**. The app creates a full database backup and installs the ferry. The save result shows the backup path.
@@ -32,7 +34,7 @@ Coordinates in this table are **X, Y, Z**. The client diagnostic log prints **Y,
 | Dock / far pause | 90 / 15 seconds |
 | Run / walk speed | 0.5 / 0.5 |
 
-The server resolves size zero to its race/gender default, as it did for the successful command; this is not a zero-sized rendered model. Fixed waypoint Z avoids accidentally using the passenger’s deck height as the ship’s destination. The dock heading restores the successful boarding orientation; departure and return exercise ordinary boat rotation. The far point uses the pinned seed’s existing grid-59 waypoint-2 X/Y, following its dock departure corridor while retaining the lower Z. This roughly 159-unit leg still needs device acceptance for clearance and deck support with the SHIP model; no exact transit time is promised.
+The server resolves size zero to its race/gender default, as it did for the successful command; this is not a zero-sized rendered model. Fixed waypoint Z avoids accidentally using the passenger’s deck height as the ship’s destination. The dock heading restores the successful boarding orientation; departure and return exercise ordinary boat rotation. The far point uses the pinned seed’s existing grid-59 waypoint-2 X/Y, following its dock departure corridor while retaining the lower Z. Device evidence now accepts deck support through this roughly 159-unit leg and its turns, with approximately 38 seconds of travel per leg. Dock clearance is not accepted: screenshots show hull/pier overlap. The configuration table above records the published values; proposed tuning has not been applied.
 
 ## Implementation and safeguards
 

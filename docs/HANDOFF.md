@@ -1,3 +1,17 @@
+# Device result: 0.5.4 moving ferry and turns accepted (2026-09-20 UTC)
+
+The user reports: the ferry works, height is correct, horizontal placement is off, and travel is slightly slow. Read [boat-ride-054.md](boat-ride-054.md) for the evidence and remaining tuning. The four screenshots show hull/pier overlap. **Accept boarding, moving passenger support and turning for this single-zone ferry.** Do not request another unchanged carrying test or repeat the rejected gender-2/PRE collision test.
+
+The latest export, `logs-5331243628418525720.zip`, contains 1,027 attached samples across two separate launches. The current launch includes **649 consecutive attached samples spanning 331.365 seconds**, with actual straight travel and five turns at zero movement input. The previous launch adds three such turns. Player displacement follows the boat; passenger radius stays stable through turns. All attached samples have `wet=0`; the separate zero-valued `passenger` byte is still not an acceptance criterion. Current V2 rollover and continuation are observed on-device. Native dinput8 is loaded, and all seven deployed header hashes match. Raw private inputs remain uncommitted.
+
+**Preserve the working Z `-39.5`, model, size and flymode.** Logged Z `-39.375` is not grounds to alter the correct height. Dock XY and heading still need calibration together; the manual spawn pose proved boarding, not a correctly surveyed berth. Screenshots establish overlap but do not establish exact replacement coordinates. The later player viewpoint is not a desired boat origin. Obtain a deliberate berth reference or dock/model geometry before assigning corrected XY/heading; check departure and return clearance.
+
+The observed 159-unit leg takes approximately 38 seconds. The source-supported modest speed candidate is **runspeed 0.50 → 0.55**, which changes derived walking speed from 7 to 8 (about 14.3% faster; predicted 33–34-second leg). A change to 0.60 would instead be about 28.6% faster. These are proposed values, not deployed changes. Keep the 90/15-second pauses. Direct SQL/Spire edits to owned rows would invalidate the ferry's manifest: tuning must use a supported transactional update or backed-up removal/reinstallation with revised defaults.
+
+This follow-up changes documentation only; metrics, screenshots, source speed calculation, deployed hashes and whitespace were checked. The signed [0.5.4 APK](https://github.com/Russianranger/trasc-server-android/releases/download/preview/trasc-server-android-preview.apk?build=b45a028), merge `b45a02831f74cb14ad7f57c15ec3e963d5e27986`, and existing deployed DLL remain current. No new APK, database change or new device test is supplied by this entry. Full Qeynos–Erudin cross-zone service remains unfinished. Preserve closed controller, camera, particle, loading, camping and player-restoration milestones. No subagents used. Documentation-only `[skip ci]`; normal product release gates remain required for the next implementation.
+
+---
+
 # Released: 0.5.4 solid ferry and timed passenger route (2026-09-19 UTC)
 
 The user authorized moving forward with the fix. [PR #6](https://github.com/Russianranger/trasc-server-android/pull/6) was reviewed and merged at `b45a02831f74cb14ad7f57c15ec3e963d5e27986`. The **signed 0.5.4/code 44 preview is published**. Read [boat-ferry-054.md](boat-ferry-054.md) for the exact route and device procedure. This supersedes older instructions to remain on the 0.5.3 APK; the existing deployed 0.5.3 DLL remains appropriate.
