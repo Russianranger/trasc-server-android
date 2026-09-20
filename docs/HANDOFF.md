@@ -1,3 +1,30 @@
+# Current scope: ferry milestone complete; traditional EQEmu planning only (2026-09-20 UTC)
+
+The user reconfirmed acceptance after the latest log review. **Qeynos–Erud's Crossing–Erudin round-trip travel and diagnostic log reset are complete.** Retain the evidence and limits in the acceptance entry below. Keep the released 0.5.6 APK, deployed server and client DLL; no rebuild or repeat of the accepted tests is needed.
+
+**Shelved boat follow-ups (explicit user request):**
+
+- Review **Freeport ↔ Ocean of Tears ↔ Butcherblock Mountains** transit.
+- Investigate and fix **the Overthere barge** issues.
+- Both are parked for a later implementation request. Do not begin these routes as part of the era-profile planning work.
+
+**Active discussion — planning only:** the user wants the app to support a traditional EQEmu server with era-appropriate rules/content while retaining RoF2, alongside the existing custom world. They have not selected a clean versus modified client or authorized implementation. Earlier goals include a traditional Luclin-era experience and classic presentation. Do not treat the following recommendations as approved product decisions.
+
+**Proposed direction:**
+
+- Add isolated world profiles: existing TRASC/custom and a traditional EQEmu/PEQ world. Scope server source/build/deployment, database and characters, quests/maps, settings, client imports/Wine prefix, generated client files, backups and logs to the selected profile. Run one world at a time. Preserve the current working profile during migration.
+- Prefer a separate clean, supported RoF2 import for the traditional profile initially. Keep the existing custom client intact. Reuse proven Android runtime/graphics infrastructure where compatible; audit and port controller/camera/compatibility DLL changes separately from custom gameplay and content assumptions. A copy of the modified client is a fallback baseline with more unknowns. Shared immutable client assets plus per-profile overlays are a later storage optimization, not a prerequisite.
+- Establish a pinned upstream EQEmu server + PEQ database + matching quests/maps baseline on the Thor before adding era presets. The app currently has one server workspace/client root and custom-source build/start hooks; conventional EQEmu requires a profile-aware build/import adapter and verification of its scripting dependencies. Do not automatically apply custom source/ferry patches to this new flavor.
+- An era preset should version its rules, expansion/content flags, database/quest corrections, client exports, and optional RoF2-compatible UI/model/zone assets together. Keep historical settings separate from optional solo/quality-of-life settings. Start with one tested Luclin preset before broad Classic/Kunark/Velious/Luclin selection.
+- Expansion filtering is available upstream, but historical completeness depends on content tagging and quest behavior. Rules cannot restore old client zone geometry, icons/UI or every historical mechanic. Client and server zone/map/door/spawn data must agree. Generate spells_us.txt, dbstr_us.txt, SkillCaps.txt and BaseData.txt from the selected profile rather than copying custom-world exports.
+- Proposed flow: choose world → choose era/options → review changes → snapshot/apply with client and server stopped → launch the matching world/client. Normal profile switches should select already prepared files, without rebuilding the server or recopying the entire client each time. Changing an established world's era backward needs a snapshot/clone and compatibility checks for characters, locations, items and AAs; do not silently rewrite progress.
+
+**Upstream references checked:** [EQEmu source](https://github.com/EQEmu/EQEmu), [server rules](https://docs.eqemu.dev/server/operation/server-rules/), [expansion/content filtering](https://docs.eqemu.dev/server/expansions/expansion-content-filtering/), [client/content design considerations](https://docs.eqemu.dev/server/expansions/design-considerations/), and [supported clients](https://docs.eqemu.dev/play/play-guide/). Current source has Expansion:CurrentExpansion and Expansion:UseCurrentExpansionAAOnly; World:UseClientBasedExpansionSettings defaults true and overrides World:ExpansionSettings, so the era implementation must explicitly coordinate server content and client expansion settings. The design-considerations page includes proposals and open questions, not proof that every historical feature is implemented.
+
+This update changes documentation only, with [skip ci]. No product implementation, APK/server/DLL build, device change or subagents.
+
+---
+
 # Device acceptance: 0.5.6 round-trip ferry and log reset (2026-09-20 UTC)
 
 The user reports both features working. Reviewed private bundle `logs-6927299419959095253.zip`, exported at 17:31:31 UTC from 0.5.6 on the Thor. **Accept the revised Erudin departure and passenger return to South Qeynos, completing the Qeynos–Erudin round-trip milestone. Accept diagnostic log reset.** Keep the current APK, deployed server and client DLL. No new build or repeat of these accepted tests is needed.
