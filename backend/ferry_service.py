@@ -124,17 +124,17 @@ def namespace(installation):
 
 def bucket_where(installation):
     # Escape LIKE underscores; all namespace characters are generated, not input.
-    return "`key` LIKE "+literal(namespace(installation).replace('_','\\_')+'\\_%')
+    return "BINARY `key` LIKE BINARY "+literal(namespace(installation).replace('_','\\_')+'\\_%')
 
 
 def bucket(engine,key):
-    found=rows(engine,'SELECT value FROM data_buckets WHERE `key`='+literal(key)+' AND character_id=0 AND account_id=0 AND npc_id=0 AND bot_id=0 AND zone_id=0 AND instance_id=0;')
+    found=rows(engine,'SELECT value FROM data_buckets WHERE BINARY `key`=BINARY '+literal(key)+' AND character_id=0 AND account_id=0 AND npc_id=0 AND bot_id=0 AND zone_id=0 AND instance_id=0;')
     return json.loads(found[0][0]) if found else None
 
 
 def state_sql(installation, state):
     key=namespace(installation)+'_state'
-    return ('DELETE FROM data_buckets WHERE `key`='+literal(key)+';'
+    return ('DELETE FROM data_buckets WHERE BINARY `key`=BINARY '+literal(key)+';'
             'INSERT INTO data_buckets (`key`,value,expires) VALUES ('+literal(key)+','+literal(json.dumps(state))+',0);')
 
 
@@ -191,7 +191,7 @@ def inspect(engine,action,installation=None):
             shapes[t]=trial.layout(engine,t)
             if not set(required)<=shapes[t]['columns'].keys():raise ValueError('Unsupported saved state: '+t)
             auxiliary[t]=int(rows(engine,'SELECT COUNT(*) FROM '+ident(t)+' WHERE '+where[t]+';')[0][0])
-    if action=='remove' and rows(engine,'SELECT 1 FROM data_buckets WHERE '+bucket_where(installation)+" AND `key`<>"+literal(namespace(installation)+'_state')+' LIMIT 1;'):
+    if action=='remove' and rows(engine,'SELECT 1 FROM data_buckets WHERE '+bucket_where(installation)+" AND BINARY `key`<>BINARY "+literal(namespace(installation)+'_state')+' LIMIT 1;'):
         raise ValueError('A passenger has a saved ferry position. Start the server, log that character in and disembark before removing the route. Reset can recover interrupted riders to the dock.')
     return dict(ids=ids,installation=installation,own=own,shapes=shapes,actual=actual,files=files,auxiliary=auxiliary)
 
@@ -304,7 +304,7 @@ def apply(engine,args):
     else:
         for t in s['auxiliary']:sql.append('DELETE FROM '+ident(t)+' WHERE '+where[t]+';')
         if action=='remove':
-            sql.append(guard('(SELECT COUNT(*) FROM data_buckets WHERE '+bucket_where(installation)+' AND `key`<>'+literal(namespace(installation)+'_state')+')=0'))
+            sql.append(guard('(SELECT COUNT(*) FROM data_buckets WHERE '+bucket_where(installation)+' AND BINARY `key`<>BINARY '+literal(namespace(installation)+'_state')+')=0'))
             for t in ('spawnentry','spawn2','spawngroup','npc_types'):sql.append('DELETE FROM '+ident(t)+' WHERE '+where[t]+';')
             old_zones={values(r)['zone'] for r in own['manifest']['before']['launcher_zones']}
             for zone in route.ZONES.values():

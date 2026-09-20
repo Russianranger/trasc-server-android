@@ -97,7 +97,7 @@ def run(seed):
                 perform('reset')
                 assert e.mysql('SELECT x FROM zone_state_spawns;').splitlines()[1:]==['42']
                 assert ferry.bucket(e,key)['kind']=='ride' # Reset retains recovery for login.
-                e.mysql('DELETE FROM data_buckets WHERE `key`='+ferry.literal(key)+';')
+                e.mysql('DELETE FROM data_buckets WHERE BINARY `key`=BINARY '+ferry.literal(key)+';')
                 # The boot reset retains all unrelated state and emits one known starting pose.
                 ferry.boot(e);state=ferry.bucket(e,ferry.namespace(m['installation'])+'_state')
                 assert (state['phase'],state['point'],state['pose']['z'])==(1,8,-39.5)
