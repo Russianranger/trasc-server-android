@@ -44,6 +44,7 @@ for(const [name,type,value,min,max]of [['Character:RaidExpMultiplier','real','0.
     else if(op==='session_backup'){
      window.__alive=false;window.nativeReply(id,{ok:false,error:'Session backup failed: simulated storage error. Runtime is stopped. Logs are still available; open runtime to continue.'});return;
     }
+    else if(op==='clear_logs'){if(window.__alive||clientRuntime.alive){window.nativeReply(id,{ok:false,error:'Stop the client and server runtime before clearing logs'});return;}result={cleared_files:4,cleared_bytes:4096,message:'Reset 4 diagnostic log files to 0 bytes.'};}
     else if(op==='log_retention'){if(args.count)logRetention=args.count;result={count:logRetention,removed_files:12,removed_bytes:4096,message:'Log retention saved. Removed 12 older logs; current logs are kept.'};}
     else if(op==='logs')result={text:args.name==='app.log'?'session_backup failed: simulated storage error':'Saved output: '+args.name,names:['app.log','runtime.log','control.log','operation.log','server/zones/cabeast.log','client/Logs/dbg.txt','client/dinput8.log']};
     else if(op==='export_logs')result={file:'exports/logs-native.zip'};
@@ -296,6 +297,14 @@ for(const [name,type,value,min,max]of [['Character:RaidExpMultiplier','real','0.
     await page.locator('nav [data-tab=server]').click();await page.locator('nav [data-tab=logs]').click();
     await page.waitForFunction(value=>document.getElementById('log-retention').value===value,count);
   }
+  await page.locator('#reset-logs').click();
+  await page.waitForFunction(()=>document.getElementById('notice').textContent.includes('Stop the client and server runtime'));
+  await page.evaluate(()=>{window.__alive=false;});
+  await page.locator('#reset-logs').click();
+  await page.waitForFunction(()=>document.getElementById('log-cleanup-status').textContent.includes('0 bytes'));
+  await page.locator('#clear-old-logs').click();
+  await page.waitForFunction(()=>!document.getElementById('clear-old-logs').disabled);
+  assert.equal(await page.evaluate(()=>window.__calls.filter(x=>x==='clear_logs').length),3);
   await page.screenshot({path:'ui-reports/log-retention-mobile.png',fullPage:true});
   await page.locator('#log-name').selectOption('operation.log');
   await page.waitForFunction(()=>document.getElementById('log-output').textContent==='Saved output: operation.log');

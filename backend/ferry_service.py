@@ -142,14 +142,43 @@ def initial_state(installation):
     p=route.phases()[0]['points'][7]
     return dict(version=1,installation=installation,epoch=secrets.token_hex(12),
         phase=1,point=8,status='pause',sequence=0,
-        wait_until=int(time.time())+90,updated=int(time.time()),riders=[],history=[],
+        wait_until=int(time.time())+route.PORT_PAUSE,updated=int(time.time()),riders=[],history=[],
         pose=dict(x=p['x'],y=p['y'],z=p['z'],h=0))
+
+
+def skiff_state(engine, own):
+    """Own only Erudin version-zero skiff spawn disables, preserving prior rows."""
+    old=own['manifest'].get('skiffs') if own else None
+    if old:
+        spawn_ids=[int(values(r)['id']) for r in old['spawns']]
+        npc_ids=old['npc_ids']
+    else:
+        found=rows(engine,"SELECT DISTINCT s.id,n.id FROM spawn2 s JOIN spawnentry e ON e.spawngroupID=s.spawngroupID JOIN npc_types n ON n.id=e.npcID WHERE s.zone='erudnext' AND s.version=0 AND n.race=73;")
+        spawn_ids=sorted({int(r[0]) for r in found});npc_ids=sorted({int(r[1]) for r in found})
+    where='id IN ('+','.join(map(str,spawn_ids))+')' if spawn_ids else '1=0'
+    disabled_where='instance_id=0 AND spawn2_id IN ('+','.join(map(str,spawn_ids))+')' if spawn_ids else '1=0'
+    shapes={t:trial.layout(engine,t) for t in ('spawn2','spawn2_disabled')}
+    spawns=query_rows(engine,shapes['spawn2'],where,limit=1001)
+    disabled=query_rows(engine,shapes['spawn2_disabled'],disabled_where,limit=1001)
+    if old and (spawns!=old['spawns'] or disabled!=old['disabled']):
+        raise ValueError('Managed Erudin skiff spawns changed; review those edits before changing the route')
+    if spawn_ids:
+        # Never disable a mixed spawn group that can also produce unrelated NPCs.
+        mixed=rows(engine,'SELECT 1 FROM spawnentry e LEFT JOIN npc_types n ON n.id=e.npcID WHERE e.spawngroupID IN (SELECT spawngroupID FROM spawn2 WHERE '+where+') AND (n.id IS NULL OR n.race<>73) LIMIT 1;')
+        if mixed:raise ValueError('An Erudin skiff shares a spawn group with other NPCs; no spawns were disabled')
+    return dict(spawns=spawns,disabled=disabled,before=old['before'] if old else disabled,
+                npc_ids=npc_ids,where=where,disabled_where=disabled_where)
+
+
+def skiff_cleanup(skiffs, tables):
+    if not skiffs or not skiffs['npc_ids'] or 'zone_state_spawns' not in tables:return ''
+    return 'DELETE FROM zone_state_spawns WHERE zone_id=24 AND npc_id IN ('+','.join(map(str,skiffs['npc_ids']))+');'
 
 
 def inspect(engine,action,installation=None):
     ready(engine)
-    if action not in ('install','reset','remove'):
-        raise ValueError('Choose install, reset or remove')
+    if action not in ('install','update','reset','remove'):
+        raise ValueError('Choose install, update, reset or remove')
     names=trial.tables(engine);own=own_record(engine,names)
     if bool(own)!=(action!='install'):
         raise ValueError('Route is already installed' if own else 'No managed route is installed')
@@ -193,13 +222,15 @@ def inspect(engine,action,installation=None):
             auxiliary[t]=int(rows(engine,'SELECT COUNT(*) FROM '+ident(t)+' WHERE '+where[t]+';')[0][0])
     if action=='remove' and rows(engine,'SELECT 1 FROM data_buckets WHERE '+bucket_where(installation)+" AND BINARY `key`<>BINARY "+literal(namespace(installation)+'_state')+' LIMIT 1;'):
         raise ValueError('A passenger has a saved ferry position. Start the server, log that character in and disembark before removing the route. Reset can recover interrupted riders to the dock.')
-    return dict(ids=ids,installation=installation,own=own,shapes=shapes,actual=actual,files=files,auxiliary=auxiliary)
+    skiffs=skiff_state(engine,own) if action in ('install','update') or (own and own['manifest'].get('skiffs')) else None
+    return dict(ids=ids,installation=installation,own=own,shapes=shapes,actual=actual,files=files,auxiliary=auxiliary,skiffs=skiffs)
 
 
 def status(engine,args):
     ready(engine);recover(engine)
     own=own_record(engine,trial.tables(engine))
     return dict(active=bool(own),server_ready=server_ferry.deployed(engine),running=engine.server_running(),
+        update_available=bool(own and own['manifest'].get('route_revision',1)<2),
         route=bucket(engine,namespace(own['manifest']['installation'])+'_state') if own else None,
         message='Qeynos–Erudin service installed.' if own else 'Install a ferry through Erud\'s Crossing, with passenger handoff at each boundary.')
 
@@ -212,11 +243,12 @@ def preview(engine,args):
     atomic_json(engine.work/'run/ferry-previews'/(token+'.json'),dict(action=action,database=engine.config['database'],created=time.time(),state=state))
     summaries={
         'install':'Install one Qeynos–Erudin service via Erud\'s Crossing, three route controllers and owned quests. Keep these three zones running for coordinated transfers.',
+        'update':'Update the installed route: offshore Erudin departure, 180-second port stops, speed 0.60, and disable Erudin skiff spawns. Restart at Qeynos; retain interrupted-rider recovery.',
         'reset':'Restart the route at Qeynos. Interrupted passengers are recovered to their zone\'s dock on login.',
         'remove':'Remove the managed service and quests, and restore the previous zone-idle and launcher settings.',
     }
     return dict(token=token,action=action,summary=summaries[action],running=engine.server_running(),
-        message='Stop the server before saving. A full database backup and quest-file journal are created first. Other routes and ordinary zone lines are preserved.')
+        message='Stop the server before saving. A full database backup and quest-file journal are created first. Erudin skiff spawns affected: '+str(len((state['skiffs'] or {}).get('spawns',[])))+'. Removing this service restores their previous spawn settings. Ordinary zone lines are preserved.')
 
 
 def recover(engine):
@@ -287,7 +319,25 @@ def apply(engine,args):
         sql.append(guard('(SELECT COUNT(*) FROM '+ident(t)+' WHERE '+where[t]+')='+str(len(actual))))
         if actual:
             sql.append(guard('(SELECT COUNT(*) FROM '+ident(t)+' WHERE ('+where[t]+') AND ('+' OR '.join('('+trial.raw_match(r)+')' for r in actual)+'))='+str(len(actual))))
-    action=p['action'];after=files_for(ids,installation) if action=='install' else {}
+    action=p['action'];after=files_for(ids,installation) if action in ('install','update') else {}
+    skiffs=s['skiffs']
+    if skiffs:
+        for table,key,condition in [('spawn2','spawns',skiffs['where']),('spawn2_disabled','disabled',skiffs['disabled_where'])]:
+            actual=skiffs[key]
+            sql.append(guard('(SELECT COUNT(*) FROM '+ident(table)+' WHERE '+condition+')='+str(len(actual))))
+            if actual:sql.append(guard('(SELECT COUNT(*) FROM '+ident(table)+' WHERE ('+condition+') AND ('+' OR '.join('('+trial.raw_match(r)+')' for r in actual)+'))='+str(len(actual))))
+        if action in ('install','update'):
+            for raw in skiffs['spawns']:
+                spawn_id=int(values(raw)['id'])
+                if any(int(values(r)['spawn2_id'])==spawn_id for r in skiffs['disabled']):
+                    sql.append('UPDATE spawn2_disabled SET disabled=1 WHERE instance_id=0 AND spawn2_id='+str(spawn_id)+';')
+                else:sql.append('INSERT INTO spawn2_disabled (spawn2_id,instance_id,disabled) VALUES ('+str(spawn_id)+',0,1);')
+        elif action=='remove':
+            sql.append('DELETE FROM spawn2_disabled WHERE '+skiffs['disabled_where']+';')
+            for raw in skiffs['before']:
+                r=values(raw)
+                sql.append('INSERT INTO spawn2_disabled ('+','.join(ident(k) for k in r)+') VALUES ('+','.join(literal(v) for v in r.values())+');')
+        sql.append(skiff_cleanup(skiffs,s['auxiliary']))
     if action=='install':
         sql.append(guard("(SELECT COUNT(*) FROM npc_types WHERE name LIKE 'TRASC\\_Voyager%' OR name LIKE 'TRASC\\_Ferry\\_Control\\_%')=0"))
         for t,records in content(ids).items():
@@ -297,9 +347,11 @@ def apply(engine,args):
         for zone in route.ZONES.values():
             if zone not in existing:sql.append("INSERT INTO launcher_zones (launcher,zone,port) VALUES ('trasc',"+literal(zone)+',0);')
         sql.append('UPDATE zone SET idle_when_empty=0 WHERE '+where['zone']+';')
-        m=dict(version=1,installation=installation,ids=ids,before=s['actual'],
+        m=dict(version=1,route_revision=2,installation=installation,ids=ids,before=s['actual'],
                files={name:hashlib.sha256(data.encode()).hexdigest() for name,data in after.items()})
+        m['skiffs']=skiffs
         manifest="JSON_SET("+literal(json.dumps(m))+",'$.rows',JSON_OBJECT("+','.join(literal(t)+','+trial.json_snapshot(s['shapes'][t],where[t]) for t in OWNED)+'))'
+        if skiffs:manifest="JSON_SET("+manifest+",'$.skiffs.disabled',"+trial.json_snapshot(trial.layout(engine,'spawn2_disabled'),skiffs['disabled_where'])+')'
         sql.append('INSERT INTO '+ident(REGISTRY)+' VALUES (1,'+literal(token)+','+manifest+');')
     else:
         for t in s['auxiliary']:sql.append('DELETE FROM '+ident(t)+' WHERE '+where[t]+';')
@@ -314,6 +366,13 @@ def apply(engine,args):
                 sql.append('UPDATE zone SET idle_when_empty='+literal(r['idle_when_empty'])+' WHERE id='+literal(r['id'])+';')
             sql.append('DELETE FROM data_buckets WHERE '+bucket_where(installation)+';')
             sql.append('DELETE FROM '+ident(REGISTRY)+' WHERE id=1;')
+        elif action=='update':
+            sql.append('UPDATE npc_types SET runspeed='+literal(route.HARBOR_SPEED)+',walkspeed='+literal(route.HARBOR_SPEED)+' WHERE id='+str(ids['ship'])+';')
+            m=dict(own['manifest'],route_revision=2,skiffs=skiffs,
+                files={name:hashlib.sha256(data.encode()).hexdigest() for name,data in after.items()})
+            manifest="JSON_SET("+literal(json.dumps(m))+",'$.rows',JSON_OBJECT("+','.join(literal(t)+','+trial.json_snapshot(s['shapes'][t],where[t]) for t in OWNED)+'))'
+            if skiffs:manifest="JSON_SET("+manifest+",'$.skiffs.disabled',"+trial.json_snapshot(trial.layout(engine,'spawn2_disabled'),skiffs['disabled_where'])+')'
+            sql.append('UPDATE '+ident(REGISTRY)+' SET revision='+literal(token)+',manifest='+manifest+' WHERE id=1;')
         else:sql.append('UPDATE '+ident(REGISTRY)+' SET revision='+literal(token)+' WHERE id=1;')
     if action!='remove':sql.append(state_sql(installation,initial_state(installation)))
     sql.append('INSERT INTO '+ident(AUDIT)+' VALUES ('+literal(token)+','+literal(action)+',UTC_TIMESTAMP(6),'+literal(backup)+','+literal(json.dumps(dict(ids=ids,installation=installation)))+');COMMIT;')
@@ -328,6 +387,7 @@ def apply(engine,args):
     engine.log('Ferry service '+action+'; audit '+token+'; backup '+backup)
     return dict(active=action!='remove',backup=backup,action=action,
         message={'install':'Qeynos–Erudin service installed. Start the server and board TRASC_Voyager at South Qeynos.',
+                 'update':'Route updated: offshore Erudin departure, 180-second port stops, speed 0.60, and Erudin skiffs disabled. Start the server at Qeynos.',
                  'reset':'Route reset to Qeynos. Interrupted riders will return to their local dock.',
                  'remove':'Route removed; previous launcher and zone-idle settings restored.'}[action])
 
@@ -338,7 +398,18 @@ def boot(engine):
     if not own:return
     s=inspect(engine,'reset');where=selectors(s['ids'])
     cleanup=''.join('DELETE FROM '+ident(t)+' WHERE '+where[t]+';' for t in s['auxiliary'])
+    cleanup+=skiff_cleanup(s['skiffs'],s['auxiliary'])
     engine.mysql('START TRANSACTION;'+cleanup+state_sql(s['installation'],initial_state(s['installation']))+'COMMIT;')
+
+
+def diagnostics(engine,args):
+    """A read-only DB snapshot for the native Android export path."""
+    from engine import atomic_json
+    own=own_record(engine,trial.tables(engine)) if engine.config.get('database_imported') else None
+    snapshot=dict(captured_utc=time.time(),active=bool(own),
+        route=bucket(engine,namespace(own['manifest']['installation'])+'_state') if own else None)
+    atomic_json(engine.work/'logs/ferry-state.json',snapshot)
+    return snapshot
 
 
 def dispatch(engine,op,args):

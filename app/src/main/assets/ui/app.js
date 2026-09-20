@@ -121,3 +121,9 @@ action('fix-nektulos',()=>job('fix_nektulos'));
 action('revert-nektulos',()=>job('revert_nektulos'));
 action('session-export',async()=>{notice('Stopping the session and creating a complete backup…');const r=await api('session_backup');$('session-result').textContent='Local ZIP: '+r.file;await exportResult(r);notice('Complete session exported. Open runtime when you want to play again.');});
 action('session-import',async()=>{const r=await api('pick',{kind:'session',replace:$('replace-session').checked});initialSettings=false;rulesLoaded=false;notice(r.message);window.location.reload();});
+
+for(const [id,mode] of [['clear-old-logs','older_2_days'],['reset-logs','reset']])action(id,async()=>{
+ const buttons=[$('clear-old-logs'),$('reset-logs')];buttons.forEach(b=>b.disabled=true);
+ try{const r=await api('clear_logs',{mode});$('log-cleanup-status').textContent=r.message+' Freed '+bytes(r.cleared_bytes)+'.';await logs();}
+ finally{buttons.forEach(b=>b.disabled=false);}
+});

@@ -1,3 +1,17 @@
+# In progress: 0.5.6 Erudin departure, timing and log cleanup (2026-09-20)
+
+User confirms outbound zone-border travel works, reports moving Erudin skiffs and passive detachment onto a rock while departing Erudin, followed by swimming and shark death. Requested 180-second port waits, speed 0.6, and a way to clear old logs/reset contents. This is authorized implementation; preserve accepted boarding/carrying/turning and outbound handoffs. Return travel with a rider is not yet accepted.
+
+Bundle `logs-8797392406544205673.zip` (private, uncommitted) is 0.5.5 on AYN Thor. Erudin zone log records `handoff complete; failed riders=0 phase=3 sequence=2`; departure later transfers zero riders. In `client-boats-rollover.log`, the passive detachment occurs at ticks12418680, X=-424.711,Y=-214.898,Z=17.593 with zero motion input; preceding ship origin was X=-443,Y=-178.750,Z=-19.375, heading255.750. This is distinct from the earlier deliberate step onto and back off the Erudin pier. The collision map places rocky shoreline on the old southbound leg. Death is logged at12:45:21 UTC.
+
+Branch `codex/ferry-erudin-log-cleanup`, version0.5.6/code46: new departure heads southwest to(-500,-40), then west via(-700,-80), avoiding the old(-443,-220) shoreline waypoint. Port waits180s, island60s, speed0.60. Preview route update migrates installed0.5.5 records/files transactionally with backup, unchanged IDs and offline recovery tickets. Erudin version-zero race73 skiff-only spawns are disabled with prior disabled rows retained for removal; their saved zone state is cleared. Other-zone skiffs remain. No native server/DLL change; retain the0.5.5 build.
+
+Native Logs adds explicit older-than48h-by-file-mtime and reset-all-to-zero controls, requiring stopped client/runtime. JSON settings/deployment records, chat, backups and exports are excluded. Native export now requests a bounded ferry snapshot while the runtime is available; this bundle proved the previous native export omitted the Python-only snapshot.
+
+Publication and final verification are pending. See preview-notes.md for the concrete update/test flow. Do not claim revised berth/departure collision is accepted before the device result. No subagents.
+
+---
+
 # Released: 0.5.5 Qeynos–Erudin ferry handoffs (2026-09-20 UTC)
 
 The user authorized the Qeynos ↔ Erud’s Crossing ↔ Erudin route first, including zone boundaries and ship/passenger transfer; other routes remain deferred. [PR #7](https://github.com/Russianranger/trasc-server-android/pull/7) was reviewed and merged at `652f898b7a2fdeae124c3ff5ca27a49f3a6609a3`. The **signed 0.5.5/code45 preview is published**. [Download APK](https://github.com/Russianranger/trasc-server-android/releases/download/preview/trasc-server-android-preview.apk?build=652f898). Read [qeynos-erudin-055.md](qeynos-erudin-055.md) for the exact setup and test.

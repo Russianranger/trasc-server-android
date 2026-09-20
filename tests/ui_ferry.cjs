@@ -50,16 +50,19 @@ const server=http.createServer((req,res)=>{
   await page.locator('#ferry-service-save').click();await page.waitForFunction(()=>!ferryService.working&&ferryService.active===true);
   assert.equal(await page.evaluate(()=>ferrySaves.join(',')),'install');assert(await page.locator('#ferry-service-preview').isHidden());
   assert(await page.locator('#ferry-service-install').isDisabled());assert(await page.locator('#ferry-service-reset').isEnabled());
+  await page.locator('#ferry-service-update').click();await page.waitForFunction(()=>!ferryService.working&&ferryService.preview);
+  assert((await page.locator('#ferry-service-summary').textContent()).includes('update'));
+  await page.locator('#ferry-service-save').click();await page.waitForFunction(()=>!ferryService.working);
   await page.locator('#ferry-service-reset').click();await page.waitForFunction(()=>!ferryService.working&&ferryService.preview);
   await page.locator('#ferry-service-refresh').click();await page.waitForFunction(()=>!ferryService.working);
   assert(await page.locator('#ferry-service-preview').isHidden());assert(await page.locator('#ferry-service-save').isDisabled());
   await page.locator('#ferry-service-remove').click();await page.waitForFunction(()=>!ferryService.working&&ferryService.preview);
   await page.evaluate(()=>ferryFail=true);await page.locator('#ferry-service-save').click();await page.waitForFunction(()=>!ferryService.working);
   assert((await page.locator('#ferry-service-status').textContent()).includes('changed after preview'));assert(await page.locator('#ferry-service-save').isDisabled());
-  assert.equal(await page.evaluate(()=>ferrySaves.length),1);
+  assert.equal(await page.evaluate(()=>ferrySaves.length),2);
   await page.evaluate(()=>ferryFail=false);await page.locator('#ferry-service-remove').click();await page.waitForFunction(()=>!ferryService.working&&ferryService.preview);
   await page.locator('#ferry-service-save').click();await page.waitForFunction(()=>!ferryService.working&&ferryService.active===false);
-  assert.equal(await page.evaluate(()=>ferrySaves.join(',')),'install,remove');
+  assert.equal(await page.evaluate(()=>ferrySaves.join(',')),'install,update,remove');
   fs.mkdirSync('ui-reports',{recursive:true});
   for(const [label,width,height] of [['ferry-thor',854,480],['ferry-phone',393,852]]){
    await page.setViewportSize({width,height});await page.locator('#ferry-service-panel').scrollIntoViewIfNeeded();
