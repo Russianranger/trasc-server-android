@@ -1,15 +1,15 @@
 'use strict';
 const $=id=>document.getElementById(id), pending=new Map();
-let seq=0,currentTab='setup',lastState=null,busy=0,rulesLoaded=false,rulesValues={},initialSettings=false;
-window.nativeReply=(id,response)=>{const p=pending.get(id);if(!p)return;pending.delete(id);response.ok?p.resolve(response.result):p.reject(new Error(response.error));};
-function api(op,args={}){return new Promise((resolve,reject)=>{const id=String(++seq);pending.set(id,{resolve,reject});if(!window.Trasc){pending.delete(id);reject(new Error('Open this interface in the TRASC Android app.'));return;}Trasc.call(id,op,JSON.stringify(args));});}
+let seq=0,currentTab='setup',lastState=null,lastNative=null,busy=0,rulesLoaded=false,rulesValues={},initialSettings=false,polling=false,sessionAction=null;
+window.nativeReply=(id,response)=>{const p=pending.get(id);if(!p)return;pending.delete(id);clearTimeout(p.timer);response.ok?p.resolve(response.result):p.reject(new Error(response.error));};
+function api(op,args={},timeoutMs=0){return new Promise((resolve,reject)=>{const id=String(++seq);const timer=timeoutMs?setTimeout(()=>{pending.delete(id);reject(new Error('Status check timed out.'));},timeoutMs):null;pending.set(id,{resolve,reject,timer});if(!window.Trasc){pending.delete(id);clearTimeout(timer);reject(new Error('Open this interface in the TRASC Android app.'));return;}Trasc.call(id,op,JSON.stringify(args));});}
 function notice(text,error=false){$('notice').hidden=false;$('notice').classList.toggle('error',error);$('notice').textContent=text;}
 function bytes(n){if(n==null)return '—';return n>=1073741824?(n/1073741824).toFixed(1)+' GB':n>=1048576?(n/1048576).toFixed(1)+' MB':(n/1024).toFixed(0)+' KB';}
 function ready(id,ok){$(id).textContent=ok?'Ready':'Required';$(id).classList.toggle('done',ok);}
-function tab(name){if(currentTab==='client'&&name!=='client')api('controller_capture',{active:false}).catch(()=>{});currentTab=name;document.body.dataset.scene=name;document.querySelectorAll('.tab').forEach(e=>e.classList.toggle('active',e.id===name));document.querySelectorAll('nav button').forEach(e=>e.classList.toggle('active',e.dataset.tab===name));if(name==='client'&&typeof loadController==='function')loadController().catch(e=>notice(e.message,true));if(name==='spire'&&typeof loadSpire==='function')loadSpire().catch(e=>notice(e.message,true));if(name==='files')browse().catch(e=>notice(e.message,true));if(name==='logs'){logs().catch(()=>{});loadLogRetention().catch(e=>notice(e.message,true));}}
+function tab(name){if(currentTab==='client'&&name!=='client')api('controller_capture',{active:false}).catch(()=>{});currentTab=name;document.body.dataset.scene=name;renderOverview();document.querySelectorAll('.tab').forEach(e=>e.classList.toggle('active',e.id===name));document.querySelectorAll('nav button').forEach(e=>e.classList.toggle('active',e.dataset.tab===name));if(name==='client'&&typeof loadController==='function')loadController().catch(e=>notice(e.message,true));if(name==='spire'&&typeof loadSpire==='function')loadSpire().catch(e=>notice(e.message,true));if(name==='files')browse().catch(e=>notice(e.message,true));if(name==='logs'){logs().catch(()=>{});loadLogRetention().catch(e=>notice(e.message,true));}}
 window.appBack=()=>tab('server');
 document.querySelectorAll('[data-tab]').forEach(b=>b.addEventListener('click',()=>tab(b.dataset.tab)));
-function action(id,fn){$(id).addEventListener('click',async()=>{const b=$(id);b.disabled=true;busy++;try{await fn();}catch(e){notice(e.message,true);}finally{busy--;b.disabled=false;poll().catch(()=>{});}});}
+function action(id,fn){$(id).addEventListener('click',async()=>{const b=$(id);b.disabled=true;busy++;renderSessionControls();try{await fn();}catch(e){notice(e.message,true);}finally{busy--;b.disabled=false;renderSessionControls();poll().catch(()=>{});}});}
 const operationLabels={ferry_service_status:'Checking Qeynos–Erudin route',ferry_service_preview:'Previewing route changes',ferry_service_apply:'Saving route changes',boat_trial_status:'Checking ferry',boat_trial_preview:'Previewing ferry changes',boat_trial_apply:'Saving ferry changes',start:'Starting server',stop:'Stopping server',spire_catalog:'Loading Spire',spire_search:'Searching content',spire_detail:'Loading record',spire_preview:'Validating changes',spire_apply:'Saving content',spire_history:'Loading change history'};
 function operationLabel(operation){return operationLabels[operation]||operation.replaceAll('_',' ');}
 // Keep scrolled/focused controls clear of the sticky runtime panel in either orientation.
@@ -19,7 +19,47 @@ async function job(operation,args={}){
  const j=await api(operation,args);notice(operationLabels[operation]?operationLabel(operation)+'…':operationLabel(operation)+' started.');
  for(;;){await new Promise(r=>setTimeout(r,1400));const state=await api('state');render(state);const item=state.jobs.find(x=>x.id===j.id);if(!item)throw new Error('Operation status was lost. Check logs.');if(item.status==='error')throw new Error(item.error);if(item.status==='done'){const result=item.result||{};notice(operation==='start'?'Server started. Verify zone readiness in server logs.':result.message||'Operation completed.');return result;}}
 }
-function render(s){lastState=s;if(typeof renderBoatTrial==='function')renderBoatTrial();if(typeof renderFerryService==='function')renderFerryService();$('free').textContent=bytes(s.free_bytes);$('badge').textContent=s.running?'SERVER RUNNING':'RUNTIME READY';$('badge').classList.toggle('online',true);$('headline').textContent=s.running?'Your world is running.':'Your server workspace.';$('summary').textContent=s.running?'Manage gameplay, export client data and keep an eye on your server.':'Import, compile and manage your local Triptych server.';
+const tabStories={
+ setup:['Build your world.','Start with the runtime, then bring in your server, maps and database.'],
+ server:['Your realm awaits.','Launch your world, manage connections and preserve your adventures.'],
+ gameplay:['Shape the adventure.','Tune the rules and bring your world to life.'],
+ build:['At the forge.','Prepare your source, build your server and deploy when ready.'],
+ spire:['Discover your world.','Explore items, creatures, merchants and the treasures they hold.'],
+ fixes:['Restore the journey.','Find world repairs and client recovery tools in one place.'],
+ database:['The world’s memory.','Preserve characters, explore records and manage your database.'],
+ client:['Beyond the gate.','Return to your adventure with your saved controls and settings.'],
+ files:['Pack for the journey.','Find and organize the files that make your world.'],
+ logs:['Chronicles of your realm.','Review recent events and gather clues when something goes wrong.']
+};
+function renderOverview(){const [title,summary]=tabStories[currentTab]||tabStories.setup;$('headline').textContent=currentTab==='server'&&lastState?.running?'Your world is running.':title;$('summary').textContent=summary;}
+function statusBadge(id,label,state){const el=$(id);el.textContent=label;el.dataset.state=state;el.classList.toggle('online',state==='running');}
+function renderClientActivity(s){
+ let label='Client · Stopped',state='stopped';
+ if(s.alive){
+  const launch=s.launch||{};
+  if(launch.compiler||launch.mode==='compiler'){label='Client · Compiler active';state='busy';}
+  else if(launch.mode==='desktop'){label='Client · Wine desktop';state='busy';}
+  else if(['stopped','error'].includes(launch.phase)){label='Client · Closing';state='busy';}
+  else {const sample=launch.thread_sample,fresh=sample&&Date.now()/1000-sample.sampled_at<25;
+   label=fresh&&sample.game_running?'Client · Running in background':s.display_ready?'Client · Runtime open':'Client · Starting';state=fresh&&sample.game_running?'running':'busy';}
+ }else if(s.busy){label='Client · Preparing';state='busy';}
+ statusBadge('client-badge',label,state);
+}
+function renderSessionControls(){
+ const n=lastNative,s=lastState,active=s?.jobs?.find(j=>['queued','running'].includes(j.status));
+ const blocked=!!(busy||sessionAction||n?.installing||n?.session_busy||active);
+ $('runtime-open').disabled=blocked||!n?.installed||!!n?.alive;
+ $('runtime-close').disabled=blocked||!n?.alive;
+ $('start-server').disabled=blocked||!n?.alive||!s||!!s.running||!s.binaries_ready||!s.database_imported;
+ $('stop-server').disabled=$('restart-server').disabled=blocked||!n?.alive||!s?.running;
+ const operation=sessionAction||active?.operation;
+ if(['start','stop','restart'].includes(operation)){statusBadge('badge','Server · '+({start:'Starting',stop:'Stopping',restart:'Restarting'}[operation]),'busy');}
+ else if(!n){statusBadge('badge','Server · Status unavailable','unknown');}
+ else if(!n.alive){statusBadge('badge','Server · Offline','stopped');}
+ else if(!s){statusBadge('badge','Server · Status unavailable','unknown');}
+ else {statusBadge('badge',s.running?'Server · Running':'Server · Stopped',s.running?'running':'stopped');}
+}
+function render(s){lastState=s;renderSessionControls();renderOverview();if(typeof renderBoatTrial==='function')renderBoatTrial();if(typeof renderFerryService==='function')renderFerryService();$('free').textContent=bytes(s.free_bytes);
  $('nektulos-status').textContent=s.nektulos?.applied?'Legacy pair applied · original backup: backups/nektulos/'+s.nektulos.backup:s.nektulos?.legacy_ready?'Both legacy files are available.':'Import both legacy Nektulos files before applying the fix.';if(typeof renderClientStatus==='function')renderClientStatus(s.client);ready('source-ready',!!s.source);ready('maps-ready',s.maps_ready);ready('database-ready',s.database_imported);
  $('source-info').textContent=s.source?JSON.stringify(s.source,null,2):'Import a server repository in Setup.';
  $('build-status').textContent=(s.build_ready?'A successful build is ready to deploy.':'No staged build yet.')+(s.binaries_ready?' Deployed binaries are available.':'')+(s.rollback_ready?' Previous binaries can be restored.':'');
@@ -29,7 +69,21 @@ function render(s){lastState=s;if(typeof renderBoatTrial==='function')renderBoat
  $('processes').replaceChildren();for(const [name,p]of Object.entries(s.processes)){const row=document.createElement('div');row.className='process';const title=document.createElement('strong');title.textContent=name;const state=document.createElement('span');state.textContent=p.running?'Running · '+p.pid:'Stopped · '+p.exit;if(!p.running)state.className='failed';row.append(title,state);$('processes').append(row);}if(!Object.keys(s.processes).length)$('processes').textContent='No server processes running.';
  const running=s.jobs.find(j=>j.status==='running'||j.status==='queued');if(running){$('activity').hidden=false;$('activity-title').textContent=operationLabel(running.operation);$('activity-detail').textContent='In progress · open Logs for command output';$('cancel').hidden=false;}else if(!busy){$('activity').hidden=true;}
 }
-async function poll(){try{const n=await api('native_state');$('runtime-status').textContent=n.status;if(!busy){$('runtime-open').disabled=!n.installed||n.alive||n.installing||n.session_busy;$('runtime-close').disabled=!n.alive||n.installing||n.session_busy;}ready('runtime-ready',n.installed);if(!n.alive){$('free').textContent=bytes(n.free_bytes);$('badge').textContent=n.installing?'INSTALLING':'RUNTIME CLOSED';$('badge').classList.remove('online');}if(n.session_busy){$('activity').hidden=false;$('activity-title').textContent='Complete session transfer';$('activity-detail').textContent=n.status;$('cancel').hidden=true;}else if(n.installing){$('activity').hidden=false;$('activity-title').textContent='Runtime installation';$('activity-detail').textContent=n.status;$('cancel').hidden=true;}else if(n.alive){render(await api('state'));}else if(!busy)$('activity').hidden=true;}catch(e){$('runtime-status').textContent=e.message;}}
+async function poll(){
+ if(polling)return;polling=true;
+ try{await Promise.allSettled([
+  (async()=>{try{
+   const n=await api('native_state',{},10000);lastNative=n;$('runtime-status').textContent=n.status;ready('runtime-ready',n.installed);
+   if(n.session_busy||n.installing){lastState=null;$('activity').hidden=false;$('activity-title').textContent=n.session_busy?'Complete session transfer':'Runtime installation';$('activity-detail').textContent=n.status;$('cancel').hidden=true;}
+   else if(n.alive){lastState=null;render(await api('state',{},10000));}
+   else {lastState=null;$('free').textContent=bytes(n.free_bytes);if(!busy)$('activity').hidden=true;}
+  }catch(e){lastState=null;$('runtime-status').textContent=e.message;}
+  finally{renderSessionControls();}})(),
+  (async()=>{try{if(typeof clientRuntimeState==='function')await clientRuntimeState();else renderClientActivity(await api('client_native_state',{},10000));}
+   catch(e){statusBadge('client-badge','Client · Status unavailable','unknown');}})()
+ ]);}finally{polling=false;}
+}
+document.addEventListener('visibilitychange',()=>{if(!document.hidden)poll();});
 async function scanDB(){const data=await api('databases');const select=$('db-candidate'),previous=select.value;select.replaceChildren();for(const c of data.candidates){const option=document.createElement('option');option.value=c.id;option.textContent=c.id+' · '+bytes(c.size);select.append(option);}if([...select.options].some(o=>o.value===previous))select.value=previous;if(!data.candidates.length){const o=document.createElement('option');o.value='';o.textContent='No SQL files found. Import source or a database file first.';select.append(o);}notice('Found '+data.candidates.length+' database candidates. Choose the full seed.');}
 async function exportResult(result){
  const completed=result.message?result.message+' ':'';
@@ -49,8 +103,13 @@ action('maps-zip',async()=>{const f=await api('pick',{kind:'maps'});await job('i
 action('scan-db',scanDB);
 action('upload-db',async()=>{await api('pick',{kind:'database'});await scanDB();});
 action('import-db',async()=>{const selection=$('db-candidate').value;if(!selection)throw new Error('Choose a database file first.');await job('import_database',{selection,replace:$('replace-db').checked});});
-action('start-server',()=>job('start'));action('stop-server',()=>job('stop'));
-action('restart-server',async()=>{await job('stop');await job('start');});
+async function serverAction(operation){
+ sessionAction=operation;renderSessionControls();
+ try{if(operation==='restart'){await job('stop');await job('start');}else await job(operation);}
+ finally{sessionAction=null;renderSessionControls();}
+}
+action('start-server',()=>serverAction('start'));action('stop-server',()=>serverAction('stop'));
+action('restart-server',()=>serverAction('restart'));
 action('save-network',()=>job('network',{ip:$('server-ip').value.trim()}));
 action('export-client',async()=>exportResult(await job('export_client')));
 for(const id of ['quick-backup','db-backup'])action(id,async()=>exportResult(await job('backup_database')));

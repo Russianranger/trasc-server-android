@@ -1,0 +1,41 @@
+{
+  "generator": "Built-in image_gen",
+  "purpose": "Original per-tab fantasy artwork for 0.5.7",
+  "assets": [
+    {
+      "name": "server",
+      "prompt": "Use case: stylized-concept. Asset type: landscape background and wide tab banner for an offline Android fantasy game launcher. Create original high fantasy adventure artwork reminiscent of classic painted role-playing game environments, detailed painterly realism, restrained evergreen, aged stone, antique gold and warm amber palette. Landscape 1536x1024 composition with the recognizable subject in the middle and upper half, dark quiet lower foreground, readable as a wide banner crop. Atmospheric depth, natural textures, mature evocative world. No text, letters, logos, watermark, interface, border or collage. Scene: An ancient high fantasy mountain citadel overlooking a river valley, warm lamps in the gatehouse, green and gold banners, a sense of a living realm and home. Broad silhouette of the fortress against distant mountains.",
+      "path": "app/src/main/assets/ui/fantasy-server.webp"
+    },
+    {
+      "name": "gameplay",
+      "prompt": "Use case: stylized-concept. Asset type: landscape background and wide tab banner for an offline Android fantasy game launcher. Create original high fantasy adventure artwork reminiscent of classic painted role-playing game environments, detailed painterly realism, restrained evergreen, aged stone, antique gold and warm amber palette. Landscape 1536x1024 composition with the recognizable subject in the middle and upper half, dark quiet lower foreground, readable as a wide banner crop. Atmospheric depth, natural textures, mature evocative world. No text, letters, logos, watermark, interface, border or collage. Scene: An ancient druid stone circle in a lush forest clearing, a softly glowing emerald runestone and distant misty waterfalls, small golden fireflies. A feeling of adventure and the natural laws of a magical world.",
+      "path": "app/src/main/assets/ui/fantasy-gameplay.webp"
+    },
+    {
+      "name": "build",
+      "prompt": "Use case: stylized-concept. Asset type: landscape background and wide tab banner for an offline Android fantasy game launcher. Create original high fantasy adventure artwork reminiscent of classic painted role-playing game environments, detailed painterly realism, restrained evergreen, aged stone, antique gold and warm amber palette. Landscape 1536x1024 composition with the recognizable subject in the middle and upper half, dark quiet lower foreground, readable as a wide banner crop. Atmospheric depth, natural textures, mature evocative world. No text, letters, logos, watermark, interface, border or collage. Scene: A dwarven forge carved into a mountain, elegant stone arches, an anvil with a newly forged sword, amber furnace glow and restrained emerald crystal light, tools neatly arranged, no person in foreground.",
+      "path": "app/src/main/assets/ui/fantasy-build.webp"
+    },
+    {
+      "name": "spire",
+      "prompt": "Use case: stylized-concept. Asset type: landscape background and wide tab banner for an offline Android fantasy game launcher. Create original high fantasy adventure artwork reminiscent of classic painted role-playing game environments, detailed painterly realism, restrained evergreen, aged stone, antique gold and warm amber palette. Landscape 1536x1024 composition with the recognizable subject in the middle and upper half, dark quiet lower foreground, readable as a wide banner crop. Atmospheric depth, natural textures, mature evocative world. No text, letters, logos, watermark, interface, border or collage. Scene: A slender wizard's spire rising above a magical lakeside city, elevated stone bridges, a faint blue-green magical beacon at its crown, aged stone and warm gold windows at twilight.",
+      "path": "app/src/main/assets/ui/fantasy-spire.webp"
+    },
+    {
+      "name": "fixes",
+      "prompt": "Use case: stylized-concept. Asset type: landscape background and wide tab banner for an offline Android fantasy game launcher. Create original high fantasy adventure artwork reminiscent of classic painted role-playing game environments, detailed painterly realism, restrained evergreen, aged stone, antique gold and warm amber palette. Landscape 1536x1024 composition with the recognizable subject in the middle and upper half, dark quiet lower foreground, readable as a wide banner crop. Atmospheric depth, natural textures, mature evocative world. No text, letters, logos, watermark, interface, border or collage. Scene: An elven artisan's restoration workshop in an old stone sanctuary, an ornate repaired compass and travel gear on a wooden workbench, glowing green crystal, tools and warm lantern light, forest visible through arched windows.",
+      "path": "app/src/main/assets/ui/fantasy-fixes.webp"
+    },
+    {
+      "name": "files",
+      "prompt": "Use case: stylized-concept. Asset type: landscape background and wide tab banner for an offline Android fantasy game launcher. Create original high fantasy adventure artwork reminiscent of classic painted role-playing game environments, detailed painterly realism, restrained evergreen, aged stone, antique gold and warm amber palette. Landscape 1536x1024 composition with the recognizable subject in the middle and upper half, dark quiet lower foreground, readable as a wide banner crop. Atmospheric depth, natural textures, mature evocative world. No text, letters, logos, watermark, interface, border or collage. Scene: A fantasy cartographer's travel room, rolled parchment maps in wooden cubbies and a brass compass beside a leather satchel, an arched window opens onto a grand mountain valley and distant castle, inviting adventure.",
+      "path": "app/src/main/assets/ui/fantasy-files.webp"
+    },
+    {
+      "name": "logs",
+      "prompt": "Use case: stylized-concept. Asset type: landscape background and wide tab banner for an offline Android fantasy game launcher. Create original high fantasy adventure artwork reminiscent of classic painted role-playing game environments, detailed painterly realism, restrained evergreen, aged stone, antique gold and warm amber palette. Landscape 1536x1024 composition with the recognizable subject in the middle and upper half, dark quiet lower foreground, readable as a wide banner crop. Atmospheric depth, natural textures, mature evocative world. No text, letters, logos, watermark, interface, border or collage. Scene: A candlelit chronicler's study in a high fantasy tower, open leather-bound journal with indistinct non-readable marks, quill and glowing crystal beside shelves of scrolls, a deep green night sky through tall windows.",
+      "path": "app/src/main/assets/ui/fantasy-logs.webp"
+    }
+  ]
+}

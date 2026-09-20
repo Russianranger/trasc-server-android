@@ -60,3 +60,23 @@ body[data-scene=client]::before,body[data-scene=gameplay]::before,body[data-scen
 #spire-item-selected{overflow-wrap:anywhere}
 @media(min-width:1200px){.spire-layout:has(#spire-record:not([hidden])){grid-template-columns:minmax(340px,.8fr) minmax(0,1.2fr)}}
 @media(max-width:600px){.spire-toolbar{grid-template-columns:1fr}.spire-fields{grid-template-columns:1fr}.spire-layout table{font-size:14px}}
+
+/* Per-tab artwork shares one palette; every scene is bundled for offline use. */
+body{--scene-image:url('fantasy-landscape.webp')}
+body[data-scene=server]{--scene-image:url('fantasy-server.webp')}
+body[data-scene=gameplay]{--scene-image:url('fantasy-gameplay.webp')}
+body[data-scene=build]{--scene-image:url('fantasy-build.webp')}
+body[data-scene=spire]{--scene-image:url('fantasy-spire.webp')}
+body[data-scene=fixes]{--scene-image:url('fantasy-fixes.webp')}
+body[data-scene=database]{--scene-image:url('fantasy-library.webp')}
+body[data-scene=client]{--scene-image:url('fantasy-forest.webp')}
+body[data-scene=files]{--scene-image:url('fantasy-files.webp')}
+body[data-scene=logs]{--scene-image:url('fantasy-logs.webp')}
+body[data-scene]::before{background-image:linear-gradient(180deg,#09141255,#0c1717dd 80%),var(--scene-image);background-position:center top}
+.overview{min-height:170px;margin:18px 0;padding:26px 24px;border:1px solid #827344;border-radius:4px 16px;background-image:linear-gradient(90deg,#091713e8 0%,#09171399 48%,#09171333 76%,#09171399),var(--scene-image);background-size:cover;background-position:center 43%;box-shadow:0 8px 24px #0004}
+.overview>div:first-child{max-width:70%}.overview h1{font-size:30px}.overview p{max-width:510px}.overview .meter{padding:10px;background:#0c1a17b8;border-radius:4px}
+.runtime-toolbar{display:block;padding:10px 14px}.runtime-heading{display:flex;align-items:center;justify-content:space-between;gap:12px}.runtime-heading>div:first-child{min-width:0}.runtime-heading small{font-size:11px;max-width:500px;line-height:1.5}
+.session-status{display:flex;flex-wrap:wrap;justify-content:flex-end;gap:6px;flex-shrink:0;max-width:58%}.session-status .badge{margin:0;white-space:normal;font:11px/1.4 system-ui,sans-serif;letter-spacing:0;padding:5px 8px;border:1px solid #776e4d;border-radius:4px;color:#e0d8bd;background:#26382e}.session-status .badge::before{content:'●';margin-right:5px;color:#afa993}.session-status .badge[data-state=running]::before{color:#b5e78c}.session-status .badge[data-state=busy]::before{color:#f1cd75}.session-status .badge[data-state=unknown]::before{color:#efab8c}
+.runtime-actions{display:flex;align-items:center;justify-content:space-between;gap:10px;margin-top:9px}.runtime-actions .buttons{margin:0;gap:6px;flex-wrap:wrap}.runtime-actions button{padding:8px 12px;min-height:40px;font-size:11px}
+@media(max-width:680px){.runtime-heading{align-items:flex-start}.runtime-heading>div:first-child{max-width:47%}.runtime-toolbar .runtime-heading{width:auto}.session-status{flex-direction:column;align-items:flex-end;max-width:53%}.runtime-actions{flex-wrap:wrap;gap:7px}.runtime-actions .buttons{width:100%}.runtime-actions button{flex:1;min-height:44px}.overview{padding:20px 16px;min-height:160px}.overview h1{font-size:25px}.overview>div:first-child{max-width:72%}.overview .meter{min-width:75px;padding:6px}.overview .meter strong{font-size:16px}.overview .meter span{font-size:8px}}
+@media(max-width:380px){.runtime-heading strong{font-size:12px}.session-status .badge{font-size:10px}.overview .meter{display:none}.overview>div:first-child{max-width:100%}}

@@ -12,7 +12,7 @@ const server=http.createServer((req,res)=>{
  try{
   const page=await browser.newPage({viewport:{width:854,height:480}}),errors=[];page.on('pageerror',e=>errors.push(e.message));
   await page.addInitScript(()=>{
-   let jobs=[],seq=0,active=false,preview=null;window.boatCalls=[];window.boatSaves=[];window.boatRunning=false;window.boatFail=false;
+   let jobs=[],seq=0,active=true,preview=null;window.boatCalls=[];window.boatSaves=[];window.boatRunning=false;window.boatFail=false;
    window.Trasc={call(id,op,input){
     const a=JSON.parse(input);window.boatCalls.push({op,args:a});let result={};
     try{
@@ -36,33 +36,34 @@ const server=http.createServer((req,res)=>{
     }catch(e){setTimeout(()=>window.nativeReply(id,{ok:false,error:e.message}),5);}
    }};
   });
-  await page.goto('http://127.0.0.1:'+server.address().port);await page.locator('nav [data-tab="spire"]').click();
-  await page.locator('#boat-trial-panel summary').click();await page.waitForFunction(()=>!boatTrial.working&&boatTrial.active===false);
-  assert(await page.locator('#boat-trial-reset').isDisabled());
-  await page.locator('#boat-trial-install').click();await page.waitForFunction(()=>!boatTrial.working&&boatTrial.preview);
+  await page.goto('http://127.0.0.1:'+server.address().port);await page.locator('nav [data-tab="fixes"]').click();
+  await page.locator('#boat-trial-panel summary').click();await page.waitForFunction(()=>!boatTrial.working&&boatTrial.active===true);
+  assert.equal(await page.locator('#boat-trial-install, #boat-trial-reset').count(),0,'Retired trials cannot be installed or reset from the app');
+  assert.equal(await page.locator('#spire #boat-trial-panel').count(),0);
+  await page.locator('#boat-trial-remove').click();await page.waitForFunction(()=>!boatTrial.working&&boatTrial.preview);
   assert.equal(await page.evaluate(()=>boatSaves.length),0);
   await page.evaluate(()=>{boatRunning=true;lastState.running=true;renderBoatTrial();});
   assert(await page.locator('#boat-trial-save').isDisabled());
   await page.evaluate(()=>{boatRunning=false;lastState.running=false;renderBoatTrial();});
-  await page.locator('#boat-trial-save').click();await page.waitForFunction(()=>!boatTrial.working&&boatTrial.active===true);
-  assert.equal(await page.evaluate(()=>boatSaves.join(',')),'install');assert(await page.locator('#boat-trial-preview').isHidden());
-  assert(await page.locator('#boat-trial-install').isDisabled());assert(await page.locator('#boat-trial-reset').isEnabled());
-  await page.locator('#boat-trial-reset').click();await page.waitForFunction(()=>!boatTrial.working&&boatTrial.preview);
   await page.locator('#boat-trial-refresh').click();await page.waitForFunction(()=>!boatTrial.working);
   assert(await page.locator('#boat-trial-preview').isHidden());assert(await page.locator('#boat-trial-save').isDisabled());
   await page.locator('#boat-trial-remove').click();await page.waitForFunction(()=>!boatTrial.working&&boatTrial.preview);
   await page.evaluate(()=>boatFail=true);await page.locator('#boat-trial-save').click();await page.waitForFunction(()=>!boatTrial.working);
   assert((await page.locator('#boat-trial-status').textContent()).includes('changed after preview'));assert(await page.locator('#boat-trial-save').isDisabled());
-  assert.equal(await page.evaluate(()=>boatSaves.length),1);
+  assert.equal(await page.evaluate(()=>boatSaves.length),0);
   await page.evaluate(()=>boatFail=false);await page.locator('#boat-trial-remove').click();await page.waitForFunction(()=>!boatTrial.working&&boatTrial.preview);
   await page.locator('#boat-trial-save').click();await page.waitForFunction(()=>!boatTrial.working&&boatTrial.active===false);
-  assert.equal(await page.evaluate(()=>boatSaves.join(',')),'install,remove');
+  assert.equal(await page.evaluate(()=>boatSaves.join(',')),'remove');
+  assert(await page.locator('#boat-trial-remove').isDisabled());
+  await page.locator('#boat-trial-refresh').click();await page.waitForFunction(()=>!boatTrial.working);
+  assert((await page.locator('#boat-trial-status').textContent()).includes('Nothing to clean up'));
+  assert.deepEqual(await page.evaluate(()=>boatCalls.filter(c=>c.op==='boat_trial_preview').map(c=>c.args.action)),['remove','remove','remove']);
   fs.mkdirSync('ui-reports',{recursive:true});
   for(const [label,width,height] of [['boat-thor',854,480],['boat-phone',393,852]]){
    await page.setViewportSize({width,height});await page.locator('#boat-trial-panel').scrollIntoViewIfNeeded();
    assert(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth+1));
    await page.screenshot({path:'ui-reports/'+label+'.png'});
   }
-  assert.deepEqual(errors,[]);console.log('PASS: ferry preview/save, running-server guard, reset preview invalidation, failure recovery, scoped removal and responsive layouts');
+  assert.deepEqual(errors,[]);console.log('PASS: retired ferry cleanup, running-server guard, preview invalidation, failure recovery, scoped removal and responsive layouts');
  }finally{await browser.close();server.close();}
 })().catch(e=>{console.error(e);server.close();process.exit(1);});

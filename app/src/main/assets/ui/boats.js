@@ -4,8 +4,7 @@ function boatInvalidate(){boatTrial.preview=null;$('boat-trial-preview').hidden=
 function renderBoatTrial(){
  const blocked=boatTrial.working,known=boatTrial.active!==null;
  $('boat-trial-refresh').disabled=blocked;
- $('boat-trial-install').disabled=blocked||!known||boatTrial.active;
- for(const id of ['boat-trial-reset','boat-trial-remove'])$(id).disabled=blocked||!known||!boatTrial.active;
+ $('boat-trial-remove').disabled=blocked||!known||!boatTrial.active;
  $('boat-trial-save').disabled=blocked||!boatTrial.preview||!!lastState?.running;
  $('boat-trial-discard').disabled=blocked;
 }
@@ -18,12 +17,12 @@ async function boatRun(fn){
 async function boatRefresh(){
  boatInvalidate();boatTrial.active=null;
  const r=await job('boat_trial_status');boatTrial.active=!!r.active;
- $('boat-trial-status').textContent=r.message;
+ $('boat-trial-status').textContent=r.active?r.message+' Preview removal to clean up this retired trial.':'No retired ferry trial is installed. Nothing to clean up.';
 }
 function boatBind(id,fn){$(id).addEventListener('click',()=>boatRun(fn));}
 boatBind('boat-trial-refresh',boatRefresh);
 $('boat-trial-panel').addEventListener('toggle',()=>{if($('boat-trial-panel').open)boatRun(boatRefresh);});
-for(const action of ['install','reset','remove'])boatBind('boat-trial-'+action,async()=>{
+for(const action of ['remove'])boatBind('boat-trial-'+action,async()=>{
  boatInvalidate();const r=await job('boat_trial_preview',{action});boatTrial.preview=r;
  $('boat-trial-summary').textContent=r.summary;$('boat-trial-warning').textContent=r.message;
  $('boat-trial-preview').hidden=false;

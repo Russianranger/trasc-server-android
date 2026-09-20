@@ -107,7 +107,7 @@ drawClientInput();
 
 let launchOptionsLoaded=false;
 async function clientRuntimeState(){
- const s=await api('client_native_state');
+ const s=await api('client_native_state',{},10000);renderClientActivity(s);
  if(!launchOptionsLoaded){
   launchOptionsLoaded=true;const saved=s.launch_options||{};
   for(const [id,key] of [['client-boats','boat_mode'],['client-particles','particle_mode'],['client-presentation','presentation_mode'],['client-display-fps','display_fps'],['client-turnip-driver','turnip_driver'],['client-npc-rendering','npc_rendering'],['client-renderer','renderer'],['client-cpu-affinity','cpu_affinity'],['client-graphics-threading','graphics_threading'],['client-cpu-profile','cpu_profile'],['client-runtime-mode','runtime_mode'],['client-resolution','resolution']]){
@@ -160,8 +160,7 @@ action('client-prefix-repair',async()=>{
  await api('client_start',{...launchOptions('desktop'),repair_prefix:true,renderer:'software'});await clientRuntimeState();await api('client_view');
 });
 action('client-view',()=>api('client_view'));
-action('client-stop',async()=>{await api('client_stop');await clientRuntimeState();notice('Client stopped. Manage the server separately in Server.');});
-setInterval(()=>{if(currentTab==='client')clientRuntimeState().catch(e=>{$('client-runtime-status').textContent=e.message;});},1500);
+action('client-stop',async()=>{await api('client_stop');await clientRuntimeState();notice('Client stopped. Server controls are available at the top.');});
 clientRuntimeState().catch(()=>{});
 
 function graphicsControls(){ $('client-turnip-driver').disabled=clientFileBusy||$('client-renderer').value!=='turnip'; $('client-npc-rendering').disabled=$('client-renderer').value!=='turnip'; $('client-graphics-threading').disabled=$('client-renderer').value==='turnip'; }

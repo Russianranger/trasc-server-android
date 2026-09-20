@@ -165,6 +165,7 @@ for(const [name,type,value,min,max]of [['Character:RaidExpMultiplier','real','0.
   await page.waitForFunction(()=>document.getElementById('addons-status').textContent.includes('0 missing'));
   await page.locator('#dll-status').click();
   await page.waitForFunction(()=>document.getElementById('dll-state').textContent.includes('SDK imported'));
+  await page.locator('nav [data-tab=fixes]').click();await page.locator('#spell-fix-panel > summary').click();
   await page.locator('#spell-test-apply').click();
   await page.waitForFunction(()=>document.getElementById('spell-test-status').textContent.includes('40914 rows'));
   await page.waitForFunction(()=>!document.getElementById('spell-test-restore').disabled);
@@ -176,6 +177,7 @@ for(const [name,type,value,min,max]of [['Character:RaidExpMultiplier','real','0.
   await page.waitForFunction(()=>document.getElementById('spell-test-status').textContent.includes('restored and verified'));
   await page.waitForFunction(()=>!document.getElementById('spell-test-apply').disabled);
   assert(await page.locator('#spell-test-restore').isDisabled());
+  await page.locator('nav [data-tab=client]').click();
   await page.locator('#client-directx-online').click();await page.waitForFunction(()=>document.getElementById('client-directx-status').textContent.includes('installed'));
   await page.locator('#client-directx-offline').click();await page.waitForFunction(()=>document.getElementById('notice').textContent==='DirectX model helpers installed.');
   await page.locator('#client-resolution').selectOption('960x540');await page.locator('#client-desktop').click();
@@ -223,7 +225,7 @@ for(const [name,type,value,min,max]of [['Character:RaidExpMultiplier','real','0.
   assert((await page.locator('#client-launch-status').textContent()).includes('Wine system DirectInput loaded.'));
   await page.locator('#client-view').click();await page.waitForFunction(()=>window.__clientViews===3);
   await page.locator('#client-stop').click();await page.waitForFunction(()=>document.getElementById('client-launch-status').textContent.startsWith('Client stopped.'));
-  await page.locator('#client-graphics-threading').selectOption('opengl_worker');await page.locator('#client-runtime-mode').selectOption('compatibility');await page.locator('#client-cpu-profile').selectOption('compatibility');await page.locator('#client-diagnostics').check();await page.locator('#client-prefix-repair').click();await page.waitForFunction(()=>window.__clientViews===4);
+  await page.locator('#client-graphics-threading').selectOption('opengl_worker');await page.locator('#client-runtime-mode').selectOption('compatibility');await page.locator('#client-cpu-profile').selectOption('compatibility');await page.locator('#client-diagnostics').check();await page.locator('nav [data-tab=fixes]').click();await page.locator('#prefix-fix-panel > summary').click();await page.locator('#client-prefix-repair').click();await page.waitForFunction(()=>window.__clientViews===4);await page.locator('nav [data-tab=client]').click();
   assert.deepEqual(await page.evaluate(()=>window.__clientStarts[2]),{boat_mode:'off',particle_mode:'off',reduce_load_pauses:false,fast_spell_parse:false,mouse_warp:false,dxvk_hud:false,presentation_mode:'native_surface',display_fps:60,turnip_driver:'24.3.4',sound_diagnostics:false,audio:true,npc_rendering:'compatibility',mode:'desktop',resolution:'960x540',fullscreen:false,native_dinput8:true,diagnostic_logging:true,native_d3dx:false,repair_prefix:true,renderer:'software',cpu_profile:'compatibility',runtime_mode:'compatibility',graphics_threading:'opengl_worker',cpu_affinity:'available'});
   assert((await page.locator('#client-launch-status').textContent()).includes('Verbose diagnostics enabled'));
   await page.locator('#client-stop').click();
