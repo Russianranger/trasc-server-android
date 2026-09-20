@@ -12,12 +12,13 @@ const server=http.createServer((req,res)=>{
  try{
   const page=await browser.newPage({viewport:{width:854,height:480}}),errors=[];page.on('pageerror',e=>errors.push(e.message));
   await page.addInitScript(()=>{
-   window.fixture={runtime:false,server:false,client:false,mode:'client',game:true,stale:false,failState:false,failClient:false,hold:false,calls:[],jobs:[]};
+   window.fixture={runtime:false,server:false,client:false,mode:'client',game:true,stale:false,failState:false,failNative:false,failClient:false,hold:false,calls:[],jobs:[]};
    let seq=0;
    window.finishSessionJob=()=>{const f=fixture,j=f.jobs.find(j=>j.status==='running');if(j){f.server=j.operation==='start';j.status='done';j.result={};}};
    window.Trasc={call(id,op,input){setTimeout(()=>{
     const f=fixture;f.calls.push(op);let result={};
     try{
+     if(op==='native_state'&&f.failNative)throw Error('Native status unavailable');
      if(op==='native_state')result={installed:true,alive:f.runtime,status:f.runtime?'Runtime ready':'Runtime closed',free_bytes:50e9};
      else if(op==='runtime_start'){f.runtime=true;result={};}
      else if(op==='runtime_stop'){f.runtime=f.server=false;result={};}
@@ -72,6 +73,10 @@ const server=http.createServer((req,res)=>{
   assert(await page.locator('#start-server').isDisabled());assert(await page.locator('#stop-server').isDisabled());
   await page.evaluate(()=>{fixture.failState=false;fixture.failClient=true;});await page.waitForFunction(()=>document.getElementById('client-badge').textContent.includes('unavailable'));
   await page.evaluate(()=>fixture.failClient=false);await page.waitForFunction(()=>document.getElementById('client-badge').dataset.state==='running');
+  await page.evaluate(()=>fixture.failNative=true);await page.waitForFunction(()=>document.getElementById('runtime-status').textContent.includes('Native status unavailable'));
+  assert((await page.locator('#badge').textContent()).includes('unavailable'));
+  assert.equal(await page.locator('#client-badge').getAttribute('data-state'),'running');
+  await page.evaluate(()=>fixture.failNative=false);await page.waitForFunction(()=>!document.getElementById('start-server').disabled);
   fs.mkdirSync('ui-reports',{recursive:true});
   const scenes=new Set();
   for(const name of ['setup','server','gameplay','build','spire','fixes','database','client','files','logs']){

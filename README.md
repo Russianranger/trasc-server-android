@@ -31,7 +31,7 @@ A standalone Android control app for [Russianranger/Triptych-Triumvirate](https:
 
 ## Downloads and first setup
 
-**App 0.4.7 — automatic local client data sync:** **Server → Export & sync client data** now overwrites all four generated files in both the imported client's root and `Resources` folders, with backups. Copying completes before the optional ZIP save picker. Spell filtering is paused at the user's request: the complete export is copied unchanged. Stop the client before exporting, then relaunch to test spell particles and sounds. Keep **Turnip + Balanced + NPC compatibility (recommended)**. The name fault remains unresolved. [Testing instructions](docs/preview-notes.md).
+**App 0.5.7 — Fixes and shared session controls:** the runtime panel includes server Start/Stop/Restart and separate server/client activity indicators on every tab. **Fixes** contains ferry management, retired-trial cleanup, Nektulos maps, spell compatibility and Wine prefix recovery. Each tab has a distinct offline fantasy illustration. Existing server binaries, client DLL and accepted ferry installation remain compatible. [Update and testing instructions](docs/preview-notes.md).
 
 **Runtime 1.1 update:** fixes the missing `uuid/uuid.h` compilation error by including `uuid-dev`. Existing users can select **Setup → Shut down runtime → Download runtime**, then retry **Build imported source**. This preserves imported files and the build cache; no APK reinstall is needed. [Runtime update details](docs/runtime-release-notes.md).
 
@@ -156,7 +156,7 @@ The editor enforces boolean/integer/real types, SQL field length, server numeric
 
 ## Reversible Nektulos repair
 
-After importing the complete maps, stop the server and select **Setup → Apply legacy Nektulos maps**. Both `maps/legacy/base/nektulos.map` and `maps/legacy/nav/nektulos.nav` must exist and be nonempty. Original active files are preserved under `backups/nektulos/<timestamp>/`, then the legacy pair replaces `maps/base/nektulos.map` and `maps/nav/nektulos.nav`. Applying twice retains the original backup. **Revert Nektulos** restores the pair (or removes a destination that was originally absent), preserving intervening edits in another backup. Restart the server after either action. Water files and database spawn elevations are unchanged.
+After importing the complete maps, stop the server and select **Fixes → Nektulos map fix → Apply legacy Nektulos maps**. Both `maps/legacy/base/nektulos.map` and `maps/legacy/nav/nektulos.nav` must exist and be nonempty. Original active files are preserved under `backups/nektulos/<timestamp>/`, then the legacy pair replaces `maps/base/nektulos.map` and `maps/nav/nektulos.nav`. Applying twice retains the original backup. **Revert Nektulos** restores the pair (or removes a destination that was originally absent), preserving intervening edits in another backup. Restart the server after either action. Water files and database spawn elevations are unchanged.
 
 ## Client groundwork
 

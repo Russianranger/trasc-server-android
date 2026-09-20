@@ -72,13 +72,13 @@ function render(s){lastState=s;renderSessionControls();renderOverview();if(typeo
 async function poll(){
  if(polling)return;polling=true;
  try{await Promise.allSettled([
-  (async()=>{try{
-   const n=await api('native_state',{},10000);lastNative=n;$('runtime-status').textContent=n.status;ready('runtime-ready',n.installed);
+  (async()=>{let nativeKnown=false;try{
+   const n=await api('native_state',{},10000);nativeKnown=true;lastNative=n;$('runtime-status').textContent=n.status;ready('runtime-ready',n.installed);
    if(n.session_busy||n.installing){lastState=null;$('activity').hidden=false;$('activity-title').textContent=n.session_busy?'Complete session transfer':'Runtime installation';$('activity-detail').textContent=n.status;$('cancel').hidden=true;}
    else if(n.alive){lastState=null;render(await api('state',{},10000));}
    else {lastState=null;$('free').textContent=bytes(n.free_bytes);if(!busy)$('activity').hidden=true;}
-  }catch(e){lastState=null;$('runtime-status').textContent=e.message;}
-  finally{renderSessionControls();}})(),
+  }catch(e){if(!nativeKnown)lastNative=null;lastState=null;$('runtime-status').textContent=e.message;}
+  finally{renderSessionControls();renderOverview();}})(),
   (async()=>{try{if(typeof clientRuntimeState==='function')await clientRuntimeState();else renderClientActivity(await api('client_native_state',{},10000));}
    catch(e){statusBadge('client-badge','Client · Status unavailable','unknown');}})()
  ]);}finally{polling=false;}

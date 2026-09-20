@@ -289,7 +289,7 @@ for(const [name,type,value,min,max]of [['Character:RaidExpMultiplier','real','0.
   await page.evaluate(()=>{window.__cancelExport=false;window.__exports=[];});
   await page.locator('#session-export').click();
   await page.waitForFunction(()=>document.getElementById('notice').textContent.includes('simulated storage error'));
-  await page.waitForFunction(()=>document.getElementById('badge').textContent==='RUNTIME CLOSED');
+  await page.waitForFunction(()=>document.getElementById('badge').textContent==='Server · Offline');
   await page.evaluate(async()=>{await poll();window.__calls=[];});
   await page.locator('nav [data-tab=logs]').click();
   await page.waitForFunction(()=>document.getElementById('log-retention').value==='5');
