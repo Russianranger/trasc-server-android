@@ -124,6 +124,6 @@ action('session-import',async()=>{const r=await api('pick',{kind:'session',repla
 
 for(const [id,mode] of [['clear-old-logs','older_2_days'],['reset-logs','reset']])action(id,async()=>{
  const buttons=[$('clear-old-logs'),$('reset-logs')];buttons.forEach(b=>b.disabled=true);
- try{const r=await api('clear_logs',{mode});$('log-cleanup-status').textContent=r.message+' Freed '+bytes(r.cleared_bytes)+'.';await logs();}
+ try{const r=await api('clear_logs',{mode});$('log-cleanup-status').textContent=r.message+' Freed '+bytes(r.cleared_bytes)+'.';notice(r.message);await logs();}
  finally{buttons.forEach(b=>b.disabled=false);}
 });

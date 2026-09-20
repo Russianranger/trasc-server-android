@@ -303,10 +303,16 @@ for(const [name,type,value,min,max]of [['Character:RaidExpMultiplier','real','0.
   await page.evaluate(async()=>{await api('client_stop');window.__cleanupBlocked=false;window.__alive=false;});
   await page.locator('#reset-logs').click();
   await page.waitForFunction(()=>document.getElementById('log-cleanup-status').textContent.includes('0 bytes'));
+  assert(!(await page.locator('#notice').evaluate(el=>el.classList.contains('error'))),'Successful cleanup clears the previous active-writer error');
   await page.locator('#clear-old-logs').click();
   await page.waitForFunction(()=>!document.getElementById('clear-old-logs').disabled);
   assert.equal(await page.evaluate(()=>window.__calls.filter(x=>x==='clear_logs').length),3);
+  const logViewport=page.viewportSize();
+  await page.setViewportSize({width:393,height:852});
   await page.screenshot({path:'ui-reports/log-retention-mobile.png',fullPage:true});
+  await page.setViewportSize({width:1280,height:720});
+  await page.screenshot({path:'ui-reports/log-retention-thor.png',fullPage:true});
+  await page.setViewportSize(logViewport);
   await page.locator('#log-name').selectOption('operation.log');
   await page.waitForFunction(()=>document.getElementById('log-output').textContent==='Saved output: operation.log');
   await page.locator('#log-name').selectOption('server/zones/cabeast.log');
