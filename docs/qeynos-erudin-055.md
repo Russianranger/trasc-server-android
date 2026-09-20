@@ -1,6 +1,6 @@
 # Qeynos–Erudin service, 0.5.5 candidate
 
-Status: implementation and focused verification complete; full release gates and a real RoF2 crossing remain required. No device acceptance is claimed.
+Status: signed 0.5.5/code45 is published after all PR and main release gates passed. Real RoF2 crossing and berth acceptance remain required. [Download APK](https://github.com/Russianranger/trasc-server-android/releases/download/preview/trasc-server-android-preview.apk?build=652f898).
 
 All 163 Python tests, eight Lua protocol scenarios, both patched pinned-server translation units, real MariaDB install/reset/removal and rollback, and phone/Thor browser checks pass. The [focused run](https://github.com/Russianranger/trasc-server-android/actions/runs/35485802194) verified code commit `9b4a60266d8a68bdf2897d27c9c4c210aa2d8ac4`; its screenshots were inspected. Database state-key comparisons use exact bytes to work across imported collations.
 
@@ -14,11 +14,11 @@ The installer allocates new ship/controller IDs, owns complete rows and five new
 
 ## Candidate setup and test
 
-1. Update the app. Stop the server. Remove the completed Erud’s Crossing trial through its Preview removal / Save controls.
+1. Park the character on shore at the South Qeynos dock, then stop the client, server and runtime and update the app. Start the existing runtime; keep the server stopped. Remove the completed Erud’s Crossing trial through its Preview removal / Save controls.
 2. Build the existing pinned server source with this app and Deploy build. The app applies and records the two scoped source changes. An APK update alone cannot add native server support.
 3. In Spire → Qeynos–Erudin ferry, refresh, Preview installation, then Save. Start the server. The ferry begins at South Qeynos for a 90-second boarding pause.
-4. Board TRASC_Voyager at the South Qeynos docks. Verify hull/pier clearance, then remain on deck without input across Qeynos → Erud’s Crossing and Erud’s Crossing → Erudin. Expect roughly 15 minutes outbound including the island stop; actual travel time needs device measurement.
-5. Verify zone loading returns you to the deck, the boat waits and resumes, and you can disembark at Erudin. Then test the return journey. Export logs after the crossing; ferry-state.json contains bounded handoff history even if the native log rotates.
+4. Board TRASC_Voyager at the South Qeynos docks. Verify hull/pier clearance, then remain on deck without input across Qeynos → Erud’s Crossing and Erud’s Crossing → Erudin. Allow 20–25 minutes outbound including the island stop, turns and loading; actual travel time needs device measurement. The path/speed calculation is about 18.4 minutes before initial boarding wait, turns and variable loading.
+5. Verify zone loading returns you to the deck, the boat waits and resumes, and you can disembark at Erudin. Export logs upon arrival at Erudin, then test the return journey and export again; ferry-state.json contains bounded handoff history even if the native log rotates.
 
 Keep the existing client DLL. Do not use the rejected gender-2 model test or manually edit managed SQL rows. If a crossing fails, note departure/destination zones and export logs before reset. The app status distinguishes sailing, preparing the next zone, waiting for passengers, and route faults.
 

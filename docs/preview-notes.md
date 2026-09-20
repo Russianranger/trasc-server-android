@@ -6,7 +6,7 @@ The accepted solid ship model and deck height are retained. Berths are aligned f
 
 ## Update and setup
 
-1. Stop the client, game server and runtime. Install this APK over the existing app, then start the existing runtime.
+1. Park the character on shore at the South Qeynos dock. Stop the client, game server and runtime. Install this APK over the existing app, then start the existing runtime.
 2. With the server stopped, remove the completed Erud’s Crossing ferry trial through its Preview removal / Save controls.
 3. Build the existing server source and **Deploy build once** with this app. This adds the scoped server support required for passenger transfers. Keep your existing client DLL and runtime.
 4. In **Spire → Qeynos–Erudin ferry**, refresh, Preview installation, and Save reviewed route change. A full database backup is created first.
@@ -14,7 +14,7 @@ The accepted solid ship model and deck height are retained. Berths are aligned f
 
 ## Crossing test
 
-Enable **Boat investigation → Record collision and passenger state**. Remain aboard through Qeynos → Erud’s Crossing → Erudin, allowing roughly 15 minutes outbound. Confirm each loading screen returns you to the deck, the ship resumes, and you can disembark at Erudin. Then test the return journey.
+Enable **Boat investigation → Record collision and passenger state**. Remain aboard through Qeynos → Erud’s Crossing → Erudin, allowing 20–25 minutes outbound. Confirm each loading screen returns you to the deck, the ship resumes, and you can disembark at Erudin. Export Logs at Erudin, then test the return journey and export again.
 
 Use **Refresh route** to see its current phase. Export Logs after the journey, or immediately if a crossing fails; the export includes ferry handoff history. If you miss the initial departure, the ship returns on its circuit; restarting the game server places it back at Qeynos. Do not repeat the old manual model tests or rebuild dinput8.dll for this update.
 
