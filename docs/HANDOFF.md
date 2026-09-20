@@ -1,3 +1,17 @@
+# Device follow-up: complete-session export workaround confirmed (2026-09-20 UTC)
+
+Following the 0.5.7 release, the user reported that saving a complete-session backup through Android Files appeared to crash. The suggested workaround was to reopen the app, start only the server runtime, open Files → `exports`, select the existing `session-*.zip`, and export it again, trying internal Download as the destination. Do not assume which destination the user actually chose.
+
+**Latest user result:** the workaround worked; the user saw an in-app message approximately “management window is closed. Tap to reopen,” and the second export produced a valid backup. Accept the retry/export workaround as user-confirmed. The user has not supplied this archive for independent checksum/ZIP verification or reported restoring it, so this is not a newly verified full restore test.
+
+**Source-supported interpretation:** MainActivity's `onRenderProcessGone` handler logs `management_display` with the renderer's `crashed` flag and exit priority, replaces the WebView with “Management screen stopped. Tap to reopen.” and permits recreating the management screen. The observed recovery message identifies loss of the management WebView renderer; it does not establish why the renderer exited or that the whole Android app process crashed. Memory pressure, a renderer crash and their relationship to the export remain unproven without fresh diagnostics. Do not label the underlying failure fixed.
+
+The completed session ZIP is retained under the app workspace's `exports/` before the Android save picker opens. Re-export that existing ZIP rather than repeatedly creating complete backups. Preserve the user's successful external copy and the existing app data. If further diagnosis is requested or the issue recurs, collect Logs → Export log bundle after reopening, especially `management_display`/`save_export` records and Android exit diagnostics. Do not require repeating a failed full backup just to reproduce this observation.
+
+This update records device feedback only, with `[skip ci]`; no product changes, new APK, server/DLL rebuild, restore operation or subagents. Published 0.5.7 remains merge `9b7d54e160a5a414b9d9145ad28a15ac19c546d5`. Era/profile work and the Ocean of Tears/Overthere follow-ups remain deferred; accepted ferry/log-reset milestones remain closed.
+
+---
+
 # Released: 0.5.7 Fixes, artwork and shared session controls (2026-09-20 UTC)
 
 [PR #9](https://github.com/Russianranger/trasc-server-android/pull/9) was reviewed and merged at `9b7d54e160a5a414b9d9145ad28a15ac19c546d5`. The **signed 0.5.7/code47 preview is published**. [Download APK](https://github.com/Russianranger/trasc-server-android/releases/download/preview/trasc-server-android-preview.apk?build=9b7d54e). The public APK, source archive, build manifest and preview tag match the verified release. Implementation is complete; the new UI/status behavior awaits the user's Thor check.
