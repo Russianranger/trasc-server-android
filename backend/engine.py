@@ -36,9 +36,11 @@ import client_settings
 import player_data
 import spire
 import boat_trial
+import ferry_service
+import server_ferry
 from log_retention import rotate
 
-VERSION = '0.3.4'
+VERSION = '0.5.5'
 DEFAULT_REPO = 'https://github.com/Russianranger/Triptych-Triumvirate'
 BINARIES = ('world', 'zone', 'loginserver', 'shared_memory', 'ucs', 'eqlaunch', 'queryserv', 'export_client_files')
 CLIENT_FILES = ('spells_us.txt', 'dbstr_us.txt', 'SkillCaps.txt', 'BaseData.txt')
@@ -534,6 +536,7 @@ class Engine(ManagedContent):
         if not 1 <= jobs <= 4: raise ValueError('Choose 1–4 build jobs for this device')
         for needed in ('libs/luabind/CMakeLists.txt', 'submodules/fmt/CMakeLists.txt', 'submodules/libuv/CMakeLists.txt'):
             if not (server / needed).exists(): raise ValueError('Source lacks bundled dependencies: ' + needed + '. Import a complete source ZIP including submodules.')
+        ferry_support = server_ferry.prepare(server)
         self.config['jobs'] = jobs
         self.save()
         build = self.work / 'builds' / 'current'
@@ -556,7 +559,8 @@ class Engine(ManagedContent):
             shutil.copy2(matches[0], stage / name)
             (stage / name).chmod(0o755)
         source_info = json.loads((root / 'trasc-source.json').read_text())
-        atomic_json(stage / 'build-info.json', {'source': source_info, 'built': time.time(), 'app': VERSION})
+        atomic_json(stage / 'build-info.json', {'source': source_info, 'built': time.time(), 'app': VERSION,
+            'ferry_support': ferry_support, 'zone_sha256': server_ferry.digest(stage / 'zone')})
         return {'message': 'Build passed. Stop the server, then select Deploy build.', 'staged': True}
 
     def deploy(self, args):
@@ -659,6 +663,7 @@ class Engine(ManagedContent):
         self.ensure_db()
         # Protect player data before the engine applies upstream schema migrations.
         self.backup_database({})
+        ferry_service.boot(self)
         self.write_config()
         self.mysql("INSERT INTO launcher (name,dynamics) VALUES ('trasc',%d) ON DUPLICATE KEY UPDATE dynamics=VALUES(dynamics);" % int(self.config['workers']))
         try:
@@ -968,6 +973,14 @@ class Engine(ManagedContent):
                 for p in root.rglob('*') if root.exists() else []:
                     if p.is_file() and not p.is_symlink(): z.write(p,str(p.relative_to(self.work)))
             z.writestr('status.json',json.dumps(self.state(),indent=2))
+            if self.config.get('database_imported'):
+                try:
+                    own=ferry_service.own_record(self,boat_trial.tables(self))
+                    if own:
+                        snapshot=ferry_service.bucket(self,ferry_service.namespace(own['manifest']['installation'])+'_state')
+                        z.writestr('ferry-state.json',json.dumps(snapshot,indent=2))
+                except (ValueError,OSError,KeyError) as error:
+                    z.writestr('ferry-state-error.txt',str(error))
         return {'file':str(path.relative_to(self.work))}
 
     def logs(self,args):
@@ -997,6 +1010,8 @@ class Engine(ManagedContent):
     def dispatch(self,op,args):
         if op in ('boat_trial_status','boat_trial_preview','boat_trial_apply'):
             return boat_trial.dispatch(self,op,args)
+        if op in ('ferry_service_status','ferry_service_preview','ferry_service_apply'):
+            return ferry_service.dispatch(self,op,args)
         if op in ('spire_catalog','spire_search','spire_detail','spire_preview','spire_apply','spire_history','spire_merchant_draft'):
             return spire.dispatch(self,op,args)
         methods={'client_settings':lambda a:client_settings.inspect(self,a),'client_settings_save':lambda a:client_settings.save(self,a),

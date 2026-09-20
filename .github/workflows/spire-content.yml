@@ -1,7 +1,7 @@
 name: Verify Spire content
 on:
   push:
-    branches: [codex/spire-content, codex/merchant-boats, codex/boat-ferry-trial]
+    branches: [codex/spire-content, codex/merchant-boats, codex/boat-ferry-trial, codex/qeynos-erudin-ferry]
     paths: ['backend/**', 'tests/**', 'app/src/main/assets/ui/**', '.github/workflows/spire-content.yml']
 permissions:
   contents: read
@@ -26,11 +26,16 @@ jobs:
         env:
           TRASC_TEST_MYSQL_PORT: '33306'
         run: |
+          python3 -m pip install lupa==2.6
           python3 -m unittest discover -s tests -v
           python3 tests/integration_spire.py
           curl --fail --location --retry 3 -o /tmp/release-peq.zip https://raw.githubusercontent.com/Russianranger/Triptych-Triumvirate/18141ae0c9a11813733f08fa77db986951b853d6/Release-NMS-Server/database/release-peq.zip
           python3 tests/spire_seed_schema.py /tmp/release-peq.zip
           python3 tests/integration_boat_trial.py --seed /tmp/release-peq.zip
+          python3 tests/integration_ferry_service.py --seed /tmp/release-peq.zip
+          python3 tests/test_ferry_protocol.py
+          g++ -std=c++17 -Wall -Wextra -Werror tests/server_ferry.cpp -o /tmp/server-ferry-test
+          /tmp/server-ferry-test
       - uses: actions/setup-node@v4
         with:
           node-version: '22'
@@ -41,6 +46,7 @@ jobs:
           node tests/ui_management.cjs
           node tests/ui_spire.cjs
           node tests/ui_boats.cjs
+          node tests/ui_ferry.cjs
       - uses: actions/upload-artifact@v4
         if: always()
         with:
