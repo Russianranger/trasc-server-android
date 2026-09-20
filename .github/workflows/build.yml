@@ -10,6 +10,8 @@ concurrency:
   group: android-${{ github.ref }}
   cancel-in-progress: true
 jobs:
+  ferry-server:
+    uses: ./.github/workflows/ferry-server.yml
   client-dll:
     uses: ./.github/workflows/client-dll.yml
   wined3d:
@@ -75,6 +77,10 @@ jobs:
             -v "$PWD/database-test/fixtures:/fixtures:ro" \
             -v "$PWD/backend:/opt/trasc:ro" -v "$PWD/tests:/tests:ro" \
             trasc-database-test:1 python3 /tests/integration_boat_trial.py --seed /fixtures/release-peq.zip
+          docker run --rm --network none --hostname localhost \
+            -v "$PWD/database-test/fixtures:/fixtures:ro" \
+            -v "$PWD/backend:/opt/trasc:ro" -v "$PWD/tests:/tests:ro" \
+            trasc-database-test:1 python3 /tests/integration_ferry_service.py --seed /fixtures/release-peq.zip
       - uses: actions/upload-artifact@v4
         if: always()
         with:
@@ -125,7 +131,12 @@ jobs:
           path: runtime-work/signing/preview.keystore
           key: trasc-preview-signing-v2
       - name: Test control backend
-        run: python3 -m unittest discover -s tests -v
+        run: |
+          python3 -m pip install lupa==2.6
+          python3 -m unittest discover -s tests -v
+          python3 tests/test_ferry_protocol.py
+          g++ -std=c++17 -Wall -Wextra -Werror tests/server_ferry.cpp -o /tmp/server-ferry-test
+          /tmp/server-ferry-test
       - name: Verify session archive and controller state on the host JVM
         run: bash scripts/check-management.sh
       - uses: actions/setup-node@v4
@@ -138,6 +149,7 @@ jobs:
           node tests/ui_management.cjs
           node tests/ui_spire.cjs
           node tests/ui_boats.cjs
+          node tests/ui_ferry.cjs
       - uses: actions/upload-artifact@v4
         if: always()
         with:
@@ -178,7 +190,7 @@ jobs:
           path: app/build/reports/
   preview:
     if: github.ref == 'refs/heads/main' && github.event_name != 'pull_request'
-    needs: [apk, database, client-runtime, client-dll]
+    needs: [apk, database, client-runtime, client-dll, ferry-server]
     runs-on: ubuntu-latest
     permissions:
       contents: write

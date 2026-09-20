@@ -1,0 +1,35 @@
+name: Verify ferry server support
+on:
+  push:
+    branches: [codex/qeynos-erudin-ferry]
+  pull_request:
+  workflow_call:
+permissions:
+  contents: read
+jobs:
+  native:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 25
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/checkout@v4
+        with:
+          repository: Russianranger/Triptych-Triumvirate
+          ref: 4c653ca2d16aaede33b7011d07254c520ac5f5df
+          path: ferry-source
+          sparse-checkout-cone-mode: false
+          sparse-checkout: |
+            /Release-NMS-Server/
+            !/Release-NMS-Server/database/
+            !/Release-NMS-Server/bin/
+      - name: Install pinned-server build dependencies
+        run: |
+          sudo apt-get update -qq
+          sudo apt-get install -y cmake ninja-build build-essential pkg-config libboost-dev libboost-system-dev libboost-filesystem-dev libboost-program-options-dev liblua5.1-0-dev libmariadb-dev libmariadb-dev-compat libssl-dev libsodium-dev libperl-dev zlib1g-dev uuid-dev libcurl4-openssl-dev libmbedtls-dev
+      - name: Apply scoped patch and compile both real server translation units
+        run: |
+          python3 backend/server_ferry.py ferry-source/Release-NMS-Server
+          cmake -S ferry-source/Release-NMS-Server -B ferry-build -G Ninja -DCMAKE_BUILD_TYPE=Release -DEQEMU_BUILD_LOGIN=OFF -DEQEMU_BUILD_CLIENT_FILES=OFF -DEQEMU_PREFER_LUA=ON -DLUA_INCLUDE_DIR=/usr/include/lua5.1 -DLUA_LIBRARY=/usr/lib/x86_64-linux-gnu/liblua5.1.so
+          cmake --build ferry-build --parallel 2 --target zone/CMakeFiles/zone.dir/client_packet.cpp.o zone/CMakeFiles/zone.dir/waypoints.cpp.o
+          g++ -std=c++17 -Wall -Wextra -Werror tests/server_ferry.cpp -o /tmp/server-ferry-test
+          /tmp/server-ferry-test
