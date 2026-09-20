@@ -1,9 +1,23 @@
-# 0.5.3 — Keep boat diagnostics recording
+# 0.5.5 — Qeynos–Erudin ferry
 
-- Boat diagnostics continue through long waits, retaining the latest two bounded log segments instead of stopping after 512 samples.
-- Older diagnostic DLLs are detected so the launcher can prompt for a rebuild.
-- The reported ship remains targetable but can be walked through. This release fixes capture of that failure; it does not repair boat collision.
+One managed ferry now travels South Qeynos ↔ Erud’s Crossing ↔ Erudin. It prepares the destination ship before each zone crossing, transfers attached passengers at their deck positions, and waits while they load. Interrupted crossings recover passengers to a dock.
 
-Install over the existing app after stopping the client/server/runtime. Start the existing runtime and compile/deploy dinput8.dll once with this app and the existing SDK/source. Enable Boat investigation, keep the temporary ship selected while trying to board for 20–30 seconds, then stop and Export Logs immediately. No server rebuild, runtime reinstall or client reimport is needed.
+The accepted solid ship model and deck height are retained. Berths are aligned from dock geometry, harbor speed increases modestly, and open-water legs run. Other ferry routes remain unchanged.
 
-[Evidence, corrected spawn command and testing steps](https://github.com/Russianranger/trasc-server-android/blob/main/docs/boat-capture-053.md).
+## Update and setup
+
+1. Stop the client, game server and runtime. Install this APK over the existing app, then start the existing runtime.
+2. With the server stopped, remove the completed Erud’s Crossing ferry trial through its Preview removal / Save controls.
+3. Build the existing server source and **Deploy build once** with this app. This adds the scoped server support required for passenger transfers. Keep your existing client DLL and runtime.
+4. In **Spire → Qeynos–Erudin ferry**, refresh, Preview installation, and Save reviewed route change. A full database backup is created first.
+5. Start the server and board **TRASC_Voyager** at South Qeynos. Ports pause for 90 seconds; the island stop pauses for 60 seconds. The three route zones stay active.
+
+## Crossing test
+
+Enable **Boat investigation → Record collision and passenger state**. Remain aboard through Qeynos → Erud’s Crossing → Erudin, allowing roughly 15 minutes outbound. Confirm each loading screen returns you to the deck, the ship resumes, and you can disembark at Erudin. Then test the return journey.
+
+Use **Refresh route** to see its current phase. Export Logs after the journey, or immediately if a crossing fails; the export includes ferry handoff history. If you miss the initial departure, the ship returns on its circuit; restarting the game server places it back at Qeynos. Do not repeat the old manual model tests or rebuild dinput8.dll for this update.
+
+Automated protocol, real-database, native-server and interface tests cover this candidate. Physical berth clearance and RoF2 reattachment after a loading screen still require device acceptance.
+
+[Detailed route setup and test](https://github.com/Russianranger/trasc-server-android/blob/main/docs/qeynos-erudin-055.md).

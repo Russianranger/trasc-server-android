@@ -1,6 +1,8 @@
 # Qeynos–Erudin service, 0.5.5 candidate
 
-Status: implementation in progress; automated verification and a real RoF2 crossing are required. No device acceptance is claimed.
+Status: implementation and focused verification complete; full release gates and a real RoF2 crossing remain required. No device acceptance is claimed.
+
+All 163 Python tests, eight Lua protocol scenarios, both patched pinned-server translation units, real MariaDB install/reset/removal and rollback, and phone/Thor browser checks pass. The [focused run](https://github.com/Russianranger/trasc-server-android/actions/runs/35485802194) verified code commit `9b4a60266d8a68bdf2897d27c9c4c210aa2d8ac4`; its screenshots were inspected. Database state-key comparisons use exact bytes to work across imported collations.
 
 This route is limited to South Qeynos (1), Erud’s Crossing (98), and Erudin (24), in both directions. The accepted race 72 / gender 0 ship, relative deck height, and existing client DLL stay in use. Other boat routes and ordinary walking zone points are preserved.
 
