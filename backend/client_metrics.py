@@ -54,7 +54,7 @@ def process_threads(root_pid, proc=Path('/proc'), launch_token=None):
                 end = stat.rfind(')')
                 fields = stat[end+2:].split()
                 name = stat[stat.find('(')+1:end]
-                entry = {'pid': pid, 'tid': int(task.name), 'name': name,
+                entry = {'pid': pid, 'tid': int(task.name), 'name': name, 'state': fields[0],
                          'start_ticks': int(fields[19]),
                          'cpu_ticks': int(fields[11])+int(fields[12]),
                          'last_cpu': int(fields[36])}
@@ -71,6 +71,7 @@ def process_threads(root_pid, proc=Path('/proc'), launch_token=None):
     if pending or len(threads) >= 256: incomplete = True
     return {'sampled_at': time.time(), 'clock_ticks_per_second': os.sysconf('SC_CLK_TCK'),
             'scope': 'launch_marker' if launch_token else 'launcher_descendants', 'incomplete': incomplete,
+            'game_running': any(t['pid'] == t['tid'] and t['name'].lower() == 'eqgame.exe' and t['state'] not in ('Z', 'X') for t in threads),
             'processes': len(visited), 'threads': threads[:256], 'mesa_gl_workers': workers[:16]}
 
 

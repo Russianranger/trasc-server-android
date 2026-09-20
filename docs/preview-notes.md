@@ -1,26 +1,17 @@
-# 0.5.6 — Erudin departure and diagnostic log cleanup
+# 0.5.7 — Fixes, illustrated tabs and shared session controls
 
-The Thor test confirmed outbound zone transfers. This update moves the Erudin departure offshore before the rocky shoreline where the rider detached. South Qeynos and Erudin port stops are now 180 seconds; Erud’s Crossing remains 60 seconds. Ferry speed is 0.60, with the existing harbor/open-water movement modes retained.
+World and client repairs now live in **Fixes**: the Qeynos–Erudin route, Nektulos maps, spell compatibility and Wine prefix recovery. Spire focuses on content browsing/editing. The retired single-zone ferry trial has a cleanup-only panel; its old installation/reset controls are gone. Existing route data and settings are retained.
 
-Erudin version-zero skiff-only spawns are disabled while the managed route is installed. Their previous settings are recorded and restored when the route is removed. Saved Erudin skiff state is cleared so old copies cannot respawn; other zones’ skiffs and NPCs remain.
+Each of the ten tabs has a distinct bundled fantasy scene, with seven new illustrations in the existing green/gold theme. Artwork works offline.
 
-## Update your installed route
+The shared runtime panel now includes **Start server, Stop server and Restart**, with server and client indicators at its top right. Client activity is checked on every tab, including when the server runtime is closed. “Running in background” requires a recent observation of a live eqgame.exe in this launch; “Runtime open” means Wine/display is open without that recent game observation. Wine desktop and DLL compilation are identified separately. Game-process observations refresh about every ten seconds; the management screen polls about every 2.5 seconds. A failed status check is shown as unavailable.
 
-1. Park on shore, stop the client, server and runtime, and install this APK over the existing app.
-2. Start the existing runtime with the game server stopped. Keep the server binaries built with 0.5.5 and the existing client DLL; neither needs recompilation for this update.
-3. Open **Spire → Qeynos–Erudin ferry → Preview route update → Save reviewed route change**. A full database backup and quest backup are created first. The existing route IDs and passenger recovery tickets are retained.
-4. Start the server. The ship begins at South Qeynos. Use Boat investigation recording for the journey; focus on Erudin’s dock, 180-second pause and new offshore departure. Confirm skiffs are absent and you remain on deck until the return crossing into Erud’s Crossing.
-5. Export Logs before resetting. The native Android export now refreshes ferry-state.json when the server runtime is available, retaining an offline copy afterward.
+## Install and check
 
-For a first installation, complete the one-time server Build/Deploy and remove the old single-zone trial before Preview installation.
+1. Camp out, stop the client and runtime, then install the APK over the existing app. Keep your installed server and dinput8.dll; no rebuild, route reinstall, client reimport or runtime download is required.
+2. Start the runtime, then start the server using the same top panel. Check that the server indicator changes to Running and that duplicate start controls are disabled during startup.
+3. Launch ROF2 and enter the world. Press Android Back to return to management. Visit another tab and confirm the client indicator says Running in background after its next observation. Return through Client → Return to client.
+4. Review the tab artwork and Fixes layout. Open Qeynos–Erudin ferry and Refresh route if desired; do not reinstall or change the accepted working route. The retired-trial panel should offer cleanup only if a trial remains installed. No additional ferry journey is requested.
+5. After camping and stopping the client, stop the server from the top panel. The runtime remains available for editing. Stop runtime when finished. Export Logs if a status remains wrong or a control fails.
 
-## Log cleanup
-
-In **Logs → Clear diagnostic logs**, stop the client and server runtime, then choose:
-
-- **Clear files older than 2 days:** empties diagnostic text files whose last modification was more than 48 hours ago. It does not trim dated lines within recently modified files.
-- **Reset all diagnostic logs:** truncates diagnostic text logs to 0 bytes, retaining the files.
-
-Settings, build/deploy records, character chat, saved exports and backups remain. New activity writes fresh logs. Existing count-based history retention remains available.
-
-The revised departure still needs physical Thor acceptance. Automated geometry/protocol checks do not prove client collision behavior.
+Traditional EQEmu/era profiles, Ocean of Tears transit and Overthere barge work remain deferred.

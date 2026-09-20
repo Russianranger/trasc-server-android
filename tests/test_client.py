@@ -230,7 +230,7 @@ class ClientTests(unittest.TestCase):
     def test_thread_observation_follows_owned_children_and_handles_exits(self):
         proc=self.root/'proc'
         def task(pid,tid,name,children='',cpu=3):
-            p=proc/str(pid)/'task'/str(tid);p.mkdir(parents=True)
+            p=proc/str(pid)/'task'/str(tid);p.mkdir(parents=True,exist_ok=True)
             fields=['0']*40;fields[0]='R';fields[11]='11';fields[12]='7';fields[36]=str(cpu)
             (p/'stat').write_text(str(tid)+' ('+name+') '+' '.join(fields))
             (p/'status').write_text('Cpus_allowed_list:\t0-5\n');(p/'children').write_text(children)
@@ -238,6 +238,13 @@ class ClientTests(unittest.TestCase):
         task(40,40,'unrelated:gl0')
         sample=client_metrics.process_threads(10,proc)
         self.assertTrue(sample['incomplete']) # Child 30 exited / is inaccessible.
+        self.assertTrue(sample['game_running'])
+        task(20,20,'unrelated.exe')
+        self.assertFalse(client_metrics.process_threads(10,proc)['game_running'])
+        task(20,20,'eqgame.exe')
+        game_stat=proc/'20/task/20/stat'
+        game_stat.write_text(game_stat.read_text().replace(') R ', ') Z '))
+        self.assertFalse(client_metrics.process_threads(10,proc)['game_running'])
         self.assertEqual([w['tid'] for w in sample['mesa_gl_workers']],[21])
         self.assertEqual(sample['threads'][0]['cpu_ticks'],18)
         self.assertEqual(sample['mesa_gl_workers'][0]['allowed_cpus'],'0-5')

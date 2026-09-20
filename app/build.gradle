@@ -8,8 +8,8 @@ android {
         applicationId 'io.github.russianranger.trasc.preview'
         minSdk 26
         targetSdk 35
-        versionCode 46
-        versionName '0.5.6'
+        versionCode 47
+        versionName '0.5.7'
         ndk { abiFilters 'arm64-v8a' }
     }
     buildTypes { release { minifyEnabled false } }

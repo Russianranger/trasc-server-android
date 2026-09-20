@@ -1,3 +1,20 @@
+# Active scope: Fixes, artwork and shared session controls (2026-09-20 UTC)
+
+The user authorized app UI work: retire obsolete ferry test controls from Spire, place repairs in a designated Fixes section, give each tab distinct high-fantasy/adventure artwork, and add server start/stop controls alongside the runtime controls with top-right server/client activity status. Preserve the accepted ferry route and installed server/DLL, saved settings and all closed milestones. No new boat-route work is authorized.
+
+**Traditional EQEmu / era profiles are deferred. Do not implement them yet.** Record the proposed implementation order for a later request:
+
+1. Add isolated world profiles while preserving the current working custom setup.
+2. Prove standard EQEmu with a separate clean RoF2 client on the Thor.
+3. Build one tested Luclin preset, coordinating rules, content and matching client data.
+4. Add classic presentation, then additional eras and storage optimizations.
+
+The clean-client approach remains a recommendation, not a completed user selection. Freeport–Ocean of Tears–Butcherblock transit review and Overthere barge repairs remain shelved. Qeynos–Erudin round-trip travel and diagnostic log reset are accepted and complete.
+
+Development branch: codex/fixes-and-runtime-ui; candidate 0.5.7/code47. Release and verification status will be recorded above this entry when complete. No subagents.
+
+---
+
 # Current scope: ferry milestone complete; traditional EQEmu planning only (2026-09-20 UTC)
 
 The user reconfirmed acceptance after the latest log review. **Qeynos–Erud's Crossing–Erudin round-trip travel and diagnostic log reset are complete.** Retain the evidence and limits in the acceptance entry below. Keep the released 0.5.6 APK, deployed server and client DLL; no rebuild or repeat of the accepted tests is needed.
