@@ -97,6 +97,7 @@ public final class RuntimeManager {
     }
     synchronized void stop() throws Exception {
         if(!alive()) {status="Runtime stopped"; return;}
+        captureFerryDiagnostics();
         status="Saving server state and stopping database…";
         try {request("exit",new JSONObject());} catch(Exception ignored) {}
         Process p=process;
@@ -133,15 +134,19 @@ public final class RuntimeManager {
         return new JSONObject().put("cleared_files",cleared[0]).put("cleared_bytes",cleared[1])
             .put("message","Reset "+cleared[0]+" diagnostic log files to 0 bytes.");
     }
+    private void captureFerryDiagnostics() {
+        if(!alive())return;
+        try {
+            JSONObject snapshot=request("ferry_diagnostics",new JSONObject(),5000);
+            if(!snapshot.optBoolean("ok"))throw new IOException(snapshot.optString("error"));
+        }catch(Exception e){recordFailure("ferry_diagnostics",e);}
+    }
     synchronized JSONObject exportLogs()throws Exception {
         if(sessionBusy)throw new IOException("Wait for the complete session transfer before exporting logs");
         try{AndroidExitDiagnostics.collect(context,work);}catch(Exception e){recordFailure("android_exit_diagnostics",e);}
         // Export still works offline. When available, refresh only the bounded
         // ferry diagnostic snapshot; no settings, credentials or API token.
-        if(alive())try {
-            JSONObject snapshot=request("ferry_diagnostics",new JSONObject(),5000);
-            if(!snapshot.optBoolean("ok"))throw new IOException(snapshot.optString("error"));
-        }catch(Exception e){recordFailure("ferry_diagnostics",e);}
+        captureFerryDiagnostics();
         JSONObject metadata=new JSONObject().put("version",BuildConfig.VERSION_NAME)
             .put("created_utc",java.time.Instant.now().toString()).put("native",nativeState())
             .put("client",ClientRuntime.get(context).state())

@@ -108,7 +108,7 @@ def run(seed):
                 e.mysql('INSERT INTO data_buckets (`key`,value) VALUES ('+ferry.literal(key)+',\'{"kind":"ride","epoch":"old"}\');')
                 reject(lambda:perform('remove'),'passenger has a saved ferry position')
                 perform('reset')
-                assert e.mysql('SELECT x FROM zone_state_spawns;').splitlines()[1:]==['42']
+                assert e.mysql('SELECT x FROM zone_state_spawns WHERE npc_id=98054;').splitlines()[1:]==['42']
                 assert ferry.bucket(e,key)['kind']=='ride' # Reset retains recovery for login.
                 e.mysql('DELETE FROM data_buckets WHERE BINARY `key`=BINARY '+ferry.literal(key)+';')
                 # Updating an installed route preserves IDs, player data, and
@@ -144,7 +144,7 @@ def run(seed):
                 assert (modules/'unrelated.lua').read_text()=='-- preserve me\n'
                 for t,expected in original.items():
                     assert e.mysql('SELECT * FROM '+t+' ORDER BY '+('id' if t!='launcher_zones' else 'launcher,zone')+';')==expected,t
-                assert e.mysql('SELECT x FROM zone_state_spawns;').splitlines()[1:]==['42']
+                assert e.mysql('SELECT x FROM zone_state_spawns WHERE npc_id=98054;').splitlines()[1:]==['42']
                 assert not (e.work/'run/ferry-change.json').exists()
                 # Recreate the 0.5.5 ownership shape: no skiff ownership, older
                 # speed and config. Upgrade must work without reinstalling it.

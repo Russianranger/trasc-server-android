@@ -151,7 +151,9 @@ def skiff_state(engine, own):
     old=own['manifest'].get('skiffs') if own else None
     if old:
         spawn_ids=[int(values(r)['id']) for r in old['spawns']]
-        npc_ids=old['npc_ids']
+        npc_ids=[int(n) for n in old['npc_ids']]
+        if any(n<=0 or n>=2147483647 for n in spawn_ids+npc_ids):
+            raise ValueError('Invalid managed skiff identity')
     else:
         found=rows(engine,"SELECT DISTINCT s.id,n.id FROM spawn2 s JOIN spawnentry e ON e.spawngroupID=s.spawngroupID JOIN npc_types n ON n.id=e.npcID WHERE s.zone='erudnext' AND s.version=0 AND n.race=73;")
         spawn_ids=sorted({int(r[0]) for r in found});npc_ids=sorted({int(r[1]) for r in found})
@@ -327,6 +329,8 @@ def apply(engine,args):
             sql.append(guard('(SELECT COUNT(*) FROM '+ident(table)+' WHERE '+condition+')='+str(len(actual))))
             if actual:sql.append(guard('(SELECT COUNT(*) FROM '+ident(table)+' WHERE ('+condition+') AND ('+' OR '.join('('+trial.raw_match(r)+')' for r in actual)+'))='+str(len(actual))))
         if action in ('install','update'):
+            # Recheck the NPC types in the guarded transaction, after backup.
+            sql.append(guard('(SELECT COUNT(*) FROM spawnentry e LEFT JOIN npc_types n ON n.id=e.npcID WHERE e.spawngroupID IN (SELECT spawngroupID FROM spawn2 WHERE '+skiffs['where']+') AND (n.id IS NULL OR n.race<>73))=0'))
             for raw in skiffs['spawns']:
                 spawn_id=int(values(raw)['id'])
                 if any(int(values(r)['spawn2_id'])==spawn_id for r in skiffs['disabled']):
