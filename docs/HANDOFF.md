@@ -1,3 +1,11 @@
+# Active Qeynos–Erudin implementation (2026-09-20)
+
+User authorized resolving Qeynos ↔ Erud’s Crossing ↔ Erudin zone boundaries and ship/passenger transfers first; other routes later. Branch `codex/qeynos-erudin-ferry`, candidate 0.5.5/code45. See [qeynos-erudin-055.md](qeynos-erudin-055.md). This builds on accepted race72/gender0 collision, carrying and height. The existing DLL stays in use.
+
+Implementation includes native vehicle-packet observation/waterline preservation, Lua source/destination handoffs, a reversible database/quest installer, and app controls. Local 163 Python tests pass, including eight Lua protocol scenarios. The pinned source’s actual client_packet.cpp and waypoints.cpp compile successfully in native run 35485423420. Real MariaDB and UI checks run under 35485423228. Full release gates and physical RoF2 crossing acceptance are still pending. Existing 0.5.4 remains published until release verification completes. Installation requires one server Build and Deploy; an APK update alone cannot add the native support. Do not claim simulated protocol tests prove post-load deck attachment.
+
+---
+
 # Device result: 0.5.4 moving ferry and turns accepted (2026-09-20 UTC)
 
 The user reports: the ferry works, height is correct, horizontal placement is off, and travel is slightly slow. Read [boat-ride-054.md](boat-ride-054.md) for the evidence and remaining tuning. The four screenshots show hull/pier overlap. **Accept boarding, moving passenger support and turning for this single-zone ferry.** Do not request another unchanged carrying test or repeat the rejected gender-2/PRE collision test.

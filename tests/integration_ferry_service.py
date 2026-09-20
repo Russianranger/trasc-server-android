@@ -41,8 +41,8 @@ def run(seed):
         try:
             e.ensure_db();e.config['database_imported']=True
             e.mysql(ddl(seed)+"""
-                INSERT INTO zone (id,zoneidnumber,short_name,version,idle_when_empty) VALUES
-                    (1,1,'qeynos',0,1),(24,24,'erudnext',0,0),(98,98,'erudsxing',0,1),(2,2,'qeynos2',0,1);
+                INSERT INTO zone (id,zoneidnumber,short_name,long_name,version,idle_when_empty) VALUES
+                    (1,1,'qeynos','South Qeynos',0,1),(24,24,'erudnext','Erudin',0,0),(98,98,'erudsxing',"Erud's Crossing",0,1),(2,2,'qeynos2','North Qeynos',0,1);
                 INSERT INTO launcher_zones VALUES ('trasc','qeynos',7009),('disabled','erudnext',0);
                 INSERT INTO npc_types(id,name,race,gender) VALUES (98054,'Golden_Maiden',72,2);
                 CREATE TABLE account (id int PRIMARY KEY,status int) ENGINE=InnoDB;
@@ -76,7 +76,7 @@ def run(seed):
                 # Intervening owned edits and additional external references are rejected.
                 e.mysql(f"UPDATE npc_types SET lastname='Edited' WHERE id={ids['ship']};")
                 reject(lambda:perform('reset'),'content, references or quests changed')
-                e.mysql(f"UPDATE npc_types SET lastname='' WHERE id={ids['ship']};")
+                e.mysql(f"UPDATE npc_types SET lastname=NULL WHERE id={ids['ship']};")
                 e.mysql(f"INSERT INTO spawnentry(spawngroupID,npcID,chance) VALUES(900,{ids['ship']},100);")
                 reject(lambda:perform('remove'),'content, references or quests changed')
                 e.mysql(f"DELETE FROM spawnentry WHERE spawngroupID=900;")
@@ -87,7 +87,7 @@ def run(seed):
                 with patch.object(e,'backup_database',side_effect=racing_backup):
                     reject(lambda:ferry.apply(e,{'token':p['token']}),'did not commit')
                 assert (modules/'trasc_ferry.lua').exists()
-                e.mysql(f"UPDATE npc_types SET lastname='' WHERE id={ids['ship']};")
+                e.mysql(f"UPDATE npc_types SET lastname=NULL WHERE id={ids['ship']};")
                 # Saved state cleanup is limited to owned IDs, including dynamic ship rows.
                 e.mysql(f"""INSERT INTO zone_state_spawns(zone_id,npc_id,spawn2_id,spawngroup_id,x,y,z,heading,respawn_time,variance)
                     VALUES (98,{ids['ship']},0,0,999,0,0,0,60,0),(98,98054,5,5,42,0,0,0,60,0);""")
