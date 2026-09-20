@@ -1,3 +1,24 @@
+# Diagnostic review: session-save provider failure and renderer kill (2026-09-20 UTC)
+
+Reviewed private `logs-5737403697047618156.zip`, exported at 23:35:59 UTC from 0.5.7 on Android 13 / AYN Thor. The diagnostic ZIP contains 148 entries and passes its CRC check. Raw logs remain private and uncommitted. This review narrows the preceding user report: there are **two distinct failure events**, including an actual app-process exit before the recoverable management-screen loss.
+
+**Timeline (UTC):**
+- 20:50:33: `prepare_session_backup` starts; server shutdown records `errors=[]`.
+- 20:52:26: backup preparation completes. MariaDB logs Normal shutdown and Shutdown complete. In source, successful preparation requires the SQL snapshot to finish when a database is imported, and MariaDB to exit cleanly.
+- 20:52:27: runtime shutdown completes. A `ferry_diagnostics` socket error occurs because the snapshot hook runs after backup preparation has already stopped MariaDB. The hook catches/logs the failure, and shutdown continues. This diagnostic-ordering issue is not evidence that the SQL snapshot failed.
+- 21:07:25.148: Android records the TRASC app process exiting with reason 12, `REASON_DEPENDENCY_DIED`: it depended on `com.android.providers.downloads/.DownloadStorageProvider` in dying `android.process.media`. This establishes that Android's Downloads storage-provider failure caused this app termination; the provider's own reason for dying is absent. It does not identify a particular destination path or prove a filesystem, archive-size or memory limit.
+- 21:28:07: the control service restarts, with the game server stopped.
+- 21:29:29.290: `management_display` records `WebView renderer exited: crashed=false priority=2`. Android's documented meaning of `didCrash=false` is that the system killed the renderer. This matches the in-app tap-to-reopen recovery message. Memory pressure is possible, not established by these records. Do not conflate this with the earlier Downloads-provider death.
+- 22:04:30: runtime stops with `errors=[]`; the diagnostic snapshot again finds no MariaDB socket. At 22:04:38 Android records a separate reason-10/user-requested-class app stop. The reason-13 “isolated not needed” WebView records accompany process cleanup and are not independent proof of a WebView crash.
+
+**Evidence limits:** `android-crash.log` is empty and no `save_export` exception is recorded. App-level exception handling cannot by itself prevent a dependency-death process termination. The status export shows about 168.6 GB free internal storage at collection time; that is not a measurement of free space or RAM at either earlier failure. The complete-session ZIP is not in this diagnostic bundle: retain the user's report that the second export produced a valid backup, without claiming an independent full-backup checksum or restore test. No repeat export/restore is requested.
+
+**Next repair scope:** investigate export handling that survives storage-provider loss, preserve transfer/result state independently of the WebView, and recover the management screen without losing access to the retained backup. Avoid the redundant ferry snapshot once MariaDB has already shut down. A targeted fix should verify provider death, renderer loss and re-export of the existing ZIP without recreating the archive or touching world/client data. No product changes or new APK were made in this diagnostic review. Do not recommend database reimport, runtime reinstall, DLL rebuild, or repeating the accepted boat tests.
+
+Android references checked: [ApplicationExitInfo dependency death](https://developer.android.com/reference/android/app/ApplicationExitInfo#REASON_DEPENDENCY_DIED) and [RenderProcessGoneDetail.didCrash](https://developer.android.com/reference/android/webkit/RenderProcessGoneDetail#didCrash()). Published 0.5.7 remains merge `9b7d54e160a5a414b9d9145ad28a15ac19c546d5`. Documentation-only `[skip ci]`; era/profile implementation and Ocean of Tears/Overthere work remain deferred. No subagents.
+
+---
+
 # Device follow-up: complete-session export workaround confirmed (2026-09-20 UTC)
 
 Following the 0.5.7 release, the user reported that saving a complete-session backup through Android Files appeared to crash. The suggested workaround was to reopen the app, start only the server runtime, open Files → `exports`, select the existing `session-*.zip`, and export it again, trying internal Download as the destination. Do not assume which destination the user actually chose.
