@@ -48,7 +48,7 @@ def run(seed):
                 INSERT INTO npc_types(id,name,race,gender) VALUES (2000683,'Skif',73,2),(2000684,'Unrelated',1,0);
                 INSERT INTO spawngroup(id,name) VALUES (5002829,'Erudin skiff'),(5002830,'Other zone skiff');
                 INSERT INTO spawnentry(spawngroupID,npcID,chance) VALUES (5002829,2000683,100),(5002830,2000683,100);
-                INSERT INTO spawn2(id,spawngroupID,zone,version,x,y,z) VALUES (2140976,5002829,'erudnext',0,-1402,176,1),(2140977,5002830,'qeynos',0,1,2,3);
+                INSERT INTO spawn2(id,spawngroupID,zone,version,x,y,z) VALUES (2140976,5002829,'erudnext',0,-1402,176,1),(2140977,5002830,'qeynos',0,1,2,3),(2140978,5002829,'erudnext',0,-1400,180,1);
                 INSERT INTO spawn2_disabled(spawn2_id,instance_id,disabled) VALUES (2140976,0,0),(2140976,7,0);
                 CREATE TABLE account (id int PRIMARY KEY,status int) ENGINE=InnoDB;
                 CREATE TABLE character_data (id int PRIMARY KEY,name varchar(50)) ENGINE=InnoDB;
@@ -81,6 +81,7 @@ def run(seed):
                 assert len(m['files'])==5 and all(ferry.digest(e.work/n)==v for n,v in m['files'].items())
                 assert e.mysql('SELECT disabled FROM spawn2_disabled WHERE spawn2_id=2140976 ORDER BY instance_id;').splitlines()[1:]==['1','0']
                 assert e.mysql('SELECT COUNT(*) FROM spawn2_disabled WHERE spawn2_id=2140977;').splitlines()[1:]==['0']
+                assert e.mysql('SELECT disabled FROM spawn2_disabled WHERE spawn2_id=2140978 AND instance_id=0;').splitlines()[1:]==['1']
                 e.mysql('UPDATE spawn2_disabled SET disabled=0 WHERE spawn2_id=2140976 AND instance_id=0;')
                 reject(lambda:perform('update'),'skiff spawns changed')
                 e.mysql('UPDATE spawn2_disabled SET disabled=1 WHERE spawn2_id=2140976 AND instance_id=0;')
