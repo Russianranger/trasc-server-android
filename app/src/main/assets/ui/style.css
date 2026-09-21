@@ -80,3 +80,23 @@ body[data-scene]::before{background-image:linear-gradient(180deg,#09141255,#0c17
 .runtime-actions{display:flex;align-items:center;justify-content:space-between;gap:10px;margin-top:9px}.runtime-actions .buttons{margin:0;gap:6px;flex-wrap:wrap}.runtime-actions button{padding:8px 12px;min-height:40px;font-size:11px}
 @media(max-width:680px){.runtime-heading{align-items:flex-start}.runtime-heading>div:first-child{max-width:47%}.runtime-toolbar .runtime-heading{width:auto}.session-status{flex-direction:column;align-items:flex-end;max-width:53%}.runtime-actions{flex-wrap:wrap;gap:7px}.runtime-actions .buttons{width:100%}.runtime-actions button{flex:1;min-height:44px}.overview{padding:20px 16px;min-height:160px}.overview h1{font-size:25px}.overview>div:first-child{max-width:72%}.overview .meter{min-width:75px;padding:6px}.overview .meter strong{font-size:16px}.overview .meter span{font-size:8px}}
 @media(max-width:380px){.runtime-heading strong{font-size:12px}.session-status .badge{font-size:10px}.overview .meter{display:none}.overview>div:first-child{max-width:100%}}
+
+/* Each profile retains the same controls and navigation. */
+.profile-bar{display:flex;align-items:center;gap:10px;margin-bottom:5px}.profile-bar label{margin:0;white-space:nowrap;font-size:11px}.profile-bar select{max-width:260px;min-width:0;margin:0}.profile-bar button{min-height:40px;white-space:nowrap}#profile-status{display:block;margin:0 0 8px;font-size:10px;line-height:1.4;color:#d2c5a3}
+[data-traditional-only]{display:none!important}body[data-profile=traditional] [data-traditional-only]{display:block!important}body[data-profile=traditional] [data-custom-only]{display:none!important}
+body[data-profile=traditional]{--gold:#dfc16e}body[data-profile=traditional] .overview{border-radius:2px;border:2px solid #827344;box-shadow:4px 4px 0 #081329}body[data-profile=traditional] .runtime-toolbar{background:#101b29ed}body[data-profile=traditional] .card{border-radius:3px}
+@media(max-width:680px){.profile-bar{gap:6px;flex-wrap:wrap}.profile-bar label{width:100%}.profile-bar select{flex:1;max-width:none;font-size:12px}.profile-bar button{font-size:11px;padding:8px;min-height:44px}#profile-status{font-size:10px}}
+body[data-profile=traditional][data-scene=setup]{--scene-image:url('classic-setup.webp')}
+body[data-profile=traditional][data-scene=server]{--scene-image:url('classic-server.webp')}
+body[data-profile=traditional][data-scene=gameplay]{--scene-image:url('classic-gameplay.webp')}
+body[data-profile=traditional][data-scene=build]{--scene-image:url('classic-build.webp')}
+body[data-profile=traditional][data-scene=spire]{--scene-image:url('classic-spire.webp')}
+body[data-profile=traditional][data-scene=fixes]{--scene-image:url('classic-fixes.webp')}
+body[data-profile=traditional][data-scene=database]{--scene-image:url('classic-database.webp')}
+body[data-profile=traditional][data-scene=client]{--scene-image:url('classic-client.webp')}
+body[data-profile=traditional][data-scene=files]{--scene-image:url('classic-files.webp')}
+body[data-profile=traditional][data-scene=logs]{--scene-image:url('classic-logs.webp')}
+
+@media(min-width:681px) and (max-height:550px){.profile-bar select{padding:8px;min-height:36px}.profile-bar button{min-height:36px;padding:6px 12px}.runtime-heading small{margin-top:4px}.runtime-toolbar{padding-top:8px;padding-bottom:8px}#profile-status{margin-bottom:5px}}
+
+.profile-selector{margin:14px 0;padding:12px 14px 4px;border:1px solid #655d41;border-radius:4px;background:#101b20d9}

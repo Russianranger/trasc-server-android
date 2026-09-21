@@ -31,6 +31,8 @@ A standalone Android control app for [Russianranger/Triptych-Triumvirate](https:
 
 ## Downloads and first setup
 
+**App 0.5.8 — independent world profiles:** switch between the existing TRASC Custom world and a separate Traditional EQEmu preparation workspace. All ten tabs cross over; Traditional has ten bundled 16-bit adventure scenes, quests/plugins/Lua/assets imports, split PEQ seed bundles and a clean-client baseline. Traditional Android compilation/deployment is the next milestone. [Profile guide and component checklist](docs/traditional-profiles.md).
+
 **App 0.5.7 — Fixes and shared session controls:** the runtime panel includes server Start/Stop/Restart and separate server/client activity indicators on every tab. **Fixes** contains ferry management, retired-trial cleanup, Nektulos maps, spell compatibility and Wine prefix recovery. Each tab has a distinct offline fantasy illustration. Existing server binaries, client DLL and accepted ferry installation remain compatible. [Update and testing instructions](docs/preview-notes.md).
 
 **Runtime 1.1 update:** fixes the missing `uuid/uuid.h` compilation error by including `uuid-dev`. Existing users can select **Setup → Shut down runtime → Download runtime**, then retry **Build imported source**. This preserves imported files and the build cache; no APK reinstall is needed. [Runtime update details](docs/runtime-release-notes.md).
@@ -50,6 +52,8 @@ A standalone Android control app for [Russianranger/Triptych-Triumvirate](https:
 Reserve at least **12 GB free**, with additional space for large map sets, SQL dumps, preserved source, staged binaries and backups. The app reports available storage and refuses archive entries that will not fit. Uninstalling or clearing app storage removes the local world: export important data first.
 
 ## Implemented management flows
+
+The server build/start/export flows below describe the verified **Custom** adapter. Traditional keeps the tabs and management/import controls; its compilation and first-login gates remain pending as described in the profile guide.
 
 | Area | Controls |
 | --- | --- |

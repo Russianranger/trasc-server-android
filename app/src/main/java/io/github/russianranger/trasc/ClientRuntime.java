@@ -15,7 +15,7 @@ final class ClientRuntime {
     static final String RELEASE="https://github.com/Russianranger/trasc-server-android/releases/download/client-runtime-v1/";
     final Context context;
     final RuntimeManager server;
-    final File root,client,prefix,run,tmp,directx;
+    File root,client,prefix,run,tmp,directx;
     volatile boolean busy;
     volatile String status="Install the client runtime to try Wine and ROF2.";
     private volatile Process process;
@@ -23,9 +23,18 @@ final class ClientRuntime {
     private volatile AudioBridge audio;
     ClientRuntime(Context context) {
         this.context=context;server=RuntimeManager.get(context);
+        bindProfile();
+    }
+    void releaseIdleResources()throws Exception {
+        if(graphics!=null){graphics.stop();graphics=null;}
+        if(audio!=null){audio.close();audio=null;}
+    }
+    void bindProfile() {
+        process=null;graphics=null;audio=null;
         root=new File(server.work,"client/runtime");client=new File(server.work,"client/current");prefix=new File(server.work,"client/prefix");
         directx=new File(server.work,"client/directx");
         run=new File(server.home,"tmp/client/session");tmp=new File(server.home,"tmp/client/tmp");
+        status="Client stopped. Install or start this profile’s client runtime.";
     }
     boolean installed(){return new File(root,"etc/trasc-client-runtime.json").isFile();}
     boolean alive(){return (process!=null&&process.isAlive())||(graphics!=null&&graphics.alive());}
@@ -103,6 +112,11 @@ final class ClientRuntime {
     synchronized JSONObject start(JSONObject options)throws Exception {
         begin();boolean started=false,compilerLease=false;
         try {
+            if(server.profiles.current().equals("traditional")) {
+                if("compiler".equals(options.optString("mode")))throw new IOException("The custom client DLL compiler belongs to TRASC Custom. Traditional compilation is the next milestone.");
+                options=new JSONObject(options.toString());
+                options.put("native_dinput8",false).put("mouse_warp",false).put("reduce_load_pauses",false).put("fast_spell_parse",false).put("particle_mode","off").put("boat_mode","off");
+            }
             if(alive())throw new IOException("Client is already open. View it or stop it before another launch.");
             if(graphics!=null){graphics.stop();graphics=null;}
             if(audio!=null){audio.close();audio=null;}
@@ -228,19 +242,20 @@ final class ClientRuntime {
             process=builder.start();started=true;status="Starting client display and Wine…";
             if(mode.equals("client"))RuntimeManager.write(new File(server.work,"client/launch-options.json"),request.toString());
             final Process active=process;final GraphicsBridge bridge=graphics;final AudioBridge playback=audio;
+            final File activeWork=server.work,activeRun=run;
             Thread monitor=new Thread(()->{
                 try {
                     while(active.isAlive()) {
                         if(bridge!=null&&!bridge.alive()) {
-                            RuntimeManager.write(new File(run,"gpu-failed"),"GPU bridge exited\n");
-                            server.recordFailure("client_gpu",new IOException("GPU bridge exited; see client-gpu.log. Choose Software graphics to compare."));
+                            RuntimeManager.write(new File(activeRun,"gpu-failed"),"GPU bridge exited\n");
+                            RuntimeManager.recordFailure(activeWork,"client_gpu",new IOException("GPU bridge exited; see client-gpu.log. Choose Software graphics to compare."));
                             break;
                         }
                         if(active.waitFor(1,TimeUnit.SECONDS))break;
                     }
                     active.waitFor();
                     synchronized(ClientRuntime.this){if(bridge!=null&&graphics==bridge){bridge.stop();graphics=null;}if(playback!=null&&audio==playback){playback.close();audio=null;}}
-                } catch(Exception e){server.recordFailure("client_gpu_cleanup",e);}
+                } catch(Exception e){RuntimeManager.recordFailure(activeWork,"client_gpu_cleanup",e);}
             },"client-graphics-lifecycle");monitor.setDaemon(true);monitor.start();
             for(int i=0;i<200;i++) {
                 File report=new File(run,"status.json");

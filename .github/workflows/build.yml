@@ -146,6 +146,7 @@ jobs:
         run: |
           npm install --no-save --package-lock=false playwright@1.55.0
           npx playwright install --with-deps chromium
+          node tests/ui_profiles.cjs
           node tests/ui_session.cjs
           node tests/ui_management.cjs
           node tests/ui_spire.cjs

@@ -1,8 +1,9 @@
 'use strict';
 const $=id=>document.getElementById(id), pending=new Map();
+let activeProfile=null,lastClientNative=null;
 let seq=0,currentTab='setup',lastState=null,lastNative=null,busy=0,rulesLoaded=false,rulesValues={},initialSettings=false,polling=false,sessionAction=null;
 window.nativeReply=(id,response)=>{const p=pending.get(id);if(!p)return;pending.delete(id);clearTimeout(p.timer);response.ok?p.resolve(response.result):p.reject(new Error(response.error));};
-function api(op,args={},timeoutMs=0){return new Promise((resolve,reject)=>{const id=String(++seq);const timer=timeoutMs?setTimeout(()=>{pending.delete(id);reject(new Error('Status check timed out.'));},timeoutMs):null;pending.set(id,{resolve,reject,timer});if(!window.Trasc){pending.delete(id);clearTimeout(timer);reject(new Error('Open this interface in the TRASC Android app.'));return;}Trasc.call(id,op,JSON.stringify(args));});}
+function api(op,args={},timeoutMs=0){return new Promise((resolve,reject)=>{const id=String(++seq);const timer=timeoutMs?setTimeout(()=>{pending.delete(id);reject(new Error('Status check timed out.'));},timeoutMs):null;pending.set(id,{resolve,reject,timer});if(!window.Trasc){pending.delete(id);clearTimeout(timer);reject(new Error('Open this interface in the TRASC Android app.'));return;}Trasc.call(id,op,JSON.stringify(activeProfile?{...args,__profile:activeProfile}:args));});}
 function notice(text,error=false){$('notice').hidden=false;$('notice').classList.toggle('error',error);$('notice').textContent=text;}
 function bytes(n){if(n==null)return '—';return n>=1073741824?(n/1073741824).toFixed(1)+' GB':n>=1048576?(n/1048576).toFixed(1)+' MB':(n/1024).toFixed(0)+' KB';}
 function ready(id,ok){$(id).textContent=ok?'Ready':'Required';$(id).classList.toggle('done',ok);}
@@ -34,6 +35,7 @@ const tabStories={
 function renderOverview(){const [title,summary]=tabStories[currentTab]||tabStories.setup;$('headline').textContent=currentTab==='server'&&lastState?.running?'Your world is running.':title;$('summary').textContent=summary;}
 function statusBadge(id,label,state){const el=$(id);el.textContent=label;el.dataset.state=state;el.classList.toggle('online',state==='running');}
 function renderClientActivity(s){
+ lastClientNative=s;if(typeof syncProfileControls==='function')syncProfileControls();
  let label='Client · Stopped',state='stopped';
  if(s.alive){
   const launch=s.launch||{};
@@ -58,6 +60,7 @@ function renderSessionControls(){
  else if(!n.alive){statusBadge('badge','Server · Offline','stopped');}
  else if(!s){statusBadge('badge','Server · Status unavailable','unknown');}
  else {statusBadge('badge',s.running?'Server · Running':'Server · Stopped',s.running?'running':'stopped');}
+ if(typeof syncProfileControls==='function')syncProfileControls();
 }
 function render(s){lastState=s;renderSessionControls();renderOverview();if(typeof renderBoatTrial==='function')renderBoatTrial();if(typeof renderFerryService==='function')renderFerryService();$('free').textContent=bytes(s.free_bytes);
  $('nektulos-status').textContent=s.nektulos?.applied?'Legacy pair applied · original backup: backups/nektulos/'+s.nektulos.backup:s.nektulos?.legacy_ready?'Both legacy files are available.':'Import both legacy Nektulos files before applying the fix.';if(typeof renderClientStatus==='function')renderClientStatus(s.client);ready('source-ready',!!s.source);ready('maps-ready',s.maps_ready);ready('database-ready',s.database_imported);
@@ -73,14 +76,14 @@ async function poll(){
  if(polling)return;polling=true;
  try{await Promise.allSettled([
   (async()=>{let nativeKnown=false;try{
-   const n=await api('native_state',{},10000);nativeKnown=true;lastNative=n;$('runtime-status').textContent=n.status;ready('runtime-ready',n.installed);
+   const n=await api('native_state',{},10000);nativeKnown=true;lastNative=n;if(typeof renderProfile==='function'&&!renderProfile(n))return;$('runtime-status').textContent=n.status;ready('runtime-ready',n.installed);
    if(n.session_busy||n.installing){lastState=null;$('activity').hidden=false;$('activity-title').textContent=n.session_busy?'Complete session transfer':'Runtime installation';$('activity-detail').textContent=n.status;$('cancel').hidden=true;}
    else if(n.alive){lastState=null;render(await api('state',{},10000));}
    else {lastState=null;$('free').textContent=bytes(n.free_bytes);if(!busy)$('activity').hidden=true;}
   }catch(e){if(!nativeKnown)lastNative=null;lastState=null;$('runtime-status').textContent=e.message;}
   finally{renderSessionControls();renderOverview();}})(),
   (async()=>{try{if(typeof clientRuntimeState==='function')await clientRuntimeState();else renderClientActivity(await api('client_native_state',{},10000));}
-   catch(e){statusBadge('client-badge','Client · Status unavailable','unknown');}})()
+   catch(e){lastClientNative=null;if(typeof syncProfileControls==='function')syncProfileControls();statusBadge('client-badge','Client · Status unavailable','unknown');}})()
  ]);}finally{polling=false;}
 }
 document.addEventListener('visibilitychange',()=>{if(!document.hidden)poll();});

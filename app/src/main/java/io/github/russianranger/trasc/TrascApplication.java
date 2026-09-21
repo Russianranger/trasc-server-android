@@ -15,7 +15,8 @@ public final class TrascApplication extends Application {
         AtomicBoolean recording=new AtomicBoolean();
         Thread.setDefaultUncaughtExceptionHandler((thread,error)->{
             if(recording.compareAndSet(false,true))try{
-                File work=new File(getFilesDir(),"work");
+                WorldProfiles profiles=new WorldProfiles(getFilesDir());
+                File work=new File(profiles.home(profiles.current()),"work");
                 Path path=LocalLogs.checked(work.toPath(),"logs/android-crash.log");Files.createDirectories(path.getParent());
                 // Do not acquire runtime/log-rotation locks in a dying process.
                 StringBuilder text=new StringBuilder(java.time.Instant.now()+" version="+BuildConfig.VERSION_NAME+" thread="+thread.getName()+"\n");
