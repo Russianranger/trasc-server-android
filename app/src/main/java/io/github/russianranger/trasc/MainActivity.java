@@ -142,8 +142,8 @@ public final class MainActivity extends Activity {
                     }
                     reply(id,result,null);
                 }catch(Exception e){
-                    if(operation.startsWith("runtime_"))runtime.status=e.getMessage();
-                    if(operation.startsWith("runtime_")||operation.startsWith("client_")||operation.equals("export_logs"))runtime.recordFailure(operation,e);
+                    if(lease!=null&&operation.startsWith("runtime_"))runtime.status=e.getMessage();
+                    if(lease!=null&&(operation.startsWith("runtime_")||operation.startsWith("client_")||operation.equals("export_logs")))runtime.recordFailure(operation,e);
                     reply(id,null,e);
                 }finally{if(lease!=null)lease.close();}
             });

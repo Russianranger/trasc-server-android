@@ -24,15 +24,20 @@ public final class ServerService extends Service {
         lock=((PowerManager)getSystemService(POWER_SERVICE)).newWakeLock(PowerManager.PARTIAL_WAKE_LOCK,"TRASC:runtime");lock.acquire();
     }
     @Override public int onStartCommand(Intent intent,int flags,int startId){
-        if(intent!=null&&STOP.equals(intent.getAction())&&stopping.compareAndSet(false,true))shutdown.execute(()->{
+        if(intent!=null&&STOP.equals(intent.getAction())&&stopping.compareAndSet(false,true)){
             RuntimeManager runtime=RuntimeManager.get(this);ClientRuntime client=ClientRuntime.get(this);
-            try{client.stop();}catch(Exception e){runtime.recordFailure("notification_client_stop",e);}
-            try{runtime.stop();}catch(Exception e){runtime.status=e.getMessage();runtime.recordFailure("notification_runtime_stop",e);}
+            String profile=runtime.profiles.current();
+            shutdown.execute(()->{
+            try(WorldProfiles.Lease ignored=runtime.profiles.enter(profile)){
+                try{client.stop();}catch(Exception e){runtime.recordFailure("notification_client_stop",e);}
+                try{runtime.stop();}catch(Exception e){runtime.status=e.getMessage();runtime.recordFailure("notification_runtime_stop",e);}
+            }catch(Exception e){android.util.Log.w("TRASC","Notification shutdown no longer matches the selected profile",e);}
             new Handler(Looper.getMainLooper()).post(()->{
                 stopping.set(false);
-                if(!client.alive()&&!runtime.alive())stopSelf();
+                if(!client.alive()&&!client.busy&&!runtime.alive()&&!runtime.installing&&!runtime.sessionBusy)stopSelf();
             });
         });
+        }
         return START_NOT_STICKY;
     }
     @Override public void onDestroy(){shutdown.shutdown();if(lock!=null&&lock.isHeld())lock.release();super.onDestroy();}
