@@ -25,9 +25,11 @@ final class ClientRuntime {
         this.context=context;server=RuntimeManager.get(context);
         bindProfile();
     }
+    void releaseIdleResources()throws Exception {
+        if(graphics!=null){graphics.stop();graphics=null;}
+        if(audio!=null){audio.close();audio=null;}
+    }
     void bindProfile() {
-        if(graphics!=null)graphics.stop();
-        if(audio!=null)audio.close();
         process=null;graphics=null;audio=null;
         root=new File(server.work,"client/runtime");client=new File(server.work,"client/current");prefix=new File(server.work,"client/prefix");
         directx=new File(server.work,"client/directx");

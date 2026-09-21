@@ -57,11 +57,14 @@ public final class RuntimeManager {
                 if(alive()||installing||sessionBusy||client.alive()||client.busy)
                     throw new IOException("Stop the client and server runtime, and finish transfers before switching worlds");
                 String previous=profiles.current();
-                if(!previous.equals(id))try {
-                    bindProfile(id);client.bindProfile();profiles.select(id);
-                } catch(Exception e){
-                    try{bindProfile(previous);client.bindProfile();}catch(Exception restore){recoveryError="Profile recovery requires reopening the app";e.addSuppressed(restore);}
-                    throw e;
+                if(!previous.equals(id)){
+                    client.releaseIdleResources();
+                    try {
+                        bindProfile(id);client.bindProfile();profiles.select(id);
+                    } catch(Exception e){
+                        try{bindProfile(previous);client.bindProfile();}catch(Exception restore){recoveryError="Profile recovery requires reopening the app";e.addSuppressed(restore);}
+                        throw e;
+                    }
                 }
                 return nativeState();
             }}
