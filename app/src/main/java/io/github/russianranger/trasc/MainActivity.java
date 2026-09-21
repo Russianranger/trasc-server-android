@@ -18,18 +18,18 @@ public final class MainActivity extends Activity {
     private WebView web;
     private RuntimeManager runtime;
     private ControllerManager controller;
+    private String controllerProfile;
     private ClientRuntime clientRuntime;
     private final ExecutorService tasks=Executors.newFixedThreadPool(3);
     private String pickerId,pickerKind,exportPath;
     private boolean pickerReplace;
+    private WorldProfiles.Lease pickerLease;
     private static final int IMPORT=10,EXPORT=11;
     @Override public void onCreate(Bundle saved){
         super.onCreate(saved);runtime=RuntimeManager.get(this);clientRuntime=ClientRuntime.get(this);
         getWindow().setStatusBarColor(0xff10191c); getWindow().setNavigationBarColor(0xff10191c);
         web=new WebView(this);setContentView(web);
-        controller=new ControllerManager(this,runtime.work,event->runOnUiThread(()->{
-            if(!isDestroyed()&&web!=null)web.evaluateJavascript("window.clientInputEvent && window.clientInputEvent("+event+")",null);
-        }));
+        controller=createController();
         WebSettings s=web.getSettings();s.setJavaScriptEnabled(true);s.setDomStorageEnabled(true);
         s.setAllowFileAccess(false);s.setAllowContentAccess(false);s.setAllowFileAccessFromFileURLs(false);s.setAllowUniversalAccessFromFileURLs(false);
         s.setMixedContentMode(WebSettings.MIXED_CONTENT_NEVER_ALLOW);
@@ -64,7 +64,15 @@ public final class MainActivity extends Activity {
         web.loadUrl("https://app.trasc.local/index.html");
         if(android.os.Build.VERSION.SDK_INT>=33)requestPermissions(new String[]{Manifest.permission.POST_NOTIFICATIONS},20);
     }
-    private void submit(Runnable task){try{tasks.execute(task);}catch(RejectedExecutionException ignored){/* Activity already closed. */}}
+    private ControllerManager createController(){controllerProfile=runtime.profiles.current();return new ControllerManager(this,runtime.work,event->runOnUiThread(()->{
+        if(!isDestroyed()&&web!=null)web.evaluateJavascript("window.clientInputEvent && window.clientInputEvent("+event+")",null);
+    }));}
+    interface UiResult {Object run()throws Exception;}
+    private void profileUi(String id,String profile,UiResult task){runOnUiThread(()->{
+        try(WorldProfiles.Lease ignored=runtime.profiles.enter(profile)){if(!profile.equals(controllerProfile)){controller.close();controller=createController();}reply(id,task.run(),null);}
+        catch(Exception e){reply(id,null,e);}
+    });}
+    private boolean submit(Runnable task){try{tasks.execute(task);return true;}catch(RejectedExecutionException ignored){return false;}}
     private void service(){startForegroundService(new Intent(this,ServerService.class));}
     private void reply(String id,Object result,Exception error){
         try {
@@ -76,9 +84,18 @@ public final class MainActivity extends Activity {
     }
     final class Bridge {
         @JavascriptInterface public void call(String id,String operation,String input){
+            final String submittedProfile=runtime.profiles.current();
             submit(()->{
+                WorldProfiles.Lease lease=null;
                 try {
                     JSONObject args=new JSONObject(input);Object result;
+                    final String profile=operation.equals("native_state")?runtime.profiles.current():args.optString("__profile",submittedProfile);
+                    if(operation.equals("profile_switch")) {
+                        final JSONObject changed=runtime.switchProfile(profile,args.getString("profile"));
+                        runOnUiThread(()->{controller.close();controller=createController();reply(id,changed,null);});
+                        return;
+                    }
+                    lease=runtime.profiles.enter(profile);
                     if(runtime.sessionBusy&&!operation.equals("native_state")&&!operation.equals("runtime_log")&&!operation.equals("logs")&&!operation.equals("client_native_state"))throw new IOException("A complete session transfer is in progress");
                     switch(operation){
                         case "native_state": result=runtime.nativeState();break;
@@ -101,11 +118,11 @@ public final class MainActivity extends Activity {
                         case "logs": result=runtime.logs(args.optString("name","control.log"));break;
                         case "export_logs": service();result=runtime.exportLogs();break;
                         case "session_backup": service();runOnUiThread(()->controller.capture(false));result=runtime.backupSession();break;
-                        case "controller_state": runOnUiThread(()->{try{reply(id,controller.state(),null);}catch(Exception e){reply(id,null,e);}});return;
-                        case "controller_save": runOnUiThread(()->{try{controller.configure(args,true);reply(id,controller.state(),null);}catch(Exception e){reply(id,null,e);}});return;
-                        case "controller_capture": runOnUiThread(()->{try{controller.capture(args.optBoolean("active")&&hasWindowFocus());reply(id,controller.state(),null);}catch(Exception e){reply(id,null,e);}});return;
-                        case "pick": runOnUiThread(()->pick(id,args.optString("kind","file"),args.optBoolean("replace")));return;
-                        case "export": runOnUiThread(()->export(id,args.optString("path")));return;
+                        case "controller_state": profileUi(id,profile,()->controller.state());return;
+                        case "controller_save": profileUi(id,profile,()->{controller.configure(args,true);return controller.state();});return;
+                        case "controller_capture": profileUi(id,profile,()->{controller.capture(args.optBoolean("active")&&hasWindowFocus());return controller.state();});return;
+                        case "pick": runOnUiThread(()->pick(id,args.optString("kind","file"),args.optBoolean("replace"),profile));return;
+                        case "export": runOnUiThread(()->export(id,args.optString("path"),profile));return;
                         case "client_settings_save":
                         case "import_client_zip": case "prepare_client": case "export_client":
                         case "apply_spell_test": case "restore_spell_test":
@@ -128,15 +145,16 @@ public final class MainActivity extends Activity {
                     if(operation.startsWith("runtime_"))runtime.status=e.getMessage();
                     if(operation.startsWith("runtime_")||operation.startsWith("client_")||operation.equals("export_logs"))runtime.recordFailure(operation,e);
                     reply(id,null,e);
-                }
+                }finally{if(lease!=null)lease.close();}
             });
         }
     }
-    private void pick(String id,String kind,boolean replace){
+    private void pick(String id,String kind,boolean replace,String profile){
         if(pickerId!=null){reply(id,null,new IOException("Finish the open file picker first"));return;}
+        try{pickerLease=runtime.profiles.enter(profile);}catch(Exception e){reply(id,null,e);return;}
         pickerId=id;pickerKind=kind;pickerReplace=replace;
         Intent intent=new Intent(Intent.ACTION_OPEN_DOCUMENT).addCategory(Intent.CATEGORY_OPENABLE).setType("*/*");
-        try{startActivityForResult(intent,IMPORT);}catch(Exception e){pickerId=null;reply(id,null,e);}
+        try{startActivityForResult(intent,IMPORT);}catch(Exception e){pickerId=null;if(pickerLease!=null){pickerLease.close();pickerLease=null;}reply(id,null,e);}
     }
     private File exportFile(String path)throws IOException {
         File file=TarExtractor.path(runtime.work,path);
@@ -144,22 +162,25 @@ public final class MainActivity extends Activity {
             throw new IOException("Export a regular file; use Database backup for database data");
         return file;
     }
-    private void export(String id,String path){
+    private void export(String id,String path,String profile){
         if(pickerId!=null){reply(id,null,new IOException("Finish the open file picker first"));return;}
         try {
+            pickerLease=runtime.profiles.enter(profile);
             File file=exportFile(path);pickerId=id;exportPath=path;
             Intent intent=new Intent(Intent.ACTION_CREATE_DOCUMENT).addCategory(Intent.CATEGORY_OPENABLE).setType("application/octet-stream").putExtra(Intent.EXTRA_TITLE,file.getName());
             startActivityForResult(intent,EXPORT);
-        }catch(Exception e){pickerId=null;reply(id,null,e);}
+        }catch(Exception e){pickerId=null;if(pickerLease!=null){pickerLease.close();pickerLease=null;}reply(id,null,e);}
     }
     @Override protected void onActivityResult(int request,int code,Intent data){
         super.onActivityResult(request,code,data);
         if(request!=IMPORT&&request!=EXPORT)return;
         String id=pickerId,kind=pickerKind,path=exportPath;boolean replace=pickerReplace;pickerId=null;
-        if(id==null)return;
-        if(code!=RESULT_OK||data==null||data.getData()==null){reply(id,null,new IOException("File selection cancelled"));return;}
+        WorldProfiles.Lease transferLease=pickerLease;pickerLease=null;
+        if(id==null){if(transferLease!=null)transferLease.close();return;}
+        if(code!=RESULT_OK||data==null||data.getData()==null){if(transferLease!=null)transferLease.close();reply(id,null,new IOException("File selection cancelled"));return;}
+        if(transferLease==null){reply(id,null,new IOException("Reopen the file picker in the selected profile"));return;}
         Uri uri=data.getData();service();
-        submit(()->{
+        boolean accepted=submit(()->{
             File temp=null;
             try {
                 if(request==EXPORT){
@@ -192,13 +213,15 @@ public final class MainActivity extends Activity {
                     reply(id,runtime.nativeState(),null);
                 }else {runtime.status="File imported: "+name;reply(id,new JSONObject().put("file",unique).put("path","incoming/"+unique).put("name",name),null);}
             }catch(Exception e){if(temp!=null)temp.delete();runtime.status=e.getMessage();runtime.recordFailure(request==EXPORT?"save_export":"import_"+kind,e);reply(id,null,e);}
+            finally{transferLease.close();}
         });
+        if(!accepted)transferLease.close();
     }
     @Override public boolean dispatchKeyEvent(KeyEvent event){return controller!=null&&controller.key(event)||super.dispatchKeyEvent(event);}
     @Override public boolean dispatchGenericMotionEvent(MotionEvent event){return controller!=null&&controller.motion(event)||super.dispatchGenericMotionEvent(event);}
     @Override public void onWindowFocusChanged(boolean focus){super.onWindowFocusChanged(focus);if(!focus&&controller!=null)controller.capture(false);}
-    @Override protected void onResume(){super.onResume();if(controller!=null)controller.reload();if(web!=null)web.evaluateJavascript("if(typeof controllerLoaded!=='undefined'){controllerLoaded=false;if(currentTab==='client')loadController(true).catch(e=>notice(e.message,true));}",null);}
+    @Override protected void onResume(){super.onResume();if(controller!=null)try(WorldProfiles.Lease ignored=runtime.profiles.enter(runtime.profiles.current())){if(!runtime.profiles.current().equals(controllerProfile)){controller.close();controller=createController();}else controller.reload();}catch(IOException ignored){}if(web!=null)web.evaluateJavascript("if(typeof controllerLoaded!=='undefined'){controllerLoaded=false;if(currentTab==='client')loadController(true).catch(e=>notice(e.message,true));}",null);}
     @Override protected void onPause(){if(controller!=null)controller.capture(false);super.onPause();}
     @Override public void onBackPressed(){if(controller.active()){controller.capture(false);return;}if(web!=null)web.evaluateJavascript("window.appBack && window.appBack()",null);}
-    @Override protected void onDestroy(){if(controller!=null)controller.close();if(web!=null){web.removeJavascriptInterface("Trasc");web.destroy();web=null;}tasks.shutdown();super.onDestroy();}
+    @Override protected void onDestroy(){pickerId=null;if(pickerLease!=null){pickerLease.close();pickerLease=null;}if(controller!=null)controller.close();if(web!=null){web.removeJavascriptInterface("Trasc");web.destroy();web=null;}tasks.shutdown();super.onDestroy();}
 }

@@ -1,3 +1,24 @@
+# 0.5.8 — Custom and Traditional EQEmu profiles
+
+Choose **TRASC Custom** or **Traditional EQEmu** at the top, then **Switch world**. Stop the client and server runtime and finish file transfers first. The selected world retains its own source, database, maps, quests, client, controller settings, logs and backups. The existing Custom installation stays in place.
+
+Traditional uses unique 16-bit adventure art on all ten shared tabs and adds explicit quests, Perl plugins, Lua modules and server-assets imports, plus ordered split-PEQ-seed import. Use a separate clean ROF2 ZIP for this profile; custom DLL hooks are disabled. No era preset is applied.
+
+**Traditional Build, Deploy, Start server and generated client preparation/export are intentionally pending the next Android fork milestone.** This APK prepares and manages that profile; it does not yet run an unmodified upstream EQEmu server.
+
+## Update and check
+
+1. Stop the client/runtime and install over the existing app. Keep Custom's current runtime, server, client DLL and working route. No Custom rebuild or reimport is required.
+2. Confirm the app opens in TRASC Custom with your existing files/settings. Stop its runtimes, then switch to Traditional. Confirm the profile label and pixel-art backgrounds change and all ten tabs remain available.
+3. Install the server runtime in Traditional. Import your traditional source and compatible PEQ database/maps. Use the extra content panel for quests, plugins, Lua modules and assets. ProjectEQ's repository can supply its separate quests/plugins/Lua folders. For split seeds, add SQL files in the distribution's prescribed order and import the bundle once.
+4. Import your separate clean ROF2 client through Client if ready. Traditional's first server login waits for the next milestone; keep Custom's client intact.
+5. Stop Traditional's runtimes, switch back to Custom, and confirm its saved source/client/settings are still present. Start the existing world normally. No repeat ferry journey is requested.
+6. If a switch/import fails, export Logs from the affected profile and report the selected profile and last action. Complete-session archives restore only to their matching profile; older archives belong to Custom.
+
+[Full component checklist, storage/backups and next fork-compilation plan](traditional-profiles.md). Ocean of Tears/Overthere and era presets remain shelved. The prior large-export/provider failure remains separate unresolved work; preserve the successful backup and use the existing ZIP for retries.
+
+---
+
 # 0.5.7 — Fixes, illustrated tabs and shared session controls
 
 World and client repairs now live in **Fixes**: the Qeynos–Erudin route, Nektulos maps, spell compatibility and Wine prefix recovery. Spire focuses on content browsing/editing. The retired single-zone ferry trial has a cleanup-only panel; its old installation/reset controls are gone. Existing route data and settings are retained.

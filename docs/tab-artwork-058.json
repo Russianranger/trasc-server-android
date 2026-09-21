@@ -1,0 +1,66 @@
+{
+  "mode": "Built-in image_gen",
+  "style": "16-bit fantasy adventure",
+  "images": [
+    {
+      "name": "setup",
+      "prompt": "Use case: stylized-concept. Asset type: full-bleed landscape background for the setup tab of a classic fantasy adventure Android app. Primary request: An adventurous winding path across a lush valley toward distant snowy mountains at dawn. Style: authentic 16-bit pixel art, crisp deliberately visible square pixels, restrained richly colored SNES-era palette, carefully shaded tiles and atmospheric depth, original high-fantasy adventure setting. Landscape 3:2 composition, recognizable main scene in the upper half with calmer shadowed lower half for interface overlays. No interface, text, letters, borders, logos, watermarks or collage. Create exactly one complete scene.",
+      "source": "/workspace/scratch/cead1af6d375/generated_images/exec-71913409-3412-4b45-a1ac-6151184c4237.png",
+      "asset": "app/src/main/assets/ui/classic-setup.webp"
+    },
+    {
+      "name": "server",
+      "prompt": "Use case: stylized-concept. Asset type: full-bleed landscape background for the server tab of a classic fantasy adventure Android app. Primary request: A grand medieval stone castle and walled village reflected in a moat under a twilight sky. Style: authentic 16-bit pixel art, crisp deliberately visible square pixels, restrained richly colored SNES-era palette, carefully shaded tiles and atmospheric depth, original high-fantasy adventure setting. Landscape 3:2 composition, recognizable main scene in the upper half with calmer shadowed lower half for interface overlays. No interface, text, letters, borders, logos, watermarks or collage. Create exactly one complete scene.",
+      "source": "/workspace/scratch/cead1af6d375/generated_images/exec-aa4e6b17-0762-41bd-b842-88d4cc8fcc99.png",
+      "asset": "app/src/main/assets/ui/classic-server.webp"
+    },
+    {
+      "name": "gameplay",
+      "prompt": "Use case: stylized-concept. Asset type: full-bleed landscape background for the gameplay tab of a classic fantasy adventure Android app. Primary request: An ancient druid stone circle in a lush glade, with small glowing runes and woodland trails. Style: authentic 16-bit pixel art, crisp deliberately visible square pixels, restrained richly colored SNES-era palette, carefully shaded tiles and atmospheric depth, original high-fantasy adventure setting. Landscape 3:2 composition, recognizable main scene in the upper half with calmer shadowed lower half for interface overlays. No interface, text, letters, borders, logos, watermarks or collage. Create exactly one complete scene.",
+      "source": "/workspace/scratch/cead1af6d375/generated_images/exec-da0fa7a6-ebd4-4b7a-8021-08886f4172f4.png",
+      "asset": "app/src/main/assets/ui/classic-gameplay.webp"
+    },
+    {
+      "name": "build",
+      "prompt": "Use case: stylized-concept. Asset type: full-bleed landscape background for the build tab of a classic fantasy adventure Android app. Primary request: A dwarven forge deep in a mountain hall, glowing furnace, anvil and racks of tools. Style: authentic 16-bit pixel art, crisp deliberately visible square pixels, restrained richly colored SNES-era palette, carefully shaded tiles and atmospheric depth, original high-fantasy adventure setting. Landscape 3:2 composition, recognizable main scene in the upper half with calmer shadowed lower half for interface overlays. No interface, text, letters, borders, logos, watermarks or collage. Create exactly one complete scene.",
+      "source": "/workspace/scratch/cead1af6d375/generated_images/exec-f5a98577-74d5-408e-abed-80baeb3c6ec7.png",
+      "asset": "app/src/main/assets/ui/classic-build.webp"
+    },
+    {
+      "name": "spire",
+      "prompt": "Use case: stylized-concept. Asset type: full-bleed landscape background for the spire tab of a classic fantasy adventure Android app. Primary request: A wizard's tall blue stone tower on a rocky island, stars and a crescent moon reflected in the sea. Style: authentic 16-bit pixel art, crisp deliberately visible square pixels, restrained richly colored SNES-era palette, carefully shaded tiles and atmospheric depth, original high-fantasy adventure setting. Landscape 3:2 composition, recognizable main scene in the upper half with calmer shadowed lower half for interface overlays. No interface, text, letters, borders, logos, watermarks or collage. Create exactly one complete scene.",
+      "source": "/workspace/scratch/cead1af6d375/generated_images/exec-7826ce2e-683b-4181-aaed-2a1b7a97766d.png",
+      "asset": "app/src/main/assets/ui/classic-spire.webp"
+    },
+    {
+      "name": "fixes",
+      "prompt": "Use case: stylized-concept. Asset type: full-bleed landscape background for the fixes tab of a classic fantasy adventure Android app. Primary request: A cozy medieval adventurer's repair workshop, lantern, tools, leather armor and a repaired shield. Style: authentic 16-bit pixel art, crisp deliberately visible square pixels, restrained richly colored SNES-era palette, carefully shaded tiles and atmospheric depth, original high-fantasy adventure setting. Landscape 3:2 composition, recognizable main scene in the upper half with calmer shadowed lower half for interface overlays. No interface, text, letters, borders, logos, watermarks or collage. Create exactly one complete scene.",
+      "source": "/workspace/scratch/cead1af6d375/generated_images/exec-30f62064-5c9b-42f9-87f3-a8d95811fd7e.png",
+      "asset": "app/src/main/assets/ui/classic-fixes.webp"
+    },
+    {
+      "name": "database",
+      "prompt": "Use case: stylized-concept. Asset type: full-bleed landscape background for the database tab of a classic fantasy adventure Android app. Primary request: An ancient fantasy library with towering bookshelves, scrolls, a reading desk and warm candlelight. Style: authentic 16-bit pixel art, crisp deliberately visible square pixels, restrained richly colored SNES-era palette, carefully shaded tiles and atmospheric depth, original high-fantasy adventure setting. Landscape 3:2 composition, recognizable main scene in the upper half with calmer shadowed lower half for interface overlays. No interface, text, letters, borders, logos, watermarks or collage. Create exactly one complete scene.",
+      "source": "/workspace/scratch/cead1af6d375/generated_images/exec-0a0dbc33-8960-471a-a82a-8573706fce1f.png",
+      "asset": "app/src/main/assets/ui/classic-database.webp"
+    },
+    {
+      "name": "client",
+      "prompt": "Use case: stylized-concept. Asset type: full-bleed landscape background for the client tab of a classic fantasy adventure Android app. Primary request: A luminous magic portal framed by mossy standing stones in a deep emerald forest. Style: authentic 16-bit pixel art, crisp deliberately visible square pixels, restrained richly colored SNES-era palette, carefully shaded tiles and atmospheric depth, original high-fantasy adventure setting. Landscape 3:2 composition, recognizable main scene in the upper half with calmer shadowed lower half for interface overlays. No interface, text, letters, borders, logos, watermarks or collage. Create exactly one complete scene.",
+      "source": "/workspace/scratch/cead1af6d375/generated_images/exec-0777ba16-52ac-41f9-8ee5-8b031b5cda64.png",
+      "asset": "app/src/main/assets/ui/classic-client.webp"
+    },
+    {
+      "name": "files",
+      "prompt": "Use case: stylized-concept. Asset type: full-bleed landscape background for the files tab of a classic fantasy adventure Android app. Primary request: A cartographer's woodland cabin with a spread parchment map, satchels, compass and open window. Style: authentic 16-bit pixel art, crisp deliberately visible square pixels, restrained richly colored SNES-era palette, carefully shaded tiles and atmospheric depth, original high-fantasy adventure setting. Landscape 3:2 composition, recognizable main scene in the upper half with calmer shadowed lower half for interface overlays. No interface, text, letters, borders, logos, watermarks or collage. Create exactly one complete scene.",
+      "source": "/workspace/scratch/cead1af6d375/generated_images/exec-0339bb95-300b-4477-b30d-d76c4cec321a.png",
+      "asset": "app/src/main/assets/ui/classic-files.webp"
+    },
+    {
+      "name": "logs",
+      "prompt": "Use case: stylized-concept. Asset type: full-bleed landscape background for the logs tab of a classic fantasy adventure Android app. Primary request: An adventurer's campsite beside a lake at night, a campfire, journal and mountains beneath stars. Style: authentic 16-bit pixel art, crisp deliberately visible square pixels, restrained richly colored SNES-era palette, carefully shaded tiles and atmospheric depth, original high-fantasy adventure setting. Landscape 3:2 composition, recognizable main scene in the upper half with calmer shadowed lower half for interface overlays. No interface, text, letters, borders, logos, watermarks or collage. Create exactly one complete scene.",
+      "source": "/workspace/scratch/cead1af6d375/generated_images/exec-73541f1a-110d-4dd9-8f3b-229945197812.png",
+      "asset": "app/src/main/assets/ui/classic-logs.webp"
+    }
+  ]
+}

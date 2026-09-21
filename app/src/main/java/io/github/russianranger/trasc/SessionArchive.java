@@ -79,6 +79,19 @@ final class SessionArchive {
         return Arrays.asList("bin","bin.staged","bin.previous","logs").contains(relative.getName(0).toString());
     }
     static void create(File rootfs,File work,File archive,String version,Progress progress)throws IOException {
+        create(rootfs,work,archive,version,"custom",progress);
+    }
+    static void requireProfile(File archive,String profile)throws IOException {
+        try(ZipFile zip=new ZipFile(archive)) {
+            ZipEntry entry=zip.getEntry(MANIFEST);
+            if(entry==null||entry.getSize()>16384)throw new IOException("This ZIP is not a supported TRASC complete session");
+            Properties info=new Properties();try(InputStream in=zip.getInputStream(entry)){info.load(in);}
+            if(!profile.equals(info.getProperty("profile","custom")))
+                throw new IOException("This backup belongs to a different world profile. Switch to that profile before restoring.");
+        }
+    }
+    static void create(File rootfs,File work,File archive,String version,String profile,Progress progress)throws IOException {
+        if(!profile.equals("custom")&&!profile.equals("traditional"))throw new IOException("Unknown backup profile");
         if(!Files.isRegularFile(rootfs.toPath().resolve("etc/trasc-runtime.json"),LinkOption.NOFOLLOW_LINKS))throw new IOException("Install the runtime before creating a complete session backup");
         File index=File.createTempFile("session-index-",".tsv",archive.getParentFile());
         long[] total={0}; int[] count={0};
@@ -133,6 +146,7 @@ final class SessionArchive {
             zip.putNextEntry(new ZipEntry(INDEX));Files.copy(index.toPath(),zip);zip.closeEntry();
             Properties manifest=new Properties();
             manifest.setProperty("format","trasc-session-1");manifest.setProperty("architecture","arm64");
+            manifest.setProperty("profile",profile);
             manifest.setProperty("app_version",version);manifest.setProperty("created_utc",java.time.Instant.now().toString());
             manifest.setProperty("entries",String.valueOf(count[0]));manifest.setProperty("uncompressed_bytes",String.valueOf(total[0]));
             manifest.setProperty("database_state","clean_shutdown");

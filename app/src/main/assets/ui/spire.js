@@ -11,6 +11,7 @@ async function spireRun(fn){
  finally{controls.forEach((e,i)=>{if(e.isConnected)e.disabled=disabled[i];});spireState.working=false;spireControls();}
 }
 function spireControls(){
+ if(typeof syncProfileControls==='function')syncProfileControls();
  $('spire-prev').disabled=spireState.offset===0;$('spire-next').disabled=spireState.next===null;
  $('spire-save').disabled=!spireState.preview;
  $('spire-item-prev').disabled=spireState.itemOffset===0;$('spire-item-next').disabled=spireState.itemNext===null;

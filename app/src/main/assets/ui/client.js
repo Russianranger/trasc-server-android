@@ -11,6 +11,7 @@ function spellTestControls(){
  $('spell-test-restore').disabled=!!(busy||clientFileBusy||!active);
  $('client-import').disabled=!!(busy||clientFileBusy||active);
  for(const id of ['client-prepare','export-client'])$(id).disabled=!!(busy||clientFileBusy||incomplete);
+ if(typeof syncProfileControls==='function')syncProfileControls();
 }
 function renderClientStatus(client){
  clientImported=!!client?.imported;spellComparison=client?.spell_test||{};

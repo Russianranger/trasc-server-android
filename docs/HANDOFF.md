@@ -1,3 +1,17 @@
+# Active milestone: 0.5.8 traditional world profiles (2026-09-21 UTC)
+
+**The user's latest request supersedes the earlier instruction to defer profile implementation.** They authorized starting the clean traditional EQEmu profile, a switch between worlds, all shared tabs, 16-bit adventure backgrounds and quest/plugin imports; the next milestone is making their chosen fork Android-ready. Era presets, Ocean of Tears transit and Overthere barge repairs remain deferred. No upstream fork or era preset was changed.
+
+Implemented on `codex/traditional-profiles`: fixed independent profile homes preserving existing Custom paths; persistent native selection; operation leases/stale-request rejection; runtime/client/display/picker guards; profile-specific complete-session manifests and cross-profile restore rejection; clean Traditional client options; separate quests/plugins/Lua/assets imports with retained replacements and interrupted-swap recovery; ordered split PEQ seed bundles; ten generated classic backgrounds with the same ten tabs. Traditional compilation/deployment/start/client-data exports are blocked until the next milestone. Existing Custom adapters/repairs remain in their profile.
+
+See [traditional-profiles.md](traditional-profiles.md) for the full dependency table, storage/backup behavior and implementation order. The exact traditional fork URL/ref still needs identification before the next milestone; upstream EQEmu/master is only an editable default. Its CMake/vcpkg/LuaJIT/submodules differ from the existing Custom Lua 5.1 build recipe. Do not enable build/start by removing guards without implementing and verifying the traditional adapter.
+
+Local verification so far: 172 Python tests pass with Lua enabled; host JVM/C/C++ management tests pass, including profile path/persistence/operation/backup isolation. Profile browser coverage passes for ten tabs/scenes, clean DLL settings, scoped content imports and switching back to Custom. Existing browser suites and signed APK/release gates are being completed; this entry is not a release claim. App version is 0.5.8/code48. Artwork paths and exact built-in prompts: [tab-artwork-058.json](tab-artwork-058.json). No subagents.
+
+Preserve the earlier accepted ferry and log-reset milestones. The successful session re-export is user-confirmed; Downloads-provider dependency death and renderer-loss resilience remain unresolved, and this release does not claim to fix them. No repeated backup or ferry test is requested. After publication, append the exact commit, CI and APK identity plus concise profile-switch/import/back-to-Custom checks.
+
+---
+
 # Diagnostic review: session-save provider failure and renderer kill (2026-09-20 UTC)
 
 Reviewed private `logs-5737403697047618156.zip`, exported at 23:35:59 UTC from 0.5.7 on Android 13 / AYN Thor. The diagnostic ZIP contains 148 entries and passes its CRC check. Raw logs remain private and uncommitted. This review narrows the preceding user report: there are **two distinct failure events**, including an actual app-process exit before the recoverable management-screen loss.

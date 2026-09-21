@@ -38,9 +38,10 @@ import spire
 import boat_trial
 import ferry_service
 import server_ferry
+import traditional_content
 from log_retention import rotate
 
-VERSION = '0.5.7'
+VERSION = '0.5.8'
 DEFAULT_REPO = 'https://github.com/Russianranger/Triptych-Triumvirate'
 BINARIES = ('world', 'zone', 'loginserver', 'shared_memory', 'ucs', 'eqlaunch', 'queryserv', 'export_client_files')
 CLIENT_FILES = ('spells_us.txt', 'dbstr_us.txt', 'SkillCaps.txt', 'BaseData.txt')
@@ -158,17 +159,23 @@ def validate_rule(name, value):
 
 
 class Engine(ManagedContent):
-    def __init__(self, work):
+    def __init__(self, work, profile='custom'):
+        if profile not in ('custom', 'traditional'): raise ValueError('Unknown world profile')
+        self.profile = profile
         self.work = Path(work).resolve()
         for name in ('incoming', 'sources', 'server', 'maps', 'database', 'backups', 'exports', 'logs', 'run', 'builds', 'client'):
             (self.work / name).mkdir(parents=True, exist_ok=True)
         self.config_path = self.work / 'settings.json'
         self.config = json.loads(self.config_path.read_text()) if self.config_path.exists() else {
-            'repo': DEFAULT_REPO, 'ref': 'main', 'ip': '127.0.0.1', 'login_port': 5999,
-            'workers': 3, 'jobs': 2, 'database': 'triune', 'db_port': 13306,
+            'repo': 'https://github.com/EQEmu/EQEmu' if profile == 'traditional' else DEFAULT_REPO, 'ref': 'master' if profile == 'traditional' else 'main', 'ip': '127.0.0.1', 'login_port': 5999,
+            'workers': 3, 'jobs': 2, 'database': 'peq' if profile == 'traditional' else 'triune', 'db_port': 13306,
             'db_password': secrets.token_hex(20), 'server_key': secrets.token_hex(20),
             'database_imported': False, 'rules_pending_restart': False,
         }
+        if self.config.get('profile', profile if not self.config_path.exists() else 'custom') != profile:
+            raise ValueError('Workspace belongs to a different world profile')
+        self.config['profile'] = profile
+        if profile == 'traditional': traditional_content.recover(self)
         self.config.setdefault('root_password', secrets.token_hex(20))
         self.save()
         self.processes = {}
@@ -335,6 +342,8 @@ class Engine(ManagedContent):
                 if (p / 'Release-NMS-Server' / 'CMakeLists.txt').exists() or ((p / 'CMakeLists.txt').exists() and (p / 'zone').is_dir()): candidates.append(p)
             if len(candidates) != 1: raise ValueError('Archive must contain one Triptych/EQEmu server source tree')
             candidate = candidates[0]
+            if self.profile == 'traditional' and (candidate / 'Release-NMS-Server').exists():
+                raise ValueError('Choose a traditional EQEmu source tree for this profile')
             atomic_json(candidate / 'trasc-source.json', metadata)
             current, previous = self.work / 'sources/current', self.work / 'sources/previous'
             if previous.exists(): shutil.rmtree(previous)
@@ -457,8 +466,13 @@ class Engine(ManagedContent):
     def import_database(self, args):
         if self.server_running(): raise ValueError('Stop the server before importing a database')
         selection = args['selection']
-        candidate = next((c for c in self.database_candidates() if c['id'] == selection), None)
-        if not candidate: raise ValueError('Selected database is no longer available')
+        selections = args.get('selections', [selection])
+        if not isinstance(selections, list) or not selections or len(selections) > 16 or any(not isinstance(x, str) for x in selections) or len(set(selections)) != len(selections):
+            raise ValueError('Choose up to 16 distinct SQL files in seed order')
+        if self.profile != 'traditional' and selections != [selection]:
+            raise ValueError('Split seed bundles belong to Traditional EQEmu')
+        candidates = {c['id'] for c in self.database_candidates()}
+        if any(x not in candidates for x in selections): raise ValueError('Selected database is no longer available')
         self.ensure_db()
         if self.config['database_imported']:
             if not args.get('replace'): raise ValueError('Database exists. Enable replacement; a backup will be made first.')
@@ -467,27 +481,30 @@ class Engine(ManagedContent):
         else:
             player_backup = None
         dump = self.work / 'run' / ('selected-database-' + secrets.token_hex(4) + '.sql')
-        file_name, sep, member = selection.partition('!')
-        source = safe_path(self.work, file_name, True)
         stack = contextlib.ExitStack()
         try:
-            if sep:
-                archive = stack.enter_context(zipfile.ZipFile(source))
-                stream = stack.enter_context(archive.open(member))
-                name = member
-            else:
-                stream = stack.enter_context(source.open('rb'))
-                name = source.name
-            if name.endswith('.gz'): stream = stack.enter_context(gzip.GzipFile(fileobj=stream))
             count = 0
             with dump.open('wb') as out:
-                while True:
-                    self.check_cancel()
-                    b = stream.read(1024 * 1024)
-                    if not b: break
-                    count += len(b)
-                    if count > MAX_EXTRACT_BYTES: raise ValueError('SQL dump is too large')
-                    out.write(b)
+                for selected in selections:
+                    file_name, sep, member = selected.partition('!')
+                    source = safe_path(self.work, file_name, True)
+                    with contextlib.ExitStack() as component:
+                        if sep:
+                            archive = component.enter_context(zipfile.ZipFile(source))
+                            stream = component.enter_context(archive.open(member))
+                            name = member
+                        else:
+                            stream = component.enter_context(source.open('rb'))
+                            name = source.name
+                        if name.endswith('.gz'): stream = component.enter_context(gzip.GzipFile(fileobj=stream))
+                        while True:
+                            self.check_cancel()
+                            b = stream.read(1024 * 1024)
+                            if not b: break
+                            count += len(b)
+                            if count > MAX_EXTRACT_BYTES: raise ValueError('SQL dump is too large')
+                            out.write(b)
+                        out.write(b'\n')
             # Strip only mysqldump's database-selection directives, retaining all seed data.
             normalized = self.work / 'run/database-import.sql'
             with dump.open('rb') as inp, normalized.open('wb') as out:
@@ -504,7 +521,7 @@ class Engine(ManagedContent):
             required = ('account', 'character_data', 'rule_values', 'rule_sets', 'variables', 'launcher')
             if any(t not in tables.splitlines() for t in required):
                 raise ValueError('Import finished but required server tables are missing. Choose the full database seed.')
-            self.config.update(database_imported=True, database_source=selection)
+            self.config.update(database_imported=True, database_source=selection, database_sources=selections)
             self.save()
             return {'imported': selection, 'player_backup':player_backup, 'message':'Database imported.' + (' Player/account snapshot retained at '+player_backup+'. Restore it from Database → Player data when ready.' if player_backup else '')}
         finally:
@@ -999,7 +1016,7 @@ class Engine(ManagedContent):
     def state(self):
         source=self.work/'sources/current/trasc-source.json'
         config={k:v for k,v in self.config.items() if 'password' not in k and 'key' not in k}
-        return {'version':VERSION,'settings':config,'source':json.loads(source.read_text()) if source.exists() else None,
+        return {'version':VERSION,'profile':self.profile,'traditional':traditional_content.status(self) if self.profile=='traditional' else None,'settings':config,'source':json.loads(source.read_text()) if source.exists() else None,
             'runtime_ready':True,'database_running':bool(self.db and self.db.poll() is None),'database_imported':self.config['database_imported'],
             'maps_ready':(self.work/'maps/base').is_dir(),'binaries_ready':all((self.work/'server/bin'/x).exists() for x in BINARIES),
             'build_ready':(self.work/'server/bin.staged/build-info.json').exists(), 'rollback_ready':(self.work/'server/bin.previous').exists(),
@@ -1008,6 +1025,15 @@ class Engine(ManagedContent):
             'nektulos':self.nektulos_status(), 'client':self.client_status()}
 
     def dispatch(self,op,args):
+        if args.get('__profile', self.profile) != self.profile:
+            raise ValueError('World profile changed. Refresh before continuing.')
+        if self.profile == 'traditional':
+            if op in ('build','deploy','rollback','start','export_client','prepare_client'):
+                raise ValueError('Traditional EQEmu compilation and deployment require the next Android fork milestone')
+            if op.startswith(('boat_trial_', 'ferry_', 'client_dll_', 'client_addons_')) or op in ('fix_nektulos','revert_nektulos','apply_spell_test','restore_spell_test'):
+                raise ValueError('This repair or addon belongs to TRASC Custom')
+        if op == 'import_content': return traditional_content.install(self,args)
+        if op == 'traditional_status': return traditional_content.status(self)
         if op=='ferry_diagnostics':return ferry_service.diagnostics(self,args)
         if op in ('boat_trial_status','boat_trial_preview','boat_trial_apply'):
             return boat_trial.dispatch(self,op,args)
@@ -1038,8 +1064,8 @@ class Engine(ManagedContent):
         return methods[op](args)
 
 
-def serve(work, port, token):
-    engine=Engine(work)
+def serve(work, port, token, profile='custom'):
+    engine=Engine(work,profile)
     class Handler(BaseHTTPRequestHandler):
         def log_message(self,*args): pass
         def do_POST(self):
@@ -1055,7 +1081,7 @@ def serve(work, port, token):
                     threading.Thread(target=server.shutdown,daemon=True).start()
                     result={'message':'Stopping all processes and database'}
                 elif op=='cancel': engine.cancel.set(); result={'message':'Cancellation requested'}
-                elif op in ('state','files','logs','databases','client_dll_status','ferry_diagnostics'): result=engine.dispatch(op,args)
+                elif op in ('state','files','logs','databases','client_dll_status','ferry_diagnostics','traditional_status'): result=engine.dispatch(op,args)
                 else: result=engine.enqueue(op,args)
                 payload=json.dumps({'ok':True,'result':result}).encode()
             except Exception as e:
@@ -1078,5 +1104,6 @@ if __name__=='__main__':
     parser.add_argument('--work',default='/work')
     parser.add_argument('--port',type=int,default=18775)
     parser.add_argument('--token-file',required=True)
+    parser.add_argument('--profile',choices=('custom','traditional'),default='custom')
     a=parser.parse_args()
-    serve(a.work,a.port,Path(a.token_file).read_text().strip())
+    serve(a.work,a.port,Path(a.token_file).read_text().strip(),a.profile)

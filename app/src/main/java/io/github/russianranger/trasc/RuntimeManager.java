@@ -18,7 +18,8 @@ public final class RuntimeManager {
         return instance;
     }
     final Context context;
-    final File home, work, rootfs;
+    final WorldProfiles profiles;
+    File home, work, rootfs;
     volatile String status = "Install the runtime to begin.";
     volatile boolean installing;
     volatile boolean sessionBusy;
@@ -29,15 +30,42 @@ public final class RuntimeManager {
     static final String RELEASE = "https://github.com/Russianranger/trasc-server-android/releases/download/runtime-v1/";
 
     private RuntimeManager(Context c) {
-        context=c; home=c.getFilesDir(); work=new File(home,"work"); rootfs=new File(home,"rootfs");
-        try {recoverSessionSwap();} catch(IOException e){recoveryError="Session recovery failed: "+e.getMessage();status=recoveryError;}
-        new File(work,"incoming").mkdirs(); new File(work,"logs").mkdirs(); new File(work,"run").mkdirs();
+        context=c;profiles=new WorldProfiles(c.getFilesDir());
+        home=c.getFilesDir();work=new File(home,"work");rootfs=new File(home,"rootfs");
+        try {bindProfile(profiles.current());} catch(IOException e){recoveryError="Profile recovery failed: "+e.getMessage();status=recoveryError;}
         logMaintenance.schedule(new TimerTask(){@Override public void run(){
             synchronized(RuntimeManager.this){
                 if(sessionBusy)return;
                 try{LogRetention.prune(work);}catch(IOException e){android.util.Log.w("TRASC","Log cleanup deferred",e);}
             }
         }},1000,60000);
+    }
+    private void bindProfile(String id)throws IOException {
+        home=profiles.home(id);work=new File(home,"work");rootfs=new File(home,"rootfs");
+        recoveryError=null;token=null;process=null;
+        recoverSessionSwap();
+        for(String folder:new String[]{"incoming","logs","run"}) {
+            File dir=new File(work,folder);if(!dir.isDirectory()&&!dir.mkdirs())throw new IOException("Cannot prepare the selected profile");
+        }
+        status=WorldProfiles.label(id)+" · "+(installed()?"Runtime stopped":"Install the runtime to begin.");
+    }
+    JSONObject switchProfile(String expected,String id)throws Exception {
+        WorldProfiles.valid(id);profiles.beginSwitch(expected);
+        try {
+            ClientRuntime client=ClientRuntime.get(context);
+            synchronized(client){synchronized(this){
+                if(alive()||installing||sessionBusy||client.alive()||client.busy)
+                    throw new IOException("Stop the client and server runtime, and finish transfers before switching worlds");
+                String previous=profiles.current();
+                if(!previous.equals(id))try {
+                    bindProfile(id);client.bindProfile();profiles.select(id);
+                } catch(Exception e){
+                    try{bindProfile(previous);client.bindProfile();}catch(Exception restore){recoveryError="Profile recovery requires reopening the app";e.addSuppressed(restore);}
+                    throw e;
+                }
+                return nativeState();
+            }}
+        } finally {profiles.endSwitch();}
     }
     boolean installed() { return new File(rootfs,"etc/trasc-runtime.json").isFile(); }
     boolean alive() { return process!=null && process.isAlive(); }
@@ -50,7 +78,7 @@ public final class RuntimeManager {
         File proot=new File(nativeDir,"libproot.so"), loader=new File(nativeDir,"libproot-loader.so");
         if (!proot.canExecute() || !loader.exists()) throw new IOException("This APK is missing its ARM64 runtime launcher");
         File backend=new File(home,"backend"); backend.mkdirs();
-        for(String name:new String[]{"engine.py","boat_trial.py","ferry_service.py","ferry_service.lua","ferry_route.py","server_ferry.py","eq_server_ferry.h","spire.py","spire_catalog.py","log_retention.py","rule_catalog.py","managed_content.py","client_display.py","client_settings.py","client_spells.py","client_addons.py","client_dll.py","client_mouse.py","eq_camera_mouse.h","eq_client_loading.h","eq_fast_decimal.h","eq_spell_checksum.h","eq_display_loading.h","eq_first_person_particles.h","eq_boat_diagnostics.h","player_data.py","player_tables.py","client_compile_runner.py"})
+        for(String name:new String[]{"engine.py","traditional_content.py","boat_trial.py","ferry_service.py","ferry_service.lua","ferry_route.py","server_ferry.py","eq_server_ferry.h","spire.py","spire_catalog.py","log_retention.py","rule_catalog.py","managed_content.py","client_display.py","client_settings.py","client_spells.py","client_addons.py","client_dll.py","client_mouse.py","eq_camera_mouse.h","eq_client_loading.h","eq_fast_decimal.h","eq_spell_checksum.h","eq_display_loading.h","eq_first_person_particles.h","eq_boat_diagnostics.h","player_data.py","player_tables.py","client_compile_runner.py"})
             try(InputStream in=context.getAssets().open(name)) { copy(in,new File(backend,name)); }
         byte[] secret=new byte[32]; new SecureRandom().nextBytes(secret); token=hex(secret);
         write(new File(work,"run/api-token"),token);
@@ -64,7 +92,7 @@ public final class RuntimeManager {
             "-b","/dev","-b","/proc","-b",work.getPath()+":/work","-b",backend.getPath()+":/opt/trasc",
             "-b",tmp.getPath()+":/tmp","-w","/work","/usr/bin/env","-i","HOME=/root","USER=root",
             "PATH=/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin","LANG=C.UTF-8","TMPDIR=/tmp",
-            "PYTHONUNBUFFERED=1","/usr/bin/python3","/opt/trasc/engine.py","--token-file","/work/run/api-token"));
+            "PYTHONUNBUFFERED=1","/usr/bin/python3","/opt/trasc/engine.py","--token-file","/work/run/api-token","--profile",profiles.current()));
         ProcessBuilder pb=new ProcessBuilder(command);
         pb.environment().put("PROOT_LOADER",loader.getPath());
         pb.environment().put("PROOT_TMP_DIR",tmp.getPath());
@@ -110,7 +138,8 @@ public final class RuntimeManager {
     JSONObject nativeState() throws Exception {
         return new JSONObject().put("installed",installed()).put("alive",alive()).put("installing",installing)
             .put("session_busy",sessionBusy)
-            .put("status",status).put("free_bytes",home.getUsableSpace()).put("abi",android.os.Build.SUPPORTED_ABIS[0]);
+            .put("status",status).put("free_bytes",home.getUsableSpace()).put("abi",android.os.Build.SUPPORTED_ABIS[0])
+            .put("profile",profiles.current()).put("profile_label",WorldProfiles.label(profiles.current()));
     }
     synchronized JSONObject logRetention(JSONObject args)throws Exception {
         if(sessionBusy)throw new IOException("Wait for the complete session transfer");
@@ -135,7 +164,7 @@ public final class RuntimeManager {
             .put("message","Reset "+cleared[0]+" diagnostic log files to 0 bytes.");
     }
     private void captureFerryDiagnostics() {
-        if(!alive())return;
+        if(!alive()||profiles.current().equals("traditional"))return;
         try {
             JSONObject snapshot=request("ferry_diagnostics",new JSONObject(),5000);
             if(!snapshot.optBoolean("ok"))throw new IOException(snapshot.optString("error"));
@@ -155,7 +184,8 @@ public final class RuntimeManager {
         File archive=LocalLogs.export(work,metadata.toString(2));
         return new JSONObject().put("file","exports/"+archive.getName());
     }
-    void recordFailure(String operation,Exception error) {
+    void recordFailure(String operation,Exception error) {recordFailure(work,operation,error);}
+    static void recordFailure(File work,String operation,Exception error) {
         try{LocalLogs.failure(work,operation,error);}catch(IOException ignored){android.util.Log.e("TRASC",operation+" failed",error);}
     }
     void installOnline() throws Exception {
@@ -214,7 +244,7 @@ public final class RuntimeManager {
             stop();
             if(alive())throw new IOException("Runtime must be stopped before copying session files");
             target.getParentFile().mkdirs();
-            SessionArchive.create(rootfs,work,target,BuildConfig.VERSION_NAME,text->status=text);
+            SessionArchive.create(rootfs,work,target,BuildConfig.VERSION_NAME,profiles.current(),text->status=text);
             status="Complete session ZIP ready. Runtime stopped; open runtime to continue.";
             return new JSONObject().put("file","exports/"+target.getName()).put("message","Complete session created. Save it outside the app. The runtime is stopped.");
         } catch(Exception e) {
@@ -241,6 +271,7 @@ public final class RuntimeManager {
         beginSession();
         File staging=new File(home,"session-stage");
         try {
+            SessionArchive.requireProfile(archive,profiles.current());
             if((installed()||new File(work,"settings.json").isFile())&&!replace)
                 throw new IOException("Select Replace this app's current session before restoring");
             ClientRuntime.get(context).stop();
@@ -261,6 +292,7 @@ public final class RuntimeManager {
             JSONObject marker=new JSONObject(new String(Files.readAllBytes(new File(staging,"rootfs/etc/trasc-runtime.json").toPath()),StandardCharsets.UTF_8));
             if(marker.getInt("format")!=1||!marker.getString("architecture").equals("arm64"))throw new IOException("Unsupported runtime inside session");
             JSONObject settings=new JSONObject(new String(Files.readAllBytes(new File(staging,"work/settings.json").toPath()),StandardCharsets.UTF_8));
+            if(!settings.optString("profile","custom").equals(profiles.current()))throw new IOException("Session settings belong to a different world profile");
             if(!settings.getString("database").matches("[A-Za-z0-9_]+"))throw new IOException("Invalid database name in session");
             for(String key:new String[]{"db_password","root_password"})if(!settings.getString(key).matches("[0-9a-f]{40}"))throw new IOException("Invalid database credentials in session");
             Properties journal=new Properties();

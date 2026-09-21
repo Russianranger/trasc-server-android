@@ -17,6 +17,8 @@ public final class ClientActivity extends Activity {
     private ClientRuntime runtime;
     private ControllerManager controller;
     private ClientView display;
+    private WorldProfiles.Lease profileLease;
+    private File profileWork,profileRun;
     private NativePresentation nativeDisplay;
     private volatile boolean nativeActive;
     private String presentationFallback="";
@@ -50,6 +52,7 @@ public final class ClientActivity extends Activity {
     }};
     @Override public void onCreate(Bundle saved) {
         super.onCreate(saved);setVolumeControlStream(android.media.AudioManager.STREAM_MUSIC);runtime=ClientRuntime.get(this);
+        try{profileLease=runtime.server.profiles.enter(runtime.server.profiles.current());profileWork=runtime.server.work;profileRun=runtime.run;}catch(IOException e){finish();return;}
         getWindow().addFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON);
         FrameLayout layout=new FrameLayout(this);layout.setBackgroundColor(Color.BLACK);
         display=new ClientView();
@@ -98,7 +101,7 @@ public final class ClientActivity extends Activity {
             return insets;
         });
         setContentView(layout);immersive();
-        controller=new ControllerManager(this,runtime.server.work,event->{
+        controller=new ControllerManager(this,profileWork,event->{
             switch(event.optString("type")) {
                 case "button":if(event.optString("action").equals("ClientMenu")){setMenuOpen(true);break;}display.input.action(event.optString("action"),event.optBoolean("down"));break;
                 case "pointer":display.input.move((float)event.optDouble("x"),(float)event.optDouble("y"));break;
@@ -191,7 +194,7 @@ public final class ClientActivity extends Activity {
     @Override public void onBackPressed(){if(display.hasPointerCapture()){display.releasePointerCapture();setMenuOpen(true);return;}if(menuOpen)setMenuOpen(false);else super.onBackPressed();}
     @Override public void onWindowFocusChanged(boolean focus){super.onWindowFocusChanged(focus);if(focus&&!keyboardOpen)immersive();if(controller!=null)controller.capture(gameInputActive());if(!focus&&display!=null){cancelCommand();}}
     @Override protected void onPause(){cancelCommand();if(controller!=null)controller.capture(false);if(display!=null)display.input.releaseAll();super.onPause();}
-    @Override protected void onDestroy(){cancelCommand();handler.removeCallbacksAndMessages(null);if(layerBanner!=null)layerBanner.animate().cancel();if(controller!=null)controller.close();if(nativeDisplay!=null)nativeDisplay.close();if(display!=null)display.close();super.onDestroy();}
+    @Override protected void onDestroy(){cancelCommand();handler.removeCallbacksAndMessages(null);if(layerBanner!=null)layerBanner.animate().cancel();if(controller!=null)controller.close();if(nativeDisplay!=null)nativeDisplay.close();if(display!=null)display.close();if(profileLease!=null){profileLease.close();profileLease=null;}super.onDestroy();}
 
     private final class ClientView extends View implements RfbConnection.Screen {
         private final Object pixelsLock=new Object();
@@ -233,16 +236,16 @@ public final class ClientActivity extends Activity {
                 local.setSoTimeout(0);connection=r;
                 try{
                     LocalSocket control=new LocalSocket();inputSocket=control;
-                    control.connect(new LocalSocketAddress(new File(runtime.run,"input.sock").getPath(),LocalSocketAddress.Namespace.FILESYSTEM));control.setSoTimeout(3000);
+                    control.connect(new LocalSocketAddress(new File(profileRun,"input.sock").getPath(),LocalSocketAddress.Namespace.FILESYSTEM));control.setSoTimeout(3000);
                     relative=new RelativeInput(control.getInputStream(),control.getOutputStream());control.setSoTimeout(0);
-                }catch(IOException inputError){closeInput();runtime.server.recordFailure("client_relative_input",inputError);}
+                }catch(IOException inputError){closeInput();RuntimeManager.recordFailure(profileWork,"client_relative_input",inputError);}
                 // A native failure can happen during the input-only handshake.
                 if(!frames&&!nativeActive){resize(r.width,r.height);r.request(false);}
                 while(!closed)r.readUpdate();
             }catch(IOException e){if(!closed)failure(e);}
             finally {closeInput();try{if(socket!=null)socket.close();}catch(IOException ignored){}connection=null;}
         },"TRASC client display").start();}
-        void failure(Exception error){if(closed)return;runtime.server.recordFailure("client_display",error);post(()->{displayError="Display disconnected: "+error.getMessage()+" · Back to Client to reconnect";if(!isDestroyed()){status.setText(displayError);setMenuOpen(true);}});}
+        void failure(Exception error){if(closed)return;RuntimeManager.recordFailure(profileWork,"client_display",error);post(()->{displayError="Display disconnected: "+error.getMessage()+" · Back to Client to reconnect";if(!isDestroyed()){status.setText(displayError);setMenuOpen(true);}});}
         @Override public void resize(int w,int h){frameWidth=w;frameHeight=h;synchronized(pixelsLock){if(!nativeActive)bitmap=Bitmap.createBitmap(w,h,Bitmap.Config.ARGB_8888);}post(()->{input.size(w,h);arrangeSurface();});}
         void arrangeSurface(){
             if(!nativeActive||nativeDisplay==null||getWidth()==0||getHeight()==0)return;
@@ -290,7 +293,7 @@ public final class ClientActivity extends Activity {
                     String line=info.toString()+"\n";
                     writer.execute(()->{
                         try {
-                            File log=new File(runtime.server.work,"logs/client-presentation.log");
+                            File log=new File(profileWork,"logs/client-presentation.log");
                             if(log.length()>1024*1024)java.nio.file.Files.move(log.toPath(),new File(log.getParentFile(),"client-presentation.overflow.log").toPath(),java.nio.file.StandardCopyOption.REPLACE_EXISTING);
                             try(FileOutputStream out=new FileOutputStream(log,true)){out.write(line.getBytes(java.nio.charset.StandardCharsets.UTF_8));}
                         }catch(IOException error){android.util.Log.w("TRASC","Could not record display measurements",error);}
