@@ -14,6 +14,11 @@ are retained for retry. Temporary extraction files are cleaned after completion 
 cancellation. The private download cache is excluded from complete-session backups;
 the installed compiler remains part of the client backup.
 
+The app uses a pinned, checksum-verified Microsoft catalog for the matched older
+toolset. Every compiler/SDK package must match its SHA256 before extraction.
+Microsoft's package sizes are estimates (about 930 MiB in total); the app limits
+actual download bytes and checks free storage as it downloads.
+
 The app obtains its MSI extraction helper from the runtime's authenticated Debian
 package repositories and extracts it privately. It does not install or upgrade the
 server runtime's Linux packages. The toolchain is activated only after packaging

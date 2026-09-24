@@ -26,6 +26,8 @@ archive and a timeout before a successful retry from grumpy-gaming/eqemu-maps. T
 input-validation/archive-recognition issues are not fixed in this pass; fork ownership
 is not required. Original EACCES logs predate the successful update. Raw logs stay private.
 
+Catalog verification found that Microsoft's mutable VS2019 channel advertises a size/hash different from the actual official catalog response; independent GitHub ARM64 CI reproduced this. The downloader now pins the reviewed official VS2019 `16.11.60+37627.13` catalog directly: **11,154,648 bytes**, SHA256 `406969c30f4eb8bf0075a0850e339340ac83942705b76269156bb5b70f01b631`. Catalog bytes/version and every selected payload SHA256 remain strictly verified; no checksum bypass or trust-on-first-use fallback was added. The selected 84 packages/324 payloads have an estimated total of 973,531,982 bytes. Live downloads showed that catalog payload sizes can differ from actual, checksum-matching bytes, so payload sizes are estimates with per-file and cumulative actual-byte limits; the catalog pin itself retains its exact size check. Metadata/consent tokens are tied to the shipped pin. The first PR CI failure is this catalog issue, not a package-extractor failure: the private ARM64 msiextract ran successfully and installed-package inventory stayed unchanged.
+
 Development uses backend/UI/review subagents. Local regression, live dependency/catalog
 checks and signed build/release verification are in progress; this entry is not a
 published APK claim. Append final source/build/artifact identity when publication is

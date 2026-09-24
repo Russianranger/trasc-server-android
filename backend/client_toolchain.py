@@ -23,7 +23,16 @@ import time
 import urllib.parse
 import urllib.request
 
-CHANNEL = 'https://aka.ms/vs/16/release/channel'
+# Reproducible, reviewed Microsoft VS2019 catalog. The mutable channel's size
+# and hash disagree with the catalog bytes Microsoft actually serves, including
+# on independent GitHub runners. Pin the reviewed official HTTPS bytes directly
+# (as for the downloader), never silently trust changed catalog contents.
+MANIFEST_VERSION = '16.11.60+37627.13'
+MANIFEST_SHA256 = '406969c30f4eb8bf0075a0850e339340ac83942705b76269156bb5b70f01b631'
+MANIFEST_BYTES = 11154648
+MANIFEST_URL = ('https://download.visualstudio.microsoft.com/download/pr/'
+                'e2324e87-3765-4b14-85e5-1234d99f6254/'
+                'fb642c3f891b70947e0152275e1722ffb3cca7e8700eea0f0fa0f3a7645584cc/VisualStudio.vsman')
 MIN_FREE = 8 * 1024**3
 RESERVE = 512 * 1024**2
 MAX_DOWNLOAD = 4 * 1024**3
@@ -191,7 +200,10 @@ def load_plan(cache, token):
             or token != plan.get('token') or token != plan_token(plan)
             or plan.get('options') != OPTIONS or plan.get('downloader_sha256') != packer().DOWNLOADER_SHA256
             or time.time() - plan.get('prepared_at', 0) > PLAN_AGE
-            or sha(cache / 'manifest.json') != plan.get('manifest_sha256')):
+            or plan.get('manifest_sha256') != MANIFEST_SHA256
+            or plan.get('manifest_version') != MANIFEST_VERSION
+            or (cache / 'manifest.json').stat().st_size != MANIFEST_BYTES
+            or sha(cache / 'manifest.json') != MANIFEST_SHA256):
         raise ValueError('Toolchain download details expired or changed. Review the Microsoft license again.')
     return plan
 
@@ -207,21 +219,14 @@ def download_info(engine, args=None):
         checked_downloader(cache)
     except (OSError, ValueError, KeyError, TypeError):
         downloader = checked_downloader(cache)
-        channel_file = cache / 'channel.json'
-        fetch(CHANNEL, channel_file, 4 * 1024**2)
-        channel = json.loads(channel_file.read_text())
-        manifests = [item for item in channel['channelItems'] if item.get('type') == 'Manifest']
-        if len(manifests) != 1:
-            raise ValueError('Microsoft channel did not supply one installer catalog')
-        payload = manifests[0]['payloads'][0]
-        if not re.fullmatch('[0-9a-fA-F]{64}', str(payload.get('sha256', ''))):
-            raise ValueError('Microsoft channel omitted the catalog checksum')
-        fetch(payload['url'], cache / 'manifest.json', 64 * 1024**2,
-              expected_sha=payload['sha256'], expected_size=payload['size'])
+        fetch(MANIFEST_URL, cache / 'manifest.json', MANIFEST_BYTES,
+              expected_sha=MANIFEST_SHA256, expected_size=MANIFEST_BYTES)
         manifest = json.loads((cache / 'manifest.json').read_text())
+        if manifest.get('info', {}).get('productSemanticVersion') != MANIFEST_VERSION:
+            raise ValueError('Microsoft catalog version does not match the reviewed toolchain')
         with contextlib.redirect_stdout(io.StringIO()):
             _, selected, payloads, license_url = selection(downloader, manifest)
-        plan = {'manifest_sha256': sha(cache / 'manifest.json'),
+        plan = {'manifest_sha256': MANIFEST_SHA256, 'manifest_version': MANIFEST_VERSION,
                 'downloader_sha256': packer().DOWNLOADER_SHA256,
                 'options': OPTIONS, 'license_url': license_url,
                 'license_name': 'Microsoft Visual Studio Build Tools 2019 license',
@@ -363,8 +368,16 @@ def run_worker(cache, stage, output, accepted_token, extractor_path=None):
     for index, payload in enumerate(payloads):
         target = cache / 'downloads' / payload['path']
         prefix = 'Microsoft package ' + str(index + 1) + '/' + str(len(payloads))
-        if target.is_file() and target.stat().st_size == payload['size'] and sha(target) == payload['sha256']:
-            complete += payload['size']
+        # Microsoft's catalog sizes are estimates and differ even for bytes
+        # matching its exact SHA256 (e.g. a 1071-byte entry serves 8703 bytes).
+        # Keep strict hashes, per-file bounds and a cumulative real-byte bound;
+        # never infer integrity from the estimate or HTTP Content-Length alone.
+        ceiling = min(MAX_DOWNLOAD, max(payload['size'] * 2, payload['size'] + 1024**2))
+        maximum = min(MAX_DOWNLOAD - complete, ceiling)
+        if target.is_file() and target.stat().st_size <= ceiling and sha(target) == payload['sha256']:
+            if target.stat().st_size > maximum:
+                raise ValueError('Total Microsoft package download exceeds its byte limit')
+            complete += target.stat().st_size
             write_progress(cache, 'downloading', prefix + ': using verified download', complete, total)
             continue
         target.unlink(missing_ok=True)
@@ -376,13 +389,14 @@ def run_worker(cache, stage, output, accepted_token, extractor_path=None):
                     if count - last[0] >= 16 * 1024**2:
                         last[0] = count
                         write_progress(cache, 'downloading', prefix + ': downloading', complete + count, total)
-                fetch(payload['url'], target, payload['size'], payload['sha256'], payload['size'], report=report)
+                fetch(payload['url'], target, maximum, expected_sha=payload['sha256'], report=report)
                 break
             except (OSError, ValueError) as error:
                 if attempt == 2:
                     raise
                 print(prefix + ': retrying after ' + str(error), flush=True)
-        complete += payload['size']
+        complete += target.stat().st_size
+    total = complete
     write_progress(cache, 'extracting', 'Extracting verified Microsoft packages', total, total)
     root = stage / 'microsoft-v142'
     downloader.extractPackages(selected, str(cache / 'downloads'), str(root))

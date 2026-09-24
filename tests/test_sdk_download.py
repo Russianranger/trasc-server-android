@@ -34,10 +34,14 @@ class DownloadTests(unittest.TestCase):
         self.engine = Engine(self.root / 'work')
         self.cache = sdk.cache_path(self.engine)
         self.cache.mkdir(parents=True)
+        self.addCleanup(patch.stopall)
+        patch('client_toolchain.MANIFEST_SHA256', hashlib.sha256(b'{}').hexdigest()).start()
+        patch('client_toolchain.MANIFEST_BYTES', 2).start()
 
     def plan(self):
         (self.cache / 'manifest.json').write_text('{}')
         plan = {'manifest_sha256': sdk.sha(self.cache / 'manifest.json'),
+                'manifest_version': sdk.MANIFEST_VERSION,
                 'license_url': 'https://go.microsoft.com/fwlink/?linkid=2086102',
                 'downloader_sha256': sdk.packer().DOWNLOADER_SHA256,
                 'options': sdk.OPTIONS, 'prepared_at': sdk.time.time(),
@@ -68,6 +72,16 @@ class DownloadTests(unittest.TestCase):
             with self.subTest(mutation=mutation), self.assertRaisesRegex(ValueError, 'expired or changed'):
                 sdk.load_plan(self.cache, plan['token'])
 
+    def test_self_consistent_changed_catalog_cannot_replace_the_pinned_catalog(self):
+        plan = self.plan()
+        # Same byte count as '{}' so only the pinned digest rejects it.
+        (self.cache / 'manifest.json').write_text('[]')
+        plan['manifest_sha256'] = sdk.sha(self.cache / 'manifest.json')
+        plan['token'] = sdk.plan_token(plan)
+        sdk.atomic_json(self.cache / 'plan.json', plan)
+        with self.assertRaisesRegex(ValueError, 'expired or changed'):
+            sdk.load_plan(self.cache, plan['token'])
+
     def test_low_storage_never_starts_download_or_replaces_compiler(self):
         plan = self.plan()
         with patch('client_toolchain.shutil.disk_usage', return_value=SimpleNamespace(free=sdk.MIN_FREE - 1)), patch.object(self.engine, 'run') as run:
@@ -97,6 +111,40 @@ class DownloadTests(unittest.TestCase):
         with self.assertRaisesRegex(ValueError, 'size'):
             self.fetch_fixture(b'x', limit=10, headers={'Content-Length': '1000'})
         self.assertFalse((self.root / 'payload').exists())
+
+    def test_hash_verified_payload_accepts_actual_length_despite_catalog_estimate(self):
+        data = b'signed Microsoft payload fixture'
+        digest = hashlib.sha256(data).hexdigest()
+        # For payloads, the caller uses a bounded ceiling rather than requiring
+        # equality with Microsoft's stale estimate; the SHA remains exact.
+        self.assertEqual(self.fetch_fixture(data, digest, limit=128,
+                         headers={'Content-Length': str(len(data))}), len(data))
+        with self.assertRaisesRegex(ValueError, 'checksum'):
+            self.fetch_fixture(b'x' * len(data), digest, limit=128,
+                               headers={'Content-Length': str(len(data))})
+
+    def test_cached_actual_bytes_count_toward_the_total_download_bound(self):
+        plan = self.plan()
+        payloads = []
+        for name in ('one', 'two'):
+            data = name.encode() * 2  # Six bytes each; catalog estimate is one.
+            payload = {'path': 'Fixture/' + name, 'size': 1,
+                       'url': 'https://download.microsoft.com/' + name,
+                       'sha256': hashlib.sha256(data).hexdigest()}
+            payloads.append(payload)
+            file = self.cache / 'downloads' / payload['path']
+            file.parent.mkdir(parents=True, exist_ok=True)
+            file.write_bytes(data)
+        selected = (SimpleNamespace(accept_license=True), [], payloads, plan['license_url'])
+        with patch('client_toolchain.checked_downloader'), \
+             patch('client_toolchain.selection', return_value=selected), \
+             patch('client_toolchain.shutil.which', return_value='/fixture/msiextract'), \
+             patch('client_toolchain.MAX_DOWNLOAD', 10), \
+             patch('client_toolchain.fetch') as fetch:
+            with self.assertRaisesRegex(ValueError, 'Total Microsoft package download'):
+                sdk.run_worker(self.cache, self.root / 'stage', self.root / 'output.zip', plan['token'])
+            fetch.assert_not_called()
+        self.assertFalse((self.root / 'output.zip').exists())
 
     def test_only_https_microsoft_package_urls_and_redirects_are_allowed(self):
         for url in ('http://download.microsoft.com/file', 'https://microsoft.com.attacker.test/file',
@@ -136,7 +184,9 @@ class DownloadTests(unittest.TestCase):
         plan = self.plan()
         downloaded = b'fixture'
         payload = {'path': 'Microsoft.Fixture-1/package.vsix',
-                   'url': 'https://download.microsoft.com/package.vsix', 'size': len(downloaded),
+                   # Authentic Microsoft sizes can differ from SHA-verified
+                   # bytes: exercise cache reuse despite the stale estimate.
+                   'url': 'https://download.microsoft.com/package.vsix', 'size': 1,
                    'sha256': hashlib.sha256(downloaded).hexdigest()}
         def select(downloader, manifest, accepted=False):
             return SimpleNamespace(accept_license=accepted), [], [payload], plan['license_url']
@@ -190,6 +240,15 @@ class DownloadTests(unittest.TestCase):
         install = next(cmd for cmd in commands if 'install' in cmd)
         self.assertIn('--download-only', install)
         self.assertEqual(install[-1], 'msitools')
+
+
+class CatalogPinTests(unittest.TestCase):
+    def test_catalog_pin_is_the_independently_verified_official_release(self):
+        self.assertEqual(sdk.MANIFEST_VERSION, '16.11.60+37627.13')
+        self.assertEqual(sdk.MANIFEST_BYTES, 11154648)
+        self.assertEqual(sdk.MANIFEST_SHA256, '406969c30f4eb8bf0075a0850e339340ac83942705b76269156bb5b70f01b631')
+        self.assertEqual(sdk.microsoft_url(sdk.MANIFEST_URL), sdk.MANIFEST_URL)
+        self.assertIn('/e2324e87-3765-4b14-85e5-1234d99f6254/', sdk.MANIFEST_URL)
 
 
 if __name__ == '__main__':
