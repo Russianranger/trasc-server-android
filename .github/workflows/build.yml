@@ -51,6 +51,13 @@ jobs:
           java-version: '17'
       - name: Back up and restore the full published Debian runtime with native archive code
         run: bash scripts/check-management.sh database-test/runtime.tar.gz
+      - name: Verify toolchain preparation in the published ARM64 runtime
+        run: |
+          docker run --rm \
+            -v "$PWD/backend:/opt/trasc:ro" \
+            -v "$PWD/tools:/opt/tools:ro" \
+            -v "$PWD/tests:/tests:ro" \
+            trasc-database-test:1 python3 /tests/integration_toolchain_prepare.py
       - name: Reproduce Thor hostname failure and import the full seed offline
         run: |
           docker run --rm --network none --hostname localhost \
@@ -149,6 +156,7 @@ jobs:
           node tests/ui_profiles.cjs
           node tests/ui_session.cjs
           node tests/ui_management.cjs
+          node tests/ui_sdk_download.cjs
           node tests/ui_spire.cjs
           node tests/ui_boats.cjs
           node tests/ui_ferry.cjs

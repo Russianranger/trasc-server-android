@@ -31,8 +31,18 @@ def sdk_layout(root):
     return required
 
 
+def recover_sdk(engine):
+    """Restore the installed compiler if an interrupted swap moved it aside."""
+    current = engine.work / 'client/toolchain'
+    previous = engine.work / 'client/toolchain-previous'
+    if not current.exists() and previous.is_dir():
+        sdk_layout(previous)
+        previous.rename(current)
+
+
 def import_sdk(engine,args):
     from engine import safe_path, extract_archive, atomic_json
+    recover_sdk(engine)
     source=safe_path(engine.work/'incoming',args['file'],True)
     stage=engine.work/'client'/('toolchain-import-'+secrets.token_hex(4)); stage.mkdir()
     try:
@@ -48,7 +58,10 @@ def import_sdk(engine,args):
         engine.check_cancel()
         if previous.exists(): shutil.rmtree(previous)
         if current.exists(): current.rename(previous)
-        stage.rename(current)
+        try: stage.rename(current)
+        except BaseException:
+            recover_sdk(engine)
+            raise
         return {'message':'Microsoft x86 SDK imported. You can now build dinput8 from the imported source.'}
     finally:
         if stage.exists(): shutil.rmtree(stage)

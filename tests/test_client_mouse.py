@@ -28,7 +28,8 @@ class CameraMouseTests(unittest.TestCase):
         missing = set(client_mouse.HEADERS) - deployed
         self.assertFalse(missing, 'DLL adapter headers missing from /opt/trasc: ' + ', '.join(sorted(missing)))
         for name in deployed:
-            self.assertTrue((repo / 'backend' / name).is_file(), 'Missing packaged backend asset: ' + name)
+            folder = 'tools' if name == 'pack-client-sdk.py' else 'backend'
+            self.assertTrue((repo / folder / name).is_file(), 'Missing packaged backend asset: ' + name)
 
     def test_launch_requires_opt_in_matching_executable_and_new_native_dll(self):
         with tempfile.TemporaryDirectory() as temporary:

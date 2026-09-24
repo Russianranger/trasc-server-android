@@ -7,6 +7,7 @@ import struct
 import sys
 import tempfile
 import unittest
+from unittest.mock import patch
 
 ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT / 'backend'))
@@ -83,6 +84,27 @@ class PortableSdkTests(unittest.TestCase):
         with self.assertRaisesRegex(ValueError, 'Linked CRT'):
             packer.package(self.vs, self.output)
         self.assertFalse(self.output.exists())
+
+    def test_failed_activation_and_interrupted_swap_preserve_compiler(self):
+        packer.package(self.vs, self.output)
+        engine = Engine(self.root / 'work')
+        shutil.copyfile(self.output, engine.work / 'incoming/toolchain.zip')
+        client_dll.import_sdk(engine, {'file': 'toolchain.zip'})
+        current = engine.work / 'client/toolchain'
+        (current / 'old-compiler-marker').write_text('keep installed compiler')
+        rename = Path.rename
+        def failed_activation(source, destination):
+            if source.name.startswith('toolchain-import-'):
+                raise OSError('simulated activation failure')
+            return rename(source, destination)
+        with patch.object(Path, 'rename', failed_activation):
+            with self.assertRaisesRegex(OSError, 'activation failure'):
+                client_dll.import_sdk(engine, {'file': 'toolchain.zip'})
+        self.assertEqual((current / 'old-compiler-marker').read_text(), 'keep installed compiler')
+        current.rename(engine.work / 'client/toolchain-previous')
+        restarted = Engine(engine.work)
+        self.assertTrue(client_dll.compiler_status(restarted)['compiler'])
+        self.assertEqual((current / 'old-compiler-marker').read_text(), 'keep installed compiler')
 
 
 if __name__ == '__main__':

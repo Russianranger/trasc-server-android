@@ -11,14 +11,14 @@ function tab(name){if(currentTab==='client'&&name!=='client')api('controller_cap
 window.appBack=()=>tab('server');
 document.querySelectorAll('[data-tab]').forEach(b=>b.addEventListener('click',()=>tab(b.dataset.tab)));
 function action(id,fn){$(id).addEventListener('click',async()=>{const b=$(id);b.disabled=true;busy++;renderSessionControls();try{await fn();}catch(e){notice(e.message,true);}finally{busy--;b.disabled=false;renderSessionControls();poll().catch(()=>{});}});}
-const operationLabels={ferry_service_status:'Checking Qeynos–Erudin route',ferry_service_preview:'Previewing route changes',ferry_service_apply:'Saving route changes',boat_trial_status:'Checking ferry',boat_trial_preview:'Previewing ferry changes',boat_trial_apply:'Saving ferry changes',start:'Starting server',stop:'Stopping server',spire_catalog:'Loading Spire',spire_search:'Searching content',spire_detail:'Loading record',spire_preview:'Validating changes',spire_apply:'Saving content',spire_history:'Loading change history'};
+const operationLabels={client_dll_download:'Preparing Microsoft toolchain',ferry_service_status:'Checking Qeynos–Erudin route',ferry_service_preview:'Previewing route changes',ferry_service_apply:'Saving route changes',boat_trial_status:'Checking ferry',boat_trial_preview:'Previewing ferry changes',boat_trial_apply:'Saving ferry changes',start:'Starting server',stop:'Stopping server',spire_catalog:'Loading Spire',spire_search:'Searching content',spire_detail:'Loading record',spire_preview:'Validating changes',spire_apply:'Saving content',spire_history:'Loading change history'};
 function operationLabel(operation){return operationLabels[operation]||operation.replaceAll('_',' ');}
 // Keep scrolled/focused controls clear of the sticky runtime panel in either orientation.
 const runtimeToolbar=document.querySelector('.runtime-toolbar');
 new ResizeObserver(()=>{document.documentElement.style.scrollPaddingTop=(runtimeToolbar.getBoundingClientRect().height+20)+'px';}).observe(runtimeToolbar);
 async function job(operation,args={}){
  const j=await api(operation,args);notice(operationLabels[operation]?operationLabel(operation)+'…':operationLabel(operation)+' started.');
- for(;;){await new Promise(r=>setTimeout(r,1400));const state=await api('state');render(state);const item=state.jobs.find(x=>x.id===j.id);if(!item)throw new Error('Operation status was lost. Check logs.');if(item.status==='error')throw new Error(item.error);if(item.status==='done'){const result=item.result||{};notice(operation==='start'?'Server started. Verify zone readiness in server logs.':result.message||'Operation completed.');return result;}}
+ for(;;){await new Promise(r=>setTimeout(r,1400));const state=await api('state');render(state);const item=state.jobs.find(x=>x.id===j.id);if(!item)throw new Error('Operation status was lost. Check logs.');if(['error','cancelled'].includes(item.status))throw new Error(item.error||'Operation cancelled.');if(item.status==='done'){const result=item.result||{};notice(operation==='start'?'Server started. Verify zone readiness in server logs.':result.message||'Operation completed.');return result;}}
 }
 const tabStories={
  setup:['Build your world.','Start with the runtime, then bring in your server, maps and database.'],
@@ -61,6 +61,7 @@ function renderSessionControls(){
  else if(!s){statusBadge('badge','Server · Status unavailable','unknown');}
  else {statusBadge('badge',s.running?'Server · Running':'Server · Stopped',s.running?'running':'stopped');}
  if(typeof syncProfileControls==='function')syncProfileControls();
+ if(typeof dllControls==='function')dllControls();
 }
 function render(s){lastState=s;renderSessionControls();renderOverview();if(typeof renderBoatTrial==='function')renderBoatTrial();if(typeof renderFerryService==='function')renderFerryService();$('free').textContent=bytes(s.free_bytes);
  $('nektulos-status').textContent=s.nektulos?.applied?'Legacy pair applied · original backup: backups/nektulos/'+s.nektulos.backup:s.nektulos?.legacy_ready?'Both legacy files are available.':'Import both legacy Nektulos files before applying the fix.';if(typeof renderClientStatus==='function')renderClientStatus(s.client);ready('source-ready',!!s.source);ready('maps-ready',s.maps_ready);ready('database-ready',s.database_imported);
@@ -70,7 +71,8 @@ function render(s){lastState=s;renderSessionControls();renderOverview();if(typeo
  $('endpoint').textContent=$('login-address').textContent=s.settings.ip+':'+s.settings.login_port;
  if(!initialSettings){$('server-ip').value=s.settings.ip;$('source-url').value=s.settings.repo;$('source-ref').value=s.settings.ref;$('workers').value=s.settings.workers;$('build-jobs').value=s.settings.jobs;initialSettings=true;}
  $('processes').replaceChildren();for(const [name,p]of Object.entries(s.processes)){const row=document.createElement('div');row.className='process';const title=document.createElement('strong');title.textContent=name;const state=document.createElement('span');state.textContent=p.running?'Running · '+p.pid:'Stopped · '+p.exit;if(!p.running)state.className='failed';row.append(title,state);$('processes').append(row);}if(!Object.keys(s.processes).length)$('processes').textContent='No server processes running.';
- const running=s.jobs.find(j=>j.status==='running'||j.status==='queued');if(running){$('activity').hidden=false;$('activity-title').textContent=operationLabel(running.operation);$('activity-detail').textContent='In progress · open Logs for command output';$('cancel').hidden=false;}else if(!busy){$('activity').hidden=true;}
+ const running=s.jobs.find(j=>j.status==='running'||j.status==='queued');if(running){$('activity').hidden=false;$('activity-title').textContent=operationLabel(running.operation);$('activity-detail').textContent=running.progress?.message||'In progress · open Logs for command output';$('cancel').hidden=false;}else if(!busy){$('activity').hidden=true;}
+ if(typeof renderSdkDownload==='function')renderSdkDownload(s);
 }
 async function poll(){
  if(polling)return;polling=true;

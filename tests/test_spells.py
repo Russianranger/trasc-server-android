@@ -38,7 +38,8 @@ class SpellCompatibilityTests(unittest.TestCase):
             with tempfile.TemporaryDirectory() as temp:
                 stage = Path(temp)
                 for name in names:
-                    if name.endswith('.py'): shutil.copy2(repo/'backend'/name, stage/name)
+                    folder = 'tools' if name == 'pack-client-sdk.py' else 'backend'
+                    if name.endswith('.py'): shutil.copy2(repo/folder/name, stage/name)
                 script = '''import sys, pathlib, tempfile
 from unittest.mock import patch
 sys.path.insert(0, sys.argv[1])

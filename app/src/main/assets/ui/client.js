@@ -116,8 +116,9 @@ async function clientRuntimeState(){
   }
   for(const [id,key] of [['client-load-pauses','reduce_load_pauses'],['client-fast-spells','fast_spell_parse'],['client-mouse-warp','mouse_warp'],['client-dxvk-hud','dxvk_hud'],['client-sound-diagnostics','sound_diagnostics'],['client-audio','audio'],['client-fullscreen','fullscreen'],['client-native-dll','native_dinput8'],['client-native-models','native_d3dx'],['client-diagnostics','diagnostic_logging']])if(typeof saved[key]==='boolean')$(id).checked=saved[key];
  }
- for(const id of ['client-desktop','client-launch','client-prefix-repair','client-runtime-online','client-runtime-offline','client-prepare','client-import','client-directx-online','client-directx-offline'])$(id).disabled=!!(s.alive||s.busy);
- clientFileBusy=!!(s.alive||s.busy);spellTestControls();
+ const sdkBusy=typeof sdkDownloadActive==='function'&&sdkDownloadActive();
+ for(const id of ['client-desktop','client-launch','client-prefix-repair','client-runtime-online','client-runtime-offline','client-prepare','client-import','client-directx-online','client-directx-offline'])$(id).disabled=!!(s.alive||s.busy||sdkBusy);
+ clientFileBusy=!!(s.alive||s.busy||sdkBusy);spellTestControls();
  if(s.launch?.compiler)$('dll-state').textContent=s.launch.message||s.launch.phase;
  $('client-view').disabled=!(s.alive&&s.display_ready);
  $('client-runtime-status').textContent=(s.installed?'Installed · ':'Not installed · ')+s.status;

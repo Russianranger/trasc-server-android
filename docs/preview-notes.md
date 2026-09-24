@@ -1,3 +1,32 @@
+# 0.6.1 — Download the Microsoft toolchain in the app
+
+Client → Build dinput8.dll on this device now offers **Download Microsoft toolchain**.
+Review the Microsoft license and explicitly accept before downloads start. The app
+prepares and imports the matched v142/14.29 compiler and Windows SDK, with progress,
+cancellation, verified-download reuse, and preservation of the existing compiler
+on failure. A Windows computer, Termux and manual ZIP preparation are no longer
+required. Offline toolchain ZIP import remains available.
+
+Install this APK over the existing app after stopping the client and runtimes.
+Keep the same package, signing key, worlds and client settings. Open the server
+runtime, keep the server/game stopped, and allow at least 8 GiB of free internal
+storage before downloading. The separate client runtime is needed for compilation.
+Compile and Deploy staged DLL remain separate steps. No automatic server or DLL
+rebuild is performed. Existing working compilers can simply be retained.
+
+The extraction helper is downloaded and unpacked privately from authenticated Debian
+packages; no Linux package installation or upgrade is performed. Microsoft SDK
+payloads are downloaded directly to the device and are not redistributed with TRASC.
+See [toolchain preparation and manual alternatives](toolchain-without-windows.md).
+
+Beta 0.6's runtime hard-link repair remains included. The supplied Fold6/Android 16
+logs now confirm runtime startup, source/database/maps import, server compilation,
+deployment and three zone workers. That bundle did not yet test the client runtime
+or in-zone maps. The new toolchain button still needs physical device acceptance.
+The reported maps input/archive-validation failures remain a separate follow-up.
+
+---
+
 # Beta 0.6 — runtime installation repair
 
 Server and client runtime installation now expands hard links into regular file copies, preserving executable bits and guest symlinks. This addresses the confirmed `link failed: EACCES (Permission denied)` extraction failure reported on Fold6/Android 16. Both online and offline installers are covered. Runtime archive contents/packages are unchanged.
