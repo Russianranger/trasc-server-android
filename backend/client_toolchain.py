@@ -316,20 +316,22 @@ def download(engine, args):
             shutil.rmtree(abandoned)
     stage = cache / ('prepare-' + secrets.token_hex(6))
     stage.mkdir()
+    prepared_archive = stage / 'toolchain.zip'
     archive = engine.work / 'incoming' / ('microsoft-sdk-' + secrets.token_hex(6) + '.zip')
     try:
         write_progress(cache, 'dependencies', 'Preparing the Microsoft package extractor', total_bytes=plan['download_bytes'])
         engine.log('Microsoft license explicitly accepted for toolchain plan ' + plan['token'] + ': ' + plan['license_url'])
         wrappers = prepare_msiextract(engine, stage)
         command = [sys.executable, '-u', Path(__file__).resolve(), '--download-worker',
-                   '--cache', cache, '--stage', stage, '--output', archive,
+                   '--cache', cache, '--stage', stage, '--output', prepared_archive,
                    '--accepted-token', args['token']]
         if wrappers:
             command += ['--extractor-path', wrappers]
         engine.run(command, timeout=7200)
         engine.check_cancel()
-        if not archive.is_file():
+        if not prepared_archive.is_file():
             raise ValueError('Toolchain preparation completed without a validated SDK ZIP')
+        prepared_archive.rename(archive)
         write_progress(cache, 'importing', 'Importing the verified Microsoft toolchain', plan['download_bytes'], plan['download_bytes'])
         result = client_dll.import_sdk(engine, {'file': archive.name})
         write_progress(cache, 'complete', 'Microsoft toolchain downloaded and imported', plan['download_bytes'], plan['download_bytes'])
