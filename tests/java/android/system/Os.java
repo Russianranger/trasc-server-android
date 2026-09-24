@@ -3,7 +3,7 @@ import java.io.IOException;
 import java.nio.file.*;
 import java.nio.file.attribute.PosixFilePermission;
 import java.util.EnumSet;
-/** Host adapter so the APK's actual tar parser can be exercised on Linux. */
+/** Host adapter with Android's app hard-link restriction, not the host's permissive link(2). */
 public final class Os {
     public static void chmod(String path,int mode)throws IOException {
         EnumSet<PosixFilePermission> permissions=EnumSet.noneOf(PosixFilePermission.class);
@@ -12,5 +12,5 @@ public final class Os {
         Files.setPosixFilePermissions(Path.of(path),permissions);
     }
     public static void symlink(String target,String link)throws IOException {Files.createSymbolicLink(Path.of(link),Path.of(target));}
-    public static void link(String source,String target)throws IOException {Files.createLink(Path.of(target),Path.of(source));}
+    public static void link(String source,String target)throws IOException {throw new IOException("link failed: EACCES (Permission denied)");}
 }

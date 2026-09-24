@@ -223,3 +223,7 @@ jobs:
           gh release upload preview dist/dist/launcher-sources.tar.gz --clobber
           gh release upload preview dist/preview-build.json --clobber
           gh release edit preview --notes-file docs/preview-notes.md
+      - name: Publish the authorized Beta 0.6 release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: bash scripts/publish-beta-06.sh

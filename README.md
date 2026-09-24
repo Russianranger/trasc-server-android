@@ -31,6 +31,8 @@ A standalone Android control app for [Russianranger/Triptych-Triumvirate](https:
 
 ## Downloads and first setup
 
+**Beta 0.6 — runtime installation repair:** expands hard links into regular files when installing server/client runtimes, avoiding the `link failed: EACCES` failure reported on Fold6/Android 16. Existing working installations need only the APK update. [Release and testing instructions](docs/beta-06-release.md).
+
 **App 0.5.8 — independent world profiles:** switch between the existing TRASC Custom world and a separate Traditional EQEmu preparation workspace. All ten tabs cross over; Traditional has ten bundled 16-bit adventure scenes, quests/plugins/Lua/assets imports, split PEQ seed bundles and a clean-client baseline. Traditional Android compilation/deployment is the next milestone. [Profile guide and component checklist](docs/traditional-profiles.md).
 
 **App 0.5.7 — Fixes and shared session controls:** the runtime panel includes server Start/Stop/Restart and separate server/client activity indicators on every tab. **Fixes** contains ferry management, retired-trial cleanup, Nektulos maps, spell compatibility and Wine prefix recovery. Each tab has a distinct offline fantasy illustration. Existing server binaries, client DLL and accepted ferry installation remain compatible. [Update and testing instructions](docs/preview-notes.md).

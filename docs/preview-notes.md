@@ -1,3 +1,13 @@
+# Beta 0.6 — runtime installation repair
+
+Server and client runtime installation now expands hard links into regular file copies, preserving executable bits and guest symlinks. This addresses the confirmed `link failed: EACCES (Permission denied)` extraction failure reported on Fold6/Android 16. Both online and offline installers are covered. Runtime archive contents/packages are unchanged.
+
+Install over the existing app without uninstalling or clearing storage. On the affected fresh setup, leave TRASC Custom selected and try Setup → Download runtime once; confirm Runtime ready. Install the separate Client runtime if needed. If either fails, export Logs and report the stage. Existing working worlds need no runtime/server/DLL reinstallation for this repair. Device acceptance is still pending.
+
+[Beta 0.6 release notes, offline links and complete test instructions](beta-06-release.md). Traditional compilation, era presets, shelved routes and backup-provider resilience retain their previous scope.
+
+---
+
 # 0.5.8 — Custom and Traditional EQEmu profiles
 
 Choose **TRASC Custom** or **Traditional EQEmu** at the top, then **Switch world**. Stop the client and server runtime and finish file transfers first. The selected world retains its own source, database, maps, quests, client, controller settings, logs and backups. The existing Custom installation stays in place.
