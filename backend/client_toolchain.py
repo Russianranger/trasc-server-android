@@ -311,14 +311,14 @@ def download(engine, args):
         plan = load_plan(cache, args.get('token'))
     except (OSError, KeyError, TypeError) as error:
         raise ValueError('Prepare the toolchain download and review its Microsoft license first') from error
-    if shutil.disk_usage(engine.work).free < MIN_FREE:
-        raise ValueError('At least 8 GiB of free internal storage is required for toolchain preparation')
     engine.check_cancel()
     # A process death can leave only disposable preparation trees, never an
     # installed compiler. Clear those before retrying to reclaim their space.
     for abandoned in cache.glob('prepare-*'):
         if abandoned.is_dir() and not abandoned.is_symlink():
             shutil.rmtree(abandoned)
+    if shutil.disk_usage(engine.work).free < MIN_FREE:
+        raise ValueError('At least 8 GiB of free internal storage is required for toolchain preparation')
     stage = cache / ('prepare-' + secrets.token_hex(6))
     stage.mkdir()
     prepared_archive = stage / 'toolchain.zip'

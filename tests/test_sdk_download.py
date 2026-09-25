@@ -35,6 +35,8 @@ class DownloadTests(unittest.TestCase):
         self.cache = sdk.cache_path(self.engine)
         self.cache.mkdir(parents=True)
         self.addCleanup(patch.stopall)
+        patch('client_toolchain.shutil.disk_usage', return_value=SimpleNamespace(
+            total=32 * 1024**3, used=8 * 1024**3, free=24 * 1024**3)).start()
         patch('client_toolchain.MANIFEST_SHA256', hashlib.sha256(b'{}').hexdigest()).start()
         patch('client_toolchain.MANIFEST_BYTES', 2).start()
 
@@ -88,6 +90,24 @@ class DownloadTests(unittest.TestCase):
             with self.assertRaisesRegex(ValueError, '8 GiB'):
                 sdk.download(self.engine, {'accepted': True, 'token': plan['token']})
             run.assert_not_called()
+
+    def test_retry_reclaims_interrupted_staging_before_checking_free_storage(self):
+        plan = self.plan()
+        abandoned = self.cache / 'prepare-interrupted'
+        abandoned.mkdir()
+        (abandoned / 'partially-extracted-sdk').write_bytes(b'abandoned staging')
+        cached = self.cache / 'downloads/verified.vsix'
+        cached.parent.mkdir(); cached.write_bytes(b'keep verified downloads')
+        def space(path):
+            return SimpleNamespace(free=sdk.MIN_FREE - 1 if abandoned.exists() else sdk.MIN_FREE + 1)
+        with patch('client_toolchain.shutil.disk_usage', side_effect=space), \
+             patch('client_toolchain.prepare_msiextract', return_value=None), \
+             patch.object(self.engine, 'run', side_effect=ValueError('test reached download')) as run:
+            with self.assertRaisesRegex(ValueError, 'test reached download'):
+                sdk.download(self.engine, {'accepted': True, 'token': plan['token']})
+            run.assert_called_once()
+        self.assertFalse(abandoned.exists())
+        self.assertEqual(cached.read_bytes(), b'keep verified downloads')
 
     def fetch_fixture(self, data, expected=None, size=None, limit=100, headers=None):
         opener = SimpleNamespace(open=lambda *args, **kwargs: Response(data, headers))
