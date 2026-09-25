@@ -1,3 +1,41 @@
+# Published named release: Beta 0.6.2 (2026-09-25 UTC)
+
+The user explicitly requested publishing the verified preview as a named release.
+**[Beta version 0.6.2](https://github.com/Russianranger/trasc-server-android/releases/tag/v0.6.2)
+is published and marked Latest**, with regular/non-draft release metadata.
+[Download APK](https://github.com/Russianranger/trasc-server-android/releases/download/v0.6.2/trasc-server-android-beta-0.6.2.apk).
+Release ID **396552887**; tag `v0.6.2` points to the actual tested app commit
+`2cd9d50c2de3b6c2607187702452fb87d0b954bd`. App version remains **0.6.2/code51**.
+
+This is the exact signed preview APK, with no app rebuild or application changes.
+The scoped [promotion job](https://github.com/Russianranger/trasc-server-android/actions/runs/36130550468)
+verified the original nine successful main jobs, artifact provenance/ZIP digest,
+APK/source hashes and draft upload digests before publishing. Its first attempt
+stopped after uploading to the draft because GitHub's release-by-tag endpoint does
+not return drafts; lookup now uses the authenticated release list and release ID.
+The retry resumed the same verified draft. Existing Beta 0.6 and preview assets
+were retained. An independent subagent reviewed the publisher and correction.
+
+The named public APK was downloaded and verified byte-for-byte against the prior
+preview: **15,204,739 bytes**, SHA256
+`d9a4dce3e6657c8fdb9713cab1aeebf5cf65b8d87a678bad723353045652483b`.
+Signature/package/code/ABI and all 74 source assets were checked again.
+The source archive digest remains
+`228c60708d8edae71be5ef0b575f5eca3b0ea926e85507eb93cb10f6aa46e3b4`.
+The named `beta-build.json` is **602 bytes**, SHA256
+`1e17ba64d2048a418966b6c6a803b0c69b2fbd64fa4f340838c004a9f9273e0d`,
+and identifies original build **36119436611** / artifact **10857210885**.
+Evidence is under ignored `runtime-work/062/named-release`.
+
+Install over the existing app after stopping the client/runtime; do not uninstall
+or clear storage. No runtime/client reimport or server/DLL rebuild is needed.
+The Fold6 physical-device check and deferred work below are unchanged.
+[Release notes and testing steps](beta-062-release.md). Publication tooling and this
+record are integrated without rebuilding app code; the `[skip ci]` record commit
+does not change the release tag or previously verified APK.
+
+---
+
 # Released: 0.6.2 client display authorization repair (2026-09-25 UTC)
 
 **Repair, signed build and publication are complete; physical Fold6 acceptance is next.** [PR #13](https://github.com/Russianranger/trasc-server-android/pull/13) merged at `2cd9d50c2de3b6c2607187702452fb87d0b954bd`. [Download preview 0.6.2](https://github.com/Russianranger/trasc-server-android/releases/download/preview/trasc-server-android-preview.apk?build=2cd9d50c2de3). Android version is **0.6.2/code51**, retaining package `io.github.russianranger.trasc.preview` and the existing signing certificate. Install over the existing app without uninstalling or clearing storage. Named Beta 0.6 remains unchanged; the client display repair is in this newer preview.
