@@ -10,6 +10,41 @@ concurrency:
   group: android-${{ github.ref }}
   cancel-in-progress: true
 jobs:
+  display-auth:
+    runs-on: ubuntu-24.04-arm
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - name: Load the verified published client runtime
+        run: |
+          mkdir -p runtime-work/xauthority-test
+          curl --fail --location --retry 3 -o runtime-work/xauthority-test/manifest.json https://github.com/Russianranger/trasc-server-android/releases/download/client-runtime-v1/client-runtime-manifest.json
+          curl --fail --location --retry 3 -o runtime-work/xauthority-test/runtime.tar.gz https://github.com/Russianranger/trasc-server-android/releases/download/client-runtime-v1/client-runtime-arm64.tar.gz
+          python3 - <<'PY'
+          import hashlib,json,pathlib
+          p=pathlib.Path('runtime-work/xauthority-test')
+          m=json.loads((p/'manifest.json').read_text())
+          assert m['format']==1 and m['architecture']=='arm64'
+          assert hashlib.file_digest((p/'runtime.tar.gz').open('rb'),'sha256').hexdigest()==m['sha256']
+          PY
+          docker import runtime-work/xauthority-test/runtime.tar.gz trasc-display-auth-test:1
+      - name: Verify authenticated displays with hard links denied
+        run: |
+          cc -shared -fPIC -Wall -Wextra -Werror tests/xauth_deny_links.c -o runtime-work/xauthority-test/xauth-deny-links.so
+          docker run --rm --network none \
+            -e PYTHONPATH=/opt/trasc-client \
+            -v "$PWD/backend:/opt/trasc-client:ro" \
+            -v "$PWD/tests:/tests:ro" \
+            -v "$PWD/runtime-work/xauthority-test:/evidence" \
+            trasc-display-auth-test:1 python3 /tests/integration_xauthority.py \
+              --deny-links /evidence/xauth-deny-links.so --output /evidence/result.json
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: client-display-auth-verification
+          path: |
+            runtime-work/xauthority-test/result.json
+            runtime-work/xauthority-test/manifest.json
   ferry-server:
     uses: ./.github/workflows/ferry-server.yml
   client-dll:
@@ -200,7 +235,7 @@ jobs:
           path: app/build/reports/
   preview:
     if: github.ref == 'refs/heads/main' && github.event_name != 'pull_request'
-    needs: [apk, database, client-runtime, client-dll, ferry-server]
+    needs: [apk, database, client-runtime, client-dll, ferry-server, display-auth]
     runs-on: ubuntu-latest
     permissions:
       contents: write

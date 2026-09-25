@@ -1,3 +1,43 @@
+# Active repair: 0.6.2 client display authorization (2026-09-25 UTC)
+
+The Fold6 user supplied `Screenshot_20260925_034003.jpeg`: server running, client
+stopped, and `xauth -f /session/Xauthority add :7 ...` exited 1. The screenshot
+does not contain xauth stderr/errno or the APK version; it identifies the startup
+stage but does not independently prove EACCES. No new diagnostic log bundle was
+provided. Raw screenshot/cookie and user files are not committed.
+
+Base main `0c53e0d6573b97b1234209a8b7a1bceec2acf5e0`, branch
+`codex/fold6-display-auth`, version **0.6.2/code51**. The focused repair writes a
+fresh mode-0600 FamilyLocal/MIT-MAGIC-COOKIE-1 Xauthority file atomically for the
+game/desktop display :7 and separate DLL compiler display :8. Both native asset
+copy lists include the helper. It removes xauth lock use and cookie-bearing
+command exceptions, while retaining X11 `-auth`, `XAUTHORITY`, disabled TCP and
+mode-0600 RFB sockets. Both Xtigervnc launches use `-nolock` to avoid Xorg's second
+hard-link PID-lock operation. This is scoped to the app's existing serialized,
+private, freshly recreated session/tmp; existing PRoot `-0` satisfies Xorg's root
+requirement. Global PRoot `--link2symlink` is not enabled.
+
+Upstream review confirmed that Bookworm xauth 1.1.2 `-i` bypasses its own locking,
+but Xtigervnc can fail next when linking its PID lock. A test-only native shim
+forcing link/linkat to EACCES reproduced both original failures. The repaired
+writer and display avoid these links. 193 Python tests and the separate eight
+ferry protocol tests pass locally. Full socket verification cannot run in this
+development sandbox because even Python socket(AF_UNIX) is denied; a new required
+ARM64 CI job imports the SHA-verified published client runtime and tests both
+displays with the denial shim, including correct-cookie acceptance, missing/wrong
+cookie refusal, normal libX11 lookup, private modes and absent TCP listeners.
+Signed publication remains gated on that test and all existing build/runtime jobs.
+
+Implementation/review used subagents. No server source, DLL, world/client data,
+graphics settings, Traditional/era, ferry or map-import behavior is changed.
+Next device step after publication: install over the app after stopping runtimes,
+restart the server and try Start ROF2 with current settings. No runtime/client
+reimport or server/DLL rebuild is required. Export Logs immediately if startup
+still fails. Append actual CI, signed artifact and public-download identities
+when verified; this entry alone is not a published-build claim.
+
+---
+
 # Released: 0.6.1 in-app Microsoft toolchain (2026-09-25 UTC)
 
 **Implementation, signed build and publication are complete; physical-device acceptance is next.** [PR #12](https://github.com/Russianranger/trasc-server-android/pull/12) merged at `f2199ed4bf5970a9b1d5e7bb9f5ae8ed3eea7446`. [Download preview 0.6.1](https://github.com/Russianranger/trasc-server-android/releases/download/preview/trasc-server-android-preview.apk?build=f2199ed4bf597). Android version is **0.6.1/code50**, retaining package `io.github.russianranger.trasc.preview` and the existing signing certificate. Install over the current app without uninstalling or clearing storage. Named Beta 0.6 remains available unchanged.
