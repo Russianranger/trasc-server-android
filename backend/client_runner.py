@@ -20,6 +20,7 @@ import client_audio
 import client_spells
 import client_presentation
 from client_display import RESOLUTIONS, apply_display
+from client_xauthority import write_xauthority
 
 SESSION = Path('/session')
 CLIENT = Path('/client')
@@ -616,12 +617,12 @@ class Supervisor:
         if sound_report.is_file(): sound_report.replace(LOGS / 'client-wine.sound.previous.json')
         (LOGS / 'client-wine.overflow.log').unlink(missing_ok=True)
         # The RFB display has no TCP listener. X11 requires an unpredictable cookie.
-        cookie = secrets.token_hex(16)
-        (SESSION / 'Xauthority').touch(mode=0o600)
-        subprocess.run(['xauth', '-f', self.env['XAUTHORITY'], 'add', ':7', '.', cookie], check=True, stdout=subprocess.DEVNULL)
+        write_xauthority(self.env['XAUTHORITY'], 7)
+        # Native start() serializes launches and recreates private /tmp. Avoid
+        # Xorg's hard-link PID lock; the socket bind still detects a collision.
         xserver = self.spawn(['Xtigervnc', ':7', '-geometry', self.request['resolution'], '-depth', '24',
                              '-rfbport', '-1', '-rfbunixpath', str(SESSION / 'display.sock'), '-rfbunixmode', '0600',
-                             '-SecurityTypes', 'None', '-nolisten', 'tcp', '-auth', self.env['XAUTHORITY'],
+                             '-SecurityTypes', 'None', '-nolisten', 'tcp', '-nolock', '-auth', self.env['XAUTHORITY'],
                              '-AlwaysShared', '-FrameRate', str(client_presentation.options(self.request)[1]), '-desktop', 'TRASC client'], 'client-display.log')
         for _ in range(150):
             if self.stopping(): raise StopRequested()

@@ -2,13 +2,13 @@
 import json
 import os
 from pathlib import Path
-import secrets
 import signal
 import subprocess
 import time
 import client_dll
 from log_retention import rotate
 from engine import atomic_json
+from client_xauthority import write_xauthority
 
 WORK=Path('/work');SESSION=Path('/session');LOG=WORK/'logs/client-compiler.log'
 stop_requested=False
@@ -65,11 +65,10 @@ def main():
         rotate(LOG)
         rotate(WORK/'logs/client-compiler-display.log')
         update('compiler_starting',message='Preparing a separate compiler prefix')
-        (SESSION/'Xauthority').touch(mode=0o600)
-        subprocess.run(['xauth','-f',ENV['XAUTHORITY'],'add',':8','.',secrets.token_hex(16)],check=True)
+        write_xauthority(ENV['XAUTHORITY'], 8)
         display_log=(WORK/'logs/client-compiler-display.log').open('wb')
         xserver=subprocess.Popen(['Xtigervnc',':8','-geometry','800x600','-depth','24','-rfbport','-1',
-            '-rfbunixpath',str(SESSION/'display.sock'),'-rfbunixmode','0600','-SecurityTypes','None','-nolisten','tcp',
+            '-rfbunixpath',str(SESSION/'display.sock'),'-rfbunixmode','0600','-SecurityTypes','None','-nolisten','tcp','-nolock',
             '-auth',ENV['XAUTHORITY'],'-AlwaysShared','-desktop','TRASC compiler'],env=ENV,stdout=display_log,stderr=display_log)
         for _ in range(150):
             compiler.check_cancel()

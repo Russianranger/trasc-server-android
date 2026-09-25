@@ -1,3 +1,27 @@
+# 0.6.2 — Client display startup on devices that deny hard links
+
+The app now writes a fresh private X11 authorization file directly for both the
+game/desktop display and the DLL compiler display. This removes xauth's hard-link
+lock dependency and avoids putting its cookie in error messages. The private
+display server also skips its hard-link PID lock. Cookie authentication, disabled
+TCP listeners and the private display socket remain enabled.
+
+This addresses the reproducible hard-link-denial failure behind a possible
+`xauth ... returned non-zero exit status 1` during client startup. The supplied
+Fold6 screenshot identifies the failing command but does not include its stderr;
+device acceptance is still required to confirm this user's exact cause.
+
+Stop the client and runtimes, then install over the existing app without clearing
+storage. Start the server and try **Client → Start ROF2** with the same client and
+graphics settings. No runtime/client reimport, server rebuild or DLL rebuild is
+required for this repair. If it fails again, export Logs immediately after the
+attempt so the underlying error and startup stage are available.
+
+The 0.6.1 Microsoft toolchain download button and Beta 0.6 runtime-install repair
+remain included. This release does not enable global PRoot hard-link emulation.
+
+---
+
 # 0.6.1 — Download the Microsoft toolchain in the app
 
 Client → Build dinput8.dll on this device now offers **Download Microsoft toolchain**.
