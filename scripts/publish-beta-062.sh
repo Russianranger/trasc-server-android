@@ -67,7 +67,21 @@ import json
 t=json.load(open('dist/beta-062/tag.json'))['object']
 assert t['type']=='commit' and t['sha']=='2cd9d50c2de3b6c2607187702452fb87d0b954bd', 'Existing tag belongs to another build'
 PY
-if gh api "repos/$repo/releases/tags/v0.6.2" > dist/beta-062/release.json 2>/dev/null; then
+find_release() {
+    # The tag endpoint only returns published releases. List releases to find drafts.
+    gh api --paginate --slurp "repos/$repo/releases?per_page=100" > dist/beta-062/releases.json
+    python3 - <<'PY'
+import json,pathlib
+p=pathlib.Path('dist/beta-062')
+matches=[r for page in json.loads((p/'releases.json').read_text()) for r in page if r['tag_name']=='v0.6.2']
+assert len(matches)<=1, 'Multiple releases have the requested tag'
+if matches:
+    (p/'release.json').write_text(json.dumps(matches[0]))
+    print(matches[0]['id'])
+PY
+}
+release_id=$(find_release)
+if [[ -n "$release_id" ]]; then
     python3 - <<'PY'
 import json
 r=json.load(open('dist/beta-062/release.json'))
@@ -76,9 +90,11 @@ assert r['target_commitish']=='2cd9d50c2de3b6c2607187702452fb87d0b954bd', 'Exist
 PY
 else
     gh release create v0.6.2 --draft --target "$build_commit" --title 'Beta version 0.6.2' --notes-file docs/beta-062-release.md
+    release_id=$(find_release)
 fi
+[[ "$release_id" =~ ^[0-9]+$ ]]
 gh release upload v0.6.2 dist/beta-062/trasc-server-android-beta-0.6.2.apk dist/beta-062/launcher-sources.tar.gz dist/beta-062/beta-build.json --clobber
-gh api "repos/$repo/releases/tags/v0.6.2" > dist/beta-062/release.json
+gh api "repos/$repo/releases/$release_id" > dist/beta-062/release.json
 python3 - <<'PY'
 import json
 r=json.load(open('dist/beta-062/release.json'))
