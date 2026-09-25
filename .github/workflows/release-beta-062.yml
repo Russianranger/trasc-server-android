@@ -1,0 +1,25 @@
+name: Publish verified Beta 0.6.2
+on:
+  push:
+    branches: [codex/release-beta-062]
+    paths:
+      - .github/workflows/release-beta-062.yml
+      - scripts/publish-beta-062.sh
+      - docs/beta-062-release.md
+  workflow_dispatch:
+permissions:
+  contents: write
+  actions: read
+concurrency:
+  group: release-beta-062
+  cancel-in-progress: false
+jobs:
+  publish:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - name: Promote the verified signed build without rebuilding
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: bash scripts/publish-beta-062.sh
