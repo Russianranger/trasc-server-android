@@ -128,7 +128,7 @@ final class ClientRuntime {
                 org.json.JSONArray jobs=response.getJSONObject("result").getJSONArray("jobs");
                 for(int i=0;i<jobs.length();i++) {
                     JSONObject job=jobs.getJSONObject(i);
-                    if(Arrays.asList("client_settings_save","import_client_zip","prepare_client","export_client","apply_spell_test","restore_spell_test","client_addons_copy","client_dll_deploy").contains(job.optString("operation"))&&Arrays.asList("queued","running").contains(job.optString("status")))
+                    if(Arrays.asList("client_settings_save","import_client_zip","prepare_client","export_client","apply_spell_test","restore_spell_test","client_addons_copy","client_dll_deploy","client_dll_sdk","client_dll_download").contains(job.optString("operation"))&&Arrays.asList("queued","running").contains(job.optString("status")))
                         throw new IOException("Wait for client file changes to finish before launching");
                 }
             }
@@ -161,7 +161,7 @@ final class ClientRuntime {
                 org.json.JSONArray jobs=state.getJSONArray("jobs");
                 for(int i=0;i<jobs.length();i++)if(Arrays.asList("queued","running").contains(jobs.getJSONObject(i).optString("status")))
                     throw new IOException("Finish the current server operation before compiling");
-                if(!new File(server.work,"client/toolchain/bin/cl.exe").isFile())throw new IOException("Import the Microsoft compiler/SDK ZIP first");
+                if(!new File(server.work,"client/toolchain/bin/cl.exe").isFile())throw new IOException("Download or import the Microsoft toolchain first");
                 RuntimeManager.write(new File(server.work,"run/client-dll-building.json"),new JSONObject().put("pid",android.os.Process.myPid()).toString());compilerLease=true;
             }
             File sessionPrefix=mode.equals("compiler")?new File(server.work,"client/compiler-prefix"):prefix;

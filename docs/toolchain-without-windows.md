@@ -1,10 +1,45 @@
-# Prepare the Microsoft toolchain entirely on Thor
+# Download the Microsoft toolchain inside TRASC
+
+Starting with **0.6.1**, open the server runtime, keep the server and client stopped,
+and choose **Client → Build dinput8.dll on this device → Download Microsoft toolchain**.
+Review the linked Microsoft Build Tools license, tick the acceptance checkbox, then
+choose **Accept & download**. The app downloads, verifies, prepares and imports the
+matched v142/14.29 compiler and Windows SDK 10.0.19041. No Termux, Windows PC, or
+manual toolchain ZIP is required for this route.
+
+Allow at least **8 GiB of free internal storage** and a stable connection. Progress
+reports the download and preparation stages; use the activity banner's Cancel
+operation control to stop. Completed, checksum-verified Microsoft package downloads
+are retained for retry. Temporary extraction files are cleaned after completion or
+cancellation. The private download cache is excluded from complete-session backups;
+the installed compiler remains part of the client backup.
+
+The app uses a pinned, checksum-verified Microsoft catalog for the matched older
+toolset. Every compiler/SDK package must match its SHA256 before extraction.
+Microsoft's package sizes are estimates (about 930 MiB in total); the app limits
+actual download bytes and checks free storage as it downloads.
+
+The app obtains its MSI extraction helper from the runtime's authenticated Debian
+package repositories and extracts it privately. It does not install or upgrade the
+server runtime's Linux packages. The toolchain is activated only after packaging
+and SDK validation; an existing compiler is retained on failed/cancelled preparation.
+The Microsoft compiler/SDK payloads are not included in the APK or GitHub release.
+
+When the compiler and SDK show **imported**, install the separate client runtime if
+needed, then choose **Compile dinput8.dll**. **Deploy staged DLL** remains a separate
+action after successful compilation. Existing working users do not need to download
+or rebuild solely for this APK update. The Custom DLL compiler remains in TRASC Custom;
+Traditional's build milestone is still pending.
+
+## Manual preparation alternative
+
+The existing helper below remains available for preparing an offline ZIP.
 
 No work-computer downloads or installations are needed. This one-time route uses
 the existing Ubuntu environment in Termux on the Thor to download and package the
 toolchain. Import the resulting ZIP into TRASC 0.4.10, then compile in the app.
 Termux is only used to prepare the ZIP; subsequent app compilation does not use it.
-An automatic download button inside TRASC is not implemented yet.
+The in-app button above is the simpler route in 0.6.1 and later.
 
 The portable helper uses a pinned, checksum-verified
 [msvc-wine downloader](https://github.com/mstorsjo/msvc-wine/tree/514f8ea34842cd6d831804d0e9658d3a32870ae1)

@@ -32,6 +32,7 @@ from rule_catalog import KNOWN, metadata, parse_source, validate_value
 from managed_content import ManagedContent
 import client_addons
 import client_dll
+import client_toolchain
 import client_settings
 import player_data
 import spire
@@ -41,7 +42,7 @@ import server_ferry
 import traditional_content
 from log_retention import rotate
 
-VERSION = '0.5.8'
+VERSION = '0.6.1'
 DEFAULT_REPO = 'https://github.com/Russianranger/Triptych-Triumvirate'
 BINARIES = ('world', 'zone', 'loginserver', 'shared_memory', 'ucs', 'eqlaunch', 'queryserv', 'export_client_files')
 CLIENT_FILES = ('spells_us.txt', 'dbstr_us.txt', 'SkillCaps.txt', 'BaseData.txt')
@@ -165,6 +166,7 @@ class Engine(ManagedContent):
         self.work = Path(work).resolve()
         for name in ('incoming', 'sources', 'server', 'maps', 'database', 'backups', 'exports', 'logs', 'run', 'builds', 'client'):
             (self.work / name).mkdir(parents=True, exist_ok=True)
+        client_dll.recover_sdk(self)
         self.config_path = self.work / 'settings.json'
         self.config = json.loads(self.config_path.read_text()) if self.config_path.exists() else {
             'repo': 'https://github.com/EQEmu/EQEmu' if profile == 'traditional' else DEFAULT_REPO, 'ref': 'master' if profile == 'traditional' else 'main', 'ip': '127.0.0.1', 'login_port': 5999,
@@ -265,13 +267,21 @@ class Engine(ManagedContent):
                 try:
                     while p.poll() is None:
                         if self.cancel.is_set() or time.monotonic() - started > timeout:
-                            os.killpg(p.pid, signal.SIGTERM)
-                            try: p.wait(10)
-                            except subprocess.TimeoutExpired: os.killpg(p.pid, signal.SIGKILL)
                             raise ValueError('Operation cancelled or timed out. See operation.log.')
                         time.sleep(0.2)
+                    self.check_cancel()
                     if p.returncode:
                         raise ValueError(f'Command failed ({p.returncode}): see operation.log')
+                except BaseException:
+                    # A wrapper can exit while an extractor/downloader child is still
+                    # writing. Always stop the entire session before stage cleanup.
+                    with contextlib.suppress(ProcessLookupError): os.killpg(p.pid, signal.SIGTERM)
+                    try: p.wait(5)
+                    except subprocess.TimeoutExpired: pass
+                    finally:
+                        with contextlib.suppress(ProcessLookupError): os.killpg(p.pid, signal.SIGKILL)
+                        p.wait()
+                    raise
                 finally:
                     self.command = None
 
@@ -1014,6 +1024,8 @@ class Engine(ManagedContent):
         return {'text':text,'names':sorted(names)}
 
     def state(self):
+        if self.current_job and self.current_job['operation'] == 'client_dll_download':
+            self.current_job['progress'] = client_toolchain.progress(self)
         source=self.work/'sources/current/trasc-source.json'
         config={k:v for k,v in self.config.items() if 'password' not in k and 'key' not in k}
         return {'version':VERSION,'profile':self.profile,'traditional':traditional_content.status(self) if self.profile=='traditional' else None,'settings':config,'source':json.loads(source.read_text()) if source.exists() else None,
@@ -1046,6 +1058,8 @@ class Engine(ManagedContent):
             'client_addons_lock':lambda a:client_addons.set_lock(self,a),'client_addons_copy':lambda a:client_addons.copy_files(self,a),
             'client_dll_status':lambda a:client_dll.compiler_status(self,a),
             'client_dll_sdk':lambda a:client_dll.import_sdk(self,a),
+            'client_dll_download_info':lambda a:client_toolchain.download_info(self,a),
+            'client_dll_download':lambda a:client_toolchain.download(self,a),
             'client_dll_deploy':lambda a:client_dll.deploy_dll(self,a),
             'player_export':lambda a:player_data.export_players(self,a),'player_preview':lambda a:player_data.preview_players(self,a),
             'player_restore':lambda a:player_data.restore_players(self,a),
@@ -1081,7 +1095,7 @@ def serve(work, port, token, profile='custom'):
                     threading.Thread(target=server.shutdown,daemon=True).start()
                     result={'message':'Stopping all processes and database'}
                 elif op=='cancel': engine.cancel.set(); result={'message':'Cancellation requested'}
-                elif op in ('state','files','logs','databases','client_dll_status','ferry_diagnostics','traditional_status'): result=engine.dispatch(op,args)
+                elif op in ('state','files','logs','databases','client_dll_status','client_dll_download_info','ferry_diagnostics','traditional_status'): result=engine.dispatch(op,args)
                 else: result=engine.enqueue(op,args)
                 payload=json.dumps({'ok':True,'result':result}).encode()
             except Exception as e:

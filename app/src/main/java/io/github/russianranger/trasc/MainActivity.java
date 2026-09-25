@@ -100,6 +100,8 @@ public final class MainActivity extends Activity {
                     switch(operation){
                         case "native_state": result=runtime.nativeState();break;
                         case "client_native_state": result=clientRuntime.state();break;
+                        case "client_dll_license":
+                            profileUi(id,profile,()->{openMicrosoftLicense(args.getString("url"));return new JSONObject();});return;
                         case "client_directx_online": service();result=clientRuntime.installDirectX(null);break;
                         case "client_runtime_online": service();result=clientRuntime.installOnline();break;
                         case "client_start": service();runOnUiThread(()->controller.capture(false));result=clientRuntime.start(args);break;
@@ -127,6 +129,7 @@ public final class MainActivity extends Activity {
                         case "import_client_zip": case "prepare_client": case "export_client":
                         case "apply_spell_test": case "restore_spell_test":
                         case "client_addons_copy": case "client_dll_deploy":
+                        case "client_dll_sdk": case "client_dll_download":
                             // Serialize submission with native launch; start also checks queued/running jobs.
                             synchronized(clientRuntime) {
                                 if(clientRuntime.alive()||clientRuntime.busy)throw new IOException("Stop the embedded client before changing its files");
@@ -148,6 +151,17 @@ public final class MainActivity extends Activity {
                 }finally{if(lease!=null)lease.close();}
             });
         }
+    }
+    private void openMicrosoftLicense(String url)throws Exception {
+        java.net.URI parsed=new java.net.URI(url);
+        String host=parsed.getHost();
+        if(host!=null)host=host.toLowerCase(java.util.Locale.ROOT);
+        if(!"https".equalsIgnoreCase(parsed.getScheme())||parsed.getUserInfo()!=null
+                ||(parsed.getPort()!=-1&&parsed.getPort()!=443)||host==null
+                ||!(host.equals("microsoft.com")||host.endsWith(".microsoft.com")
+                    ||host.equals("visualstudio.com")||host.endsWith(".visualstudio.com")||host.equals("aka.ms")))
+            throw new IOException("Expected an HTTPS Microsoft license link");
+        startActivity(new Intent(Intent.ACTION_VIEW,Uri.parse(url)));
     }
     private void pick(String id,String kind,boolean replace,String profile){
         if(pickerId!=null){reply(id,null,new IOException("Finish the open file picker first"));return;}

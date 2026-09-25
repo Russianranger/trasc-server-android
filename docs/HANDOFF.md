@@ -1,3 +1,41 @@
+# Active build: 0.6.1 in-app Microsoft toolchain (2026-09-24 UTC)
+
+User explicitly authorized implementing the Microsoft toolchain download button in
+the next APK. Base main `4885ad0b9f9d5e96b9fd779dc16e2bce462e0423`, branch
+`codex/in-app-microsoft-toolchain`, version **0.6.1/code50**. Retain app identity and
+signing certificate; publish via the existing preview channel. Named Beta 0.6 stays
+unchanged. No server/fork, boat, era or map-import changes are part of this build.
+
+Implementation adds a catalog-bound Microsoft license review and explicit acceptance,
+then a queued download, checksum verification, private MSI extractor preparation,
+SDK packaging and import. The pinned open-source downloader and existing portable
+packer are reused. Linux package dependencies are downloaded/extracted privately,
+not installed/upgraded. Progress, cancellation and verified-download retry use the
+existing runtime/job machinery. Staging/caches live under work/cache (excluded from
+session backup); installed compiler remains backed up. Native launch guards prevent
+compilation/game launch during replacement, failed activation rolls back, and a
+runtime restart recovers an interrupted compiler swap. Manual ZIP import remains.
+Compile and Deploy stay separate. See toolchain-without-windows.md for device steps.
+
+Latest private Fold6 log bundle `logs-6060790551431168012.zip` identifies 0.6 on
+SM-F956U1/SDK36. Runtime, source/database import, maps import, server build/deploy/start
+and three dynamic zone workers are confirmed. Client runtime was not installed and
+no named-zone map load/player login was recorded. Map import failures were three
+missing-argument `'file'` errors, three rejected archive layouts, one unsupported
+archive and a timeout before a successful retry from grumpy-gaming/eqemu-maps. Those
+input-validation/archive-recognition issues are not fixed in this pass; fork ownership
+is not required. Original EACCES logs predate the successful update. Raw logs stay private.
+
+Catalog verification found that Microsoft's mutable VS2019 channel advertises a size/hash different from the actual official catalog response; independent GitHub ARM64 CI reproduced this. The downloader now pins the reviewed official VS2019 `16.11.60+37627.13` catalog directly: **11,154,648 bytes**, SHA256 `406969c30f4eb8bf0075a0850e339340ac83942705b76269156bb5b70f01b631`. Catalog bytes/version and every selected payload SHA256 remain strictly verified; no checksum bypass or trust-on-first-use fallback was added. The selected 84 packages/324 payloads have an estimated total of 973,531,982 bytes. Live downloads showed that catalog payload sizes can differ from actual, checksum-matching bytes, so payload sizes are estimates with per-file and cumulative actual-byte limits; the catalog pin itself retains its exact size check. Metadata/consent tokens are tied to the shipped pin. The first PR CI failure is this catalog issue, not a package-extractor failure: the private ARM64 msiextract ran successfully and installed-package inventory stayed unchanged.
+
+Development uses backend/UI/review subagents. Local regression, live dependency/catalog
+checks and signed build/release verification are in progress; this entry is not a
+published APK claim. Append final source/build/artifact identity when publication is
+verified. Preserve prior working Thor compiler, client and server, accepted Qeynos–Erudin
+travel/log cleanup, and deferred OOT/Overthere/Traditional/era/backup-provider work.
+
+---
+
 # Released: Beta 0.6 runtime installation repair (2026-09-24 UTC)
 
 **Repair and publication are complete; Fold6 / Android 16 device acceptance is pending.** [PR #11](https://github.com/Russianranger/trasc-server-android/pull/11) merged at `cbb634d18f67004acf2a8566073c7b66eb3e3961`. [Beta version 0.6](https://github.com/Russianranger/trasc-server-android/releases/tag/v0.6) is published as a regular, non-draft GitHub release and is **Latest**. [Download the signed APK](https://github.com/Russianranger/trasc-server-android/releases/download/v0.6/trasc-server-android-beta-0.6.apk). Tag `v0.6` points to the verified merge. App/Android version is **0.6/code49**, retaining package `io.github.russianranger.trasc.preview` and the existing signing certificate. Official Beta 0.5 (internally 0.4.23/code40) and all later previews can update in place; `v0.5` remains available unchanged.
