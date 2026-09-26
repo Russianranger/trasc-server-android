@@ -10,12 +10,18 @@ jobs:
   native:
     runs-on: ubuntu-24.04
     timeout-minutes: 25
+    strategy:
+      fail-fast: false
+      matrix:
+        source:
+          - 4c653ca2d16aaede33b7011d07254c520ac5f5df
+          - 8f6ca0795f424a7b4eab750ff38fc6473d48375c
     steps:
       - uses: actions/checkout@v4
       - uses: actions/checkout@v4
         with:
           repository: Russianranger/Triptych-Triumvirate
-          ref: 4c653ca2d16aaede33b7011d07254c520ac5f5df
+          ref: ${{ matrix.source }}
           path: ferry-source
           sparse-checkout-cone-mode: false
           sparse-checkout: |
