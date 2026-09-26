@@ -1,4 +1,72 @@
-# Active repair: 0.6.3 updated server source line endings (2026-09-26 UTC)
+# Released: 0.6.3 updated server source compatibility (2026-09-26 UTC)
+
+**Repair, signed build and preview publication are complete; the complete updated
+server build is the next on-device step.** [PR #14](https://github.com/Russianranger/trasc-server-android/pull/14)
+merged at `031de0408a90eeb2678971d46238c70596663317`.
+[Download preview 0.6.3](https://github.com/Russianranger/trasc-server-android/releases/download/preview/trasc-server-android-preview.apk?build=031de0408a90).
+Version **0.6.3/code52** retains package `io.github.russianranger.trasc.preview`
+and the existing signing certificate. Named Beta 0.6.2 remains unchanged.
+
+**Cause and repair:** the supplied Thor/Android 13 logs show APK 0.5.8 rejecting
+Triptych-Triumvirate `8f6ca0795f424a7b4eab750ff38fc6473d48375c` before CMake.
+The updated `client_packet.cpp` uses CRLF, while the old patch expected LF. The
+passenger handler is unchanged after newline normalization; the waypoint file
+and passenger protocol are unchanged. The app now matches exactly one complete
+line with LF/CRLF/EOF, preserves all unaffected source bytes and original backups,
+and validates every anchor before writing. Unknown, duplicate, partial and
+tampered patches remain rejected. Old source and existing patch records remain
+supported; no route, header, client DLL or upstream server changes were needed.
+
+**Verification:** all 197 local Python tests passed, including eight Lua ferry
+protocol tests, and the strict C++ passenger harness passed. Actual old/new source
+passed byte-preservation and idempotency checks; an existing old patch was
+accepted without changing any source/marker bytes. Independent source and log
+review found no blockers. Both affected C++ translation units compiled against
+both pinned server revisions in CI. All ten [signed main build/release jobs](https://github.com/Russianranger/trasc-server-android/actions/runs/36242042405)
+passed, including hard-link-denied display authentication, database and backup
+checks, Android lint/signing, UI flows and runtime rendering/input. This does not
+claim a complete updated server build or physical-device acceptance.
+
+**Published identity:** the public APK is **15,206,035 bytes**, SHA256
+`d0dd4a9454fdc10a5677f202f278b91da3e1ad98fd30e590a77fde6b52a845a9`.
+Public APK and corresponding launcher sources match signed main artifact
+**10905789545** byte for byte; its ZIP SHA256 is
+`065c305fa5e2c09e559bbeb91cc84ce71dba83e50b5176ba8203e97ee7544c07`.
+The source archive is **114,560,741 bytes**, SHA256
+`7248a93a06a37a6bf9e4542e38074a482b9015a7ee120f9313deb9edd78b4e7b`.
+Public `preview-build.json` is **367 bytes**, SHA256
+`f7dba55eed56a329a6012827cd956fc780a9bbf86c960bd2e15a5fdb4e1a1af5`.
+GitHub asset sizes/digests, manifest and preview tag agree with the merge above.
+Local `apksigner` verifies certificate
+`ff9c09cdc3e2404d1d7f72d61ce2f8651464f5e03dff340f70bd4df28c70e869`;
+`aapt2` verifies package/version/code and ARM64 ABI. All 74 source assets match the
+merge, including the repaired `server_ferry.py`; 14 generated assets, eight
+embedded binary hashes/architectures and five native ARM64 libraries were verified.
+All nine PR build checks passed (publication skipped as intended), along with the
+separate two-revision ferry workflow. Evidence is under ignored `runtime-work/063`,
+including public downloads and `public/apk-verification.json`.
+
+**Next Thor test:** stop the client and runtime, install over the existing app
+without uninstalling or clearing storage, then **Start runtime** with server
+stopped. Choose **Builds → Build imported source** using the source already
+imported. Watch **Logs → operation.log**. Only after this new build reports success,
+choose **Deploy successful build**, then **Start server** and check startup before
+launching RoF2. Export Logs immediately if another error appears. No source or
+database reimport, ferry reset/reinstall, runtime replacement or client DLL rebuild
+is needed for this error. Beta 0.6.2 still contains the old LF-only check, so use
+0.6.3 for this repair. A separate database import succeeded before the reported
+failure; do not promise that the previous database/world is unchanged or that old
+binaries match it. Raw device logs remain private.
+
+Qeynos–Erudin travel and log cleanup remain accepted. OOT/Freeport–Butcherblock,
+Overthere, era presets, Traditional Android-fork compilation, maps validation and
+backup-provider resilience remain deferred. Physical Fold6 acceptance remains
+unconfirmed; its existing display repair and the Microsoft toolchain button are
+included. This documentation-only release record does not rebuild or retag the APK.
+
+---
+
+# Development record: 0.6.3 updated server source line endings (2026-09-26 UTC)
 
 User supplied `logs-1439300397673656848.zip` and a screenshot of **"This server
 source has an unsupported passenger movement handler"** after updating source.
@@ -30,9 +98,9 @@ valid. Actual old and new source pass preservation/idempotency checks. CI now
 compiles both affected C++ translation units against both pinned revisions;
 this is not a claim of a complete updated server build.
 
-Regression checks, signed APK build and publication are in progress. Append
-actual CI/artifact identities when verified. Subagents independently reviewed
-logs/source/guards and are preparing APK verification. Next device test: stop
+The release record above supersedes the in-progress status from this development
+entry. Subagents independently reviewed logs/source/guards and verified the
+signed APK; root verified the public download and release identity. Next device test: stop
 client/runtime, install over the app, restart runtime and retry **Build** on the
 already imported source. After success choose **Deploy build** with server
 stopped, then start it. No repeat source/database import or ferry installation
