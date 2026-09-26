@@ -1,3 +1,47 @@
+# Active repair: 0.6.3 updated server source line endings (2026-09-26 UTC)
+
+User supplied `logs-1439300397673656848.zip` and a screenshot of **"This server
+source has an unsupported passenger movement handler"** after updating source.
+The logs identify **AYN Thor / Android 13 / APK 0.5.8**, not the Fold6 test.
+Source imports succeeded from Russianranger/Triptych-Triumvirate revision
+`8f6ca0795f424a7b4eab750ff38fc6473d48375c`; builds failed immediately at
+07:11:08 and 07:16:18 CDT, before CMake/compiler output. No subsequent deploy was
+logged. A separate database import had completed at 23:14:55 CDT the previous
+night, so do not assume the old deployed binaries and database still match.
+A ferry preview also reported reserved IDs/quest files in use; reinstalling the
+route is not the remedy for the build rejection. Raw logs remain private.
+
+**Confirmed cause:** updated `client_packet.cpp` uses CRLF endings (17,668 lines)
+where the former source used LF. The full passenger update handler is identical
+after newline normalization, `waypoints.cpp` is byte-identical, and the passenger
+packet/coordinate conversion is unchanged. The old preparer's exact LF include
+and movement anchors fail against CRLF. This is also present in Beta 0.6.2.
+The previous preparer reproduced the same error on the exact new source without
+modifying any file.
+
+Base main `bfcb5db9cf1c7ab8a93d39ed64869dfa48a0d9ae`, branch
+`codex/updated-server-ferry`, target **preview 0.6.3/code52**. The repair matches
+one exact full C++ line with LF/CRLF/EOF, uses its own ending for the inserted
+block, and preserves all other original bytes. Unknown/duplicate/interrupted
+source, symlink and existing-patch integrity checks remain enforced; all anchor
+validation completes before writes. CRLF/EOF partial includes are rejected too.
+The header/protocol/route feature is unchanged, and existing patch records remain
+valid. Actual old and new source pass preservation/idempotency checks. CI now
+compiles both affected C++ translation units against both pinned revisions;
+this is not a claim of a complete updated server build.
+
+Regression checks, signed APK build and publication are in progress. Append
+actual CI/artifact identities when verified. Subagents independently reviewed
+logs/source/guards and are preparing APK verification. Next device test: stop
+client/runtime, install over the app, restart runtime and retry **Build** on the
+already imported source. After success choose **Deploy build** with server
+stopped, then start it. No repeat source/database import or ferry installation
+is needed to address this error. Keep current runtimes and client DLL. Deferred
+OOT/Overthere, era/Traditional compilation, maps and backup-provider work remain
+unchanged; physical Fold6 acceptance remains unconfirmed.
+
+---
+
 # Published named release: Beta 0.6.2 (2026-09-25 UTC)
 
 The user explicitly requested publishing the verified preview as a named release.

@@ -1,3 +1,28 @@
+# 0.6.3 — Build compatibility with updated server source
+
+The ferry passenger-support patch now accepts both Unix (LF) and Windows (CRLF)
+line endings while preserving existing source bytes, backups and integrity checks.
+This fixes **"This server source has an unsupported passenger movement handler"**
+when building Triptych-Triumvirate revision
+`8f6ca0795f424a7b4eab750ff38fc6473d48375c`. Its passenger movement handler is
+unchanged; only line endings prevented the previous app from matching it.
+Older source and already-patched source remain supported.
+
+Stop the client and runtime, install this APK over the existing app, then start
+the runtime and retry **Build** using the source already imported. After the build
+succeeds, keep the server stopped and choose **Deploy build**, then **Start server**.
+The failed compatibility check did not patch the imported source, so importing it
+again is unnecessary. Reapplying the ferry fix or importing another database is
+not a remedy for this error. Existing runtimes and client DLL can be retained.
+
+The supplied Thor logs identify app 0.5.8 and Android 13. Beta 0.6.2 contains the
+same old line-ending check; upgrading directly to this preview is needed for this
+repair. The Microsoft toolchain button and Fold6 display/runtime repairs remain
+included. New source is checked by compiling the two affected C++ translation
+units; the complete updated server build still needs the on-device Build step.
+
+---
+
 # 0.6.2 — Client display startup on devices that deny hard links
 
 The app now writes a fresh private X11 authorization file directly for both the

@@ -2,6 +2,7 @@
 import hashlib
 import json
 from pathlib import Path
+import re
 import shutil
 
 FEATURE = 'TRASC_FERRY_PASSENGER_V1'
@@ -22,6 +23,18 @@ Z_FIXED = '''\t// TRASC_FERRY_PASSENGER_V1: a managed ship uses its fixed waterl
 
 def digest(path):
     return hashlib.sha256(Path(path).read_bytes()).hexdigest()
+
+
+def replace_line(code, before, after, error):
+    """Match one exact C++ line and preserve its LF/CRLF ending in added lines."""
+    pattern = re.compile(r'(?m)^' + re.escape(before.rstrip('\n')) + r'(?P<ending>\r?\n|\Z)')
+    matches = list(pattern.finditer(code))
+    if len(matches) != 1:
+        raise ValueError(error)
+    match = matches[0]
+    ending = match.group('ending')
+    replacement = after.rstrip('\n').replace('\n', ending or '\n') + ending
+    return code[:match.start()] + replacement + code[match.end():]
 
 
 def prepare(server):
@@ -51,19 +64,19 @@ def prepare(server):
         if digest(bundled) != record['header']:
             raise ValueError('Ferry support changed; import a clean source before rebuilding.')
         return record
-    if original.exists() or header.exists() or old_waypoints.exists() or FEATURE in code or FEATURE in waypoint_code or ADDED_INCLUDE in code:
+    if original.exists() or header.exists() or old_waypoints.exists() or FEATURE in code or FEATURE in waypoint_code or ADDED_INCLUDE.rstrip('\n') in code:
         raise ValueError('Unrecognized or interrupted ferry source patch; import a clean source')
-    if code.count(INCLUDE) != 1 or code.count(ANCHOR) != 1:
-        raise ValueError('This server source has an unsupported passenger movement handler')
-    if waypoint_code.count(Z_ANCHOR) != 1:
-        raise ValueError('This server source has an unsupported waypoint height handler')
-    changed = code.replace(INCLUDE, INCLUDE+ADDED_INCLUDE).replace(ANCHOR, ANCHOR+CALL)
+    movement_error = 'This server source has an unsupported passenger movement handler'
+    changed = replace_line(code, INCLUDE, INCLUDE+ADDED_INCLUDE, movement_error)
+    changed = replace_line(changed, ANCHOR, ANCHOR+CALL, movement_error)
+    changed_waypoints = replace_line(waypoint_code, Z_ANCHOR, Z_FIXED,
+                                    'This server source has an unsupported waypoint height handler')
     original.write_bytes(before)
     try:
         old_waypoints.write_bytes(before_waypoints)
         shutil.copyfile(bundled, header)
-        source.write_text(changed)
-        waypoints.write_text(waypoint_code.replace(Z_ANCHOR, Z_FIXED))
+        source.write_bytes(changed.encode('utf-8'))
+        waypoints.write_bytes(changed_waypoints.encode('utf-8'))
         record = dict(feature=FEATURE, original=digest(original), patched=digest(source), header=digest(header),
                       waypoints=digest(waypoints), original_waypoints=digest(old_waypoints))
         marker.write_text(json.dumps(record, indent=2)+'\n')
