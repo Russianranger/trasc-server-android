@@ -4,6 +4,8 @@ import java.io.*;
 import java.nio.file.*;
 import java.nio.file.attribute.FileTime;
 import java.util.*;
+import java.util.concurrent.CountDownLatch;
+import java.util.concurrent.atomic.AtomicReference;
 
 /** Host tests use real files, links, sparse backups and recovery records. */
 public final class StorageFilesTest {
@@ -165,6 +167,23 @@ public final class StorageFilesTest {
             check(Files.exists(p.resolve("client/runtime/opt/wine/bin/wine")),"Current runtime retained");
             write(p,"exports/heap-test/nested/tiny.zip","X");
             check(entry(StorageFiles.browse(copies,"exports","",0,20),"exports/heap-test").size==0,"Browser does not recursively measure eligible folders");
+            File race=work(temp,"race");Path raceRoot=race.toPath();
+            for(int i=0;i<5000;i++)write(raceRoot,"exports/race/"+String.format(Locale.ROOT,"%05d",i)+".zip","X");
+            StorageFiles.Preview raceReview=StorageFiles.preview(race,Collections.singletonList("exports/race"));
+            Path first=raceRoot.resolve("exports/race/00000.zip"),last=raceRoot.resolve("exports/race/04999.zip");
+            AtomicReference<Throwable> raceError=new AtomicReference<>();CountDownLatch watching=new CountDownLatch(1);
+            Thread change=new Thread(()->{
+                watching.countDown();long deadline=System.nanoTime()+10_000_000_000L;
+                while(Files.exists(first)&&System.nanoTime()<deadline)Thread.yield();
+                try{Files.writeString(last,"CHANGED",StandardOpenOption.APPEND);}catch(Throwable e){raceError.set(e);}
+            },"storage-delete-race");
+            change.start();watching.await();
+            StorageFiles.DeleteException partial=null;
+            try{StorageFiles.delete(race,raceReview.paths,raceReview.token);}catch(StorageFiles.DeleteException expected){partial=expected;}
+            change.join(10000);
+            check(!change.isAlive()&&raceError.get()==null,"Race changed the final file during deletion");
+            check(partial!=null&&partial.files>0&&partial.files<5000&&partial.paths.isEmpty(),"Partial deletion is reported with actual removed entries and no false completed folder");
+            check(Files.exists(last)&&Files.readString(last).equals("XCHANGED"),"Changed entry survives partial deletion");
             System.out.println("Storage cleanup: offline pagination, 64-bit sizes, all-selection preflight, stale inode/tree protection, recovery journals, preserved active copies, traversal and symlink isolation passed");
         }finally{remove(temp);}
     }

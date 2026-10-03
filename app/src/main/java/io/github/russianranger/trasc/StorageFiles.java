@@ -1,7 +1,9 @@
 package io.github.russianranger.trasc;
 
 import java.io.*;
+import java.nio.ByteBuffer;
 import java.nio.charset.StandardCharsets;
+import java.nio.charset.CodingErrorAction;
 import java.nio.file.*;
 import java.nio.file.attribute.BasicFileAttributes;
 import java.nio.file.attribute.BasicFileAttributeView;
@@ -241,7 +243,8 @@ final class StorageFiles {
             }
             if(!unchanged(before,attributes(target)))throw new IOException("Recovery record changed: "+path);
             metadata(signature,path,before);signature.update(bytes);
-            Object value=new Json(new String(bytes,StandardCharsets.UTF_8)).parse();
+            String text=StandardCharsets.UTF_8.newDecoder().onMalformedInput(CodingErrorAction.REPORT).onUnmappableCharacter(CodingErrorAction.REPORT).decode(ByteBuffer.wrap(bytes)).toString();
+            Object value=new Json(text).parse();
             if(!(value instanceof Map))throw new IOException("Invalid recovery record: "+path);
             return (Map<String,Object>)value;
         }
