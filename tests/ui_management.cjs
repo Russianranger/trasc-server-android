@@ -50,7 +50,7 @@ for(const [name,type,value,min,max]of [['Character:RaidExpMultiplier','real','0.
     else if(op==='export_logs')result={file:'exports/logs-native.zip'};
     else if(op==='export'){window.__exports.push(args.path);if(window.__cancelExport){window.nativeReply(id,{ok:false,error:'File selection cancelled'});return;}result={message:'File exported'};}
     else if(op==='client_dll_status')result={compiler:true,runtime:true,sdk:true,build:null};
-    else if(op==='files'){
+    else if(op==='files'||op==='native_files'){
      const names=args.path==='client/current'?['Resources',...Array.from({length:2101},(_,i)=>'a'+String(i).padStart(4,'0')+'.txt'),'DINPUT8.dll','z-last.txt']:args.path==='client/toolchain'?['sdk.json']:['players-test.zip'];
      const all=names.filter(n=>n.toLowerCase().includes((args.query||'').trim().toLowerCase())).map(name=>({name,path:args.path+'/'+name,size:100,directory:name==='Resources'}));
      const offset=args.offset||0,limit=args.limit||2000;
@@ -345,7 +345,7 @@ for(const [name,type,value,min,max]of [['Character:RaidExpMultiplier','real','0.
   await page.locator('#file-prev').click();await page.waitForFunction(()=>document.getElementById('file-results').textContent.startsWith('1801–'));
   await page.locator('#file-search').fill('DiNpUt');await page.locator('#file-search').press('Enter');
   await page.waitForFunction(()=>document.getElementById('file-results').textContent==='1–1 of 1 matches');
-  await page.locator('#file-list button').click();await page.locator('#file-export').click();
+  await page.locator('#file-list button.secondary').click();await page.locator('#file-export').click();
   await page.waitForFunction(()=>window.__exports.at(-1)==='client/current/DINPUT8.dll');
   await page.setViewportSize({width:412,height:915});
   await page.screenshot({path:'ui-reports/file-search-mobile.png',fullPage:true});
@@ -364,7 +364,7 @@ for(const [name,type,value,min,max]of [['Character:RaidExpMultiplier','real','0.
   await page.evaluate(()=>window.__heldFileReply());
   assert.equal(await page.locator('#file-path').inputValue(),'client/toolchain');
   assert(!(await page.locator('#file-list').textContent()).includes('DINPUT8.dll'));
-  await page.locator('#file-list button').click();await page.locator('#file-export').click();
+  await page.locator('#file-list button.secondary').click();await page.locator('#file-export').click();
   await page.waitForFunction(()=>window.__exports.at(-1)==='client/toolchain/sdk.json');
   await page.setViewportSize({width:960,height:540});await page.screenshot({path:'ui-reports/file-search-landscape.png',fullPage:true});
   assert.deepEqual(errors,[],'UI JavaScript errors');console.log('PASS: management, controller, offline logs, full-folder search/pagination/export and stale-response protection');

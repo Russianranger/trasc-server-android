@@ -24,6 +24,13 @@ public final class WorldProfilesHostTest {
             rejected(()->profiles.enter("custom"));
             rejected(()->profiles.beginSwitch("custom"));
             rejected(()->profiles.home("../work"));
+            try(WorldProfiles.Lease cleanup=profiles.enter("traditional")) {
+                try(WorldProfiles.Lease transfer=profiles.enter("traditional")) {rejected(profiles::beginMaintenance);}
+                profiles.beginMaintenance();
+                try {rejected(()->profiles.enter("traditional"));rejected(()->profiles.beginSwitch("traditional"));}
+                finally {profiles.endMaintenance();}
+                try(WorldProfiles.Lease request=profiles.enter("traditional")) {check(request!=null,"Maintenance releases requests");}
+            }
             try(WorldProfiles.Lease operation=profiles.enter("traditional")) {operation.close();} // Closing twice must not underflow.
             profiles.beginSwitch("traditional");profiles.select("custom");profiles.endSwitch();
             check(Files.readString(custom).equals("existing world"),"Switch back preserves Custom settings");

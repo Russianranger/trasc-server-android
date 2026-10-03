@@ -144,6 +144,35 @@ public final class RuntimeManager {
             .put("status",status).put("free_bytes",home.getUsableSpace()).put("abi",android.os.Build.SUPPORTED_ABIS[0])
             .put("profile",profiles.current()).put("profile_label",WorldProfiles.label(profiles.current()));
     }
+    JSONObject browseFiles(JSONObject args)throws Exception {
+        if(recoveryError!=null)throw new IOException(recoveryError);
+        Object offset=args.opt("offset"),limit=args.opt("limit"),query=args.opt("query"),path=args.opt("path");
+        if(offset!=null&&!(offset instanceof Integer)||limit!=null&&!(limit instanceof Integer)
+                ||query!=null&&!(query instanceof String)||path!=null&&!(path instanceof String))throw new IOException("Invalid file browser request");
+        StorageFiles.Page page=StorageFiles.browse(work,args.optString("path",""),args.optString("query",""),args.optInt("offset",0),args.optInt("limit",200));
+        org.json.JSONArray items=new org.json.JSONArray();
+        for(StorageFiles.Entry e:page.items)items.put(new JSONObject().put("name",e.name).put("path",e.path)
+            .put("directory",e.directory).put("size",e.size).put("deletable",e.deletable).put("protection",e.protection));
+        return new JSONObject().put("path",page.path).put("items",items).put("total",page.total)
+            .put("offset",page.offset).put("limit",page.limit).put("next_offset",page.nextOffset==null?JSONObject.NULL:page.nextOffset);
+    }
+    /** MainActivity owns client/runtime monitors and the exclusive profile reservation. */
+    JSONObject cleanupFiles(String operation,JSONObject args)throws Exception {
+        if(recoveryError!=null)throw new IOException(recoveryError);
+        if(new File(home,"session-swap.properties").exists())throw new IOException("Session recovery must finish before deleting files");
+        org.json.JSONArray requested=args.getJSONArray("paths");
+        if(requested.length()==0||requested.length()>500)throw new IOException("Select between 1 and 500 files or folders");
+        List<String> paths=new ArrayList<>();
+        for(int i=0;i<requested.length();i++){Object p=requested.get(i);if(!(p instanceof String))throw new IOException("Invalid file selection");paths.add((String)p);}
+        if(operation.equals("file_delete_preview")) {
+            StorageFiles.Preview preview=StorageFiles.preview(work,paths);
+            return new JSONObject().put("token",preview.token).put("paths",new org.json.JSONArray(preview.paths))
+                .put("bytes",preview.bytes).put("files",preview.files);
+        }
+        StorageFiles.Result removed=StorageFiles.delete(work,paths,args.getString("token"));
+        return new JSONObject().put("bytes",removed.bytes).put("files",removed.files).put("paths",new org.json.JSONArray(removed.paths))
+            .put("free_bytes",home.getUsableSpace()).put("message","Deleted "+removed.paths.size()+" selected files or folders.");
+    }
     synchronized JSONObject logRetention(JSONObject args)throws Exception {
         if(sessionBusy)throw new IOException("Wait for the complete session transfer");
         if(args.has("count")) {

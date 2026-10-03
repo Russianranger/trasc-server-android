@@ -17,7 +17,7 @@ const server=http.createServer((req,res)=>{const name=req.url==='/'?'index.html'
     else if(op==='client_native_state')result={installed:true,alive:f.client,busy:false,status:'Stopped',launch_options:{native_dinput8:true,fast_spell_parse:true}};
     else if(op==='state')result={profile:f.profile,running:false,settings:{ip:'127.0.0.1',login_port:5999,repo:f.profile==='custom'?'https://github.com/Russianranger/Triptych-Triumvirate':'https://github.com/EQEmu/EQEmu',ref:f.profile==='custom'?'main':'master',workers:3,jobs:2},processes:{},jobs:f.jobs,source:{commit:'abc'},maps_ready:true,database_imported:true,binaries_ready:true,client:{imported:false},traditional:{components:f.components},free_bytes:50e9};
     else if(op==='controller_state')result={sources:[],actions:[],layers:[{name:'Main',bindings:{}}],deadzone:.2,sensitivity:700};
-    else if(op==='files')result={path:'.',items:[],total:0,offset:0,next_offset:null};
+    else if(op==='files'||op==='native_files')result={path:'.',items:[],total:0,offset:0,next_offset:null};
     else if(op==='logs')result={text:'Profile log',names:['control.log']};
     else if(op==='log_retention')result={count:5};
     else if(op==='controller_capture')result={};

@@ -10,6 +10,7 @@ final class WorldProfiles {
     private volatile String current="custom";
     private int operations;
     private boolean switching;
+    private boolean maintenance;
     private String error;
     WorldProfiles(File base) {
         this.base=base;
@@ -37,6 +38,7 @@ final class WorldProfiles {
     synchronized Lease enter(String expected)throws IOException {
         if(error!=null)throw new IOException(error);
         if(switching)throw new IOException("World profile is switching. Wait a moment.");
+        if(maintenance)throw new IOException("Storage cleanup is in progress. Wait a moment.");
         if(!current.equals(expected))throw new IOException("World profile changed. Reopen the screen and retry.");
         operations++;
         return new Lease();
@@ -47,6 +49,7 @@ final class WorldProfiles {
     }
     synchronized void beginSwitch(String expected)throws IOException {
         if(error!=null)throw new IOException(error);
+        if(maintenance)throw new IOException("Finish storage cleanup before switching worlds");
         if(switching||!current.equals(expected))throw new IOException("World profile changed. Refresh and retry.");
         // Short status reads may finish; active imports, exports and pickers must finish first.
         switching=true;
@@ -66,4 +69,11 @@ final class WorldProfiles {
         } finally {Files.deleteIfExists(temp.toPath());}
     }
     synchronized void endSwitch(){switching=false;notifyAll();}
+    /** Caller already owns one Lease. Refuse overlapping pickers, transfers and requests. */
+    synchronized void beginMaintenance()throws IOException {
+        if(switching||maintenance||operations!=1)
+            throw new IOException("Finish file transfers and close the file picker, then retry storage cleanup");
+        maintenance=true;
+    }
+    synchronized void endMaintenance(){maintenance=false;notifyAll();}
 }

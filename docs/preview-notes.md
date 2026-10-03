@@ -1,3 +1,26 @@
+# 0.6.4 — Protected backup cleanup in Files
+
+Files now works while the server runtime is closed. Open Database backups,
+Saved exports, Imported archives or Old Wine prefixes to find retained copies.
+Use Delete checkboxes or Select removable on this page, then Review deletion.
+The review lists every selected path, file count and total size. A separate
+acknowledgment and Delete permanently button are required. Nothing is selected
+or deleted automatically. Same-folder selections remain selected across pages.
+
+Stop the client and server runtime before reviewing or deleting. Cleanup blocks
+imports, exports, profile switches and runtime launches during the operation,
+rechecks eligibility and the reviewed file tree, and refuses changed selections.
+Live database/server/maps/source/client/runtime/configuration and active recovery
+records stay protected. Saved exports outside the app are separate copies.
+
+Install over the existing app without uninstalling or clearing storage. No server,
+client, database, runtime or DLL reimport/rebuild is required for cleanup. First
+remove one old database snapshot, verify the freed space, then select additional
+copies. Keep at least one useful database/session backup if you want a recovery
+copy; automatic retention policy is unchanged.
+
+---
+
 # 0.6.3 — Build compatibility with updated server source
 
 The ferry passenger-support patch now accepts both Unix (LF) and Windows (CRLF)
