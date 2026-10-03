@@ -31,7 +31,7 @@ const server=http.createServer((req,res)=>{
      }else if(op==='start'||op==='stop'){
       const j={id:String(++seq),operation:op,status:'running',result:{}};f.jobs.push(j);result=j;if(!f.hold)finishSessionJob();
      }else if(op==='controller_state')result={sources:[],actions:[],layers:[{name:'Main',bindings:{}}],deadzone:.2,sensitivity:700};
-     else if(op==='files')result={path:'.',items:[],total:0,offset:0,next_offset:null};
+     else if(op==='files'||op==='native_files')result={path:'.',items:[],total:0,offset:0,next_offset:null};
      else if(op==='logs')result={text:'Session log',names:['control.log']};
      else if(op==='log_retention')result={count:5};
      else if(op==='spire_catalog'||op==='spire_search'){

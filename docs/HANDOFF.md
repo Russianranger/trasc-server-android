@@ -1,3 +1,33 @@
+# Development: 0.6.4 protected Files cleanup (2026-10-03)
+
+User requested deleting unnecessary retained copies in Files after app storage
+reached about 45 GB, using LSB-Android's protected cleanup as the reference.
+Base main b3c9ed0d62f8b9584131897b0bd5269a3ddd4c2d. Preview 0.6.4/code53
+preserves application ID and signing identity. Native browsing works with the
+runtime closed; native preview/delete use client then runtime monitor order and
+an exclusive WorldProfiles maintenance reservation. This prevents concurrent
+launches, file pickers, imports, exports, session transfers and profile switching.
+Both runtimes must be stopped. No user/device files are deleted by development.
+
+Multi-select deletion has path/size/file-count review and separate permanent
+confirmation. The helper rechecks allowed paths, complete tree metadata and
+recovery state before deletion, without reading archive/database payloads.
+Live world/client/runtime/configuration and essential recovery copies remain
+protected. Same-folder selections persist across pages and reset on navigation
+or query changes. Automatic backup generation/retention is unchanged.
+
+Tests and signed/public build evidence will be appended after verification.
+On-device acceptance remains pending. Install over the app, stop both runtimes,
+open Files -> Database backups, delete one old snapshot, verify space and test
+normal server/client startup before larger cleanup. No runtime reimport or rebuild.
+
+Storage audit also found home/work-session-previous and rootfs-session-previous
+outside the existing work explorer, retained after complete session restore.
+These and live toolchain/build trees remain outside this cleanup's allowlist.
+Do not claim every byte of the reported 45 GB is removable by this feature.
+
+---
+
 # Released: 0.6.3 updated server source compatibility (2026-09-26 UTC)
 
 **Repair, signed build and preview publication are complete; the complete updated

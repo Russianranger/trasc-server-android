@@ -22,6 +22,8 @@ if ! command -v javac >/dev/null; then compiler=(java -m jdk.compiler/com.sun.to
     tests/java/io/github/russianranger/trasc/TarExtractorHostTest.java \
     app/src/main/java/io/github/russianranger/trasc/WorldProfiles.java \
     tests/java/io/github/russianranger/trasc/WorldProfilesHostTest.java \
+    app/src/main/java/io/github/russianranger/trasc/StorageFiles.java \
+    tests/java/io/github/russianranger/trasc/StorageFilesTest.java \
     app/src/main/java/io/github/russianranger/trasc/LocalLogs.java \
     app/src/main/java/io/github/russianranger/trasc/LogRetention.java \
     app/src/main/java/io/github/russianranger/trasc/LogCleanup.java \
@@ -45,6 +47,7 @@ java -cp "$classes" io.github.russianranger.trasc.LogRetentionHostTest
 java -cp "$classes" io.github.russianranger.trasc.ManagementHostTest
 java -cp "$classes" io.github.russianranger.trasc.TarExtractorHostTest
 java -cp "$classes" io.github.russianranger.trasc.WorldProfilesHostTest
+java -cp "$classes" io.github.russianranger.trasc.StorageFilesTest
 java -cp "$classes" io.github.russianranger.trasc.ClientHostTest
 java -cp "$classes" io.github.russianranger.trasc.ProotAccelerationHostTest
 if [[ $# -gt 0 ]]; then

@@ -99,6 +99,16 @@ public final class MainActivity extends Activity {
                     if(runtime.sessionBusy&&!operation.equals("native_state")&&!operation.equals("runtime_log")&&!operation.equals("logs")&&!operation.equals("client_native_state"))throw new IOException("A complete session transfer is in progress");
                     switch(operation){
                         case "native_state": result=runtime.nativeState();break;
+                        case "native_files": result=runtime.browseFiles(args);break;
+                        case "file_delete_preview": case "file_delete":
+                            synchronized(clientRuntime) {synchronized(runtime) {
+                                if(runtime.alive()||runtime.installing||runtime.sessionBusy||clientRuntime.alive()||clientRuntime.busy)
+                                    throw new IOException("Stop the client and server runtime before deleting files");
+                                runtime.profiles.beginMaintenance();
+                                try {service();result=runtime.cleanupFiles(operation,args);}
+                                finally {runtime.profiles.endMaintenance();if(!runtime.alive()&&!clientRuntime.alive())stopService(new Intent(MainActivity.this,ServerService.class));}
+                            }}
+                            break;
                         case "client_native_state": result=clientRuntime.state();break;
                         case "client_dll_license":
                             profileUi(id,profile,()->{openMicrosoftLicense(args.getString("url"));return new JSONObject();});return;

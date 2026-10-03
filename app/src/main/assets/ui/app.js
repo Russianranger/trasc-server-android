@@ -35,7 +35,7 @@ const tabStories={
 function renderOverview(){const [title,summary]=tabStories[currentTab]||tabStories.setup;$('headline').textContent=currentTab==='server'&&lastState?.running?'Your world is running.':title;$('summary').textContent=summary;}
 function statusBadge(id,label,state){const el=$(id);el.textContent=label;el.dataset.state=state;el.classList.toggle('online',state==='running');}
 function renderClientActivity(s){
- lastClientNative=s;if(typeof syncProfileControls==='function')syncProfileControls();
+ lastClientNative=s;if(typeof syncProfileControls==='function')syncProfileControls();if(typeof cleanupControls==='function')cleanupControls();
  let label='Client · Stopped',state='stopped';
  if(s.alive){
   const launch=s.launch||{};
@@ -62,6 +62,7 @@ function renderSessionControls(){
  else {statusBadge('badge',s.running?'Server · Running':'Server · Stopped',s.running?'running':'stopped');}
  if(typeof syncProfileControls==='function')syncProfileControls();
  if(typeof dllControls==='function')dllControls();
+ if(typeof cleanupControls==='function')cleanupControls();
 }
 function render(s){lastState=s;renderSessionControls();renderOverview();if(typeof renderBoatTrial==='function')renderBoatTrial();if(typeof renderFerryService==='function')renderFerryService();$('free').textContent=bytes(s.free_bytes);
  $('nektulos-status').textContent=s.nektulos?.applied?'Legacy pair applied · original backup: backups/nektulos/'+s.nektulos.backup:s.nektulos?.legacy_ready?'Both legacy files are available.':'Import both legacy Nektulos files before applying the fix.';if(typeof renderClientStatus==='function')renderClientStatus(s.client);ready('source-ready',!!s.source);ready('maps-ready',s.maps_ready);ready('database-ready',s.database_imported);
@@ -85,7 +86,7 @@ async function poll(){
   }catch(e){if(!nativeKnown)lastNative=null;lastState=null;$('runtime-status').textContent=e.message;}
   finally{renderSessionControls();renderOverview();}})(),
   (async()=>{try{if(typeof clientRuntimeState==='function')await clientRuntimeState();else renderClientActivity(await api('client_native_state',{},10000));}
-   catch(e){lastClientNative=null;if(typeof syncProfileControls==='function')syncProfileControls();statusBadge('client-badge','Client · Status unavailable','unknown');}})()
+   catch(e){lastClientNative=null;if(typeof syncProfileControls==='function')syncProfileControls();if(typeof cleanupControls==='function')cleanupControls();statusBadge('client-badge','Client · Status unavailable','unknown');}})()
  ]);}finally{polling=false;}
 }
 document.addEventListener('visibilitychange',()=>{if(!document.hidden)poll();});
@@ -130,30 +131,31 @@ action('run-sql',async()=>{const r=await job('sql',{query:$('sql-query').value,w
 let fileBrowseGeneration=0,fileOffset=0,fileNext=null;
 const filePageSize=200;
 function clearFileResults(message){
- ++fileBrowseGeneration;$('file-list').replaceChildren();$('selected-file').value='';
+ ++fileBrowseGeneration;if(typeof cleanupInvalidate==='function')cleanupInvalidate();$('file-list').replaceChildren();$('selected-file').value='';
  $('file-prev').disabled=$('file-next').disabled=true;$('file-results').textContent=message;
 }
 async function browse(offset=0){
  clearFileResults('Loading files…');const request=fileBrowseGeneration;
  const path=$('file-path').value.trim(),query=$('file-search').value.trim();
  try{
-  const r=await api('files',{path,query,offset,limit:filePageSize});
+  const r=await api('native_files',{path,query,offset,limit:filePageSize});
   if(request!==fileBrowseGeneration)return;
   $('file-path').value=r.path==='.'?'':r.path;fileOffset=r.offset;fileNext=r.next_offset;
+  cleanupPage(r.items,$('file-path').value,query);
   for(const f of r.items){
    const row=document.createElement('tr'),name=document.createElement('td'),size=document.createElement('td'),select=document.createElement('td');
    if(f.directory){const b=document.createElement('button');b.className='folder';b.textContent='▸ '+f.name;
     b.onclick=()=>{$('file-path').value=f.path;$('file-search').value='';browse().catch(e=>notice(e.message,true));};name.append(b);
    }else name.textContent=f.name;
    size.textContent=f.directory?'Folder':bytes(f.size);const b=document.createElement('button');b.className='secondary';b.textContent='Select';
-   b.onclick=()=>{$('selected-file').value=f.path;};select.append(b);row.append(name,size,select);$('file-list').append(row);
+   b.onclick=()=>{$('selected-file').value=f.path;};select.append(b);row.append(name,size,select,cleanupCell(f));$('file-list').append(row);
   }
   $('file-results').textContent=r.total?`${r.offset+1}–${r.offset+r.items.length} of ${r.total} ${query?'matches':'entries'}`:query?'No matching names in this folder.':'This folder is empty.';
   $('file-prev').disabled=r.offset===0;$('file-next').disabled=r.next_offset==null;
   $('file-list').closest('.table-wrap').scrollTop=0;
  }catch(e){if(request!==fileBrowseGeneration)return;$('file-results').textContent='Could not load files. '+e.message;throw e;}
 }
-for(const id of ['file-path','file-search'])$(id).addEventListener('input',()=>clearFileResults('Press Search or Open folder to load files.'));
+for(const id of ['file-path','file-search'])$(id).addEventListener('input',()=>{cleanupReset();clearFileResults('Press Search or Open folder to load files.');});
 function fileBrowseAction(id,fn){$(id).addEventListener('click',()=>fn().catch(e=>notice(e.message,true)));}
 fileBrowseAction('file-go',()=>browse());fileBrowseAction('file-search-go',()=>browse());
 fileBrowseAction('file-search-clear',()=>{$('file-search').value='';return browse();});
