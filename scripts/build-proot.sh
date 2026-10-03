@@ -6,7 +6,19 @@ llvm_bin="$ndk_path/toolchains/llvm/prebuilt/linux-x86_64/bin"
 build_dir="$repo_root/runtime-work/native"
 mkdir -p "$build_dir" "$repo_root/app/src/main/jniLibs/arm64-v8a"
 cd "$build_dir"
-if [ ! -f talloc.tar.gz ]; then curl --fail --location --retry 3 https://www.samba.org/ftp/talloc/talloc-2.4.3.tar.gz -o talloc.tar.gz; fi
+if [ ! -f talloc.tar.gz ]; then
+    # Both locations carry the same pinned archive; never keep a partial download.
+    for source_url in \
+        https://www.samba.org/ftp/talloc/talloc-2.4.3.tar.gz \
+        https://distfiles.macports.org/talloc/talloc-2.4.3.tar.gz; do
+        if curl --fail --location --retry 1 --connect-timeout 15 --max-time 60 "$source_url" -o talloc.tar.gz.partial; then
+            echo 'dc46c40b9f46bb34dd97fe41f548b0e8b247b77a918576733c528e83abd854dd  talloc.tar.gz.partial' | sha256sum --check
+            mv talloc.tar.gz.partial talloc.tar.gz
+            break
+        fi
+        rm -f talloc.tar.gz.partial
+    done
+fi
 echo 'dc46c40b9f46bb34dd97fe41f548b0e8b247b77a918576733c528e83abd854dd  talloc.tar.gz' | sha256sum --check
 if [ ! -d talloc-2.4.3 ]; then tar -xzf talloc.tar.gz; fi
 if [ ! -d proot ]; then git clone https://github.com/termux/proot.git proot; fi
