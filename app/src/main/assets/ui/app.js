@@ -81,7 +81,7 @@ async function poll(){
   (async()=>{let nativeKnown=false;try{
    const n=await api('native_state',{},10000);nativeKnown=true;lastNative=n;if(typeof renderProfile==='function'&&!renderProfile(n))return;$('runtime-status').textContent=n.status;ready('runtime-ready',n.installed);
    if(n.session_busy||n.installing){lastState=null;$('activity').hidden=false;$('activity-title').textContent=n.session_busy?'Complete session transfer':'Runtime installation';$('activity-detail').textContent=n.status;$('cancel').hidden=true;}
-   else if(n.alive){lastState=null;render(await api('state',{},10000));}
+   else if(n.alive){render(await api('state',{},10000));}
    else {lastState=null;$('free').textContent=bytes(n.free_bytes);if(!busy)$('activity').hidden=true;}
   }catch(e){if(!nativeKnown)lastNative=null;lastState=null;$('runtime-status').textContent=e.message;}
   finally{renderSessionControls();renderOverview();}})(),

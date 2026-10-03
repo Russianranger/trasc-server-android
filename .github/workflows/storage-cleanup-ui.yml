@@ -1,9 +1,17 @@
 name: Verify protected storage cleanup screen
 on:
+  push:
+    branches: [main]
+    paths:
+      - 'app/src/main/assets/ui/**'
+      - 'tests/ui_file_cleanup.cjs'
+      - 'tests/ui_sdk_download.cjs'
+      - '.github/workflows/storage-cleanup-ui.yml'
   pull_request:
     paths:
       - 'app/src/main/assets/ui/**'
       - 'tests/ui_file_cleanup.cjs'
+      - 'tests/ui_sdk_download.cjs'
       - '.github/workflows/storage-cleanup-ui.yml'
   workflow_dispatch:
 permissions:
@@ -26,6 +34,8 @@ jobs:
           npx playwright install --with-deps chromium
       - name: Verify explicit deletion, protection and offline browsing
         run: node tests/ui_file_cleanup.cjs
+      - name: Verify SDK preparation and session transfer gating
+        run: node tests/ui_sdk_download.cjs
       - uses: actions/upload-artifact@v4
         if: always()
         with:

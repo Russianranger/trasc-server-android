@@ -18,7 +18,10 @@ const server=http.createServer((req,res)=>{
     try{
      if(op==='native_state')result={profile:'custom',installed:true,alive:f.runtime,status:'Runtime ready',free_bytes:50e9};
      else if(op==='client_native_state')result={installed:true,alive:f.client,busy:false,status:'Stopped'};
-     else if(op==='state')result={running:f.server,settings:{ip:'127.0.0.1',login_port:5999,repo:'fixture',ref:'main',workers:3,jobs:2},processes:{},jobs:f.jobs,binaries_ready:true,database_imported:true,maps_ready:true,client:{imported:true,files:3,bytes:123},free_bytes:50e9};
+     else if(op==='state'){
+      result={running:f.server,settings:{ip:'127.0.0.1',login_port:5999,repo:'fixture',ref:'main',workers:3,jobs:2},processes:{},jobs:f.jobs,binaries_ready:true,database_imported:true,maps_ready:true,client:{imported:true,files:3,bytes:123},free_bytes:50e9};
+      if(f.holdStateReply){f.holdStateReply=false;f.releaseStateReply=()=>{f.releaseStateReply=null;window.nativeReply(id,{ok:true,result});};return;}
+     }
      else if(op==='controller_state')result={sources:[],actions:[],layers:[{name:'Main',bindings:{}}],deadzone:.2,sensitivity:700};
      else if(op==='client_dll_status')result={compiler:f.compiler,sdk:f.compiler,runtime:true,build:null};
      else if(op==='client_dll_download_info'){
@@ -91,12 +94,20 @@ const server=http.createServer((req,res)=>{
   // An operation found by polling after the management page reopens must also lock controls.
   await page.evaluate(()=>{fixture.jobs.push({id:'restored',operation:'client_dll_download',status:'running',progress:{message:'Verifying cached packages'}});poll();});
   await page.waitForFunction(()=>document.getElementById('dll-sdk-progress').textContent.includes('cached packages'));
+  await idle();
   assert(await page.isDisabled('#client-launch'));assert(await page.isDisabled('#dll-sdk'));assert(await page.isDisabled('#session-export'));
+  // Concurrent status rendering must retain known job gates while the backend refresh is pending.
+  await page.evaluate(()=>{fixture.holdStateReply=true;poll();});
+  await page.waitForFunction(()=>typeof fixture.releaseStateReply==='function');
+  const held=await page.evaluate(()=>{dllControls();return {polling,sessionImport:document.getElementById('session-import').disabled,sessionExport:document.getElementById('session-export').disabled};});
+  assert.deepEqual(held,{polling:true,sessionImport:true,sessionExport:true},'A pending state reply must not unlock session transfers during a known SDK job');
+  await page.evaluate(()=>fixture.releaseStateReply());await idle();
+  assert(await page.isDisabled('#session-import'));assert(await page.isDisabled('#session-export'));
   await finish('error','Retry stopped. Existing compiler retained.');await page.evaluate(()=>poll());
   await page.waitForFunction(()=>!document.getElementById('dll-build').disabled);
   await page.evaluate(()=>fixture.infoError='Could not reach Microsoft. Import a prepared ZIP or retry.');
   await page.click('#dll-sdk-download');await page.waitForFunction(()=>!busy&&document.getElementById('dll-sdk-progress').textContent.includes('Could not reach'));
   assert(!(await page.isVisible('#dll-sdk-consent')));assert.equal(await downloadCount(),before);
-  assert.deepEqual(errors,[]);console.log('PASS: SDK explicit license consent, cancel/retry, progress and conflicts, failure preservation, compiler-ready refresh, offline import and reopened job gating');
+  assert.deepEqual(errors,[]);console.log('PASS: SDK explicit license consent, cancel/retry, progress and conflicts, failure preservation, compiler-ready refresh, offline import and stable reopened job gating during pending status refresh');
  }finally{await browser.close();server.close();}
 })().catch(e=>{console.error(e);server.close();process.exitCode=1;});
