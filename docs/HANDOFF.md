@@ -1,30 +1,88 @@
-# Development: 0.6.4 protected Files cleanup (2026-10-03)
+# Released: 0.6.4 protected Files cleanup (2026-10-03 UTC)
 
-User requested deleting unnecessary retained copies in Files after app storage
-reached about 45 GB, using LSB-Android's protected cleanup as the reference.
-Base main b3c9ed0d62f8b9584131897b0bd5269a3ddd4c2d. Preview 0.6.4/code53
-preserves application ID and signing identity. Native browsing works with the
-runtime closed; native preview/delete use client then runtime monitor order and
-an exclusive WorldProfiles maintenance reservation. This prevents concurrent
-launches, file pickers, imports, exports, session transfers and profile switching.
-Both runtimes must be stopped. No user/device files are deleted by development.
+**Implementation, signed build and public preview verification are complete.**
+[PR #15](https://github.com/Russianranger/trasc-server-android/pull/15) merged at
+`24de731e4f190f50e402c3f2ab3927034e4a3640`; the final release source is
+`3cac94b6ca39ca3394ffb2946235aa46bfcdffa5`.
+[Download preview 0.6.4](https://github.com/Russianranger/trasc-server-android/releases/download/preview/trasc-server-android-preview.apk?build=3cac94b6ca39).
+Version **0.6.4/code53** retains package `io.github.russianranger.trasc.preview`
+and the existing signing certificate. Named Beta 0.6.2 remains unchanged.
 
-Multi-select deletion has path/size/file-count review and separate permanent
-confirmation. The helper rechecks allowed paths, complete tree metadata and
-recovery state before deletion, without reading archive/database payloads.
-Live world/client/runtime/configuration and essential recovery copies remain
-protected. Same-folder selections persist across pages and reset on navigation
-or query changes. Automatic backup generation/retention is unchanged.
+**Behavior:** Files browses with the runtime closed and supports selecting retained
+database/player backups, saved exports, imported archives and eligible previous
+client/runtime/Wine-prefix copies. Review deletion lists every selected path,
+total bytes and file count; permanent removal requires a separate acknowledgment.
+Selections survive pagination in the same folder/query and reset on navigation or
+profile changes. Nothing is selected or deleted automatically. No device files
+were removed during development; automatic backup generation/retention is unchanged.
 
-Tests and signed/public build evidence will be appended after verification.
-On-device acceptance remains pending. Install over the app, stop both runtimes,
-open Files -> Database backups, delete one old snapshot, verify space and test
-normal server/client startup before larger cleanup. No runtime reimport or rebuild.
+**Protection:** live database, server, maps, source, client, prefix, runtime and
+configuration remain protected, as do recovery journals and their original files.
+Pending or invalid recovery data fails closed; previous copies require a valid
+installed replacement. Cleanup requires both runtimes stopped, holds client then
+runtime monitors and an exclusive WorldProfiles maintenance reservation, and
+prevents overlapping launches, file pickers, imports/exports, session transfers
+and profile switches. It preflights the complete selection and rechecks tree
+metadata, path eligibility and recovery state before removal. Links are never
+followed, partial failures report actual removal, and archive/database payloads
+are never opened just to measure size. Reviews are bounded to 500 selected paths
+and 100,000 tree entries.
 
-Storage audit also found home/work-session-previous and rootfs-session-previous
-outside the existing work explorer, retained after complete session restore.
-These and live toolchain/build trees remain outside this cleanup's allowlist.
+Release preparation also added an exact-checksum talloc download mirror after
+the Samba endpoint repeatedly failed before native compilation. Temporary files
+are promoted only after the original immutable SHA256 passes; corrupt downloads
+and exhausted sources fail closed. A pre-existing UI polling race discovered by
+the SDK regression suite was fixed by retaining the last known live state while
+awaiting its replacement, keeping session transfers blocked during known jobs.
+
+**Verification:** host JVM cleanup/profile/session/controller suites passed,
+including a 5 GiB sparse-file measurement under a 96 MiB heap, stale inode/tree
+and selection rejection, traversal/link protection, recovery guards and a
+concurrent-change partial-deletion test. Local backend discovery ran 197 tests
+with eight optional Lua tests skipped; the signed CI backend/Lua and strict C++
+passenger checks passed. All ten
+[signed main build/release jobs](https://github.com/Russianranger/trasc-server-android/actions/runs/37129306876)
+passed: backend/management checks, native Android compile/lint/signing, database
+backup/restore, both pinned server revisions, client DLL, authenticated display
+and real client rendering/input, installation and complete-session/PRoot checks.
+The full management UI suite and the separate
+[focused cleanup/SDK browser check](https://github.com/Russianranger/trasc-server-android/actions/runs/37129306620)
+passed, including a deterministic held-state-reply regression and phone/Thor
+cleanup layouts. Independent safety and package reviews found no blockers.
+Physical-device acceptance remains pending.
+
+**Published identity:** the public APK is **15,223,054 bytes**, SHA256
+`ae6300ef1787b28e0eb2eeecd246d91b8d88f00fb4c2995054647e5cd4025272`.
+Public APK and corresponding launcher sources match signed artifact
+**11276646432** byte for byte; its ZIP is **129,636,015 bytes**, SHA256
+`c23fd9e6395802098932455b2018125981d8b8fd9eb36c2e0babd7eeab9f61fb`.
+The source archive is **114,560,947 bytes**, SHA256
+`929c9dd8a74d33e088b3dac69e1cd818d5df642c8e1c08f08220ff08ebc759f3`.
+Public preview-build.json is **367 bytes**, SHA256
+`64003ee4f634fc33e290baee3b2b8695e8b53fb16248b43d4cc1f7636ed59811`.
+GitHub asset sizes/digests, public manifest and preview tag agree with the final
+source above. apksigner verifies certificate
+`ff9c09cdc3e2404d1d7f72d61ce2f8651464f5e03dff340f70bd4df28c70e869`;
+aapt2 verifies package/version/code. All 75 UI/backend/packer source assets match
+the release; StorageFiles policy/review/delete classes and the cleanup bridge are
+present in DEX. Archived build-proot.sh and 27 native files match the repository.
+All 13 packaged ELF/PE binary paths and architectures match preview 0.6.3;
+the same five ARM64 native libraries remain. Evidence is under ignored
+`runtime-work/cleanup-independent`, including verification.json,
+public-verification.json, release-record.json and artifact/binary ABI reports.
+
+**Next Thor test:** stop the client and close the server runtime, install over
+the existing app without uninstalling or clearing storage, then open
+**Files → Database backups**. Select one old snapshot, choose **Review deletion**,
+acknowledge and **Delete permanently**. Verify freed space and normal server/client
+startup before removing larger batches. Keep a useful backup if recovery is wanted.
+No runtime/client/database reimport, server rebuild or client DLL rebuild is required.
+
+**Scope:** work-session-previous and rootfs-session-previous retained after complete
+session restore are outside the existing work explorer and this deletion allowlist.
+Live toolchain/build trees and conservative recovery namespaces are also retained.
 Do not claim every byte of the reported 45 GB is removable by this feature.
+This documentation-only release record does not rebuild or retag the APK.
 
 ---
 
