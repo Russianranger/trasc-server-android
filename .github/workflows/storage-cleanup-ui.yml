@@ -1,0 +1,33 @@
+name: Verify protected storage cleanup screen
+on:
+  pull_request:
+    paths:
+      - 'app/src/main/assets/ui/**'
+      - 'tests/ui_file_cleanup.cjs'
+      - '.github/workflows/storage-cleanup-ui.yml'
+  workflow_dispatch:
+permissions:
+  contents: read
+concurrency:
+  group: storage-cleanup-ui-${{ github.ref }}
+  cancel-in-progress: true
+jobs:
+  cleanup-ui:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Install the pinned browser test runner
+        run: |
+          npm install --no-save --package-lock=false playwright@1.55.0
+          npx playwright install --with-deps chromium
+      - name: Verify explicit deletion, protection and offline browsing
+        run: node tests/ui_file_cleanup.cjs
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: storage-cleanup-ui-reports
+          path: ui-reports/

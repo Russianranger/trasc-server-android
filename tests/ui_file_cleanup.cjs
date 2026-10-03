@@ -74,7 +74,7 @@ const server=http.createServer((req,res)=>{
   await page.locator('#file-search-go').click();await page.waitForFunction(()=>document.getElementById('file-results').textContent==='1–4 of 4 matches');
   await page.locator('#cleanup-select-page').click();await review();await page.locator('#file-path').fill('exports');
   assert.equal(await checked().count(),0);assert(await page.locator('#cleanup-confirm').isHidden());
-  await page.locator('#file-go').click();await page.waitForFunction(()=>document.getElementById('file-list').textContent.includes('logs-export.zip'));
+  await page.locator('#file-search').fill('');await page.locator('#file-go').click();await page.waitForFunction(()=>document.getElementById('file-list').textContent.includes('logs-export.zip'));
   await page.locator('#cleanup-select-page').click();await review();await page.locator('#cleanup-clear-selection').click();
   assert(await page.locator('#cleanup-confirm').isHidden());assert.equal(await checked().count(),0);
   // A preview arriving after navigation cannot reopen an obsolete confirmation.
