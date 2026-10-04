@@ -19,6 +19,8 @@ jobs:
           repository: Russianranger/Server
           ref: 4aceae18b94ffaafc08e2b17bc41cd72c77f795d
           path: traditional-system-source
+      - name: Fetch only the pinned C++20-compatible websocket headers
+        run: git -C traditional-system-source submodule update --init --depth 1 submodules/websocketpp
       - name: Compile with native Bookworm system packages
         run: |
           set -o pipefail
@@ -31,7 +33,7 @@ jobs:
             debian:bookworm-slim bash -c '
               set -euxo pipefail
               apt-get update
-              apt-get install -y --no-install-recommends ca-certificates curl git zip unzip tar pkg-config cmake ninja-build build-essential libperl-dev python3 uuid-dev file libboost-dev libcereal-dev libfmt-dev libglm-dev libluajit-5.1-dev librecast-dev libwebsocketpp-dev libuv1-dev libmariadb-dev libssl-dev libsodium-dev zlib1g-dev
+              apt-get install -y --no-install-recommends ca-certificates curl git zip unzip tar pkg-config cmake ninja-build build-essential libperl-dev python3 uuid-dev file libboost-dev libcereal-dev libfmt-dev libglm-dev libluajit-5.1-dev librecast-dev libuv1-dev libmariadb-dev libssl-dev libsodium-dev zlib1g-dev
               g++ --version > /evidence/compiler.txt
               cmake --version >> /evidence/compiler.txt
               dpkg-query -W > /evidence/packages.txt
@@ -42,6 +44,7 @@ jobs:
                 -DCMAKE_CXX_FLAGS_RELEASE="-O2 -DNDEBUG -fno-strict-aliasing" \
                 -DCMAKE_EXPORT_COMPILE_COMMANDS=ON \
                 -DEQEMU_USE_SYSTEM_DEPENDENCIES=ON \
+                -DTRASC_WEBSOCKETPP_INCLUDE_DIR=/source/submodules/websocketpp \
                 -DEQEMU_BUILD_PCH=OFF \
                 -DEQEMU_BUILD_SERVER=ON \
                 -DEQEMU_BUILD_LOGIN=ON \
@@ -68,7 +71,7 @@ jobs:
             traditional-system-evidence/build/bin/
           retention-days: 14
   baseline:
-    if: github.event_name == 'workflow_dispatch'
+    if: github.event_name == 'workflow_dispatch' || contains(github.event.head_commit.message, 'raw retry')
     runs-on: ubuntu-24.04-arm
     timeout-minutes: 58
     steps:
@@ -98,7 +101,7 @@ jobs:
             debian:bookworm-slim bash -c '
               set -euxo pipefail
               apt-get update
-              apt-get install -y --no-install-recommends ca-certificates curl git zip unzip tar pkg-config cmake ninja-build build-essential libperl-dev python3 uuid-dev file
+              apt-get install -y --no-install-recommends ca-certificates curl git zip unzip tar pkg-config cmake ninja-build build-essential libperl-dev python3 uuid-dev file autoconf automake libtool libtool-bin
               g++ --version > /evidence/compiler.txt
               cmake --version >> /evidence/compiler.txt
               dpkg-query -W > /evidence/packages.txt

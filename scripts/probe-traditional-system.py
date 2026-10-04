@@ -38,4 +38,8 @@ process_header = root / 'common/process.h'
 text = process_header.read_text()
 assert '#include <string>' not in text
 process_header.write_text('#include <string>\n' + text)
+fastmath = root / 'zone/fastmath.cpp'
+text = fastmath.read_text()
+assert '#include <cmath>' not in text
+fastmath.write_text('#include <cmath>\n' + text)
 print('Applied scoped system-dependency and low-memory build probe transformations')
