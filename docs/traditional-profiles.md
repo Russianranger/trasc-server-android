@@ -1,4 +1,4 @@
-# Traditional EQEmu profiles — 0.6.5
+# Traditional EQEmu profiles — 0.6.6
 
 This milestone adds two independent worlds to the app: **TRASC Custom** and **Traditional EQEmu**. The existing installation remains Custom in its original location. Traditional starts empty, uses a separate clean ROF2 import, and has a distinct 16-bit adventure background for each of the same ten tabs.
 
@@ -23,8 +23,8 @@ Custom remains at the existing app-private `files/work` and `files/rootfs`. Trad
 | Component | Where to import | Purpose / remaining validation |
 | --- | --- | --- |
 | Selected server source | Setup → Import server | New profiles default to `Russianranger/Server` and the tested commit above. Existing URLs are retained: choose **Use tested Traditional source**, then import from GitHub. The adapter verifies source guards and hydrates the exact websocket header revision omitted from GitHub ZIPs. Other revisions remain importable but cannot use this build recipe. |
-| PEQ world, player/system and local-login database tables | Setup → Select database | Use a complete seed, or add each SQL/SQL.GZ/ZIP member to the split-seed bundle in the distribution's required order and import once. The importer targets this profile's `peq` database. Exact schema and login compatibility remain to be verified. |
-| Server geometry, navigation and water maps | Setup → Import maps | Import base/nav/water/legacy map directories. These are server data, separate from ROF2's installed zone assets. |
+| PEQ world, player/system and local-login database tables | Setup → Choose database file | Select `peq-latest.zip`; the complete five-part PEQ seed is selected automatically. Review content/login/player/state/system, then choose **Import complete PEQ database**. Other split distributions can use the advanced manual bundle. The importer targets this profile's `peq` database. Exact schema and login compatibility remain to be verified. |
+| Server geometry, navigation and water maps | Setup → Import maps | The default is `https://github.com/Russianranger/eqemu-maps`; leave the branch blank to use its default branch. Import base/nav/water/legacy map directories. These are server data, separate from ROF2's installed zone assets. |
 | Zone/global quest scripts | Setup → Traditional world content → Quests | Installs `server/quests`. ProjectEQ's quest repository is provided as an editable starting URL. |
 | Perl quest plugins | Same panel → Perl plugins | Installs `server/plugins`. ProjectEQ includes a `plugins` directory; importing quests does not silently merge it into the quest tree. Perl itself and any additional Perl modules are runtime dependencies. |
 | Lua quest modules | Same panel → Lua modules | Installs `server/lua_modules`. ProjectEQ includes this directory too. Match these modules to the quest revision. |

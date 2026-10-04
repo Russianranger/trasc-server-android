@@ -1,6 +1,7 @@
 'use strict';
 const $=id=>document.getElementById(id), pending=new Map();
 let activeProfile=null,lastClientNative=null;
+let databaseCandidates=[],databaseScanning=false,databaseScanGeneration=0;
 let seq=0,currentTab='setup',lastState=null,lastNative=null,busy=0,rulesLoaded=false,rulesValues={},initialSettings=false,polling=false,sessionAction=null;
 window.nativeReply=(id,response)=>{const p=pending.get(id);if(!p)return;pending.delete(id);clearTimeout(p.timer);response.ok?p.resolve(response.result):p.reject(new Error(response.error));};
 function api(op,args={},timeoutMs=0){return new Promise((resolve,reject)=>{const id=String(++seq);const timer=timeoutMs?setTimeout(()=>{pending.delete(id);reject(new Error('Status check timed out.'));},timeoutMs):null;pending.set(id,{resolve,reject,timer});if(!window.Trasc){pending.delete(id);clearTimeout(timer);reject(new Error('Open this interface in the TRASC Android app.'));return;}Trasc.call(id,op,JSON.stringify(activeProfile?{...args,__profile:activeProfile}:args));});}
@@ -63,6 +64,7 @@ function renderSessionControls(){
  if(typeof syncProfileControls==='function')syncProfileControls();
  if(typeof dllControls==='function')dllControls();
  if(typeof cleanupControls==='function')cleanupControls();
+ renderDatabaseSelection();
 }
 function render(s){lastState=s;renderSessionControls();renderOverview();if(typeof renderBoatTrial==='function')renderBoatTrial();if(typeof renderFerryService==='function')renderFerryService();$('free').textContent=bytes(s.free_bytes);
  $('nektulos-status').textContent=s.nektulos?.applied?'Legacy pair applied · original backup: backups/nektulos/'+s.nektulos.backup:s.nektulos?.legacy_ready?'Both legacy files are available.':'Import both legacy Nektulos files before applying the fix.';if(typeof renderClientStatus==='function')renderClientStatus(s.client);ready('source-ready',!!s.source);ready('maps-ready',s.maps_ready);ready('database-ready',s.database_imported);
@@ -70,7 +72,7 @@ function render(s){lastState=s;renderSessionControls();renderOverview();if(typeo
  $('build-status').textContent=s.profile==='traditional'?(s.traditional?.build?.staged_message||'No staged build yet.')+' Deployment and first login are the next milestone.':(s.build_ready?'A successful build is ready to deploy.':'No staged build yet.')+(s.binaries_ready?' Deployed binaries are available.':'')+(s.rollback_ready?' Previous binaries can be restored.':'');
  $('pending-rules').textContent=s.settings.rules_pending_restart?'Settings saved · restart required.':'';
  $('endpoint').textContent=$('login-address').textContent=s.settings.ip+':'+s.settings.login_port;
- if(!initialSettings){$('server-ip').value=s.settings.ip;$('source-url').value=s.settings.repo;$('source-ref').value=s.settings.ref;$('workers').value=s.settings.workers;$('build-jobs').value=s.profile==='traditional'&&![1,2].includes(Number(s.settings.jobs))?'1':s.settings.jobs;initialSettings=true;}
+ if(!initialSettings){if(s.settings.maps_url?.trim())$('maps-url').value=s.settings.maps_url;$('server-ip').value=s.settings.ip;$('source-url').value=s.settings.repo;$('source-ref').value=s.settings.ref;$('workers').value=s.settings.workers;$('build-jobs').value=s.profile==='traditional'&&![1,2].includes(Number(s.settings.jobs))?'1':s.settings.jobs;initialSettings=true;}
  $('processes').replaceChildren();for(const [name,p]of Object.entries(s.processes)){const row=document.createElement('div');row.className='process';const title=document.createElement('strong');title.textContent=name;const state=document.createElement('span');state.textContent=p.running?'Running · '+p.pid:'Stopped · '+p.exit;if(!p.running)state.className='failed';row.append(title,state);$('processes').append(row);}if(!Object.keys(s.processes).length)$('processes').textContent='No server processes running.';
  const running=s.jobs.find(j=>j.status==='running'||j.status==='queued');if(running){$('activity').hidden=false;$('activity-title').textContent=operationLabel(running.operation);$('activity-detail').textContent=running.progress?.message||'In progress · open Logs for command output';$('cancel').hidden=false;}else if(!busy){$('activity').hidden=true;}
  if(typeof renderSdkDownload==='function')renderSdkDownload(s);
@@ -90,7 +92,61 @@ async function poll(){
  ]);}finally{polling=false;}
 }
 document.addEventListener('visibilitychange',()=>{if(!document.hidden)poll();});
-async function scanDB(){const data=await api('databases');const select=$('db-candidate'),previous=select.value;select.replaceChildren();for(const c of data.candidates){const option=document.createElement('option');option.value=c.id;option.textContent=c.id+' · '+bytes(c.size);select.append(option);}if([...select.options].some(o=>o.value===previous))select.value=previous;if(!data.candidates.length){const o=document.createElement('option');o.value='';o.textContent='No SQL files found. Import source or a database file first.';select.append(o);}notice('Found '+data.candidates.length+' database candidates. Choose the full seed.');}
+function selectedDatabaseCandidate(){return databaseCandidates.find(c=>c.id===$('db-candidate').value);}
+function databaseArchiveName(c){const [archive,member]=c.id.split('!'),name=archive.split('/').pop();return member&&databaseCandidates.filter(x=>x.kind==='peq_bundle'&&x.id.split('!')[0]===archive).length>1?name+' / '+member.split('/').slice(0,-1).join('/'):name;}
+function renderDatabaseSelection(){
+ const c=selectedDatabaseCandidate(),blocked=!!(busy||databaseScanning||sessionAction),unsupported=c?.kind==='unsupported_bundle',wrongProfile=c?.kind==='peq_bundle'&&activeProfile!=='traditional';
+ $('import-db').textContent=c?.kind==='peq_bundle'?'Import complete PEQ database':'Import selected database';
+ $('import-db').disabled=blocked||!c||unsupported||wrongProfile;
+ $('db-candidate').disabled=databaseScanning;
+ $('db-parts').replaceChildren();$('db-parts').hidden=c?.kind!=='peq_bundle';
+ if(databaseScanning)$('db-detail').textContent='Checking database files…';
+ else if(unsupported)$('db-detail').textContent=c.reason||'This database bundle is incomplete or unsupported. Choose a complete PEQ ZIP.';
+ else if(c?.kind==='peq_bundle'){
+  $('db-detail').textContent=wrongProfile?'This split PEQ database belongs to Traditional EQEmu. Stop the runtimes and switch worlds before importing.':'Selected '+databaseArchiveName(c)+'. These five parts import together in the required order:';
+  for(const part of c.parts||[]){const item=document.createElement('li');item.textContent=part;$('db-parts').append(item);}
+ }else if(c)$('db-detail').textContent=c.id+' · '+bytes(c.size)+'. Individual SQL file selected; check that it is a full seed before importing.';
+ else $('db-detail').textContent=databaseCandidates.length?'No matching database selected. Clear the search or show individual SQL files and source scripts.':'Choose a complete PEQ ZIP, SQL or SQL.GZ file to import your database.';
+ if(typeof renderSeedBundle==='function')renderSeedBundle();
+}
+function renderDatabaseCandidates(preferred=null){
+ const select=$('db-candidate'),previous=preferred??select.value,query=$('db-search').value.trim().toLowerCase(),advanced=$('db-show-scripts').checked;
+ const parts=new Set(databaseCandidates.filter(c=>c.kind==='peq_bundle').flatMap(c=>c.selections||[]));
+ const candidates=databaseCandidates.filter(c=>{
+  const fullSeed=c.kind==='peq_bundle'||/(^|[!/])release[-_]peq\.sql(?:\.gz)?$/i.test(c.id);
+  if(!advanced&&((c.origin==='source'||c.id.startsWith('sources/'))&&!fullSeed||parts.has(c.id)))return false;
+  return !query||[c.label,c.id,...(c.parts||[])].filter(Boolean).join(' ').toLowerCase().includes(query);
+ });
+ const rank=c=>c.kind==='peq_bundle'?0:c.kind==='unsupported_bundle'?1:c.origin==='source'?3:2;
+ candidates.sort((a,b)=>rank(a)-rank(b)||a.id.localeCompare(b.id));select.replaceChildren();
+ for(const c of candidates){const option=document.createElement('option');option.value=c.id;option.textContent=c.label?c.label+' · '+databaseArchiveName(c):c.id+' · '+bytes(c.size);option.title=c.id;option.disabled=c.kind==='unsupported_bundle';select.append(option);}
+ if(!candidates.length||preferred===''){const option=document.createElement('option');option.value='';option.textContent=candidates.length?'Choose a database seed below':databaseCandidates.length?'No matching seeds. Show individual files or clear the search.':'Choose or find a database file first';select.prepend(option);}
+ if(candidates.some(c=>c.id===previous))select.value=previous;
+ else if(preferred!==null)select.value='';
+ renderDatabaseSelection();
+}
+async function scanDB(preferredFile=null){
+ const generation=++databaseScanGeneration,previous=$('db-candidate').value;
+ if(preferredFile){databaseCandidates=[];$('db-search').value='';$('db-show-scripts').checked=false;renderDatabaseCandidates('');}
+ databaseScanning=true;renderDatabaseSelection();
+ try{
+  const data=await api('databases');if(generation!==databaseScanGeneration)return;
+  databaseCandidates=data.candidates||[];
+  let preferred=previous||null;
+  if(preferredFile){
+   const archive=preferredFile.startsWith('incoming/')?preferredFile:'incoming/'+preferredFile;
+   const uploaded=databaseCandidates.filter(c=>c.id.split('!')[0]===archive||c.id.split('!')[0]===preferredFile);
+   const bundles=uploaded.filter(c=>c.kind==='peq_bundle');
+   preferred=bundles.length>1?'':(bundles[0]||uploaded.find(c=>c.kind==='unsupported_bundle')||uploaded.find(c=>c.kind==='sql'||!c.kind))?.id||'';
+  }
+  databaseScanning=false;renderDatabaseCandidates(preferred);
+  const c=selectedDatabaseCandidate();
+  notice(c?.kind==='peq_bundle'?(activeProfile==='traditional'?'Complete PEQ database selected: all five parts are ready to import.':'Split PEQ selected. Switch to Traditional EQEmu before importing.'):c?.kind==='unsupported_bundle'?c.reason||'This database bundle is incomplete or unsupported.':preferredFile?(c?'Database file selected. Review it below, then import.':'Choose a database seed from the uploaded file below.'):'Database files refreshed. Complete seeds appear first.',c?.kind==='unsupported_bundle');
+ }finally{if(generation===databaseScanGeneration){databaseScanning=false;renderDatabaseSelection();}}
+}
+$('db-search').addEventListener('input',()=>renderDatabaseCandidates());
+$('db-show-scripts').addEventListener('change',()=>renderDatabaseCandidates());
+$('db-candidate').addEventListener('change',renderDatabaseSelection);
 async function exportResult(result){
  const completed=result.message?result.message+' ':'';
  try{if(result.file)await api('export',{path:result.file});}
@@ -107,8 +163,8 @@ action('source-zip',async()=>{const f=await api('pick',{kind:'source'});await jo
 action('maps-git',async()=>{await job('import_maps',{url:$('maps-url').value.trim(),ref:$('maps-ref').value.trim()});});
 action('maps-zip',async()=>{const f=await api('pick',{kind:'maps'});await job('import_maps',{file:f.file});});
 action('scan-db',scanDB);
-action('upload-db',async()=>{await api('pick',{kind:'database'});await scanDB();});
-action('import-db',async()=>{const selection=$('db-candidate').value;if(!selection)throw new Error('Choose a database file first.');await job('import_database',{selection,replace:$('replace-db').checked});});
+action('upload-db',async()=>{const f=await api('pick',{kind:'database'});if(typeof clearSeedBundle==='function')clearSeedBundle();await scanDB(f.path||f.file);});
+action('import-db',async()=>{const c=selectedDatabaseCandidate();if(!c)throw new Error('Choose a database file first.');if(c.kind==='unsupported_bundle')throw new Error(c.reason||'Choose a complete database bundle.');if(c.kind==='peq_bundle'&&activeProfile!=='traditional')throw new Error('Switch to Traditional EQEmu to import this split PEQ database.');await job('import_database',{selection:c.id,replace:$('replace-db').checked});});
 async function serverAction(operation){
  sessionAction=operation;renderSessionControls();
  try{if(operation==='restart'){await job('stop');await job('start');}else await job(operation);}

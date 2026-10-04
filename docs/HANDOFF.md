@@ -1,3 +1,35 @@
+# In progress: 0.6.6 complete PEQ ZIP selection and maps default
+
+User supplied `peq-latest.zip` and requested an easier database import, plus
+`https://github.com/Russianranger/eqemu-maps` as the default maps URL.
+The supplied archive contains a 164-byte `peq-dump/create_all_tables.sql`
+manifest and five SQL dumps, in content/login/player/state/system order.
+All required launcher tables are present across the five dumps. The source
+migration list must not force the user to find each dump manually.
+
+The implementation recognizes this as one logical Traditional database bundle,
+resolves all five same-directory sections and streams them through the existing
+single database import. It retains manual SQL selection and the existing
+replacement confirmation, database/player backups and profile boundaries.
+The wrapper is never passed to MariaDB. Runtime, server builds and first-login
+qualification remain separate. APK version is 0.6.6/code55, same package/key.
+
+Local validation passes 259 backend tests (eight optional Lua cases skipped)
+and the complete native/JVM management suite. The actual supplied ZIP was
+recognized and streamed through Engine.import_database with its MariaDB process
+mocked: exactly 279,586,089 bytes, SHA256
+`e2056fa9ce68df66364db9403240aca05f3af1a2590b831816f917ce1c5e8dcc`,
+221 unique table definitions, one reset/import call and no wrapper SOURCE commands.
+This verifies input assembly, not an executed MariaDB import or first login.
+The report is under ignored `runtime-work/peq-archive-validation.json`.
+The Android isolated-backend-copy regression caught the new module missing from
+RuntimeManager’s explicit copy list; that list now includes `peq_database.py`.
+Browser validation and signed release are pending in CI. The local Playwright
+browser CDN returned invalid empty ZIPs, so local browser tests were unavailable.
+Do not claim a device import or Traditional first login without user evidence.
+
+---
+
 # Released: 0.6.5 Traditional ARM64 compile and stage (2026-10-04 UTC)
 
 The requested 60-minute investigation ran from 02:28:20 to 03:29:16 UTC.
