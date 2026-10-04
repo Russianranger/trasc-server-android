@@ -10,7 +10,7 @@ originals = {name: (root / name).read_text() for name in (
     'CMakeLists.txt', 'common/CMakeLists.txt', 'zone/CMakeLists.txt',
     'common/net/crc32.cpp', 'common/process.h', 'zone/fastmath.cpp',
     'common/json/json_archive_single_line.h', 'common/strings.cpp', 'common/database_schema.h',
-    'common/event/event_loop.cpp', 'common/event/timer.cpp')}
+    'common/event/event_loop.cpp', 'common/event/timer.cpp', 'zone/lua_ptr.h')}
 top = root / 'CMakeLists.txt'
 text = top.read_text()
 original = 'if(NOT CMAKE_TOOLCHAIN_FILE)'
@@ -57,6 +57,12 @@ event_timer = root / 'common/event/timer.cpp'
 text = event_timer.read_text()
 assert '#include <cstring>' not in text
 event_timer.write_text('#include <cstring>\n' + text)
+lua_ptr = root / 'zone/lua_ptr.h'
+text = lua_ptr.read_text()
+assert '#include "common/types.h"' not in text
+original = '#include "lua.hpp"'
+assert text.count(original) == 1
+lua_ptr.write_text(text.replace(original, '#include "common/types.h"\n' + original, 1))
 fastmath = root / 'zone/fastmath.cpp'
 text = fastmath.read_text()
 assert '#include <cmath>' not in text
