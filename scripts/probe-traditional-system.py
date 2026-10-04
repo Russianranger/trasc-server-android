@@ -9,7 +9,8 @@ shim = pathlib.Path(sys.argv[2]).resolve()
 originals = {name: (root / name).read_text() for name in (
     'CMakeLists.txt', 'common/CMakeLists.txt', 'zone/CMakeLists.txt',
     'common/net/crc32.cpp', 'common/process.h', 'zone/fastmath.cpp',
-    'common/json/json_archive_single_line.h', 'common/strings.cpp', 'common/database_schema.h')}
+    'common/json/json_archive_single_line.h', 'common/strings.cpp', 'common/database_schema.h',
+    'common/event/event_loop.cpp', 'common/event/timer.cpp')}
 top = root / 'CMakeLists.txt'
 text = top.read_text()
 original = 'if(NOT CMAKE_TOOLCHAIN_FILE)'
@@ -48,6 +49,14 @@ database_schema = root / 'common/database_schema.h'
 text = database_schema.read_text()
 assert '#include <string>' not in text
 database_schema.write_text('#include <string>\n' + text)
+event_loop = root / 'common/event/event_loop.cpp'
+text = event_loop.read_text()
+assert '#include <cstring>' not in text
+event_loop.write_text('#include <cstring>\n' + text)
+event_timer = root / 'common/event/timer.cpp'
+text = event_timer.read_text()
+assert '#include <cstring>' not in text
+event_timer.write_text('#include <cstring>\n' + text)
 fastmath = root / 'zone/fastmath.cpp'
 text = fastmath.read_text()
 assert '#include <cmath>' not in text
