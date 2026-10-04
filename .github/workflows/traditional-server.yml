@@ -9,7 +9,66 @@ concurrency:
   group: traditional-arm64-${{ github.ref }}
   cancel-in-progress: false
 jobs:
+  system-dependencies:
+    runs-on: ubuntu-24.04-arm
+    timeout-minutes: 55
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/checkout@v4
+        with:
+          repository: Russianranger/Server
+          ref: 4aceae18b94ffaafc08e2b17bc41cd72c77f795d
+          path: traditional-system-source
+      - name: Compile with native Bookworm system packages
+        run: |
+          set -o pipefail
+          mkdir -p traditional-system-evidence
+          git -C traditional-system-source rev-parse HEAD > traditional-system-evidence/source.txt
+          docker run --rm \
+            -v "$PWD/traditional-system-source:/source" \
+            -v "$PWD/scripts:/probe:ro" \
+            -v "$PWD/traditional-system-evidence:/evidence" \
+            debian:bookworm-slim bash -c '
+              set -euxo pipefail
+              apt-get update
+              apt-get install -y --no-install-recommends ca-certificates curl git zip unzip tar pkg-config cmake ninja-build build-essential libperl-dev python3 uuid-dev file libboost-dev libcereal-dev libfmt-dev libglm-dev libluajit-5.1-dev librecast-dev libwebsocketpp-dev libuv1-dev libmariadb-dev libssl-dev libsodium-dev zlib1g-dev
+              g++ --version > /evidence/compiler.txt
+              cmake --version >> /evidence/compiler.txt
+              dpkg-query -W > /evidence/packages.txt
+              python3 /probe/probe-traditional-system.py /source /probe/probe-traditional-system-dependencies.cmake
+              git -C /source diff > /evidence/probe.patch
+              timeout 300 cmake -S /source -B /evidence/build -G Ninja \
+                -DCMAKE_BUILD_TYPE=Release \
+                -DCMAKE_CXX_FLAGS_RELEASE="-O2 -DNDEBUG -fno-strict-aliasing" \
+                -DCMAKE_EXPORT_COMPILE_COMMANDS=ON \
+                -DEQEMU_USE_SYSTEM_DEPENDENCIES=ON \
+                -DEQEMU_BUILD_PCH=OFF \
+                -DEQEMU_BUILD_SERVER=ON \
+                -DEQEMU_BUILD_LOGIN=ON \
+                -DEQEMU_BUILD_CLIENT_FILES=ON \
+                -DEQEMU_BUILD_TESTS=OFF \
+                -DEQEMU_BUILD_PERL=ON \
+                -DEQEMU_BUILD_LUA=ON \
+                -DEQEMU_ADD_PROFILER=OFF 2>&1 | tee /evidence/configure.log
+              timeout 2700 cmake --build /evidence/build --parallel 2 \
+                --target world zone shared_memory eqlaunch ucs queryserv loginserver export_client_files import_client_files 2>&1 | tee /evidence/build.log
+              file /evidence/build/bin/* > /evidence/binaries.txt
+              ldd /evidence/build/bin/loginserver > /evidence/loginserver-ldd.txt
+            ' 2>&1 | tee traditional-system-evidence/trial.log
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: traditional-server-arm64-system-dependencies
+          path: |
+            traditional-system-evidence/*.txt
+            traditional-system-evidence/*.log
+            traditional-system-evidence/*.patch
+            traditional-system-evidence/build/CMakeCache.txt
+            traditional-system-evidence/build/compile_commands.json
+            traditional-system-evidence/build/bin/
+          retention-days: 14
   baseline:
+    if: github.event_name == 'workflow_dispatch'
     runs-on: ubuntu-24.04-arm
     timeout-minutes: 58
     steps:
@@ -39,7 +98,7 @@ jobs:
             debian:bookworm-slim bash -c '
               set -euxo pipefail
               apt-get update
-              apt-get install -y --no-install-recommends ca-certificates curl git zip unzip tar pkg-config cmake ninja-build build-essential libperl-dev python3 uuid-dev
+              apt-get install -y --no-install-recommends ca-certificates curl git zip unzip tar pkg-config cmake ninja-build build-essential libperl-dev python3 uuid-dev file
               g++ --version > /evidence/compiler.txt
               cmake --version >> /evidence/compiler.txt
               dpkg-query -W > /evidence/packages.txt

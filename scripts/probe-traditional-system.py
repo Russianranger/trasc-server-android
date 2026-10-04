@@ -1,0 +1,41 @@
+"""Scoped, investigation-only source transformations for the Bookworm trial."""
+import pathlib
+import sys
+
+root = pathlib.Path(sys.argv[1]).resolve()
+shim = pathlib.Path(sys.argv[2]).resolve()
+top = root / 'CMakeLists.txt'
+text = top.read_text()
+original = 'if(NOT CMAKE_TOOLCHAIN_FILE)'
+assert text.count(original) == 1
+text = text.replace(original, 'if(NOT CMAKE_TOOLCHAIN_FILE AND NOT EQEMU_USE_SYSTEM_DEPENDENCIES)', 1)
+start = text.index('find_package(Boost REQUIRED COMPONENTS dynamic_bitset foreach tuple)')
+end = text.index('find_package(PerlLibs)', start) + len('find_package(PerlLibs)')
+text = text[:start] + f'include("{shim}")' + text[end:]
+top.write_text(text)
+
+common = root / 'common/CMakeLists.txt'
+text = common.read_text()
+original = 'target_include_directories(common PUBLIC "${CMAKE_CURRENT_SOURCE_DIR}/../submodules/websocketpp")'
+assert text.count(original) == 1
+text = text.replace(original, 'target_include_directories(common PUBLIC "${TRASC_WEBSOCKETPP_INCLUDE_DIR}")', 1)
+common.write_text(text)
+
+zone = root / 'zone/CMakeLists.txt'
+text = zone.read_text()
+for name in ('lua_zone', 'perl_zone', 'gm_commands_zone'):
+    original = f'set_target_properties({name} PROPERTIES UNITY_BUILD ON UNITY_BUILD_BATCH_SIZE '
+    assert text.count(original) == 1
+    text = text.replace(original, f'set_target_properties({name} PROPERTIES UNITY_BUILD OFF UNITY_BUILD_BATCH_SIZE ', 1)
+zone.write_text(text)
+
+# This translation unit otherwise gets uint8_t only through the optional PCH.
+crc32 = root / 'common/net/crc32.cpp'
+text = crc32.read_text()
+assert '#include <cstdint>' not in text
+crc32.write_text('#include <cstdint>\n' + text)
+process_header = root / 'common/process.h'
+text = process_header.read_text()
+assert '#include <string>' not in text
+process_header.write_text('#include <string>\n' + text)
+print('Applied scoped system-dependency and low-memory build probe transformations')
