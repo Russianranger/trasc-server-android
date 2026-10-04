@@ -136,7 +136,7 @@ jobs:
             database-test/work/database-verification.json
             database-test/runtime-manifest.json
   apk:
-    needs: [wined3d, vulkan, traditional-runtime]
+    needs: [wined3d, vulkan]
     runs-on: ubuntu-latest
     env:
       TRASC_PREVIEW_KEYSTORE: ${{ github.ref == 'refs/heads/main' && format('{0}/runtime-work/signing/preview.keystore', github.workspace) || '' }}

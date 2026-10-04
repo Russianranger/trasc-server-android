@@ -46,7 +46,7 @@ function renderTraditionalStatus(){
  }
  entries.push(['ROF2 client',s?.client?.imported?'Imported separately':'Import in Client'],['Client runtime',lastClientNative?.installed?'Installed':'Install in Client'],['Deployment & first login','Next milestone']);
  $('traditional-checklist').replaceChildren(...entries.map(([name,state])=>{const row=document.createElement('tr');for(const text of [name,state]){const cell=document.createElement('td');cell.textContent=text;row.append(cell);}return row;}));
- const message=!build?.runtime_ready?build?.runtime_message:!build?.source_supported?build?.source_message:'Compile readiness requires source and tools. Content imports and a playable world are separate checks.';
+ const message=!build?.runtime_ready?build?.runtime_message:!build?.source_supported?build?.source_message:!build?.build_allowed?build?.runtime_message:'Ready to compile and stage. Content imports and a playable world are separate checks.';
  $('traditional-checklist-note').textContent=lastNative?.alive?message||'Checking build readiness.':'Open this profile’s runtime to inspect build readiness and imported content.';
  $('traditional-build-readiness').textContent=lastNative?.alive?message||'Checking build readiness.':'Install or refresh the Traditional build runtime, then open it.';
 }

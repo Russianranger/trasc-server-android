@@ -7,7 +7,7 @@ const server=http.createServer((req,res)=>{const name=req.url==='/'?'index.html'
  try{
   const page=await browser.newPage({viewport:{width:1280,height:720}}),errors=[];page.on('pageerror',e=>errors.push(e.message));
   await page.addInitScript(()=>{
-   window.fixture={profile:localStorage.profile||'custom',alive:false,client:false,components:{},jobs:[],calls:[],supported:false,tools:true,staged:false};
+   window.fixture={profile:localStorage.profile||'custom',alive:false,client:false,components:{},jobs:[],calls:[],supported:false,tools:true,staged:false,recovery:false};
    window.Trasc={call(id,op,input){setTimeout(()=>{const f=fixture,a=JSON.parse(input);let result={};f.calls.push({op,a});try{
     if(op!=='native_state'&&a.__profile&&a.__profile!==f.profile)throw Error('World profile changed');
     if(op==='native_state')result={profile:f.profile,installed:true,alive:f.alive,status:'Runtime stopped',free_bytes:50e9};
@@ -15,7 +15,7 @@ const server=http.createServer((req,res)=>{const name=req.url==='/'?'index.html'
     else if(op==='runtime_start')f.alive=true;
     else if(op==='runtime_stop')f.alive=false;
     else if(op==='client_native_state')result={installed:true,alive:f.client,busy:false,status:'Stopped',launch_options:{native_dinput8:true,fast_spell_parse:true}};
-    else if(op==='state')result={profile:f.profile,running:false,settings:{ip:'127.0.0.1',login_port:5999,repo:f.profile==='custom'?'https://github.com/Russianranger/Triptych-Triumvirate':'https://github.com/EQEmu/EQEmu',ref:f.profile==='custom'?'main':'master',workers:3,jobs:2},processes:{},jobs:f.jobs,source:{commit:'abc'},maps_ready:f.profile==='custom',database_imported:f.profile==='custom',build_ready:f.staged,binaries_ready:f.profile==='custom',client:{imported:false},traditional:{components:f.components,build:{source_supported:f.supported,source_message:'Import the tested source',runtime_ready:f.tools,runtime_message:'Refresh the build runtime',build_allowed:f.supported&&f.tools,staged_valid:f.staged,staged_message:f.staged?'Nine binaries compiled and staged':'No staged build yet'}},free_bytes:50e9};
+    else if(op==='state')result={profile:f.profile,running:false,settings:{ip:'127.0.0.1',login_port:5999,repo:f.profile==='custom'?'https://github.com/Russianranger/Triptych-Triumvirate':'https://github.com/EQEmu/EQEmu',ref:f.profile==='custom'?'main':'master',workers:3,jobs:2},processes:{},jobs:f.jobs,source:{commit:'abc'},maps_ready:f.profile==='custom',database_imported:f.profile==='custom',build_ready:f.staged,binaries_ready:f.profile==='custom',client:{imported:false},traditional:{components:f.components,build:{source_supported:f.supported,source_message:'Import the tested source',runtime_ready:f.tools,runtime_message:f.recovery?'Interrupted stage recovery needs repair':'Refresh the build runtime',build_allowed:f.supported&&f.tools&&!f.recovery,staged_valid:f.staged,staged_message:f.staged?'Nine binaries compiled and staged':'No staged build yet'}},free_bytes:50e9};
     else if(op==='controller_state')result={sources:[],actions:[],layers:[{name:'Main',bindings:{}}],deadzone:.2,sensitivity:700};
     else if(op==='files'||op==='native_files')result={path:'.',items:[],total:0,offset:0,next_offset:null};
     else if(op==='logs')result={text:'Profile log',names:['control.log']};
@@ -53,6 +53,9 @@ const server=http.createServer((req,res)=>{const name=req.url==='/'?'index.html'
   assert.equal(await page.locator('#build-jobs option[value="4"]').isDisabled(),true);
   // Missing database/maps/client/content does not block compilation.
   assert.equal(await page.evaluate(()=>lastState.database_imported||lastState.maps_ready||lastState.client.imported),false);
+  await page.evaluate(()=>{fixture.recovery=true;poll();});await page.waitForFunction(()=>document.getElementById('build-server').disabled);
+  assert((await page.textContent('#traditional-build-readiness')).includes('Interrupted stage recovery needs repair'));
+  await page.evaluate(()=>{fixture.recovery=false;poll();});await page.waitForFunction(()=>!document.getElementById('build-server').disabled);
   await page.evaluate(()=>{fixture.tools=false;poll();});await page.waitForFunction(()=>document.getElementById('build-server').disabled);
   await page.evaluate(()=>{fixture.tools=true;fixture.client=true;poll();});await page.waitForFunction(()=>lastClientNative?.alive);assert(await page.isDisabled('#build-server'));
   await page.evaluate(()=>{fixture.client=false;fixture.jobs.push({id:'busy',operation:'import_source',status:'running'});poll();});await page.waitForFunction(()=>lastState.jobs.some(j=>j.id==='busy'));assert(await page.isDisabled('#build-server'));
