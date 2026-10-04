@@ -6,7 +6,7 @@ on:
 permissions:
   contents: read
 concurrency:
-  group: traditional-arm64-${{ github.ref }}
+  group: traditional-arm64-${{ github.ref }}-${{ github.sha }}
   cancel-in-progress: false
 jobs:
   system-dependencies:
