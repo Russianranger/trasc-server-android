@@ -1,0 +1,78 @@
+name: Traditional server ARM64 investigation
+on:
+  push:
+    branches: [codex/traditional-server-arm]
+  workflow_dispatch:
+permissions:
+  contents: read
+concurrency:
+  group: traditional-arm64-${{ github.ref }}
+  cancel-in-progress: false
+jobs:
+  baseline:
+    runs-on: ubuntu-24.04-arm
+    timeout-minutes: 58
+    steps:
+      - uses: actions/checkout@v4
+      - name: Fetch exact selected server and recorded submodules
+        uses: actions/checkout@v4
+        with:
+          repository: Russianranger/Server
+          ref: 4aceae18b94ffaafc08e2b17bc41cd72c77f795d
+          path: traditional-source
+          submodules: recursive
+      - name: Record source, compiler and available memory
+        run: |
+          mkdir -p traditional-evidence
+          git -C traditional-source rev-parse HEAD > traditional-evidence/source.txt
+          git -C traditional-source submodule status --recursive >> traditional-evidence/source.txt
+          uname -a > traditional-evidence/host.txt
+          free -h >> traditional-evidence/host.txt
+      - name: Native ARM64 Debian Bookworm configure and compile trial
+        run: |
+          set -o pipefail
+          docker run --rm \
+            -v "$PWD/traditional-source:/source" \
+            -v "$PWD/traditional-evidence:/evidence" \
+            -e VCPKG_MAX_CONCURRENCY=2 \
+            -e VCPKG_FORCE_SYSTEM_BINARIES=1 \
+            debian:bookworm-slim bash -c '
+              set -euxo pipefail
+              apt-get update
+              apt-get install -y --no-install-recommends ca-certificates curl git zip unzip tar pkg-config cmake ninja-build build-essential libperl-dev python3 uuid-dev
+              g++ --version > /evidence/compiler.txt
+              cmake --version >> /evidence/compiler.txt
+              dpkg-query -W > /evidence/packages.txt
+              cd /source
+              ./submodules/vcpkg/bootstrap-vcpkg.sh -disableMetrics
+              timeout 1500 cmake -S /source -B /evidence/build -G Ninja \
+                -DCMAKE_BUILD_TYPE=Release \
+                -DCMAKE_CXX_FLAGS_RELEASE="-O2 -DNDEBUG" \
+                -DCMAKE_EXPORT_COMPILE_COMMANDS=ON \
+                -DVCPKG_TARGET_TRIPLET=arm64-linux \
+                -DVCPKG_HOST_TRIPLET=arm64-linux \
+                -DEQEMU_BUILD_PCH=OFF \
+                -DEQEMU_BUILD_SERVER=ON \
+                -DEQEMU_BUILD_LOGIN=ON \
+                -DEQEMU_BUILD_CLIENT_FILES=ON \
+                -DEQEMU_BUILD_TESTS=OFF \
+                -DEQEMU_BUILD_PERL=ON \
+                -DEQEMU_BUILD_LUA=ON \
+                -DEQEMU_ADD_PROFILER=OFF 2>&1 | tee /evidence/configure.log
+              timeout 1800 cmake --build /evidence/build --parallel 2 \
+                --target world zone shared_memory eqlaunch ucs queryserv loginserver export_client_files import_client_files 2>&1 | tee /evidence/build.log
+              file /evidence/build/bin/* > /evidence/binaries.txt
+            ' 2>&1 | tee traditional-evidence/trial.log
+      - name: Retain native ARM64 trial evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: traditional-server-arm64-baseline
+          path: |
+            traditional-evidence/*.txt
+            traditional-evidence/*.log
+            traditional-evidence/build/CMakeCache.txt
+            traditional-evidence/build/compile_commands.json
+            traditional-evidence/build/vcpkg-manifest-install.log
+            traditional-evidence/build/bin/
+          retention-days: 14
