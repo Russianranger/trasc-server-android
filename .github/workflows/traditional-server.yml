@@ -1,7 +1,5 @@
 name: Traditional server ARM64 investigation
 on:
-  push:
-    branches: [codex/traditional-server-arm]
   workflow_dispatch:
 permissions:
   contents: read

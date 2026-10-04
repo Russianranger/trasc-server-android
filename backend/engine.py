@@ -40,9 +40,10 @@ import boat_trial
 import ferry_service
 import server_ferry
 import traditional_content
+import traditional_build
 from log_retention import rotate
 
-VERSION = '0.6.4'
+VERSION = '0.6.5'
 DEFAULT_REPO = 'https://github.com/Russianranger/Triptych-Triumvirate'
 BINARIES = ('world', 'zone', 'loginserver', 'shared_memory', 'ucs', 'eqlaunch', 'queryserv', 'export_client_files')
 CLIENT_FILES = ('spells_us.txt', 'dbstr_us.txt', 'SkillCaps.txt', 'BaseData.txt')
@@ -169,8 +170,8 @@ class Engine(ManagedContent):
         client_dll.recover_sdk(self)
         self.config_path = self.work / 'settings.json'
         self.config = json.loads(self.config_path.read_text()) if self.config_path.exists() else {
-            'repo': 'https://github.com/EQEmu/EQEmu' if profile == 'traditional' else DEFAULT_REPO, 'ref': 'master' if profile == 'traditional' else 'main', 'ip': '127.0.0.1', 'login_port': 5999,
-            'workers': 3, 'jobs': 2, 'database': 'peq' if profile == 'traditional' else 'triune', 'db_port': 13306,
+            'repo': traditional_build.REPOSITORY if profile == 'traditional' else DEFAULT_REPO, 'ref': traditional_build.REVISION if profile == 'traditional' else 'main', 'ip': '127.0.0.1', 'login_port': 5999,
+            'workers': 3, 'jobs': 1 if profile == 'traditional' else 2, 'database': 'peq' if profile == 'traditional' else 'triune', 'db_port': 13306,
             'db_password': secrets.token_hex(20), 'server_key': secrets.token_hex(20),
             'database_imported': False, 'rules_pending_restart': False,
         }
@@ -194,6 +195,12 @@ class Engine(ManagedContent):
         self.ensure_mysql_options()
         threading.Thread(target=self.worker, daemon=True).start()
         self.log('Control service ready. Server remains stopped until Start is selected.')
+        self.traditional_recovery_error = None
+        if profile == 'traditional':
+            try: traditional_build.recover(self)
+            except (ValueError, OSError) as e:
+                self.traditional_recovery_error = str(e)
+                self.log('Traditional build recovery needs attention: ' + str(e))
         try: self.recover_nektulos()
         except (ValueError, OSError) as e: self.log('Nektulos recovery needs attention: ' + str(e))
 
@@ -345,6 +352,13 @@ class Engine(ManagedContent):
                 metadata['type'] = 'github'
             else:
                 archive = safe_path(self.work / 'incoming', args['file'], True)
+            if self.profile == 'traditional':
+                digest = hashlib.sha256()
+                with archive.open('rb') as stream:
+                    for block in iter(lambda: stream.read(1024 * 1024), b''):
+                        self.check_cancel()
+                        digest.update(block)
+                metadata['archive_sha256'] = digest.hexdigest()
             extract_archive(archive, stage)
             self.check_cancel()
             candidates = []
@@ -557,6 +571,7 @@ class Engine(ManagedContent):
         return self.import_database({'selection': str(incoming.relative_to(self.work)), 'replace': True})
 
     def build(self, args):
+        if self.profile == 'traditional': return traditional_build.build(self, args)
         root = self.source_root()
         server = root / 'Release-NMS-Server' if (root / 'Release-NMS-Server').is_dir() else root
         jobs = int(args.get('jobs', self.config['jobs']))
@@ -1028,10 +1043,11 @@ class Engine(ManagedContent):
             self.current_job['progress'] = client_toolchain.progress(self)
         source=self.work/'sources/current/trasc-source.json'
         config={k:v for k,v in self.config.items() if 'password' not in k and 'key' not in k}
-        return {'version':VERSION,'profile':self.profile,'traditional':traditional_content.status(self) if self.profile=='traditional' else None,'settings':config,'source':json.loads(source.read_text()) if source.exists() else None,
+        traditional=traditional_content.status(self) if self.profile=='traditional' else None
+        return {'version':VERSION,'profile':self.profile,'traditional':traditional,'settings':config,'source':json.loads(source.read_text()) if source.exists() else None,
             'runtime_ready':True,'database_running':bool(self.db and self.db.poll() is None),'database_imported':self.config['database_imported'],
             'maps_ready':(self.work/'maps/base').is_dir(),'binaries_ready':all((self.work/'server/bin'/x).exists() for x in BINARIES),
-            'build_ready':(self.work/'server/bin.staged/build-info.json').exists(), 'rollback_ready':(self.work/'server/bin.previous').exists(),
+            'build_ready':traditional['build']['staged_valid'] if traditional else (self.work/'server/bin.staged/build-info.json').exists(), 'rollback_ready':(self.work/'server/bin.previous').exists(),
             'processes':{name:{'pid':p.pid,'running':p.poll() is None,'exit':p.poll()} for name,p in self.processes.items()},
             'jobs':self.jobs,'free_bytes':shutil.disk_usage(self.work).free,'running':self.server_running(),
             'nektulos':self.nektulos_status(), 'client':self.client_status()}
@@ -1040,8 +1056,8 @@ class Engine(ManagedContent):
         if args.get('__profile', self.profile) != self.profile:
             raise ValueError('World profile changed. Refresh before continuing.')
         if self.profile == 'traditional':
-            if op in ('build','deploy','rollback','start','export_client','prepare_client'):
-                raise ValueError('Traditional EQEmu compilation and deployment require the next Android fork milestone')
+            if op in ('deploy','rollback','start','export_client','prepare_client'):
+                raise ValueError('Traditional builds are compile-only. Deployment, local login and client data require the next validated milestone.')
             if op.startswith(('boat_trial_', 'ferry_', 'client_dll_', 'client_addons_')) or op in ('fix_nektulos','revert_nektulos','apply_spell_test','restore_spell_test'):
                 raise ValueError('This repair or addon belongs to TRASC Custom')
         if op == 'import_content': return traditional_content.install(self,args)

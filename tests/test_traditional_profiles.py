@@ -10,6 +10,7 @@ import zipfile
 sys.path.insert(0, str(Path(__file__).resolve().parents[1] / 'backend'))
 from engine import Engine, atomic_json
 import traditional_content as content
+import traditional_build
 
 
 class TraditionalProfiles(unittest.TestCase):
@@ -35,7 +36,9 @@ class TraditionalProfiles(unittest.TestCase):
     def test_defaults_and_settings_identity(self):
         self.assertEqual(self.custom.config['database'], 'triune')
         self.assertEqual(self.engine.config['database'], 'peq')
-        self.assertEqual(self.engine.config['repo'], 'https://github.com/EQEmu/EQEmu')
+        self.assertEqual(self.engine.config['repo'], traditional_build.REPOSITORY)
+        self.assertEqual(self.engine.config['ref'], traditional_build.REVISION)
+        self.assertEqual(self.engine.config['jobs'], 1)
         before = self.custom.config_path.read_bytes()
         with self.assertRaisesRegex(ValueError, 'different world'):
             Engine(self.custom.work, 'traditional')
@@ -105,6 +108,19 @@ class TraditionalProfiles(unittest.TestCase):
             self.engine.dispatch('state', {'__profile': 'custom'})
         with self.assertRaisesRegex(ValueError, 'Traditional EQEmu profile'):
             self.custom.dispatch('import_content', {'kind': 'plugins'})
+
+    def test_build_routes_to_the_traditional_adapter(self):
+        with patch('traditional_build.build', return_value={'staged': True}) as build:
+            self.assertEqual(self.engine.dispatch('build', {'jobs': 1}), {'staged': True})
+        build.assert_called_once_with(self.engine, {'jobs': 1})
+
+    def test_source_import_records_archive_identity_without_overwriting_settings(self):
+        previous = dict(self.engine.config)
+        name = self.archive({'Server/CMakeLists.txt': 'project(test)', 'Server/zone/main.cpp': '// source'})
+        result = self.engine.import_source({'file': name})
+        self.assertEqual(len(result['source']['archive_sha256']), 64)
+        self.assertEqual(self.engine.config['repo'], previous['repo'])
+        self.assertEqual(self.engine.config['ref'], previous['ref'])
 
     def test_running_server_and_symlink_targets_rejected(self):
         with patch.object(self.engine, 'server_running', return_value=True):

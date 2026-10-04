@@ -138,6 +138,7 @@ def install(engine, args):
 
 
 def status(engine):
+    import traditional_build
     result = {}
     for kind in KINDS:
         target = engine.work / 'server' / kind
@@ -150,5 +151,6 @@ def status(engine):
             pass
         result[kind] = {'imported': bool(metadata and metadata.get('profile') == 'traditional'),
                         'path': 'server/' + kind, 'source': metadata}
-    return {'components': result, 'compilation_ready': False,
-            'message': 'Content preparation only. Android compilation, deployment and first login validation are the next milestone.'}
+    build = traditional_build.status(engine)
+    return {'components': result, 'compilation_ready': build['build_allowed'], 'build': build,
+            'message': 'Supported source can be compiled and staged. Deployment, local login and client data are the next milestone.'}

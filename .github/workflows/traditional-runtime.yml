@@ -1,0 +1,82 @@
+name: Qualify Traditional ARM64 runtime
+on:
+  workflow_call:
+  workflow_dispatch:
+permissions:
+  contents: read
+concurrency:
+  group: traditional-runtime-${{ github.ref }}
+  cancel-in-progress: false
+jobs:
+  traditional-runtime:
+    runs-on: ubuntu-24.04-arm
+    timeout-minutes: 150
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+      - name: Build the separate Traditional Bookworm runtime
+        run: bash scripts/build-traditional-runtime.sh
+      - name: Verify archive extraction with the APK installer
+        run: bash scripts/check-runtime-installer.sh "$PWD/dist/traditional/runtime-arm64.tar.gz"
+      - name: Qualify the actual app import, patch and nine-target ARM64 build
+        run: |
+          mkdir -p runtime-work/traditional/qualification
+          docker run --rm \
+            -v "$PWD/backend:/opt/trasc:ro" \
+            -v "$PWD/tests:/tests:ro" \
+            -v "$PWD/runtime-work/traditional/qualification:/work" \
+            trasc-traditional-runtime:1 \
+            python3 /tests/verify_traditional_server_build.py --work /work --jobs 2
+          cp runtime-work/traditional/qualification/traditional-build-verification.json dist/traditional/
+      - name: Verify the extracted compiler, dependencies and staged binaries through PRoot
+        run: |
+          bash scripts/check-traditional-proot.sh \
+            "$PWD/dist/traditional/runtime-arm64.tar.gz" \
+            "$PWD/runtime-work/traditional/qualification"
+      - name: Verify a complete session round-trip with the new runtime
+        run: bash scripts/check-management.sh "$PWD/dist/traditional/runtime-arm64.tar.gz"
+      - name: Preserve native build, package, loader and PRoot evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: traditional-runtime-qualification
+          path: |
+            dist/traditional/runtime-manifest.json
+            runtime-work/traditional/qualification/traditional-build-verification.json
+            runtime-work/traditional/qualification/traditional-binary-evidence/
+            runtime-work/traditional/qualification/traditional-proot-evidence/
+            runtime-work/traditional/qualification/logs/
+            runtime-work/traditional/qualification/server/bin.staged/build-info.json
+          retention-days: 14
+      - name: Preserve the qualified offline runtime
+        uses: actions/upload-artifact@v4
+        with:
+          name: traditional-runtime
+          path: dist/traditional/
+          retention-days: 14
+      - name: Publish the separate Traditional runtime after qualification
+        if: github.ref == 'refs/heads/main' && github.event_name != 'pull_request'
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          current_main="$(gh api "repos/$GITHUB_REPOSITORY/git/ref/heads/main" --jq '.object.sha')"
+          if [ "$current_main" != "$GITHUB_SHA" ]; then
+            echo 'A newer main commit exists; refusing to replace its online runtime.' >&2
+            exit 1
+          fi
+          if ! gh release view traditional-runtime-v1 >/dev/null 2>&1; then
+            gh release create traditional-runtime-v1 --target "$GITHUB_SHA" --prerelease \
+              --title 'Traditional EQEmu ARM64 runtime 1.0' \
+              --notes 'Separate Debian Bookworm Traditional toolchain. The actual app import, pinned-source patch and all nine native ARM64 targets passed compilation, ELF/dependency and extracted-runtime PRoot checks. Install only in Traditional EQEmu. Deployment and first device login remain separate qualification work.'
+          fi
+          gh api --method PATCH "repos/$GITHUB_REPOSITORY/git/refs/tags/traditional-runtime-v1" \
+            -f sha="$GITHUB_SHA" -F force=true
+          gh release upload traditional-runtime-v1 \
+            dist/traditional/runtime-arm64.tar.gz \
+            dist/traditional/runtime-manifest.json \
+            dist/traditional/traditional-build-verification.json --clobber

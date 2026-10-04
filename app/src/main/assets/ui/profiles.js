@@ -1,4 +1,6 @@
 'use strict';
+const traditionalRepository='https://github.com/Russianranger/Server';
+const traditionalRevision='4aceae18b94ffaafc08e2b17bc41cd72c77f795d';
 function traditional(){return activeProfile==='traditional';}
 function renderProfile(n){
  const profile=n.profile||'custom';
@@ -7,10 +9,13 @@ function renderProfile(n){
   activeProfile=profile;document.body.dataset.profile=profile;$('runtime-heading-label').textContent=traditional()?'Traditional EQEmu runtime':'TRASC Custom runtime';$('world-profile').value=profile;
   document.querySelector('.eyebrow').textContent=traditional()?'TRADITIONAL EQEMU · CLASSIC ADVENTURE':'TRIPTYCH · ANDROID';
   if(traditional()){
-   $('source-url').value='https://github.com/EQEmu/EQEmu';$('source-ref').value='master';
+   $('source-url').value=traditionalRepository;$('source-ref').value=traditionalRevision;
+   $('runtime-online').textContent='Download / refresh build runtime';
+   $('build-jobs').value='1';
+   for(const option of $('build-jobs').options){option.disabled=Number(option.value)>2;if(option.value==='2')option.textContent='2 · more memory required';}
    $('client-import-help').textContent='Import a separate, clean ROF2 client ZIP. Traditional uses Wine’s built-in DirectInput; your Custom client and DLL stay in their own profile.';
-   $('source-import-help').textContent='Import your EQEmu fork or the upstream source. Add quests, plugins, Lua modules and assets separately below. GitHub imports record a commit; submodule hydration is part of the next compilation milestone.';
-   $('setup-finish-help').textContent='Prepare this profile now. Building, deployment and starting its server become available after we adapt and verify your EQEmu fork for Android.';
+   $('source-import-help').textContent='Use the tested Russianranger/Server revision, then Import from GitHub. Build prepares a patched copy and fetches its pinned websocket headers. Your original source stays intact. Other revisions need qualification.';
+   $('setup-finish-help').textContent='Refresh the Traditional build runtime, import the tested source, then compile and stage it in Builds. Database, maps and client imports can follow. Deployment and first login are the next milestone.';
    $('db-detail').textContent='Select a complete PEQ seed. For a split distribution, add the world, player/system and local-login SQL files in their required order, then import the bundle once.';
   }
  }
@@ -21,7 +26,10 @@ function syncProfileControls(){
  $('world-profile').disabled=blocked;$('switch-profile').disabled=blocked||$('world-profile').value===activeProfile;
  $('profile-status').textContent=blocked?'Stop the client and server runtime, then finish transfers to switch.':'Each world keeps its own database, files, client and backups. Switching discards unsaved form edits.';
  if(traditional()){
-  for(const id of ['start-server','restart-server','build-server','deploy-build','rollback-build','export-client','spire-export','client-prepare'])$(id).disabled=true;
+  for(const id of ['start-server','restart-server','deploy-build','rollback-build','export-client','spire-export','client-prepare'])$(id).disabled=true;
+  const activeJob=lastState?.jobs?.some(j=>['queued','running'].includes(j.status));
+  $('build-server').disabled=!!(busy||sessionAction||!lastNative?.alive||lastNative?.installing||lastNative?.session_busy||!lastClientNative||lastClientNative.alive||lastClientNative.busy||activeJob||lastState?.profile!=='traditional'||!lastState?.traditional?.build?.build_allowed);
+  $('traditional-tested-source').disabled=!!(busy||sessionAction||lastNative?.installing||lastNative?.session_busy||activeJob);
   for(const id of ['client-native-dll','client-fast-spells','client-load-pauses','client-mouse-warp']){$(id).checked=false;$(id).disabled=true;}
   for(const id of ['client-boats','client-particles']){$(id).value='off';$(id).disabled=true;}
  }
@@ -31,15 +39,18 @@ function syncProfileControls(){
 }
 function renderTraditionalStatus(){
  if(!traditional())return;
- const s=lastState,components=s?.traditional?.components||{};
- const entries=[['Server runtime',lastNative?.installed?'Installed':'Install in this profile'],['Server source',s?.source?'Imported':'Import required'],['PEQ database',s?.database_imported?'Imported':'Import required'],['Server maps',s?.maps_ready?'Present':'Import required']];
+ const s=lastState,components=s?.traditional?.components||{},build=s?.traditional?.build;
+ const entries=[['Server runtime',build?.runtime_ready?'Build tools ready':lastNative?.installed?'Installed · check build tools':'Install in this profile'],['Server source',build?.source_supported?'Supported revision':s?.source?'Imported · not qualified':'Import required'],['Compiled binaries',build?.staged_valid?'Nine binaries staged':build?.staged_message||'Build required'],['PEQ database',s?.database_imported?'Imported':'Import required'],['Server maps',s?.maps_ready?'Present':'Import required']];
  for(const [key,name]of Object.entries({quests:'Quests',plugins:'Perl plugins',lua_modules:'Lua modules',assets:'Server assets'})){
   const c=components[key];entries.push([name,c?.imported?'Imported · '+c.source.files+' files'+(c.source.commit?' · '+c.source.commit.slice(0,10):''):'Import required']);
  }
- entries.push(['ROF2 client',s?.client?.imported?'Imported separately':'Import in Client'],['Client runtime',lastClientNative?.installed?'Installed':'Install in Client'],['Android build & first login','Next milestone']);
+ entries.push(['ROF2 client',s?.client?.imported?'Imported separately':'Import in Client'],['Client runtime',lastClientNative?.installed?'Installed':'Install in Client'],['Deployment & first login','Next milestone']);
  $('traditional-checklist').replaceChildren(...entries.map(([name,state])=>{const row=document.createElement('tr');for(const text of [name,state]){const cell=document.createElement('td');cell.textContent=text;row.append(cell);}return row;}));
- $('traditional-checklist-note').textContent=lastNative?.alive?'Imported indicates files are present; compatibility will be checked with the Android build.':'Start this profile’s server runtime to inspect its imported source and content.';
+ const message=!build?.runtime_ready?build?.runtime_message:!build?.source_supported?build?.source_message:'Compile readiness requires source and tools. Content imports and a playable world are separate checks.';
+ $('traditional-checklist-note').textContent=lastNative?.alive?message||'Checking build readiness.':'Open this profile’s runtime to inspect build readiness and imported content.';
+ $('traditional-build-readiness').textContent=lastNative?.alive?message||'Checking build readiness.':'Install or refresh the Traditional build runtime, then open it.';
 }
+action('traditional-tested-source',async()=>{$('source-url').value=traditionalRepository;$('source-ref').value=traditionalRevision;notice('Tested source selected. Choose Import from GitHub to download it.');});
 $('world-profile').addEventListener('change',syncProfileControls);
 action('switch-profile',async()=>{await api('profile_switch',{profile:$('world-profile').value});location.reload();});
 function contentChoice(){const kind=$('content-kind').value;$('content-url').value=kind==='assets'?'':'https://github.com/ProjectEQ/projecteqquests';$('content-ref').value=kind==='assets'?'':'master';$('replace-content').checked=false;}

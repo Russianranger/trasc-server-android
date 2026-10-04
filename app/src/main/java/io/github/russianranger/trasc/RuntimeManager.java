@@ -27,7 +27,6 @@ public final class RuntimeManager {
     private String token;
     private String recoveryError;
     private final Timer logMaintenance=new Timer("log-retention",true);
-    static final String RELEASE = "https://github.com/Russianranger/trasc-server-android/releases/download/runtime-v1/";
 
     private RuntimeManager(Context c) {
         context=c;profiles=new WorldProfiles(c.getFilesDir());
@@ -71,17 +70,31 @@ public final class RuntimeManager {
         } finally {profiles.endSwitch();}
     }
     boolean installed() { return new File(rootfs,"etc/trasc-runtime.json").isFile(); }
+    private JSONObject runtimeMarker(File root)throws IOException {
+        File marker=new File(root,"etc/trasc-runtime.json");
+        if(!Files.isRegularFile(marker.toPath(),java.nio.file.LinkOption.NOFOLLOW_LINKS)||marker.length()>8192)
+            throw new IOException("Missing or invalid server runtime identity");
+        try{return new JSONObject(new String(Files.readAllBytes(marker.toPath()),StandardCharsets.UTF_8));}
+        catch(Exception e){throw new IOException("Invalid server runtime identity",e);}
+    }
+    private static boolean buildReady(String profile,JSONObject marker) {
+        return ServerRuntimeIdentity.buildReady(profile,marker.optInt("format"),marker.optString("architecture"),
+            marker.optString("profile"),marker.optString("runtime"),marker.optInt("build_adapter"));
+    }
     boolean alive() { return process!=null && process.isAlive(); }
     synchronized void start() throws Exception {
         if(recoveryError!=null)throw new IOException(recoveryError);
         if (alive()) return;
         if (installing) throw new IOException("Runtime installation is in progress");
         if (!installed()) {status="Install the runtime to begin."; return;}
+        JSONObject marker=runtimeMarker(rootfs);
+        ServerRuntimeIdentity.validateSession(profiles.current(),marker.optInt("format"),marker.optString("architecture"),
+            marker.optString("profile"),marker.optString("runtime"),marker.optInt("build_adapter"));
         File nativeDir=new File(context.getApplicationInfo().nativeLibraryDir);
         File proot=new File(nativeDir,"libproot.so"), loader=new File(nativeDir,"libproot-loader.so");
         if (!proot.canExecute() || !loader.exists()) throw new IOException("This APK is missing its ARM64 runtime launcher");
         File backend=new File(home,"backend"); backend.mkdirs();
-        for(String name:new String[]{"engine.py","traditional_content.py","boat_trial.py","ferry_service.py","ferry_service.lua","ferry_route.py","server_ferry.py","eq_server_ferry.h","spire.py","spire_catalog.py","log_retention.py","rule_catalog.py","managed_content.py","client_display.py","client_xauthority.py","client_settings.py","client_spells.py","client_addons.py","client_dll.py","client_toolchain.py","pack-client-sdk.py","client_mouse.py","eq_camera_mouse.h","eq_client_loading.h","eq_fast_decimal.h","eq_spell_checksum.h","eq_display_loading.h","eq_first_person_particles.h","eq_boat_diagnostics.h","player_data.py","player_tables.py","client_compile_runner.py"})
+        for(String name:new String[]{"engine.py","traditional_content.py","traditional_build.py","traditional_verify.py","boat_trial.py","ferry_service.py","ferry_service.lua","ferry_route.py","server_ferry.py","eq_server_ferry.h","spire.py","spire_catalog.py","log_retention.py","rule_catalog.py","managed_content.py","client_display.py","client_xauthority.py","client_settings.py","client_spells.py","client_addons.py","client_dll.py","client_toolchain.py","pack-client-sdk.py","client_mouse.py","eq_camera_mouse.h","eq_client_loading.h","eq_fast_decimal.h","eq_spell_checksum.h","eq_display_loading.h","eq_first_person_particles.h","eq_boat_diagnostics.h","player_data.py","player_tables.py","client_compile_runner.py"})
             try(InputStream in=context.getAssets().open(name)) { copy(in,new File(backend,name)); }
         byte[] secret=new byte[32]; new SecureRandom().nextBytes(secret); token=hex(secret);
         write(new File(work,"run/api-token"),token);
@@ -139,10 +152,15 @@ public final class RuntimeManager {
         process=null;
     }
     JSONObject nativeState() throws Exception {
+        JSONObject marker;
+        try{marker=runtimeMarker(rootfs);}catch(IOException e){marker=new JSONObject();}
         return new JSONObject().put("installed",installed()).put("alive",alive()).put("installing",installing)
             .put("session_busy",sessionBusy)
             .put("status",status).put("free_bytes",home.getUsableSpace()).put("abi",android.os.Build.SUPPORTED_ABIS[0])
-            .put("profile",profiles.current()).put("profile_label",WorldProfiles.label(profiles.current()));
+            .put("profile",profiles.current()).put("profile_label",WorldProfiles.label(profiles.current()))
+            .put("runtime_build_ready",buildReady(profiles.current(),marker))
+            .put("runtime_version",marker.optString("runtime"))
+            .put("runtime_profile",marker.optString("profile","legacy"));
     }
     JSONObject browseFiles(JSONObject args)throws Exception {
         if(recoveryError!=null)throw new IOException(recoveryError);
@@ -224,12 +242,14 @@ public final class RuntimeManager {
         File manifest=new File(context.getCacheDir(),"runtime-manifest.json"), archive=new File(context.getCacheDir(),"runtime.tar.gz");
         beginInstall();
         try {
-            download(RELEASE+"runtime-manifest.json",manifest);
+            String release=ServerRuntimeIdentity.release(profiles.current());
+            download(release+"runtime-manifest.json",manifest);
             JSONObject m=new JSONObject(new String(Files.readAllBytes(manifest.toPath()),StandardCharsets.UTF_8));
-            if(!m.getString("architecture").equals("arm64") || m.getInt("format")!=1) throw new IOException("Unsupported runtime manifest");
+            ServerRuntimeIdentity.validateInstall(profiles.current(),m.optInt("format"),m.optString("architecture"),
+                m.optString("profile"),m.optString("runtime"),m.optInt("build_adapter"));
             String name=m.getString("file");
             if(!name.equals("runtime-arm64.tar.gz")) throw new IOException("Unexpected runtime filename");
-            download(RELEASE+name,archive);
+            download(release+name,archive);
             status="Verifying runtime download…";
             if(!sha256(archive).equalsIgnoreCase(m.getString("sha256"))) throw new IOException("Runtime checksum does not match; download again");
             installArchive(archive);
@@ -322,7 +342,8 @@ public final class RuntimeManager {
             for(String path:new String[]{"rootfs/etc/trasc-runtime.json","work/settings.json"})
                 if(new File(staging,path).length()>131072)throw new IOException("Session configuration exceeds supported size");
             JSONObject marker=new JSONObject(new String(Files.readAllBytes(new File(staging,"rootfs/etc/trasc-runtime.json").toPath()),StandardCharsets.UTF_8));
-            if(marker.getInt("format")!=1||!marker.getString("architecture").equals("arm64"))throw new IOException("Unsupported runtime inside session");
+            ServerRuntimeIdentity.validateSession(profiles.current(),marker.optInt("format"),marker.optString("architecture"),
+                marker.optString("profile"),marker.optString("runtime"),marker.optInt("build_adapter"));
             JSONObject settings=new JSONObject(new String(Files.readAllBytes(new File(staging,"work/settings.json").toPath()),StandardCharsets.UTF_8));
             if(!settings.optString("profile","custom").equals(profiles.current()))throw new IOException("Session settings belong to a different world profile");
             if(!settings.getString("database").matches("[A-Za-z0-9_]+"))throw new IOException("Invalid database name in session");
@@ -352,10 +373,14 @@ public final class RuntimeManager {
         try {
             status="Unpacking runtime…";
             TarExtractor.extract(archive,staging,(n)->status="Unpacking runtime · "+n+" files");
-            JSONObject marker=new JSONObject(new String(Files.readAllBytes(new File(staging,"etc/trasc-runtime.json").toPath()),StandardCharsets.UTF_8));
-            if(marker.getInt("format")!=1 || !marker.getString("architecture").equals("arm64")) throw new IOException("This is not a TRASC ARM64 runtime archive");
+            JSONObject marker=runtimeMarker(staging);
+            ServerRuntimeIdentity.validateInstall(profiles.current(),marker.optInt("format"),marker.optString("architecture"),
+                marker.optString("profile"),marker.optString("runtime"),marker.optInt("build_adapter"));
             for(String needed:new String[]{"usr/bin/python3.11","usr/sbin/mariadbd","usr/bin/cmake","usr/bin/git","usr/bin/g++"})
                 if(!new File(staging,needed).exists()) throw new IOException("Runtime is incomplete: "+needed);
+            if("traditional".equals(profiles.current()))
+                for(String needed:new String[]{"usr/bin/ninja","usr/bin/pkg-config","usr/bin/openssl","usr/bin/luajit","usr/bin/readelf","usr/lib/aarch64-linux-gnu/ossl-modules/legacy.so"})
+                    if(!new File(staging,needed).isFile())throw new IOException("Traditional runtime is incomplete: "+needed);
             TarExtractor.remove(previous);
             if(rootfs.exists() && !rootfs.renameTo(previous)) throw new IOException("Could not preserve previous runtime");
             if(!staging.renameTo(rootfs)) {previous.renameTo(rootfs); throw new IOException("Could not activate runtime");}

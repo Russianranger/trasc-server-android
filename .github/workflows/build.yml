@@ -47,6 +47,10 @@ jobs:
             runtime-work/xauthority-test/manifest.json
   ferry-server:
     uses: ./.github/workflows/ferry-server.yml
+  traditional-runtime:
+    uses: ./.github/workflows/traditional-runtime.yml
+    permissions:
+      contents: write
   client-dll:
     uses: ./.github/workflows/client-dll.yml
   wined3d:
@@ -132,7 +136,7 @@ jobs:
             database-test/work/database-verification.json
             database-test/runtime-manifest.json
   apk:
-    needs: [wined3d, vulkan]
+    needs: [wined3d, vulkan, traditional-runtime]
     runs-on: ubuntu-latest
     env:
       TRASC_PREVIEW_KEYSTORE: ${{ github.ref == 'refs/heads/main' && format('{0}/runtime-work/signing/preview.keystore', github.workspace) || '' }}
@@ -236,7 +240,7 @@ jobs:
           path: app/build/reports/
   preview:
     if: github.ref == 'refs/heads/main' && github.event_name != 'pull_request'
-    needs: [apk, database, client-runtime, client-dll, ferry-server, display-auth]
+    needs: [apk, database, client-runtime, client-dll, ferry-server, display-auth, traditional-runtime]
     runs-on: ubuntu-latest
     permissions:
       contents: write

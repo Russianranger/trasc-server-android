@@ -32,7 +32,7 @@ const tabStories={
  files:['Pack for the journey.','Find and organize the files that make your world.'],
  logs:['Chronicles of your realm.','Review recent events and gather clues when something goes wrong.']
 };
-function renderOverview(){const [title,summary]=tabStories[currentTab]||tabStories.setup;$('headline').textContent=currentTab==='server'&&lastState?.running?'Your world is running.':title;$('summary').textContent=summary;}
+function renderOverview(){const [title,summary]=tabStories[currentTab]||tabStories.setup;$('headline').textContent=currentTab==='server'&&lastState?.running?'Your world is running.':title;$('summary').textContent=activeProfile==='traditional'&&currentTab==='build'?'Prepare a copy of the tested source, then compile and stage its binaries.':summary;}
 function statusBadge(id,label,state){const el=$(id);el.textContent=label;el.dataset.state=state;el.classList.toggle('online',state==='running');}
 function renderClientActivity(s){
  lastClientNative=s;if(typeof syncProfileControls==='function')syncProfileControls();if(typeof cleanupControls==='function')cleanupControls();
@@ -67,10 +67,10 @@ function renderSessionControls(){
 function render(s){lastState=s;renderSessionControls();renderOverview();if(typeof renderBoatTrial==='function')renderBoatTrial();if(typeof renderFerryService==='function')renderFerryService();$('free').textContent=bytes(s.free_bytes);
  $('nektulos-status').textContent=s.nektulos?.applied?'Legacy pair applied · original backup: backups/nektulos/'+s.nektulos.backup:s.nektulos?.legacy_ready?'Both legacy files are available.':'Import both legacy Nektulos files before applying the fix.';if(typeof renderClientStatus==='function')renderClientStatus(s.client);ready('source-ready',!!s.source);ready('maps-ready',s.maps_ready);ready('database-ready',s.database_imported);
  $('source-info').textContent=s.source?JSON.stringify(s.source,null,2):'Import a server repository in Setup.';
- $('build-status').textContent=(s.build_ready?'A successful build is ready to deploy.':'No staged build yet.')+(s.binaries_ready?' Deployed binaries are available.':'')+(s.rollback_ready?' Previous binaries can be restored.':'');
+ $('build-status').textContent=s.profile==='traditional'?(s.traditional?.build?.staged_message||'No staged build yet.')+' Deployment and first login are the next milestone.':(s.build_ready?'A successful build is ready to deploy.':'No staged build yet.')+(s.binaries_ready?' Deployed binaries are available.':'')+(s.rollback_ready?' Previous binaries can be restored.':'');
  $('pending-rules').textContent=s.settings.rules_pending_restart?'Settings saved · restart required.':'';
  $('endpoint').textContent=$('login-address').textContent=s.settings.ip+':'+s.settings.login_port;
- if(!initialSettings){$('server-ip').value=s.settings.ip;$('source-url').value=s.settings.repo;$('source-ref').value=s.settings.ref;$('workers').value=s.settings.workers;$('build-jobs').value=s.settings.jobs;initialSettings=true;}
+ if(!initialSettings){$('server-ip').value=s.settings.ip;$('source-url').value=s.settings.repo;$('source-ref').value=s.settings.ref;$('workers').value=s.settings.workers;$('build-jobs').value=s.profile==='traditional'&&![1,2].includes(Number(s.settings.jobs))?'1':s.settings.jobs;initialSettings=true;}
  $('processes').replaceChildren();for(const [name,p]of Object.entries(s.processes)){const row=document.createElement('div');row.className='process';const title=document.createElement('strong');title.textContent=name;const state=document.createElement('span');state.textContent=p.running?'Running · '+p.pid:'Stopped · '+p.exit;if(!p.running)state.className='failed';row.append(title,state);$('processes').append(row);}if(!Object.keys(s.processes).length)$('processes').textContent='No server processes running.';
  const running=s.jobs.find(j=>j.status==='running'||j.status==='queued');if(running){$('activity').hidden=false;$('activity-title').textContent=operationLabel(running.operation);$('activity-detail').textContent=running.progress?.message||'In progress · open Logs for command output';$('cancel').hidden=false;}else if(!busy){$('activity').hidden=true;}
  if(typeof renderSdkDownload==='function')renderSdkDownload(s);

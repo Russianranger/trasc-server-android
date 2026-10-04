@@ -31,9 +31,11 @@ A standalone Android control app for [Russianranger/Triptych-Triumvirate](https:
 
 ## Downloads and first setup
 
+**App 0.6.5 — Traditional ARM64 compilation:** Traditional now imports the pinned [Russianranger/Server](https://github.com/Russianranger/Server) source, applies a checked patch recipe in a separate build copy, and compiles/stages all nine server tools. It uses its own Debian Bookworm runtime and defaults to one compiler job. Deploy, Start and generated client exports await the database/login milestone. [Setup guide](docs/traditional-profiles.md) · [Research and CMake recipe](docs/traditional-arm-build.md).
+
 **Beta 0.6 — runtime installation repair:** expands hard links into regular files when installing server/client runtimes, avoiding the `link failed: EACCES` failure reported on Fold6/Android 16. Existing working installations need only the APK update. [Release and testing instructions](docs/beta-06-release.md).
 
-**App 0.5.8 — independent world profiles:** switch between the existing TRASC Custom world and a separate Traditional EQEmu preparation workspace. All ten tabs cross over; Traditional has ten bundled 16-bit adventure scenes, quests/plugins/Lua/assets imports, split PEQ seed bundles and a clean-client baseline. Traditional Android compilation/deployment is the next milestone. [Profile guide and component checklist](docs/traditional-profiles.md).
+**Independent world profiles:** switch between the existing TRASC Custom world and a separate Traditional EQEmu workspace. All ten tabs cross over; Traditional has ten bundled 16-bit adventure scenes, quests/plugins/Lua/assets imports, split PEQ seed bundles and a clean-client baseline. [Profile guide and component checklist](docs/traditional-profiles.md).
 
 **App 0.5.7 — Fixes and shared session controls:** the runtime panel includes server Start/Stop/Restart and separate server/client activity indicators on every tab. **Fixes** contains ferry management, retired-trial cleanup, Nektulos maps, spell compatibility and Wine prefix recovery. Each tab has a distinct offline fantasy illustration. Existing server binaries, client DLL and accepted ferry installation remain compatible. [Update and testing instructions](docs/preview-notes.md).
 
@@ -41,6 +43,7 @@ A standalone Android control app for [Russianranger/Triptych-Triumvirate](https:
 
 - [Android preview release](https://github.com/Russianranger/trasc-server-android/releases/tag/preview): install the APK once the Android workflow succeeds.
 - [ARM64 runtime release](https://github.com/Russianranger/trasc-server-android/releases/tag/runtime-v1): the app downloads this automatically, or you can transfer `runtime-arm64.tar.gz` for offline installation.
+- [Traditional ARM64 build runtime](https://github.com/Russianranger/trasc-server-android/releases/tag/traditional-runtime-v1): downloaded only in Traditional; offline archives must match the selected profile.
 - [Build status](https://github.com/Russianranger/trasc-server-android/actions).
 
 1. Install the APK on an ARM64 Android device (Android 8/API 26 or newer; primary target Android 13 Thor).
@@ -55,7 +58,7 @@ Reserve at least **12 GB free**, with additional space for large map sets, SQL d
 
 ## Implemented management flows
 
-The server build/start/export flows below describe the verified **Custom** adapter. Traditional keeps the tabs and management/import controls; its compilation and first-login gates remain pending as described in the profile guide.
+The server build/start/export flows below describe the verified **Custom** adapter. Traditional adds its own compile-and-stage adapter; deployment and first login remain pending as described in the profile guide.
 
 | Area | Controls |
 | --- | --- |

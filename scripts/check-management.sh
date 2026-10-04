@@ -21,6 +21,8 @@ if ! command -v javac >/dev/null; then compiler=(java -m jdk.compiler/com.sun.to
     app/src/main/java/io/github/russianranger/trasc/SessionArchive.java \
     tests/java/io/github/russianranger/trasc/TarExtractorHostTest.java \
     app/src/main/java/io/github/russianranger/trasc/WorldProfiles.java \
+    app/src/main/java/io/github/russianranger/trasc/ServerRuntimeIdentity.java \
+    tests/java/io/github/russianranger/trasc/ServerRuntimeIdentityHostTest.java \
     tests/java/io/github/russianranger/trasc/WorldProfilesHostTest.java \
     app/src/main/java/io/github/russianranger/trasc/StorageFiles.java \
     tests/java/io/github/russianranger/trasc/StorageFilesTest.java \
@@ -47,6 +49,7 @@ java -cp "$classes" io.github.russianranger.trasc.LogRetentionHostTest
 java -cp "$classes" io.github.russianranger.trasc.ManagementHostTest
 java -cp "$classes" io.github.russianranger.trasc.TarExtractorHostTest
 java -cp "$classes" io.github.russianranger.trasc.WorldProfilesHostTest
+java -cp "$classes" io.github.russianranger.trasc.ServerRuntimeIdentityHostTest
 java -cp "$classes" io.github.russianranger.trasc.StorageFilesTest
 java -cp "$classes" io.github.russianranger.trasc.ClientHostTest
 java -cp "$classes" io.github.russianranger.trasc.ProotAccelerationHostTest
