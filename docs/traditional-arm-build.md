@@ -42,10 +42,27 @@ OpenSSL default/legacy DES providers. Artifact `11293028564` has ZIP SHA256
 
 Its following PRoot check stopped while moving the Docker-created, root-owned
 build tree. The qualification container now runs with the host runner UID/GID,
-matching the app's shared ownership of runtime/work files. The signed main run
-must repeat native compilation, extracted-runtime PRoot verification and the
-session round-trip before publishing either the runtime or APK. Physical Thor
-compilation and first login remain device acceptance work.
+matching the app's shared ownership of runtime/work files.
+
+The final [main run 37177322940](https://github.com/Russianranger/trasc-server-android/actions/runs/37177322940)
+at launcher source commit `d6c5d96c2427e5eccbbbd5c14a5aa2c2b051e95e` repeated
+the actual app import, patch and nine-target native ARM64 qualification in
+34 minutes 1 second with two jobs. The extracted-runtime PRoot checks then
+passed: the native C++20 compiler/dependency fixture, child processes, file
+mmap/locking and the same nine staged binaries' loaders, quest-parser libraries
+and OpenSSL providers. The complete Java session backup/restore also passed
+with all hashes verified. The qualified separate runtime was published as
+[traditional-runtime-v1](https://github.com/Russianranger/trasc-server-android/releases/tag/traditional-runtime-v1).
+Physical Thor compilation, Android memory/thermal behavior and first login
+remain device acceptance work.
+
+The corresponding signed launcher build has this identity:
+
+| Field | Value |
+|---|---|
+| APK version | 0.6.5, version code 54 |
+| APK SHA-256 | `f8d790709e660a68d1f6fa866c0dde3727fa4f6a9ce32d3fb1fdcdeb3ab81bfa` |
+| Signing certificate SHA-256 | `ff9c09cdc3e2404d1d7f72d61ce2f8651464f5e03dff340f70bd4df28c70e869` |
 
 | Existing build assumption | Selected fork requirement | Adaptation |
 |---|---|---|
@@ -136,10 +153,10 @@ The separate ARM precompiled-header trial succeeded with one job:
 | Common | 2.46 s | 287,468 KiB | 95,566,044 bytes |
 | Zone | 13.36 s | 1,010,324 KiB | 382,689,036 bytes |
 
-One job is the conservative device build setting. Successful PCH creation
-proves feasibility, while complete compilation and Android device memory
-pressure still need their own evidence. The larger translation units make
-an unrestricted CPU-count-based job default unsuitable.
+One job is the conservative device build setting. Native CI completed all nine
+targets with PCH enabled; physical Android memory pressure and thermal behavior
+still need device evidence. The larger translation units make an unrestricted
+CPU-count-based job default unsuitable.
 
 The app defaults to one job and permits an explicit two-job setting only with
 adequate available memory. Production CI uses two jobs on its larger ARM64
@@ -169,8 +186,10 @@ tests child processes plus regular-file mmap/locking, and verifies the same
 staged binaries through the extracted root filesystem.
 It also records first and cached adapter-status timings and requires that the
 qualified staged build is recognized with the compilation tree hidden. The
-initial timing measurement records latency without imposing an unmeasured
-performance threshold.
+main qualification measured 1.848 seconds for the first request and 0.222
+seconds for the cached request, with both recognizing the staged build and
+qualified source/runtime. These measurements impose no performance threshold
+and do not establish physical Android response times.
 
 Server executables are never invoked with generic `--help` or `--version`
 arguments: several ignore those arguments and import database data or start
@@ -187,3 +206,4 @@ The Custom source/build/runtime route remains independent.
 - [Successful native PCH resource trial](https://github.com/Russianranger/trasc-server-android/actions/runs/37172273829), artifact `11291633940`, ZIP SHA-256 `544c66d92c431fa637484842334ad8d2f925f47c056fdc32c1cd5219313ec96d`.
 - [Successful native dependency-API phase](https://github.com/Russianranger/trasc-server-android/actions/runs/37173282093), artifact `11292664955`, ZIP SHA-256 `38596512d2de0fe2dd699d92665378eabf1dc1f9f4f8a5f743c1c7b5e3da454f`. Its subsequent single-job full build reached 530 of 761 remaining Ninja steps without source errors before the 45-minute timeout.
 - [Full patched native retry](https://github.com/Russianranger/trasc-server-android/actions/runs/37173915902), artifact `11293930792`, ZIP SHA-256 `7bc68c34b089dd4c9952ac0a7fb75b50ba738349f244ee90f28186f3b59703e9`. Its final 37-file patch set compiled the early dependency objects successfully and reached 508 of 761 remaining steps without source errors before the same 45-minute single-job timeout. Largest-child RSS was 2,245,204 KiB, with no swap. Final production qualification is performed separately by `traditional-runtime.yml`.
+- [Successful final native and extracted-runtime qualification](https://github.com/Russianranger/trasc-server-android/actions/runs/37177322940), artifact `11294945920`, ZIP SHA-256 `a14804397648d17c6ba4f2442cce101aa70ecf027aef2b14f05e7c3868b5ff47`. It contains the exact nine-binary native and PRoot manifests, actual compiler/dependency fixture results, status timings, package manifest and build logs. The full runtime archive is preserved separately in artifact `11294137343` and the `traditional-runtime-v1` release.

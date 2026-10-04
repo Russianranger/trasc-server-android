@@ -1,4 +1,4 @@
-# Current work: 0.6.5 Traditional ARM64 compile and stage (2026-10-04 UTC)
+# Released: 0.6.5 Traditional ARM64 compile and stage (2026-10-04 UTC)
 
 The requested 60-minute investigation ran from 02:28:20 to 03:29:16 UTC.
 Selected source: `Russianranger/Server` at
@@ -12,18 +12,72 @@ The app now has a separate Traditional runtime/install identity, a pristine-sour
 build overlay, full input/binary manifests, cancellation-safe staging/recovery,
 one-job default and two-job maximum. Only Build is enabled. Deployment, rollback,
 server Start and generated client exports await database/login qualification.
-Custom is unchanged. New APK identity is 0.6.5/code54 with the existing package/key.
+Custom is unchanged. APK identity is 0.6.5/code54 with the existing package/key.
 
-The first actual Engine import/patch/all-nine ARM64 build passed in 35m36s
-([run 37175261183](https://github.com/Russianranger/trasc-server-android/actions/runs/37175261183)).
-All nine ELF/loader hashes, LuaJIT/Perl dependencies and default/legacy DES
-providers verified. PRoot then stopped moving root-owned Docker outputs; the
-qualification Docker now runs with the host UID/GID. Before publication, signed
-main CI must pass native compilation again, the extracted PRoot checks, status
-measurement, session round-trip and the existing Android/UI/server/client gates. Local backend discovery passes 245 tests
-with eight optional Lua cases skipped; focused adapter tests cover source drift,
-identical session restoration, forged overlays and failed/cancelled staging.
-No physical Thor compile or first login has been claimed.
+**Implementation, qualification and public release are complete.**
+[PR #16](https://github.com/Russianranger/trasc-server-android/pull/16) merged at
+`d6c5d96c2427e5eccbbbd5c14a5aa2c2b051e95e`, the signed APK/runtime source and both
+published tag targets. All eleven
+[main build/release jobs](https://github.com/Russianranger/trasc-server-android/actions/runs/37177322940)
+passed. The actual Engine import/patch/all-nine native ARM64 compile and stage
+completed in 34m01s with two jobs. Extracted-runtime PRoot checks passed for the
+C++20 compiler/dependency fixture, child processes, file mmap/locking, all nine
+staged loaders, LuaJIT/Perl ABI and OpenSSL default/legacy DES providers. Native
+and extracted-PRoot verification manifests are byte-identical. With the build
+tree hidden, Engine status recognized the qualified stage in 1.848s initially
+and 0.222s cached. The complete Java session backup/restore verified all hashes.
+
+The first native qualification had passed compilation but exposed root-owned
+Docker output during the subsequent PRoot check; running the container with the
+host UID/GID fixed that ownership mismatch. The signed main run above repeated
+the complete path successfully. Qualification artifact `11294945920` is 47,782
+bytes, ZIP SHA256
+`a14804397648d17c6ba4f2442cce101aa70ecf027aef2b14f05e7c3868b5ff47`.
+Local backend discovery passes 245 tests with eight optional Lua cases skipped;
+main CI installed Lua test support and passed the complete backend and management
+UI suites, Android lint/signing and existing server/client/database checks.
+Focused adapter tests cover source drift, identical session restoration, forged
+overlays and failed/cancelled staging. Physical Thor compilation and first login
+remain device acceptance work.
+
+**Published identity:**
+[Download preview 0.6.5](https://github.com/Russianranger/trasc-server-android/releases/download/preview/trasc-server-android-preview.apk?build=d6c5d96c2427).
+The APK is 15,250,541 bytes, SHA256
+`f8d790709e660a68d1f6fa866c0dde3727fa4f6a9ce32d3fb1fdcdeb3ab81bfa`.
+The actual manifest confirms package `io.github.russianranger.trasc.preview`,
+version 0.6.5/code54. CI apksigner and independent APK signing-block inspection
+confirm the preserved certificate
+`ff9c09cdc3e2404d1d7f72d61ce2f8651464f5e03dff340f70bd4df28c70e869`.
+The packaged Engine/build/verifier files match the release source. The public
+APK digest matches the independently inspected signed artifact exactly.
+Signed artifact `11293988692` has ZIP SHA256
+`536e6fc326df051136763158d5a558c4563f840f19425cd0b508606485f4317d`.
+The public source archive is 114,561,010 bytes, SHA256
+`9a3f3f983f6a19f8ecc00881a59e0ce7724a0170eb57bca6aaf8f430fc092836`.
+Public preview-build.json is 367 bytes, SHA256
+`8fb3e05559d708517c6c7ec0a529b9025158a3d3514c83080eb151b5c0bfc764`;
+its actual bytes confirm the same source, APK hash, package, version and key.
+
+The separate [Traditional runtime 1.0](https://github.com/Russianranger/trasc-server-android/releases/tag/traditional-runtime-v1)
+is 252,948,174 bytes, SHA256
+`24038e52c359d3e5295a6bbb30feb9417b2d2c757d1de683d1e25489afca8b53`.
+Public runtime-manifest.json is 326 bytes, SHA256
+`1bd77fda560d583a9620b1c19a471bef80fc03e6a2148db736a16435efc49b09`;
+it records `traditional-1.0`, profile `traditional`, adapter 1 and the signed
+source above. The published nine-target qualification JSON is 3,262 bytes,
+SHA256 `24cc0fc9868a194f6b34811dbd91fe802451ffaf8978de2738945a01238b7171`.
+Both public JSON files match the downloaded qualification artifact byte for byte.
+Named Beta 0.6.2 remains unchanged.
+
+**Next Thor step:** install over the existing app without clearing storage, select
+Traditional, close its runtime and use **Setup → Download/refresh build runtime**.
+Choose **Use tested Traditional source → Import from GitHub**, then
+**Builds → Build imported source** with one compiler job, power connected and
+several GiB free. Database, maps and client imports are not needed to compile.
+Success stages all nine binaries; Deploy/Start remain the separate database,
+configuration and first-login milestone described in
+[the profile guide](traditional-profiles.md). This documentation-only release
+record does not rebuild or retag the APK/runtime.
 
 ---
 
