@@ -1,15 +1,15 @@
-# Traditional EQEmu profiles — 0.5.8
+# Traditional EQEmu profiles — 0.6.5
 
 This milestone adds two independent worlds to the app: **TRASC Custom** and **Traditional EQEmu**. The existing installation remains Custom in its original location. Traditional starts empty, uses a separate clean ROF2 import, and has a distinct 16-bit adventure background for each of the same ten tabs.
 
-**Traditional is a preparation workspace in this release.** Source/content imports and management are available. Traditional server Build, Deploy, binary rollback, Start and generated client-data preparation/export are blocked in both the UI and control daemon until the chosen fork passes the next Android compilation milestone. This release does not make an unmodified upstream download playable on Android.
+**Traditional now compiles and stages the selected server fork.** Source/content imports and management remain available. The build adapter supports `Russianranger/Server` at commit `4aceae18b94ffaafc08e2b17bc41cd72c77f795d`, applies checked changes in a separate build copy and verifies all nine Linux ARM64 executables. Deploy, binary rollback, Start and generated client-data preparation/export remain blocked until database/configuration/login qualification is complete. A successful compile does not yet make the world playable.
 
 ## Switching worlds
 
 1. Camp out and stop the client. Return from the client display to management with Android Back.
 2. Stop the server runtime and finish any import, export or file picker.
 3. At the top, choose **Traditional EQEmu → Switch world**. The screen reloads, the artwork changes and the runtime panel names the selected world.
-4. Install the server runtime in Traditional, then import its source and content. The existing runtime supports this preparation work; it is not yet a verified upstream build environment.
+4. Install the separate Traditional build runtime. Existing Traditional preparation runtimes must be shut down and refreshed with **Setup → Download/refresh build runtime**; imported files and settings remain in the workspace. The app rejects a Custom runtime archive in the Traditional installer.
 5. To return, stop Traditional's runtimes, choose **TRASC Custom → Switch world**, and start the existing runtime/server normally.
 
 Switching discards unsaved form edits. Only one profile can run at a time. The selected profile persists across app restarts. The native bridge rejects requests from a stale screen; active imports, exports and client displays prevent switching.
@@ -22,7 +22,7 @@ Custom remains at the existing app-private `files/work` and `files/rootfs`. Trad
 
 | Component | Where to import | Purpose / remaining validation |
 | --- | --- | --- |
-| EQEmu server source or your fork | Setup → Import server | Defaults to `EQEmu/EQEmu`, `master`; change to the chosen fork/ref. GitHub downloads record the resolved commit. GitHub ZIPs omit submodule contents; the build milestone must fetch and pin them. |
+| Selected server source | Setup → Import server | New profiles default to `Russianranger/Server` and the tested commit above. Existing URLs are retained: choose **Use tested Traditional source**, then import from GitHub. The adapter verifies source guards and hydrates the exact websocket header revision omitted from GitHub ZIPs. Other revisions remain importable but cannot use this build recipe. |
 | PEQ world, player/system and local-login database tables | Setup → Select database | Use a complete seed, or add each SQL/SQL.GZ/ZIP member to the split-seed bundle in the distribution's required order and import once. The importer targets this profile's `peq` database. Exact schema and login compatibility remain to be verified. |
 | Server geometry, navigation and water maps | Setup → Import maps | Import base/nav/water/legacy map directories. These are server data, separate from ROF2's installed zone assets. |
 | Zone/global quest scripts | Setup → Traditional world content → Quests | Installs `server/quests`. ProjectEQ's quest repository is provided as an editable starting URL. |
@@ -31,7 +31,7 @@ Custom remains at the existing app-private `files/work` and `files/rootfs`. Trad
 | Server assets / opcode files | Same panel → Server assets | Installs `server/assets`; requires `patch_RoF2.conf` in the selected asset package. Supply the package/repository matching the chosen server revision. Activation of its config/opcode paths is part of deployment in the next milestone. |
 | A separate clean, supported ROF2 client | Client → Import your ROF2 client | User-supplied ZIP; no proprietary client is distributed. Native custom `dinput8.dll` loading and custom hooks are disabled in Traditional. Importing a modified client does not turn its other files into a clean installation. |
 | Wine/Box64, graphics and DirectX model helpers | Client runtime / DirectX model helpers | Install per profile. Existing display, controller, audio and graphics controls cross over. First login against the traditional server is still pending. |
-| Local login service, server config, shared memory and generated client data | Next Android deployment milestone | Build/verify loginserver and its account schema, generate profile-local credentials/configuration and shared data, check ROF2 opcodes and export matching spells/strings/skills/base data. Do not reuse Custom's binaries or config. |
+| Local login service, server config, shared memory and generated client data | Next Android deployment milestone | Qualify the compiled loginserver against its account schema, generate profile-local credentials/configuration and shared data, check ROF2 opcodes and export matching spells/strings/skills/base data. Do not reuse Custom's binaries or config. |
 
 Spire, Gameplay rules, Database, Files, Logs and the other tabs remain available. Schema-dependent actions report actual missing tables rather than inventing support. The Fixes tab retains Wine recovery; Custom ferry/map/spell repairs and modified-client addon tools remain in Custom. Pixel artwork changes presentation only; no historical rules, zone versions, spawn restrictions or era preset is applied.
 
@@ -45,17 +45,24 @@ Complete-session ZIPs are per profile and record the profile identity. Restore i
 
 The earlier Android Downloads-provider failure and management-renderer loss remain separate unresolved resilience work. Preserve the user's successful external backup. If another save fails, reuse the already-created ZIP in that profile's `exports` folder instead of creating a new archive repeatedly. This profile work does not claim to fix provider death.
 
-## Next milestone: make the chosen fork Android-ready
+## Compile the selected server
 
-Confirm the exact repository and commit first. No traditional fork was modified as part of this app release. The default upstream link is a starting source, not confirmation that it is the user's intended fork.
+1. Select Traditional, stop the client and refresh its build runtime as described above. Custom continues to use its existing runtime.
+2. Choose **Use tested Traditional source**, then **Import from GitHub**. This selects the exact tested commit without silently changing saved settings. A matching pristine ZIP can also be imported; it must pass the recipe guards and records its archive checksum.
+3. Open **Builds → Build imported source** with **one compiler job**. Connect power and keep several GiB free. Two jobs are available with more memory; three/four are disabled for this adapter. Compilation does not require a database, maps or client import.
+4. Follow `operation.log`. The original import stays unchanged; patched source, pinned websocket headers and CMake objects live under `builds/traditional/`. Failed or cancelled builds retain the previous complete staged build.
+5. Success stages `world`, `zone`, `shared_memory`, `eqlaunch`, `ucs`, `queryserv`, `loginserver`, `export_client_files` and `import_client_files` under `server/bin.staged/`. Its manifest records the source fingerprint, recipe, runtime, options and verified binary hashes. Changed source or runtime invalidates the readiness indicator.
 
-1. Pin fork, PEQ seed, maps, quests/modules, assets and clean ROF2 version. Fetch recursive source submodules at their pinned commits. Retain the existing Custom build adapter separately.
-2. Audit the ARM64 Debian/PRoot build environment and add a reproducible traditional runtime/toolchain manifest. Current upstream CMake requires CMake 3.20+, C++20 and a vcpkg toolchain. Its manifest lists Boost components, MariaDB client, zlib, OpenSSL, LuaJIT, cereal, fmt, glm, libuv, recastnavigation and libsodium; Perl support is conditional on Perl libraries. The existing Custom flags point to Lua 5.1 and are not an upstream build recipe.
-3. Compile world, zone, loginserver, shared_memory, eqlaunch, UCS, queryserv and client import/export tools for Linux ARM64 under PRoot; verify ELF architecture, dynamic dependencies, Perl/Lua quest loading and migrations against a disposable database. This is Linux/glibc under Android PRoot, not an Android NDK/Bionic conversion.
-4. Implement and verify traditional deployment/configuration: stable quest/plugin/module/map/asset paths, login account schema, ROF2 opcodes, shared-memory creation, matching client-data exports and fail-safe staged activation/rollback. Enable the profile's Build/Deploy/Start controls only after these gates pass.
-5. Test on Thor: clean client login, character creation, zoning, one Perl and one Lua quest, rules edits, restart/state persistence, backup/restore and switching back to the untouched Custom world.
-6. Only then implement one tested Luclin-era preset, followed by other eras and optional storage optimization. Keep era rules/content separate from solo/quality-of-life choices.
+The compiler uses Debian ARM64 GCC, C++20, LuaJIT and Perl with OpenSSL 3's default/legacy providers. PCH is enabled, problematic unity batches are explicitly disabled and Release uses `-O2 -DNDEBUG -fno-strict-aliasing`. This is Linux/glibc inside PRoot. See [the research, patches and complete CMake arguments](traditional-arm-build.md).
 
-Primary references inspected for this milestone: [EQEmu standard directories and installation components](https://docs.eqemu.dev/server/installation/server-installation-windows/), [ProjectEQ quests, plugins and Lua modules](https://github.com/ProjectEQ/projecteqquests), [upstream CMake](https://github.com/EQEmu/EQEmu/blob/master/CMakeLists.txt), [dependency manifest](https://github.com/EQEmu/EQEmu/blob/master/vcpkg.json), and [source submodules](https://github.com/EQEmu/EQEmu/blob/master/.gitmodules). Recheck against the chosen fork's pinned revision.
+Verification uses ELF/loader/dependency checks and stateless toolchain fixtures. It does not run server or import/export mains: several of these tools can connect to or modify a database even when given an apparent help argument. Physical Thor compilation and first login require device acceptance.
+
+## Next milestone: deployment and first login
+
+1. Pin the PEQ seed, maps, quests/modules, assets/opcodes and clean ROF2 version to this server revision.
+2. Qualify database and local-login schemas against a disposable profile, migrations, account setup and advertised server address.
+3. Implement deployment/configuration with stable quest/plugin/module/map/asset paths, shared-memory creation, matching client-data exports and staged activation/rollback. Enable Deploy/Start only after these checks pass.
+4. Test on Thor: clean client login, character creation, zoning, one Perl and one Lua quest, rules edits, restart/state persistence, backup/restore and switching back to Custom.
+5. Then implement one tested Luclin-era preset, followed by other eras and optional storage optimization. Era rules/content remain separate from solo/quality-of-life choices.
 
 Artwork was generated with the built-in image tool. All ten saved paths and exact prompts are recorded in [tab-artwork-058.json](tab-artwork-058.json).

@@ -1,0 +1,31 @@
+# Investigation-only shim. Native Bookworm dependency packages replace the
+# upstream vcpkg packages while preserving every target name used by this fork.
+find_package(Boost REQUIRED)
+foreach(component dynamic_bitset foreach tuple)
+  if(NOT TARGET Boost::${component})
+    add_library(Boost::${component} INTERFACE IMPORTED)
+    set_target_properties(Boost::${component} PROPERTIES
+      INTERFACE_INCLUDE_DIRECTORIES "${Boost_INCLUDE_DIRS}")
+  endif()
+endforeach()
+find_package(cereal CONFIG REQUIRED)
+find_package(fmt CONFIG REQUIRED)
+find_package(glm CONFIG REQUIRED)
+find_package(PkgConfig REQUIRED)
+pkg_check_modules(MARIADB REQUIRED IMPORTED_TARGET libmariadb)
+add_library(unofficial::libmariadb ALIAS PkgConfig::MARIADB)
+pkg_check_modules(UV REQUIRED IMPORTED_TARGET libuv)
+add_library(libuv::uv ALIAS PkgConfig::UV)
+pkg_check_modules(SODIUM REQUIRED IMPORTED_TARGET libsodium)
+add_library(unofficial-sodium::sodium ALIAS PkgConfig::SODIUM)
+find_package(OpenSSL 3 REQUIRED)
+find_package(ZLIB REQUIRED)
+find_package(LuaJit REQUIRED)
+find_package(PerlLibs REQUIRED)
+find_path(TRASC_DETOUR_INCLUDE_DIR DetourNavMesh.h PATH_SUFFIXES recastnavigation REQUIRED)
+find_library(TRASC_DETOUR_LIBRARY Detour REQUIRED)
+add_library(RecastNavigation::Detour UNKNOWN IMPORTED)
+set_target_properties(RecastNavigation::Detour PROPERTIES
+  IMPORTED_LOCATION "${TRASC_DETOUR_LIBRARY}"
+  INTERFACE_INCLUDE_DIRECTORIES "${TRASC_DETOUR_INCLUDE_DIR}")
+find_path(TRASC_WEBSOCKETPP_INCLUDE_DIR websocketpp/config/core.hpp REQUIRED)

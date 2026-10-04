@@ -1,3 +1,32 @@
+# Current work: 0.6.5 Traditional ARM64 compile and stage (2026-10-04 UTC)
+
+The requested 60-minute investigation ran from 02:28:20 to 03:29:16 UTC.
+Selected source: `Russianranger/Server` at
+`4aceae18b94ffaafc08e2b17bc41cd72c77f795d`.
+The recipe makes 37 guarded source-file changes, uses Debian system dependencies,
+pinned websocket headers, C++20/LuaJIT/Perl/OpenSSL3, PCH ON, unity OFF and Release
+`-O2 -DNDEBUG -fno-strict-aliasing`. See
+[research and CMake arguments](traditional-arm-build.md).
+
+The app now has a separate Traditional runtime/install identity, a pristine-source
+build overlay, full input/binary manifests, cancellation-safe staging/recovery,
+one-job default and two-job maximum. Only Build is enabled. Deployment, rollback,
+server Start and generated client exports await database/login qualification.
+Custom is unchanged. New APK identity is 0.6.5/code54 with the existing package/key.
+
+The first actual Engine import/patch/all-nine ARM64 build passed in 35m36s
+([run 37175261183](https://github.com/Russianranger/trasc-server-android/actions/runs/37175261183)).
+All nine ELF/loader hashes, LuaJIT/Perl dependencies and default/legacy DES
+providers verified. PRoot then stopped moving root-owned Docker outputs; the
+qualification Docker now runs with the host UID/GID. Before publication, signed
+main CI must pass native compilation again, the extracted PRoot checks, status
+measurement, session round-trip and the existing Android/UI/server/client gates. Local backend discovery passes 245 tests
+with eight optional Lua cases skipped; focused adapter tests cover source drift,
+identical session restoration, forged overlays and failed/cancelled staging.
+No physical Thor compile or first login has been claimed.
+
+---
+
 # Released: 0.6.4 protected Files cleanup (2026-10-03 UTC)
 
 **Implementation, signed build and public preview verification are complete.**

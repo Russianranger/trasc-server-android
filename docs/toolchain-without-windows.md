@@ -29,7 +29,7 @@ When the compiler and SDK show **imported**, install the separate client runtime
 needed, then choose **Compile dinput8.dll**. **Deploy staged DLL** remains a separate
 action after successful compilation. Existing working users do not need to download
 or rebuild solely for this APK update. The Custom DLL compiler remains in TRASC Custom;
-Traditional's build milestone is still pending.
+Traditional server compilation uses a separate Linux ARM64 toolchain; it does not use this Microsoft client-DLL toolchain.
 
 ## Manual preparation alternative
 

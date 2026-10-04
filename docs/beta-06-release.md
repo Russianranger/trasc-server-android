@@ -1,5 +1,7 @@
 # Beta version 0.6
 
+This page describes the original named Beta 0.6 release. The current 0.6.5 preview adds Traditional compile-and-stage support; see [its update instructions](preview-notes.md) and [Traditional setup guide](traditional-profiles.md).
+
 Repairs server and client runtime installation when Android rejects hard links with **`link failed: EACCES (Permission denied)`**. This was reported on a Samsung Galaxy Z Fold6 running Android 16 with the official Beta 0.5 release. The supplied logs confirm six failures in hard-link extraction after successful download and checksum verification; one earlier download separately suffered a connection abort.
 
 The shared installer now expands archive hard links into independent regular files, preserving executable permissions and guest symbolic links. Expanded copies count toward the extraction size limit and available-space checks. Online and offline installs both use the corrected path. The runtime archives and their Linux packages do not need to change.

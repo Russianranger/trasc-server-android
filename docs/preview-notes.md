@@ -1,3 +1,24 @@
+# 0.6.5 — Compile Traditional server source on ARM64
+
+Traditional now has a separate Debian Bookworm build runtime and a pinned recipe
+for Russianranger/Server commit `4aceae18b94ffaafc08e2b17bc41cd72c77f795d`.
+It imports source, patches a separate copy, hydrates the pinned websocket headers,
+compiles all nine targets and stages only a complete verified build. The original
+source and previous successful stage are retained on failure or cancellation.
+
+Install this APK over the existing app, keeping its data. In Traditional, shut
+down its old preparation runtime and choose **Download/refresh build runtime**.
+Open it, choose **Use tested Traditional source**, import from GitHub, then
+**Build imported source** with one compiler job. Maps, database and client imports
+are not required to compile. Two jobs require more available memory.
+
+Deploy, rollback, Start and generated client exports remain guarded pending the
+next database/login milestone. This update does not apply an era preset or
+change the existing Custom build. [Full setup guide](traditional-profiles.md)
+and [60-minute research/CMake recipe](traditional-arm-build.md).
+
+---
+
 # 0.6.4 — Protected backup cleanup in Files
 
 Files now works while the server runtime is closed. Open Database backups,
