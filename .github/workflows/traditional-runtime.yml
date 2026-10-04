@@ -27,6 +27,7 @@ jobs:
         run: |
           mkdir -p runtime-work/traditional/qualification
           docker run --rm \
+            --user "$(id -u):$(id -g)" \
             -v "$PWD/backend:/opt/trasc:ro" \
             -v "$PWD/tests:/tests:ro" \
             -v "$PWD/runtime-work/traditional/qualification:/work" \

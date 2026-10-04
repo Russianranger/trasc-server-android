@@ -2,7 +2,8 @@
 
 The supported source is [Russianranger/Server](https://github.com/Russianranger/Server) at
 `4aceae18b94ffaafc08e2b17bc41cd72c77f795d`. The investigation ran for the requested
-60 minutes on 2026-10-04, ending at 03:28:21 UTC. Its resulting adapter is
+60 minutes on 2026-10-04, from 02:28:20 to 03:29:16 UTC (60.94 minutes).
+Its resulting adapter is
 `eqemu-bookworm-arm64-v1` in `backend/traditional_build.py`.
 
 ## What the investigation established
@@ -20,12 +21,31 @@ compiler failures matched independently reproduced source failures on x86.
 No additional ARM instruction or Bookworm dependency API failure appeared in
 the completed native sweep. All reported source failures were repaired and
 their affected translation units replayed successfully on x86.
+An early native API phase also successfully compiled the actual Lua client
+and parser, Perl client and embedding code, Detour pathfinder and login
+encryption objects. It completed during the research window in 78.51 seconds,
+with a largest-child RSS of 1,789,068 KiB.
 
-This research result is distinct from complete release qualification. The
-production workflow must still compile all nine targets using the final app
-adapter, verify their loaders and parser libraries, and repeat verification
-inside the extracted runtime through PRoot. The workflow gates runtime
-publication on these checks.
+The qualified recipe retains PCH enabled. A later complete x86 PCH-disabled
+link exposed one additional guard-order issue in `zone/embparser_api.cpp`:
+`common/features.h` must precede the Perl XS conditional, otherwise the object
+omits `perl_register_quest`. The forced zone PCH supplies those definitions in
+the selected recipe. A fully qualified PCH-disabled fallback would require
+that additional patch and its own complete build; it is not an app option.
+
+The first production app-route qualification subsequently compiled and staged
+all nine native ARM64 executables in 35 minutes 36 seconds using two jobs.
+[Run 37175261183](https://github.com/Russianranger/trasc-server-android/actions/runs/37175261183)
+verified their ELF architecture, loader dependencies, LuaJIT/Perl ABI and
+OpenSSL default/legacy DES providers. Artifact `11293028564` has ZIP SHA256
+`1fbf46c98023ae70ac8e1d211c971bc7cda92076b1ff978272e0d199aa76434d`.
+
+Its following PRoot check stopped while moving the Docker-created, root-owned
+build tree. The qualification container now runs with the host runner UID/GID,
+matching the app's shared ownership of runtime/work files. The signed main run
+must repeat native compilation, extracted-runtime PRoot verification and the
+session round-trip before publishing either the runtime or APK. Physical Thor
+compilation and first login remain device acceptance work.
 
 | Existing build assumption | Selected fork requirement | Adaptation |
 |---|---|---|
@@ -147,6 +167,10 @@ and uses the app's compatibility-mode bindings and environment. It hides the
 compilation directory, compiles and runs a stateless C++20 dependency fixture,
 tests child processes plus regular-file mmap/locking, and verifies the same
 staged binaries through the extracted root filesystem.
+It also records first and cached adapter-status timings and requires that the
+qualified staged build is recognized with the compilation tree hidden. The
+initial timing measurement records latency without imposing an unmeasured
+performance threshold.
 
 Server executables are never invoked with generic `--help` or `--version`
 arguments: several ignore those arguments and import database data or start
@@ -161,4 +185,5 @@ The Custom source/build/runtime route remains independent.
 
 - [Completed native PCH-disabled sweep](https://github.com/Russianranger/trasc-server-android/actions/runs/37172166296), artifact `11292776810`, ZIP SHA-256 `8117d5a1a87fbe19db23c5427cc2c7c2e78d4ac0984253343b089868da2223f4`.
 - [Successful native PCH resource trial](https://github.com/Russianranger/trasc-server-android/actions/runs/37172273829), artifact `11291633940`, ZIP SHA-256 `544c66d92c431fa637484842334ad8d2f925f47c056fdc32c1cd5219313ec96d`.
-- [Full patched native retry](https://github.com/Russianranger/trasc-server-android/actions/runs/37173915902); final production qualification is performed separately by `traditional-runtime.yml`.
+- [Successful native dependency-API phase](https://github.com/Russianranger/trasc-server-android/actions/runs/37173282093), artifact `11292664955`, ZIP SHA-256 `38596512d2de0fe2dd699d92665378eabf1dc1f9f4f8a5f743c1c7b5e3da454f`. Its subsequent single-job full build reached 530 of 761 remaining Ninja steps without source errors before the 45-minute timeout.
+- [Full patched native retry](https://github.com/Russianranger/trasc-server-android/actions/runs/37173915902), artifact `11293930792`, ZIP SHA-256 `7bc68c34b089dd4c9952ac0a7fb75b50ba738349f244ee90f28186f3b59703e9`. Its final 37-file patch set compiled the early dependency objects successfully and reached 508 of 761 remaining steps without source errors before the same 45-minute single-job timeout. Largest-child RSS was 2,245,204 KiB, with no swap. Final production qualification is performed separately by `traditional-runtime.yml`.

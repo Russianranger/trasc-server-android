@@ -34,7 +34,12 @@ rootfs_dir="$(mktemp -d "$task_dir/root.XXXXXX")"
 proot_tmp_dir="$(mktemp -d /tmp/trasc-tradproot.XXXXXX)"
 hidden_build="$(mktemp -d "$task_dir/hidden-build.XXXXXX")"
 restore() {
-    if [ -d "$hidden_build/builds" ]; then mv "$hidden_build/builds" "$qualification_work/builds"; fi
+    if [ -d "$hidden_build/builds" ]; then
+        # Engine creates an empty builds directory when measuring status.
+        # Remove only that empty directory before restoring the original tree.
+        if [ -d "$qualification_work/builds" ]; then rmdir "$qualification_work/builds"; fi
+        mv "$hidden_build/builds" "$qualification_work/builds"
+    fi
     rmdir "$hidden_build" 2>/dev/null || true
     rm -rf "$proot_tmp_dir" "$rootfs_dir"
 }
@@ -61,6 +66,9 @@ timeout 420 "${guest[@]}" /tests/integration_traditional_toolchain.py \
     --output /evidence/toolchain.json 2>&1 | tee "$evidence_dir/toolchain.log"
 timeout 120 "${guest[@]}" /opt/trasc/traditional_verify.py \
     /work/server/bin.staged /evidence/staged 2>&1 | tee "$evidence_dir/staged-verification.log"
+timeout 120 "${guest[@]}" /tests/verify_traditional_status.py \
+    --work /work --output /evidence/status.json --max-seconds 0 \
+    2>&1 | tee "$evidence_dir/status.log"
 python3 - "$qualification_work/server/bin.staged/verification.json" "$evidence_dir/staged/binary-verification.json" <<'PY'
 import json
 from pathlib import Path

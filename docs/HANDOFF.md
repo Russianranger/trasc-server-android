@@ -14,9 +14,13 @@ one-job default and two-job maximum. Only Build is enabled. Deployment, rollback
 server Start and generated client exports await database/login qualification.
 Custom is unchanged. New APK identity is 0.6.5/code54 with the existing package/key.
 
-Before final release, native CI must pass the actual Engine import/patch/all-nine
-build, extracted-runtime PRoot fixture/loader checks, session round-trip and the
-existing Android/UI/server/client gates. Local backend discovery passes 245 tests
+The first actual Engine import/patch/all-nine ARM64 build passed in 35m36s
+([run 37175261183](https://github.com/Russianranger/trasc-server-android/actions/runs/37175261183)).
+All nine ELF/loader hashes, LuaJIT/Perl dependencies and default/legacy DES
+providers verified. PRoot then stopped moving root-owned Docker outputs; the
+qualification Docker now runs with the host UID/GID. Before publication, signed
+main CI must pass native compilation again, the extracted PRoot checks, status
+measurement, session round-trip and the existing Android/UI/server/client gates. Local backend discovery passes 245 tests
 with eight optional Lua cases skipped; focused adapter tests cover source drift,
 identical session restoration, forged overlays and failed/cancelled staging.
 No physical Thor compile or first login has been claimed.
