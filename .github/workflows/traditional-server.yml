@@ -9,7 +9,59 @@ concurrency:
   group: traditional-arm64-${{ github.ref }}-${{ github.sha }}
   cancel-in-progress: false
 jobs:
+  pch-memory:
+    if: github.event_name == 'workflow_dispatch' || contains(github.event.head_commit.message, '[pch-only]')
+    runs-on: ubuntu-24.04-arm
+    timeout-minutes: 18
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/checkout@v4
+        with:
+          repository: Russianranger/Server
+          ref: 4aceae18b94ffaafc08e2b17bc41cd72c77f795d
+          path: traditional-pch-source
+      - name: Fetch pinned websocket headers
+        run: git -C traditional-pch-source submodule update --init --depth 1 submodules/websocketpp
+      - name: Measure native ARM64 precompiled-header memory and size
+        run: |
+          set -o pipefail
+          mkdir -p traditional-pch-evidence
+          docker run --rm \
+            -v "$PWD/traditional-pch-source:/source" \
+            -v "$PWD/scripts:/probe:ro" \
+            -v "$PWD/traditional-pch-evidence:/evidence" \
+            debian:bookworm-slim bash -c '
+              set -euxo pipefail
+              apt-get update
+              apt-get install -y --no-install-recommends ca-certificates curl git pkg-config cmake ninja-build build-essential libperl-dev python3 uuid-dev file time libboost-dev libcereal-dev rapidjson-dev libfmt-dev libglm-dev libluajit-5.1-dev librecast-dev libuv1-dev libmariadb-dev libssl-dev libsodium-dev zlib1g-dev
+              python3 /probe/probe-traditional-system.py /source /probe/probe-traditional-system-dependencies.cmake /evidence/probe.patch
+              cmake -S /source -B /evidence/build -G Ninja \
+                -DCMAKE_BUILD_TYPE=Release \
+                -DCMAKE_CXX_FLAGS_RELEASE="-O2 -DNDEBUG -fno-strict-aliasing" \
+                -DEQEMU_USE_SYSTEM_DEPENDENCIES=ON \
+                -DTRASC_WEBSOCKETPP_INCLUDE_DIR=/source/submodules/websocketpp \
+                -DEQEMU_BUILD_PCH=ON \
+                -DEQEMU_BUILD_SERVER=ON -DEQEMU_BUILD_LOGIN=ON \
+                -DEQEMU_BUILD_CLIENT_FILES=ON -DEQEMU_BUILD_TESTS=OFF \
+                -DEQEMU_BUILD_PERL=ON -DEQEMU_BUILD_LUA=ON \
+                -DEQEMU_ADD_PROFILER=OFF 2>&1 | tee /evidence/configure.log
+              /usr/bin/time -v -o /evidence/common-pch-resources.txt timeout 420 ninja -C /evidence/build -j1 common/CMakeFiles/common.dir/cmake_pch.hxx.gch 2>&1 | tee /evidence/common-pch.log
+              /usr/bin/time -v -o /evidence/zone-pch-resources.txt timeout 420 ninja -C /evidence/build -j1 zone/CMakeFiles/zone.dir/cmake_pch.hxx.gch 2>&1 | tee /evidence/zone-pch.log
+              find /evidence/build -name cmake_pch.hxx.gch -printf "%p %s bytes\n" > /evidence/pch-sizes.txt
+            ' 2>&1 | tee traditional-pch-evidence/trial.log
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: traditional-server-arm64-pch-resources
+          path: |
+            traditional-pch-evidence/*.txt
+            traditional-pch-evidence/*.log
+            traditional-pch-evidence/*.patch
+            traditional-pch-evidence/*.sha256
+            traditional-pch-evidence/build/CMakeCache.txt
+          retention-days: 14
   system-dependencies:
+    if: ${{ !contains(github.event.head_commit.message, '[pch-only]') }}
     runs-on: ubuntu-24.04-arm
     timeout-minutes: 55
     steps:
