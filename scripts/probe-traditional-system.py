@@ -1,9 +1,15 @@
 """Scoped, investigation-only source transformations for the Bookworm trial."""
+import difflib
+import hashlib
 import pathlib
 import sys
 
 root = pathlib.Path(sys.argv[1]).resolve()
 shim = pathlib.Path(sys.argv[2]).resolve()
+originals = {name: (root / name).read_text() for name in (
+    'CMakeLists.txt', 'common/CMakeLists.txt', 'zone/CMakeLists.txt',
+    'common/net/crc32.cpp', 'common/process.h', 'zone/fastmath.cpp',
+    'common/json/json_archive_single_line.h', 'common/strings.cpp')}
 top = root / 'CMakeLists.txt'
 text = top.read_text()
 original = 'if(NOT CMAKE_TOOLCHAIN_FILE)'
@@ -42,4 +48,20 @@ fastmath = root / 'zone/fastmath.cpp'
 text = fastmath.read_text()
 assert '#include <cmath>' not in text
 fastmath.write_text('#include <cmath>\n' + text)
+for name, expected_count in (('common/json/json_archive_single_line.h', 4), ('common/strings.cpp', 1)):
+    path = root / name
+    text = path.read_text()
+    assert text.count('cereal/external/rapidjson/') == expected_count
+    text = text.replace('cereal/external/rapidjson/', 'rapidjson/')
+    if name == 'common/json/json_archive_single_line.h':
+        assert text.count('CEREAL_RAPIDJSON_ASSERT') == 1
+        text = text.replace('CEREAL_RAPIDJSON_ASSERT', 'RAPIDJSON_ASSERT')
+    path.write_text(text)
+if len(sys.argv) > 3:
+    patch = ''.join(''.join(difflib.unified_diff(
+        original.splitlines(keepends=True), (root / name).read_text().splitlines(keepends=True),
+        fromfile='a/' + name, tofile='b/' + name)) for name, original in originals.items())
+    output = pathlib.Path(sys.argv[3])
+    output.write_text(patch)
+    output.with_suffix('.sha256').write_text(hashlib.sha256(patch.encode()).hexdigest() + '\n')
 print('Applied scoped system-dependency and low-memory build probe transformations')
