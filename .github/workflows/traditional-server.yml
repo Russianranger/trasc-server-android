@@ -104,6 +104,15 @@ jobs:
                 -DEQEMU_BUILD_PERL=ON \
                 -DEQEMU_BUILD_LUA=ON \
                 -DEQEMU_ADD_PROFILER=OFF 2>&1 | tee /evidence/configure.log
+              # Compile the distro-version-sensitive APIs first; full compilation
+              # below still collects every remaining source failure if one fails.
+              /usr/bin/time -v -o /evidence/dependency-resources.txt timeout 600 cmake --build /evidence/build --parallel 1 \
+                --target zone/CMakeFiles/zone.dir/pathfinder_nav_mesh.cpp.o \
+                  loginserver/CMakeFiles/loginserver.dir/encryption.cpp.o \
+                  zone/CMakeFiles/lua_zone.dir/lua_client.cpp.o \
+                  zone/CMakeFiles/lua_zone.dir/lua_parser.cpp.o \
+                  zone/CMakeFiles/perl_zone.dir/perl_client.cpp.o \
+                  zone/CMakeFiles/zone.dir/embperl.cpp.o -- -k0 2>&1 | tee /evidence/dependency-objects.log || true
               /usr/bin/time -v -o /evidence/build-resources.txt timeout 2700 cmake --build /evidence/build --parallel 1 \
                 --target world zone shared_memory eqlaunch ucs queryserv loginserver export_client_files import_client_files -- -k0 2>&1 | tee /evidence/build.log
               file /evidence/build/bin/* > /evidence/binaries.txt

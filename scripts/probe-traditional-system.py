@@ -10,7 +10,11 @@ originals = {name: (root / name).read_text() for name in (
     'CMakeLists.txt', 'common/CMakeLists.txt', 'zone/CMakeLists.txt',
     'common/net/crc32.cpp', 'common/process.h', 'zone/fastmath.cpp',
     'common/json/json_archive_single_line.h', 'common/strings.cpp', 'common/database_schema.h',
-    'common/event/event_loop.cpp', 'common/event/timer.cpp', 'zone/lua_ptr.h')}
+    'common/event/event_loop.cpp', 'common/event/timer.cpp', 'zone/lua_ptr.h',
+    'zone/lua_mod.h', 'zone/quest_interface.h', 'zone/command.h', 'zone/bot_command.h',
+    'zone/bot_commands/bot_help.cpp', 'zone/bot_commands/bot_inventory.cpp',
+    'zone/gm_commands/feature.cpp', 'zone/gm_commands/list.cpp',
+    'zone/gm_commands/show/show_content_flags.cpp')}
 top = root / 'CMakeLists.txt'
 text = top.read_text()
 original = 'if(NOT CMAKE_TOOLCHAIN_FILE)'
@@ -63,6 +67,45 @@ assert '#include "common/types.h"' not in text
 original = '#include "lua.hpp"'
 assert text.count(original) == 1
 lua_ptr.write_text(text.replace(original, '#include "common/types.h"\n' + original, 1))
+lua_mod = root / 'zone/lua_mod.h'
+text = lua_mod.read_text()
+original = 'class LuaParser;'
+assert text.count(original) == 1
+lua_mod.write_text(text.replace(original,
+    'class Client;\nclass Mob;\nstruct DamageHitInfo;\nstruct ExtraAttackOptions;\n' + original, 1))
+quest_interface = root / 'zone/quest_interface.h'
+text = quest_interface.read_text()
+original = '#include <any>'
+assert text.count(original) == 1
+quest_interface.write_text(text.replace(original,
+    '#include "common/eqemu_logsys.h"\n#include "common/rulesys.h"\n#include "common/strings.h"\n'
+    '#include <list>\n#include <string>\n#include <vector>\nclass Mob;\nclass Zone;\nclass Bot;\nclass Merc;\n' + original, 1))
+command_header = root / 'zone/command.h'
+text = command_header.read_text()
+assert '#include <map>' not in text
+command_header.write_text('#include <map>\n' + text)
+bot_command_header = root / 'zone/bot_command.h'
+text = bot_command_header.read_text()
+assert '#include <map>' not in text
+original = '} BotCommandRecord;'
+assert text.count(original) == 1
+bot_command_header.write_text('#include <map>\n' + text.replace(original, original +
+    '\nextern std::map<std::string, BotCommandRecord *> bot_command_list;'
+    '\nextern std::map<std::string, std::string> bot_command_aliases;', 1))
+for name in ('zone/bot_commands/bot_help.cpp', 'zone/bot_commands/bot_inventory.cpp'):
+    path = root / name
+    text = path.read_text()
+    original = '#include "zone/bot_command.h"'
+    assert text.count(original) == 1
+    path.write_text(text.replace(original, original + '\n#include "zone/quest_parser_collection.h"', 1))
+for name, include in (('zone/gm_commands/feature.cpp', 'zone/command.h'),
+                      ('zone/gm_commands/list.cpp', 'zone/bot.h'),
+                      ('zone/gm_commands/show/show_content_flags.cpp', 'common/repositories/content_flags_repository.h')):
+    path = root / name
+    text = path.read_text()
+    original = '#include "zone/client.h"'
+    assert text.count(original) == 1
+    path.write_text(text.replace(original, original + f'\n#include "{include}"', 1))
 fastmath = root / 'zone/fastmath.cpp'
 text = fastmath.read_text()
 assert '#include <cmath>' not in text
