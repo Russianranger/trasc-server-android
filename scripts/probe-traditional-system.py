@@ -14,7 +14,11 @@ originals = {name: (root / name).read_text() for name in (
     'zone/lua_mod.h', 'zone/quest_interface.h', 'zone/command.h', 'zone/bot_command.h',
     'zone/bot_commands/bot_help.cpp', 'zone/bot_commands/bot_inventory.cpp',
     'zone/gm_commands/feature.cpp', 'zone/gm_commands/list.cpp',
-    'zone/gm_commands/show/show_content_flags.cpp')}
+    'zone/gm_commands/show/show_content_flags.cpp', 'zone/gm_commands/show/show_recipe.cpp',
+    'zone/aa.h', 'zone/dialogue_window.h', 'zone/dialogue_window.cpp',
+    'zone/beacon.cpp', 'zone/guild_mgr.h', 'zone/mob.h', 'zone/petitions.h',
+    'zone/petitions.cpp', 'zone/pets.h', 'zone/qglobals.h', 'zone/task_client_state.h', 'zone/guild_mgr.cpp',
+    'zone/zone_loot.cpp', 'common/repositories/zone_state_spawns_repository.h', 'zone/zonedb.cpp')}
 top = root / 'CMakeLists.txt'
 text = top.read_text()
 original = 'if(NOT CMAKE_TOOLCHAIN_FILE)'
@@ -100,12 +104,80 @@ for name in ('zone/bot_commands/bot_help.cpp', 'zone/bot_commands/bot_inventory.
     path.write_text(text.replace(original, original + '\n#include "zone/quest_parser_collection.h"', 1))
 for name, include in (('zone/gm_commands/feature.cpp', 'zone/command.h'),
                       ('zone/gm_commands/list.cpp', 'zone/bot.h'),
-                      ('zone/gm_commands/show/show_content_flags.cpp', 'common/repositories/content_flags_repository.h')):
+                      ('zone/gm_commands/show/show_content_flags.cpp', 'common/repositories/content_flags_repository.h'),
+                      ('zone/gm_commands/show/show_recipe.cpp', 'zone/object.h')):
     path = root / name
     text = path.read_text()
     original = '#include "zone/client.h"'
     assert text.count(original) == 1
     path.write_text(text.replace(original, original + f'\n#include "{include}"', 1))
+for name in ('zone/aa.h', 'zone/dialogue_window.h'):
+    path = root / name
+    text = path.read_text()
+    assert '#include "common/types.h"' not in text
+    path.write_text('#include "common/types.h"\n' + text)
+path = root / 'zone/dialogue_window.cpp'
+text = path.read_text()
+original = '#include "dialogue_window.h"'
+assert text.count(original) == 1
+path.write_text(text.replace(original, original + '\n#include "zone/client.h"'
+    '\n#include "common/eqemu_logsys.h"\n#include "common/strings.h"', 1))
+path = root / 'zone/beacon.cpp'
+text = path.read_text()
+original = 'extern EntityList entity_list;\nextern Zone* zone;\n\nclass Zone;'
+assert text.count(original) == 1
+path.write_text(text.replace(original,
+    'class Zone;\n\nextern EntityList entity_list;\nextern Zone* zone;', 1))
+path = root / 'zone/guild_mgr.h'
+text = path.read_text()
+assert '#include <memory>' not in text
+original = 'class ServerPacket;'
+assert text.count(original) == 1
+path.write_text('#include <memory>\n' + text.replace(original,
+    original + '\nnamespace EQ { class ItemInstance; }', 1))
+path = root / 'zone/mob.h'
+text = path.read_text()
+original = 'class Client;'
+assert text.count(original) == 1
+path.write_text(text.replace(original, original + '\nclass HealRotation;', 1))
+for name, includes in (
+    ('zone/petitions.h', '#include "common/strings.h"\n#include <cstring>'),
+    ('zone/pets.h', '#include "zone/npc.h"'),
+    ('zone/qglobals.h', '#include "common/types.h"\n#include <string>'),
+    ('zone/guild_mgr.cpp', '#include "common/misc_functions.h"')):
+    path = root / name
+    text = path.read_text()
+    for include in includes.splitlines():
+        assert include not in text
+    path.write_text(includes + '\n' + text)
+path = root / 'zone/petitions.cpp'
+text = path.read_text()
+original = '#include "petitions.h"'
+assert text.count(original) == 1
+path.write_text(text.replace(original, original + '\n#include "zone/client.h"'
+    '\n#include "common/eq_packet.h"', 1))
+path = root / 'zone/task_client_state.h'
+text = path.read_text()
+original = '#include "zone/tasks.h"'
+assert text.count(original) == 1
+path.write_text(text.replace(original, original + '\n#include <glm/vec4.hpp>\n'
+    'class NPC;\nclass Corpse;\nclass Trade;\nclass DynamicZone;', 1))
+for name, include in (
+    ('zone/zone_loot.cpp', '#include "common/content/world_content_service.h"'),
+    ('common/repositories/zone_state_spawns_repository.h', '#include "common/rulesys.h"')):
+    path = root / name
+    text = path.read_text()
+    assert include not in text
+    path.write_text(include + '\n' + text)
+path = root / 'zone/zonedb.cpp'
+text = path.read_text()
+for include in ('#include "zone/client.h"', '#include "zone/zone.h"'):
+    assert text.count(include) == 1
+    text = text.replace(include + '\n', '', 1)
+original = '#include "zonedb.h"'
+assert text.count(original) == 1
+path.write_text(text.replace(original,
+    original + '\n#include "zone/client.h"\n#include "zone/zone.h"', 1))
 fastmath = root / 'zone/fastmath.cpp'
 text = fastmath.read_text()
 assert '#include <cmath>' not in text
