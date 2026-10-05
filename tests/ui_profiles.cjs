@@ -67,7 +67,7 @@ const server=http.createServer((req,res)=>{const name=req.url==='/'?'index.html'
   for(const id of ['start-server','deploy-build','rollback-build','export-client','client-prepare'])assert(await page.isDisabled('#'+id));
   const buildRequest=await page.evaluate(()=>fixture.calls.find(x=>x.op==='build'));assert.equal(buildRequest.a.jobs,1);assert.equal(buildRequest.a.__profile,'traditional');
   await page.waitForFunction(()=>busy===0);await page.locator('nav [data-tab=setup]').click();
-  await page.selectOption('#content-kind','plugins');await page.check('#replace-content');await page.click('#content-zip');
+  await page.click('#content-advanced > summary');await page.selectOption('#content-kind','plugins');await page.check('#replace-content');await page.click('#content-zip');
   await page.waitForFunction(()=>document.getElementById('content-result').textContent.includes('backups/content'));
   const request=await page.evaluate(()=>fixture.calls.find(x=>x.op==='import_content'));
   assert.equal(request.a.__profile,'traditional');assert.equal(request.a.kind,'plugins');assert.equal(request.a.replace,true);

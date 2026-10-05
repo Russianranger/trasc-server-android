@@ -2,10 +2,13 @@
 import hashlib
 import json
 import os
-from pathlib import Path
+from pathlib import Path, PurePosixPath
+import re
 import secrets
 import shutil
+import tarfile
 import time
+import zipfile
 
 KINDS = ('quests', 'plugins', 'lua_modules', 'assets')
 MARKER = '.trasc-content.json'
@@ -15,14 +18,17 @@ def paths(engine, kind):
     from engine import safe_path
     if kind not in KINDS:
         raise ValueError('Choose quests, plugins, Lua modules or server assets')
-    for name in ('server', 'backups', 'backups/content', 'run'):
+    for name in ('incoming', 'server', 'backups', 'backups/content', 'run'):
         p = engine.work / name
         if p.is_symlink():
             raise ValueError('Content directories cannot be symbolic links')
     if (engine.work / 'server' / kind).is_symlink():
         raise ValueError('Content directory cannot be a symbolic link')
     target = safe_path(engine.work, 'server/' + kind)
-    return target, engine.work / 'run' / ('content-' + kind + '.json')
+    journal = engine.work / 'run' / ('content-' + kind + '.json')
+    if journal.is_symlink():
+        raise ValueError('Content journal cannot be a symbolic link')
+    return target, journal
 
 
 def recover(engine):
@@ -51,24 +57,117 @@ def content_root(stage, kind):
     entries = [p for p in root.iterdir() if p.name != '__MACOSX']
     if len(entries) == 1 and entries[0].is_dir() and not (kind == 'quests' and any(p.is_file() and p.suffix.lower() in ('.pl', '.lua') for p in entries[0].iterdir())):
         root = entries[0]
-    if (root / kind).is_dir():
-        root = root / kind
+    if kind == 'assets':
+        # Keep the repository root available for the separate login opcode
+        # files. prepare_assets selects only the known runtime config files.
+        assets_plan(root)
+        return root
+    component_roots = [p for p in (root / kind, root / 'quests' / kind)
+                       if p.is_dir()]
+    if len(component_roots) > 1:
+        raise ValueError('Archive contains more than one ' + kind + ' directory')
+    explicit = bool(component_roots) or root.name == kind
+    if component_roots:
+        root = component_roots[0]
     files = [p for p in root.rglob('*') if p.is_file()]
     relative = [p.relative_to(root) for p in files]
     if kind == 'quests':
         valid = any(len(p.parts) >= 2 and p.parts[0] not in KINDS and p.suffix.lower() in ('.pl', '.lua') for p in relative)
     elif kind == 'plugins':
-        valid = any(p.suffix.lower() in ('.pl', '.pm') for p in relative)
+        valid = any(p.suffix.lower() in ('.pl', '.pm') and
+                    (explicit or len(p.parts) == 1) for p in relative)
     elif kind == 'lua_modules':
-        valid = any(p.suffix.lower() == '.lua' for p in relative)
-    else:
-        valid = any(p.name.lower() == 'patch_rof2.conf' for p in relative)
+        valid = any(p.suffix.lower() == '.lua' and
+                    (explicit or len(p.parts) == 1) for p in relative)
     if not valid:
         raise ValueError({'quests': 'Quest ZIP needs zone/global folders containing .pl or .lua scripts',
-                          'plugins': 'Plugin ZIP needs Perl .pl or .pm files',
-                          'lua_modules': 'Lua modules ZIP needs .lua files',
+                          'plugins': 'Plugin ZIP needs a plugins directory or top-level Perl .pl or .pm files',
+                          'lua_modules': 'Lua modules ZIP needs a lua_modules directory or top-level .lua files',
                           'assets': 'Server assets ZIP needs patch_RoF2.conf; import server assets, not client game files'}[kind])
     return root
+
+
+def assets_plan(root):
+    """Normalize EQEmu source/asset archives to PathManager's two directories."""
+    patch_dirs = [p for p in (root / 'utils/patches', root / 'assets/patches',
+                              root / 'assets/opcodes', root / 'patches',
+                              root / 'opcodes', root / 'assets', root)
+                  if (p / 'patch_RoF2.conf').is_file()]
+    if not patch_dirs:
+        raise ValueError('Server assets ZIP needs patch_RoF2.conf; import server assets, not client game files')
+    if len(patch_dirs) != 1:
+        raise ValueError('Server assets ZIP contains more than one RoF2 patches directory')
+    patch_dir = patch_dirs[0]
+    selected = {}
+    for source in patch_dir.iterdir():
+        if source.is_file() and re.fullmatch(r'patch_[A-Za-z0-9_-]+\.conf', source.name):
+            selected['patches/' + source.name] = source
+    opcode_dirs = list(dict.fromkeys((root / 'utils/patches', root / 'assets/opcodes',
+                                     root / 'opcodes', patch_dir, root,
+                                     root / 'loginserver/login_util')))
+    for filename in ('opcodes.conf', 'mail_opcodes.conf', 'login_opcodes.conf',
+                     'login_opcodes_sod.conf', 'login_opcodes_larion.conf'):
+        sources = [p / filename for p in opcode_dirs if (p / filename).is_file()]
+        if len(sources) > 1:
+            raise ValueError('Server assets ZIP contains duplicate ' + filename + ' files')
+        if sources:
+            selected['opcodes/' + filename] = sources[0]
+    # A server source archive must provide its complete runtime opcode set.
+    # Existing component ZIPs containing only patches remain importable.
+    if patch_dir == root / 'utils/patches' and any(
+            'opcodes/' + name not in selected for name in ('opcodes.conf', 'mail_opcodes.conf')):
+        raise ValueError('Server source assets need opcodes.conf and mail_opcodes.conf alongside patch_RoF2.conf')
+    for directory in dict.fromkeys((root, root / 'assets', patch_dir)):
+        for filename in ('LICENSE', 'LICENSE.md', 'LICENSE.txt', 'COPYING'):
+            source = directory / filename
+            if source.is_file() and filename not in selected:
+                selected[filename] = source
+    return selected
+
+
+def validate_archive_members(archive):
+    """Reject overwritten members before extraction can hide ambiguity."""
+    seen = {}
+    def member(name, is_directory):
+        key = str(PurePosixPath(name))
+        if key in seen and not (is_directory and seen[key]):
+            raise ValueError('Content archive contains duplicate paths: ' + key)
+        seen[key] = is_directory
+    if zipfile.is_zipfile(archive):
+        with zipfile.ZipFile(archive) as source:
+            for entry in source.infolist():
+                member(entry.filename, entry.is_dir())
+    else:
+        with tarfile.open(archive, 'r:*') as source:
+            for entry in source:
+                member(entry.name, entry.isdir())
+
+
+def prepare_content(engine, root, kind, prepared, metadata):
+    prepared.mkdir(parents=True)
+    if kind == 'assets':
+        selected = assets_plan(root)
+        for name, source in selected.items():
+            engine.check_cancel()
+            destination = prepared / name
+            destination.parent.mkdir(parents=True, exist_ok=True)
+            shutil.copy2(source, destination)
+        metadata['source_paths'] = [str(p.relative_to(root)) for p in selected.values()]
+        metadata['asset_layout'] = {'patches': 'assets/patches', 'opcodes': 'assets/opcodes'}
+        metadata['opcodes_ready'] = all('opcodes/' + name in selected for name in
+                                      ('opcodes.conf', 'mail_opcodes.conf', 'login_opcodes.conf',
+                                       'login_opcodes_sod.conf'))
+        return
+    for source in root.iterdir():
+        engine.check_cancel()
+        # Plugins and Lua modules have their own explicit import controls.
+        if source.name in ('.git', '__MACOSX', MARKER) or (kind == 'quests' and source.name in ('plugins', 'lua_modules', 'assets')):
+            continue
+        destination = prepared / source.name
+        if source.is_dir():
+            shutil.copytree(source, destination)
+        else:
+            shutil.copy2(source, destination)
 
 
 def install(engine, args):
@@ -84,38 +183,39 @@ def install(engine, args):
         raise ValueError('Select Replace this component to preserve a backup and replace its directory')
     transaction = secrets.token_hex(12)
     stage = engine.work / ('content-import-' + transaction)
+    if stage.exists() or stage.is_symlink():
+        raise ValueError('Content import staging directory already exists')
     prepared = stage / 'prepared'
     metadata = {'kind': kind, 'profile': 'traditional', 'transaction': transaction, 'imported': time.time()}
     try:
         if args.get('url'):
             archive = engine.work / 'incoming' / (kind + '-download.zip')
+            if archive.is_symlink():
+                raise ValueError('Downloaded content archive cannot be a symbolic link')
             metadata.update(engine.github_download(args['url'], args.get('ref', ''), archive))
         else:
-            archive = safe_path(engine.work / 'incoming', args['file'], True)
+            filename = str(args.get('file', ''))
+            if filename.startswith('incoming/'):
+                filename = filename[len('incoming/'):]
+            if not filename or len(PurePosixPath(filename).parts) != 1:
+                raise ValueError('Choose a content archive from incoming files')
+            if (engine.work / 'incoming' / filename).is_symlink():
+                raise ValueError('Content archive cannot be a symbolic link')
+            archive = safe_path(engine.work / 'incoming', filename, True)
+            if not archive.is_file():
+                raise ValueError('Choose a content archive file')
         with archive.open('rb') as stream:
             digest = hashlib.sha256()
             for block in iter(lambda: stream.read(1024 * 1024), b''):
                 engine.check_cancel()
                 digest.update(block)
         metadata['archive_sha256'] = digest.hexdigest()
+        validate_archive_members(archive)
         extract_archive(archive, stage / 'unpacked')
         root = content_root(stage / 'unpacked', kind)
-        prepared.mkdir(parents=True)
-        count = 0
-        for source in root.iterdir():
-            engine.check_cancel()
-            # Plugins and Lua modules have their own explicit import controls.
-            if source.name in ('.git', '__MACOSX', MARKER) or (kind == 'quests' and source.name in ('plugins', 'lua_modules', 'assets')):
-                continue
-            destination = prepared / source.name
-            if source.is_dir():
-                shutil.copytree(source, destination)
-            else:
-                shutil.copy2(source, destination)
-        for p in prepared.rglob('*'):
-            if p.is_file():
-                count += 1
-        metadata['files'] = count
+        metadata['source_path'] = str(root.relative_to(stage / 'unpacked'))
+        prepare_content(engine, root, kind, prepared, metadata)
+        metadata['files'] = sum(1 for p in prepared.rglob('*') if p.is_file())
         atomic_json(prepared / MARKER, metadata)
         engine.check_cancel()
         backup_name = kind + '-' + transaction

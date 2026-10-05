@@ -1,3 +1,20 @@
+# 0.6.7 — Separate content downloads and client UI ZIP import
+
+Traditional Setup now has separate download/ZIP cards for Perl plugins, Lua
+modules and server assets. Plugins and Lua default to ProjectEQ’s quest
+repository; assets default to the official EQEmu source at the tested server
+revision. Only the selected support files are installed.
+
+Both worlds have Client → Import a client UI skin → Choose UI ZIP. The importer
+accepts common skin ZIP layouts, lists installed skins and shows `/loadskin`
+commands. Replacements require the checkbox and retain backups. Default skins
+remain protected and each profile owns its client skins.
+
+Install in place and freshly Start runtime. No runtime redownload or server,
+client or DLL rebuild is required. [Detailed test steps](content-import-067.md).
+
+---
+
 # 0.6.6 — Import a complete PEQ ZIP without selecting each section
 
 In Traditional, choose your `peq-latest.zip` through **Setup → Choose database

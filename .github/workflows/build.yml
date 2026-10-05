@@ -194,6 +194,7 @@ jobs:
           npx playwright install --with-deps chromium
           node tests/ui_profiles.cjs
           node tests/ui_database_import.cjs
+          node tests/ui_content_import.cjs
           node tests/ui_session.cjs
           node tests/ui_management.cjs
           node tests/ui_file_cleanup.cjs

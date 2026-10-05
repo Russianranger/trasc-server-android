@@ -1,3 +1,43 @@
+# Implemented: 0.6.7 content downloads and client UI ZIP imports
+
+User confirmed 0.6.6 is progressing well and requested obvious GitHub/ZIP imports
+for Traditional Perl plugins, Lua modules and server assets, plus client UI ZIP
+import in both Traditional and TRASC Custom. Version 0.6.7/code56 retains the
+existing preview package and signing certificate.
+
+Defaults: plugins/Lua `ProjectEQ/projecteqquests` (repository default branch);
+assets `EQEmu/EQEmu` pinned to the qualified Traditional source revision
+`4aceae18b94ffaafc08e2b17bc41cd72c77f795d`. Import only each component’s subtree.
+Asset support files use canonical `assets/patches` and `assets/opcodes` paths;
+future deployment must configure those paths, while Custom stays independent.
+Client UI imports are restricted to active profile `client/current/uifiles`;
+replace operations retain backups and recover after interrupted activation.
+
+See [content import and device test steps](content-import-067.md). Traditional
+Deploy/Start remains the separate database/configuration/login milestone.
+No runtime redownload, server/source rebuild, client reimport or DLL rebuild
+is needed solely for this APK update; stop the runtime before installing and
+freshly Start runtime afterward so the new backend module is copied.
+
+Local backend suite passed: 298 cases with eight optional Lua tests skipped.
+Native/JVM management suite passed. Independent archive/profile/recovery review
+has no remaining blockers after encoding-independent XML DTD rejection and
+native launch protection for a pending UI recovery journal. Actual upstream
+Git archives passed production component import: 40 Perl files and 24 Lua files
+from ProjectEQ `2124cc0f069f05f5b90916162fb2ffa430a531bf`, and 12 server support
+files from the pinned EQEmu source. Every installed hash matched; assets report
+opcodes_ready=true; existing quests and Custom content remain intact. Evidence
+is ignored `runtime-work/source-validation/import-validation.json`.
+Browser validation must run in CI: local Chromium CDN returned empty ZIPs.
+
+Release discipline: do not advance main with documentation-only checkpoints
+while its full publication workflow is running. The 0.6.6 native Traditional
+qualification, PRoot checks and session roundtrip all passed, but publication
+was correctly rejected because a newer docs checkpoint advanced main. Its
+signed APK was delivered directly. Preserve that stale-publication guard.
+
+---
+
 # Implemented: 0.6.6 complete PEQ ZIP selection and maps default
 
 User supplied `peq-latest.zip` and requested an easier database import, plus
