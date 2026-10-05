@@ -1,0 +1,25 @@
+name: Export verified APK attachment
+on:
+  push:
+    branches: [codex/apk-transfer-066]
+permissions:
+  contents: read
+  actions: read
+jobs:
+  apk-attachment:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          name: trasc-server-android-debug
+          run-id: 37246379109
+          github-token: ${{ github.token }}
+          path: signed-build
+      - name: Record the signed APK checksum
+        run: sha256sum signed-build/app/build/outputs/apk/debug/app-debug.apk
+      - uses: actions/upload-artifact@v4
+        with:
+          name: trasc-server-android-0.6.6-apk
+          path: signed-build/app/build/outputs/apk/debug/app-debug.apk
+          retention-days: 14
