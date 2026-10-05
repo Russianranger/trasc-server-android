@@ -118,6 +118,9 @@ final class ClientRuntime {
                 options.put("native_dinput8",false).put("mouse_warp",false).put("reduce_load_pauses",false).put("fast_spell_parse",false).put("particle_mode","off").put("boat_mode","off");
             }
             if(alive())throw new IOException("Client is already open. View it or stop it before another launch.");
+            File uiRecovery=new File(server.work,"run/client-ui-import.json");
+            if(uiRecovery.exists()||java.nio.file.Files.isSymbolicLink(uiRecovery.toPath()))
+                throw new IOException("Open the server runtime to finish UI import recovery before launching the client.");
             if(graphics!=null){graphics.stop();graphics=null;}
             if(audio!=null){audio.close();audio=null;}
             if(!installed())throw new IOException("Install the separate client runtime first");
@@ -128,7 +131,7 @@ final class ClientRuntime {
                 org.json.JSONArray jobs=response.getJSONObject("result").getJSONArray("jobs");
                 for(int i=0;i<jobs.length();i++) {
                     JSONObject job=jobs.getJSONObject(i);
-                    if(Arrays.asList("client_settings_save","import_client_zip","prepare_client","export_client","apply_spell_test","restore_spell_test","client_addons_copy","client_dll_deploy","client_dll_sdk","client_dll_download").contains(job.optString("operation"))&&Arrays.asList("queued","running").contains(job.optString("status")))
+                    if(Arrays.asList("client_settings_save","import_client_zip","import_client_ui","prepare_client","export_client","apply_spell_test","restore_spell_test","client_addons_copy","client_dll_deploy","client_dll_sdk","client_dll_download").contains(job.optString("operation"))&&Arrays.asList("queued","running").contains(job.optString("status")))
                         throw new IOException("Wait for client file changes to finish before launching");
                 }
             }

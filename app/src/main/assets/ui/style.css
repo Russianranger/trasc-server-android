@@ -105,3 +105,12 @@ body[data-profile=traditional][data-scene=logs]{--scene-image:url('classic-logs.
 .sdk-consent{margin:14px 0;padding:14px;border:1px solid #8b7749;border-radius:4px;background:#111c25e8}.sdk-consent h3{margin-top:0}#dll-sdk-license-url{display:block;overflow-wrap:anywhere}#dll-sdk-progress-bar{width:100%;height:12px;accent-color:var(--gold)}
 
 .database-parts{font:12px/1.7 system-ui,sans-serif;padding-left:22px;color:var(--muted);overflow-wrap:anywhere}#db-detail{overflow-wrap:anywhere}
+
+/* Separate quest support imports and client skin commands fit touch screens. */
+body[data-profile=traditional] .content-import-grid{display:grid!important}
+.content-import-grid p[role=status]{overflow-wrap:anywhere}
+.ui-skin-list{list-style:none;padding:0;margin:14px 0 0;display:grid;gap:10px}
+.ui-skin-list li{padding:12px;border:1px solid var(--line);border-radius:6px;min-width:0;overflow-wrap:anywhere}
+.ui-skin-list strong,.ui-skin-list code{display:block}
+.ui-skin-list code{margin-top:4px;user-select:all}
+.ui-skin-list small{margin-top:5px}

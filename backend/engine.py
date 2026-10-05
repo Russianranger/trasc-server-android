@@ -42,9 +42,10 @@ import server_ferry
 import traditional_content
 import traditional_build
 import peq_database
+import client_ui
 from log_retention import rotate
 
-VERSION = '0.6.6'
+VERSION = '0.6.7'
 DEFAULT_REPO = 'https://github.com/Russianranger/Triptych-Triumvirate'
 BINARIES = ('world', 'zone', 'loginserver', 'shared_memory', 'ucs', 'eqlaunch', 'queryserv', 'export_client_files')
 CLIENT_FILES = ('spells_us.txt', 'dbstr_us.txt', 'SkillCaps.txt', 'BaseData.txt')
@@ -180,6 +181,7 @@ class Engine(ManagedContent):
             raise ValueError('Workspace belongs to a different world profile')
         self.config['profile'] = profile
         if profile == 'traditional': traditional_content.recover(self)
+        client_ui.recover(self)
         self.config.setdefault('root_password', secrets.token_hex(20))
         self.save()
         self.processes = {}
@@ -1115,13 +1117,15 @@ class Engine(ManagedContent):
         source=self.work/'sources/current/trasc-source.json'
         config={k:v for k,v in self.config.items() if 'password' not in k and 'key' not in k}
         traditional=traditional_content.status(self) if self.profile=='traditional' else None
+        client=self.client_status()
+        client['ui']=client_ui.status(self)
         return {'version':VERSION,'profile':self.profile,'traditional':traditional,'settings':config,'source':json.loads(source.read_text()) if source.exists() else None,
             'runtime_ready':True,'database_running':bool(self.db and self.db.poll() is None),'database_imported':self.config['database_imported'],
             'maps_ready':(self.work/'maps/base').is_dir(),'binaries_ready':all((self.work/'server/bin'/x).exists() for x in BINARIES),
             'build_ready':traditional['build']['staged_valid'] if traditional else (self.work/'server/bin.staged/build-info.json').exists(), 'rollback_ready':(self.work/'server/bin.previous').exists(),
             'processes':{name:{'pid':p.pid,'running':p.poll() is None,'exit':p.poll()} for name,p in self.processes.items()},
             'jobs':self.jobs,'free_bytes':shutil.disk_usage(self.work).free,'running':self.server_running(),
-            'nektulos':self.nektulos_status(), 'client':self.client_status()}
+            'nektulos':self.nektulos_status(), 'client':client}
 
     def dispatch(self,op,args):
         if args.get('__profile', self.profile) != self.profile:
@@ -1157,6 +1161,7 @@ class Engine(ManagedContent):
             'prepare_session_backup':self.prepare_session_backup,
             'fix_nektulos':self.fix_nektulos,'revert_nektulos':self.revert_nektulos,
             'import_client_zip':self.import_client_zip,
+            'import_client_ui':lambda a:client_ui.install(self,a),
             'prepare_client':self.prepare_client,
             'apply_spell_test':self.apply_spell_test,'restore_spell_test':self.restore_spell_test,
             'files':self.files,'edit_file':self.edit_file,'export_logs':self.export_logs,'logs':self.logs,

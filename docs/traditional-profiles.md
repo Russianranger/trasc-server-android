@@ -1,4 +1,4 @@
-# Traditional EQEmu profiles — 0.6.6
+# Traditional EQEmu profiles — 0.6.7
 
 This milestone adds two independent worlds to the app: **TRASC Custom** and **Traditional EQEmu**. The existing installation remains Custom in its original location. Traditional starts empty, uses a separate clean ROF2 import, and has a distinct 16-bit adventure background for each of the same ten tabs.
 
@@ -22,14 +22,15 @@ Custom remains at the existing app-private `files/work` and `files/rootfs`. Trad
 
 | Component | Where to import | Purpose / remaining validation |
 | --- | --- | --- |
-| Selected server source | Setup → Import server | New profiles default to `Russianranger/Server` and the tested commit above. Existing URLs are retained: choose **Use tested Traditional source**, then import from GitHub. The adapter verifies source guards and hydrates the exact websocket header revision omitted from GitHub ZIPs. Other revisions remain importable but cannot use this build recipe. |
+| Selected server source | Setup → Import server | New profiles default to `Russianranger/Server` and the tested commit above. Existing URLs are retained: choose **Use tested Server source**, then import from GitHub. The adapter verifies source guards and hydrates the exact websocket header revision omitted from GitHub ZIPs. Other revisions remain importable but cannot use this build recipe. |
 | PEQ world, player/system and local-login database tables | Setup → Choose database file | Select `peq-latest.zip`; the complete five-part PEQ seed is selected automatically. Review content/login/player/state/system, then choose **Import complete PEQ database**. Other split distributions can use the advanced manual bundle. The importer targets this profile's `peq` database. Exact schema and login compatibility remain to be verified. |
 | Server geometry, navigation and water maps | Setup → Import maps | The default is `https://github.com/Russianranger/eqemu-maps`; leave the branch blank to use its default branch. Import base/nav/water/legacy map directories. These are server data, separate from ROF2's installed zone assets. |
 | Zone/global quest scripts | Setup → Traditional world content → Quests | Installs `server/quests`. ProjectEQ's quest repository is provided as an editable starting URL. |
-| Perl quest plugins | Same panel → Perl plugins | Installs `server/plugins`. ProjectEQ includes a `plugins` directory; importing quests does not silently merge it into the quest tree. Perl itself and any additional Perl modules are runtime dependencies. |
-| Lua quest modules | Same panel → Lua modules | Installs `server/lua_modules`. ProjectEQ includes this directory too. Match these modules to the quest revision. |
-| Server assets / opcode files | Same panel → Server assets | Installs `server/assets`; requires `patch_RoF2.conf` in the selected asset package. Supply the package/repository matching the chosen server revision. Activation of its config/opcode paths is part of deployment in the next milestone. |
+| Perl quest plugins | Setup → Perl plugins | Defaults to `ProjectEQ/projecteqquests`; imports only `plugins/` into `server/plugins`. Repository/revision and ZIP controls are separate from quests. Perl and any additional Perl modules remain runtime dependencies. |
+| Lua quest modules | Setup → Lua modules | Defaults to `ProjectEQ/projecteqquests`; imports only `lua_modules/` into `server/lua_modules`. Use the same revision as your quests. |
+| Server assets / opcode files | Setup → Server assets | Defaults to `EQEmu/EQEmu` at the qualified server revision. Selectively installs client patch configurations in `server/assets/patches` and general/mail/login opcodes in `server/assets/opcodes`; source and SQL are excluded. Deployment must activate these paths in the next milestone. |
 | A separate clean, supported ROF2 client | Client → Import your ROF2 client | User-supplied ZIP; no proprietary client is distributed. Native custom `dinput8.dll` loading and custom hooks are disabled in Traditional. Importing a modified client does not turn its other files into a clean installation. |
+| Client UI skins in either world | Client → Import a client UI skin → Choose UI ZIP | Adds named skins to that profile’s client `uifiles` directory. Replacements retain backups; built-in default skins are protected. Use the displayed `/loadskin` command in game. |
 | Wine/Box64, graphics and DirectX model helpers | Client runtime / DirectX model helpers | Install per profile. Existing display, controller, audio and graphics controls cross over. First login against the traditional server is still pending. |
 | Local login service, server config, shared memory and generated client data | Next Android deployment milestone | Qualify the compiled loginserver against its account schema, generate profile-local credentials/configuration and shared data, check ROF2 opcodes and export matching spells/strings/skills/base data. Do not reuse Custom's binaries or config. |
 
@@ -48,7 +49,7 @@ The earlier Android Downloads-provider failure and management-renderer loss rema
 ## Compile the selected server
 
 1. Select Traditional, stop the client and refresh its build runtime as described above. Custom continues to use its existing runtime.
-2. Choose **Use tested Traditional source**, then **Import from GitHub**. This selects the exact tested commit without silently changing saved settings. A matching pristine ZIP can also be imported; it must pass the recipe guards and records its archive checksum.
+2. Choose **Use tested Server source**, then **Import from GitHub**. This selects the exact tested commit without silently changing saved settings. A matching pristine ZIP can also be imported; it must pass the recipe guards and records its archive checksum.
 3. Open **Builds → Build imported source** with **one compiler job**. Connect power and keep several GiB free. Two jobs are available with more memory; three/four are disabled for this adapter. Compilation does not require a database, maps or client import.
 4. Follow `operation.log`. The original import stays unchanged; patched source, pinned websocket headers and CMake objects live under `builds/traditional/`. Failed or cancelled builds retain the previous complete staged build.
 5. Success stages `world`, `zone`, `shared_memory`, `eqlaunch`, `ucs`, `queryserv`, `loginserver`, `export_client_files` and `import_client_files` under `server/bin.staged/`. Its manifest records the source fingerprint, recipe, runtime, options and verified binary hashes. Changed source or runtime invalidates the readiness indicator.
@@ -66,3 +67,5 @@ Verification uses ELF/loader/dependency checks and stateless toolchain fixtures.
 5. Then implement one tested Luclin-era preset, followed by other eras and optional storage optimization. Era rules/content remain separate from solo/quality-of-life choices.
 
 Artwork was generated with the built-in image tool. All ten saved paths and exact prompts are recorded in [tab-artwork-058.json](tab-artwork-058.json).
+
+See [content downloads and UI ZIP test steps](content-import-067.md) for 0.6.7.

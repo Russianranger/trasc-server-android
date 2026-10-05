@@ -33,9 +33,9 @@ function syncProfileControls(){
   for(const id of ['client-native-dll','client-fast-spells','client-load-pauses','client-mouse-warp']){$(id).checked=false;$(id).disabled=true;}
   for(const id of ['client-boats','client-particles']){$(id).value='off';$(id).disabled=true;}
  }
- const contentBlocked=!!(busy||!lastNative?.alive||lastState?.running||lastState?.jobs?.some(j=>['queued','running'].includes(j.status)));
- for(const id of ['content-git','content-zip'])$(id).disabled=contentBlocked;
- renderTraditionalStatus();
+ const contentBlocked=!!(busy||sessionAction||!lastNative?.alive||lastNative?.installing||lastNative?.session_busy||lastState?.running||lastState?.jobs?.some(j=>['queued','running'].includes(j.status)));
+ for(const id of ['content-git','content-zip',...Object.keys(contentComponents).flatMap(id=>[id+'-git',id+'-zip'])])$(id).disabled=contentBlocked;
+ renderContentStatus();renderClientUi();renderTraditionalStatus();
 }
 function renderTraditionalStatus(){
  if(!traditional())return;
@@ -53,11 +53,52 @@ function renderTraditionalStatus(){
 action('traditional-tested-source',async()=>{$('source-url').value=traditionalRepository;$('source-ref').value=traditionalRevision;notice('Tested source selected. Choose Import from GitHub to download it.');});
 $('world-profile').addEventListener('change',syncProfileControls);
 action('switch-profile',async()=>{await api('profile_switch',{profile:$('world-profile').value});location.reload();});
-function contentChoice(){const kind=$('content-kind').value;$('content-url').value=kind==='assets'?'':'https://github.com/ProjectEQ/projecteqquests';$('content-ref').value=kind==='assets'?'':'master';$('replace-content').checked=false;}
+const questContentRepository='https://github.com/ProjectEQ/projecteqquests';
+const serverAssetsRepository='https://github.com/EQEmu/EQEmu';
+const contentComponents={plugins:{kind:'plugins',name:'Perl plugins'},'lua-modules':{kind:'lua_modules',name:'Lua modules'},assets:{kind:'assets',name:'Server assets'}};
+const contentResults={};
+function componentStateText(kind,name){
+ const c=lastState?.traditional?.components?.[kind];
+ if(c?.imported)return 'Imported · '+(c.source?.files??0)+' files'+(c.source?.commit?' · '+c.source.commit.slice(0,10):'')+'.'+(contentResults[kind]?.backup?' Previous folder: '+contentResults[kind].backup:'');
+ if(!lastNative?.alive)return 'Open this profile’s runtime to import '+name+'.';
+ return 'Ready to import '+name+'.'+(lastState?.running?' Stop the server first.':'');
+}
+function renderContentStatus(){
+ for(const [id,{kind,name}]of Object.entries(contentComponents))$(id+'-result').textContent=componentStateText(kind,name);
+}
+function contentChoice(){const kind=$('content-kind').value,name={quests:'quests',plugins:'Perl plugins',lua_modules:'Lua modules',assets:'server assets'}[kind];$('content-url').value=kind==='assets'?serverAssetsRepository:questContentRepository;$('content-ref').value=kind==='assets'?traditionalRevision:'';$('replace-content').checked=false;$('content-git').textContent='Download '+name;$('content-zip').textContent='Choose '+name+' ZIP';}
 $('content-kind').addEventListener('change',contentChoice);contentChoice();
 function contentArgs(){return {kind:$('content-kind').value,replace:$('replace-content').checked};}
-action('content-git',async()=>{if(!$('content-url').value.trim())throw Error('Enter the component’s GitHub repository.');const result=await job('import_content',{...contentArgs(),url:$('content-url').value.trim(),ref:$('content-ref').value.trim()});$('content-result').textContent=result.message+(result.backup?' Previous component: '+result.backup:'');$('replace-content').checked=false;});
-action('content-zip',async()=>{const args=contentArgs(),f=await api('pick',{kind:'content'});const result=await job('import_content',{...args,file:f.file});$('content-result').textContent=result.message+(result.backup?' Previous component: '+result.backup:'');$('replace-content').checked=false;});
+function contentImported(kind,result,id){contentResults[kind]=result;$(id).textContent=result.message+(result.backup?' Previous component: '+result.backup:'');}
+action('content-git',async()=>{if(!$('content-url').value.trim())throw Error('Enter the component’s GitHub repository.');const args=contentArgs(),result=await job('import_content',{...args,url:$('content-url').value.trim(),ref:$('content-ref').value.trim()});contentImported(args.kind,result,'content-result');$('replace-content').checked=false;});
+action('content-zip',async()=>{const args=contentArgs(),f=await api('pick',{kind:'content'});const result=await job('import_content',{...args,file:f.file});contentImported(args.kind,result,'content-result');$('replace-content').checked=false;});
+for(const [id,{kind}]of Object.entries(contentComponents)){
+ action(id+'-git',async()=>{
+  const url=$(id+'-url').value.trim();if(!url)throw Error('Enter the component’s GitHub repository.');
+  const result=await job('import_content',{kind,url,ref:$(id+'-ref').value.trim(),replace:$(id+'-replace').checked});
+  contentImported(kind,result,id+'-result');$(id+'-replace').checked=false;
+ });
+ action(id+'-zip',async()=>{
+  const replace=$(id+'-replace').checked,f=await api('pick',{kind:'content'});
+  const result=await job('import_content',{kind,file:f.file,replace});
+  contentImported(kind,result,id+'-result');$(id+'-replace').checked=false;
+ });
+}
+function renderClientUi(){
+ const ui=lastState?.client?.ui,skins=ui?.skins||[];
+ const clientStopped=!!lastClientNative&&!lastClientNative.alive&&!lastClientNative.busy;
+ $('client-ui-import').disabled=!!(busy||sessionAction||!lastNative?.alive||lastNative?.installing||lastNative?.session_busy||!lastState?.client?.imported||!clientStopped||lastState?.jobs?.some(j=>['queued','running'].includes(j.status)));
+ $('client-ui-skins').replaceChildren(...skins.map(s=>{const li=document.createElement('li'),name=document.createElement('strong'),command=document.createElement(/\s/.test(s.name)?'small':'code');name.textContent=s.name+(s.protected?' · built-in default':Number.isFinite(s.files)?' · '+s.files+' files':' · existing skin');command.textContent=/\s/.test(s.name)?'Select this skin in the game’s UI menu.':'/loadskin '+s.name+' 1';li.append(name,command);if(s.backup){const backup=document.createElement('small');backup.textContent='Previous skin: '+s.backup;li.append(backup);}return li;}));
+ $('client-ui-status').textContent=!lastNative?.alive?'Open this profile’s server runtime to import UI skins.':!lastState?.client?.imported?'Import this profile’s RoF2 client first.':!clientStopped?'Stop the embedded client before importing UI skins.':ui?.message||(skins.length?'Installed skins are listed below. Load one inside the game.':'Choose a RoF2 UI ZIP to add a skin to this profile’s client.');
+}
+action('client-ui-import',async()=>{
+ await api('controller_capture',{active:false});
+ const f=await api('pick',{kind:'client_ui'}),args={file:f.path||f.file,replace:$('client-ui-replace').checked};
+ if($('client-ui-name').value.trim())args.name=$('client-ui-name').value.trim();
+ if(f.name)args.archive_name=f.name;
+ const result=await job('import_client_ui',args);$('client-ui-replace').checked=false;
+ $('client-ui-status').textContent=result.message+(result.activation_hint?' '+result.activation_hint:'');
+});
 let seedSelections=[];
 function renderSeedBundle(){const selected=selectedDatabaseCandidate(),blocked=!!(busy||databaseScanning||sessionAction);$('seed-bundle').textContent=seedSelections.length?seedSelections.map((s,i)=>(i+1)+'. '+s).join('\n'):'No bundle files selected. A complete PEQ ZIP uses Import complete PEQ database.';$('seed-add').disabled=blocked||!selected||['peq_bundle','unsupported_bundle'].includes(selected.kind);$('seed-import').disabled=blocked||!seedSelections.length;}
 function clearSeedBundle(){seedSelections=[];renderSeedBundle();}

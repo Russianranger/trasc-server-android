@@ -6,12 +6,18 @@ on:
       - 'app/src/main/assets/ui/**'
       - 'tests/ui_file_cleanup.cjs'
       - 'tests/ui_sdk_download.cjs'
+      - 'tests/ui_profiles.cjs'
+      - 'tests/ui_database_import.cjs'
+      - 'tests/ui_content_import.cjs'
       - '.github/workflows/storage-cleanup-ui.yml'
   pull_request:
     paths:
       - 'app/src/main/assets/ui/**'
       - 'tests/ui_file_cleanup.cjs'
       - 'tests/ui_sdk_download.cjs'
+      - 'tests/ui_profiles.cjs'
+      - 'tests/ui_database_import.cjs'
+      - 'tests/ui_content_import.cjs'
       - '.github/workflows/storage-cleanup-ui.yml'
   workflow_dispatch:
 permissions:
@@ -36,6 +42,11 @@ jobs:
         run: node tests/ui_file_cleanup.cjs
       - name: Verify SDK preparation and session transfer gating
         run: node tests/ui_sdk_download.cjs
+      - name: Verify profile, database and content import flows
+        run: |
+          node tests/ui_profiles.cjs
+          node tests/ui_database_import.cjs
+          node tests/ui_content_import.cjs
       - uses: actions/upload-artifact@v4
         if: always()
         with:
