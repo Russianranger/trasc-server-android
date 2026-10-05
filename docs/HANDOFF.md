@@ -29,9 +29,23 @@ in job `111563599329`, run `37245403254`. PR #17 merged as
 `b0a9bdf54283d6d68e7c5b0f6b78be77f3c8e1b1`. The signed release workflow is
 run `37246379109`; publication waits for its full runtime qualification gates.
 No code work remains for this request unless that run fails.
-Next delivery step: verify published 0.6.6 APK/preview-build.json source/hash,
-package/version/code and preserved certificate, save the APK, then return the
-Choose database file → complete PEQ selection → Import instructions.
+The main signed APK job `111566661123` passed backend/JVM/UI tests,
+Android compilation/lint and cryptographic signing verification. The verified
+0.6.6/code55 APK is 15,256,341 bytes, SHA256
+`d34db74210ccb1c517c4bf935e20cbebac149e619db2db90bb07e17f0fa91b0b`.
+Independent inspection confirms the preserved certificate and all six changed
+backend/UI assets match feature commit `60b9baf30cbba90f8d05bd6722688e634c8ca8ab`.
+An APK-only export is available in run `37247446331`, artifact `11318649856`.
+The APK has been saved as `TRASC-Android-0.6.6.apk` for direct chat delivery.
+Full Traditional/client runtime qualification and public preview publication
+were still running at delivery; do not substitute the old 0.6.5 public asset.
+For device testing: stop the runtime before updating, install in place, select
+Traditional EQEmu and Start runtime, then Setup → Select database → Choose
+database file → peq-latest.zip → Complete PEQ database · 5 parts → Import
+complete PEQ database. Expect Database imported and PEQ database → Imported.
+A fresh Start runtime copies the new backend module; no runtime redownload or
+server/source rebuild is required. Maps defaults to the requested repository;
+leave branch blank for its default. Device execution remains user acceptance.
 Do not restart implementation or enable Traditional Deploy/Start for this update. The local Playwright
 browser CDN returned invalid empty ZIPs, so local browser tests were unavailable.
 Do not claim a device import or Traditional first login without user evidence.
