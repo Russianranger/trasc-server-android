@@ -51,6 +51,9 @@ const server=http.createServer((req,res)=>{
   });
   await page.goto('http://127.0.0.1:'+server.address().port+'/');
   await page.waitForFunction(()=>activeProfile==='traditional'&&!polling&&lastClientNative);
+  // poll() deliberately skips overlapping requests. Wait for the current refresh
+  // before changing native fixture state, then await a complete new refresh.
+  const updateFixture=changes=>page.evaluate(async changes=>{while(polling)await new Promise(r=>setTimeout(r,10));Object.assign(fixture,changes);await poll();},changes);
   const quests='https://github.com/ProjectEQ/projecteqquests',assets='https://github.com/EQEmu/EQEmu',revision='4aceae18b94ffaafc08e2b17bc41cd72c77f795d';
   assert.equal(await page.inputValue('#plugins-url'),quests);
   assert.equal(await page.inputValue('#lua-modules-url'),quests);
@@ -60,7 +63,7 @@ const server=http.createServer((req,res)=>{
   assert(await page.locator('#plugins-import-panel').isVisible());assert(await page.locator('#lua-modules-import-panel').isVisible());assert(await page.locator('#assets-import-panel').isVisible());
   assert(!(await page.locator('#content-kind').isVisible()),'Advanced compatibility selector starts collapsed');
   await page.fill('#plugins-url','https://github.com/example/my-plugins');await page.fill('#plugins-ref','my-quest-revision');
-  await page.evaluate(async()=>{await poll();});
+  await updateFixture({});
   assert.equal(await page.inputValue('#plugins-url'),'https://github.com/example/my-plugins');assert.equal(await page.inputValue('#plugins-ref'),'my-quest-revision','Polling must preserve edited repositories/revisions');
   await page.fill('#plugins-url',quests);await page.fill('#plugins-ref','');
   for(const [id,kind,url,ref]of [['plugins','plugins',quests,''],['lua-modules','lua_modules',quests,''],['assets','assets',assets,revision]]){
@@ -78,16 +81,16 @@ const server=http.createServer((req,res)=>{
   assert.equal(await page.isChecked('#plugins-replace'),false);
   assert((await page.textContent('#plugins-result')).includes('backups/content/plugins-previous'));
   for(const [setting,value]of [['server',true],['alive',false]]){
-   await page.evaluate(async([k,v])=>{fixture[k]=v;await poll();},[setting,value]);
+   await updateFixture({[setting]:value});
    for(const id of ['plugins','lua-modules','assets'])for(const action of ['git','zip'])assert(await page.isDisabled('#'+id+'-'+action));
-   await page.evaluate(async k=>{fixture[k]=k==='alive';await poll();},setting);
+   await updateFixture({[setting]:setting==='alive'});
   }
   fs.mkdirSync('ui-reports',{recursive:true});await page.locator('#plugins-import-panel').scrollIntoViewIfNeeded();
   await page.screenshot({path:'ui-reports/content-import-mobile.png',fullPage:true});
   assert(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth+1),'Support import cards fit mobile');
   await page.locator('nav [data-tab=client]').click();
   assert(await page.locator('#client-ui-panel').isVisible());assert(!(await page.isDisabled('#client-ui-import')));
-  await page.fill('#client-ui-name','ClassicUI');await page.evaluate(async()=>{await poll();});assert.equal(await page.inputValue('#client-ui-name'),'ClassicUI');
+  await page.fill('#client-ui-name','ClassicUI');await updateFixture({});assert.equal(await page.inputValue('#client-ui-name'),'ClassicUI');
   await page.click('#client-ui-import');await page.waitForFunction(()=>busy===0);
   const uiCall=await page.evaluate(()=>fixture.calls.find(c=>c.op==='import_client_ui'));
   assert.deepEqual(uiCall.a,{file:'incoming/1790000-component.zip',replace:false,name:'ClassicUI',archive_name:'MySkin.zip',__profile:'traditional'});
@@ -97,12 +100,12 @@ const server=http.createServer((req,res)=>{
   await page.check('#client-ui-replace');await page.click('#client-ui-import');await page.waitForFunction(()=>busy===0);
   assert.equal(await page.isChecked('#client-ui-replace'),false);assert((await page.textContent('#client-ui-skins')).includes('backups/client-ui'));
   for(const [key,value]of [['client',true],['clientBusy',true],['clientImported',false],['alive',false]]){
-   await page.evaluate(async([k,v])=>{fixture[k]=v;await poll();},[key,value]);assert(await page.isDisabled('#client-ui-import'));
-   await page.evaluate(async k=>{fixture[k]=['clientImported','alive'].includes(k);await poll();},key);
+   await updateFixture({[key]:value});assert(await page.isDisabled('#client-ui-import'),'UI ZIP import must be disabled when '+key+' = '+value);
+   await updateFixture({[key]:['clientImported','alive'].includes(key)});
   }
   await page.evaluate(()=>{fixture.failUi=true;});await page.click('#client-ui-import');await page.waitForFunction(()=>busy===0);
   assert((await page.textContent('#notice')).includes('unsafe archive paths'),'Backend validation errors reach user');
-  await page.evaluate(async()=>{fixture.skins.traditional.push({name:'Stone UI',files:2},{name:'Default',protected:true});await poll();});
+  await page.evaluate(async()=>{while(polling)await new Promise(r=>setTimeout(r,10));fixture.skins.traditional.push({name:'Stone UI',files:2},{name:'Default',protected:true});await poll();});
   const skinList=await page.textContent('#client-ui-skins');assert(skinList.includes('Select this skin in the game’s UI menu.'));assert(!skinList.includes('/loadskin Stone UI 1'));assert(!skinList.includes('undefined'));
   await page.locator('#client-ui-panel').scrollIntoViewIfNeeded();await page.screenshot({path:'ui-reports/ui-skin-traditional-mobile.png',fullPage:true});
   assert(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth+1),'UI skins fit mobile');
