@@ -1,3 +1,27 @@
+# 0.6.6 — Import a complete PEQ ZIP without selecting each section
+
+In Traditional, choose your `peq-latest.zip` through **Setup → Choose database
+file**. The app selects **Complete PEQ database · 5 parts** and shows the content,
+login, player, state and system sections in their prescribed order. Choose
+**Import complete PEQ database** to import them together into this profile's
+database. The archive's small `create_all_tables.sql` file is read as a list of
+sections, never executed as a database seed. Missing or ambiguous sections are
+reported before importing.
+
+Uploaded database files appear first. Source SQL files remain available through
+the database browser, with filtering for easier selection. Existing-database
+replacement still requires the replacement checkbox and retains backups.
+The maps URL now defaults to `https://github.com/Russianranger/eqemu-maps`; an
+empty branch field uses that repository's default branch.
+
+Install over the existing app without uninstalling or clearing storage. No
+runtime download, server rebuild, client reimport or DLL rebuild is required
+for this update. Open the Traditional runtime before importing its database.
+Traditional Deploy and Start remain the separate database/login qualification
+milestone; importing this seed does not enable them.
+
+---
+
 # 0.6.5 — Compile Traditional server source on ARM64
 
 Traditional now has a separate Debian Bookworm build runtime and a pinned recipe

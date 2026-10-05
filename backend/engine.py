@@ -41,9 +41,10 @@ import ferry_service
 import server_ferry
 import traditional_content
 import traditional_build
+import peq_database
 from log_retention import rotate
 
-VERSION = '0.6.5'
+VERSION = '0.6.6'
 DEFAULT_REPO = 'https://github.com/Russianranger/Triptych-Triumvirate'
 BINARIES = ('world', 'zone', 'loginserver', 'shared_memory', 'ucs', 'eqlaunch', 'queryserv', 'export_client_files')
 CLIENT_FILES = ('spells_us.txt', 'dbstr_us.txt', 'SkillCaps.txt', 'BaseData.txt')
@@ -417,26 +418,91 @@ class Engine(ManagedContent):
         finally:
             if stage.exists(): shutil.rmtree(stage)
 
-    def database_candidates(self):
+    @contextlib.contextmanager
+    def database_stream(self, selected):
+        """Open one validated SQL input, retaining streaming for large dumps."""
+        file_name, separator, member = selected.partition('!')
+        source = safe_path(self.work, file_name, True)
+        if source.is_symlink() or not source.is_file():
+            raise ValueError('Database inputs must be ordinary files')
+        with contextlib.ExitStack() as stack:
+            if separator:
+                safe_path(self.work / 'incoming', member)
+                archive = stack.enter_context(zipfile.ZipFile(source))
+                matches = [item for item in archive.infolist() if item.filename == member]
+                if len(matches) != 1:
+                    raise ValueError('Database archive has a missing or duplicate SQL member')
+                item = matches[0]
+                if item.is_dir() or stat.S_ISLNK(item.external_attr >> 16) or item.flag_bits & 1:
+                    raise ValueError('Database archive SQL parts must be ordinary unencrypted files')
+                stream = stack.enter_context(archive.open(item))
+                name = member
+            else:
+                stream = stack.enter_context(source.open('rb'))
+                name = source.name
+            if name.lower().endswith('.gz'):
+                stream = stack.enter_context(gzip.GzipFile(fileobj=stream))
+            yield stream
+
+    def database_catalog(self):
+        """Untruncated catalog; bundle validation must not depend on UI limits."""
         results = []
         for root in (self.work / 'sources/current', self.work / 'incoming'):
             if not root.exists(): continue
+            origin = 'uploaded' if root.name == 'incoming' else 'source'
             for p in root.rglob('*'):
                 if not p.is_file() or p.is_symlink(): continue
                 relative = str(p.relative_to(self.work))
                 if p.name.lower().endswith(('.sql', '.sql.gz')):
-                    results.append({'id': relative, 'size': p.stat().st_size})
+                    results.append({'id': relative, 'size': p.stat().st_size, 'kind': 'sql', 'origin': origin})
                 elif p.suffix.lower() == '.zip':
                     try:
                         with zipfile.ZipFile(p) as z:
                             for item in z.infolist():
                                 if item.filename.lower().endswith(('.sql', '.sql.gz')):
                                     # Validate member names even though import streams one member.
-                                    safe_path(self.work / 'incoming', item.filename)
-                                    results.append({'id': relative + '!' + item.filename, 'size': item.file_size})
+                                    try: safe_path(self.work / 'incoming', item.filename)
+                                    except ValueError: continue
+                                    if item.is_dir() or stat.S_ISLNK(item.external_attr >> 16) or item.flag_bits & 1:
+                                        continue
+                                    results.append({'id': relative + '!' + item.filename, 'size': item.file_size, 'kind': 'sql', 'origin': origin})
                     except (ValueError, zipfile.BadZipFile): pass
-        # Full seed dumps first; migration scripts remain explicitly selectable.
-        return sorted(results, key=lambda x: (-int('release-peq' in x['id'].lower()), -x['size']))[:1500]
+        indexed = {}
+        for candidate in results:
+            indexed.setdefault(candidate['id'], []).append(candidate)
+        catalog = []
+        for identifier, matches in indexed.items():
+            candidate = dict(matches[0])
+            if peq_database.is_wrapper(identifier):
+                try:
+                    if len(matches) != 1:
+                        raise ValueError('Database archive repeats the PEQ bundle manifest')
+                    with self.database_stream(identifier) as stream:
+                        names = peq_database.parse_manifest(stream)
+                    selections = peq_database.component_ids(identifier, names)
+                    for part in selections:
+                        if part not in indexed:
+                            raise ValueError('PEQ bundle is missing ' + PurePosixPath(part.partition('!')[2] or part).name)
+                        if len(indexed[part]) != 1:
+                            raise ValueError('PEQ bundle has a duplicate SQL part')
+                    candidate.update(kind='peq_bundle', label='Complete PEQ database · 5 parts',
+                                     selections=selections, parts=names,
+                                     size=sum(indexed[part][0]['size'] for part in selections))
+                except (ValueError, OSError, EOFError, zipfile.BadZipFile) as error:
+                    candidate.update(kind='unsupported_bundle', label='Incomplete or unsupported PEQ database', reason=str(error))
+            elif len(matches) != 1:
+                # A duplicate member name has no unambiguous SQL input to select.
+                continue
+            catalog.append(candidate)
+        bundle_parts = {part for item in catalog if item['kind'] == 'peq_bundle' for part in item['selections']}
+        # Complete bundles and all their parts survive the UI's migration limit.
+        return sorted(catalog, key=lambda item: (
+            -int(item['kind'] == 'peq_bundle'), -int(item['id'] in bundle_parts),
+            -int(item['origin'] == 'uploaded'), -int('release-peq' in item['id'].lower()),
+            -item['size'], item['id']))
+
+    def database_candidates(self):
+        return self.database_catalog()[:1500]
 
     def ensure_mysql_options(self):
         self.mysql_options = self.work / 'run/mysql.cnf'
@@ -490,13 +556,28 @@ class Engine(ManagedContent):
     def import_database(self, args):
         if self.server_running(): raise ValueError('Stop the server before importing a database')
         selection = args['selection']
+        if not isinstance(selection, str): raise ValueError('Choose a database seed')
         selections = args.get('selections', [selection])
         if not isinstance(selections, list) or not selections or len(selections) > 16 or any(not isinstance(x, str) for x in selections) or len(set(selections)) != len(selections):
             raise ValueError('Choose up to 16 distinct SQL files in seed order')
+        candidates = {candidate['id']: candidate for candidate in self.database_catalog()}
+        if selection not in candidates: raise ValueError('Selected database is no longer available')
+        candidate = candidates[selection]
+        if candidate['kind'] == 'unsupported_bundle':
+            raise ValueError(candidate['reason'])
+        if candidate['kind'] == 'peq_bundle':
+            if self.profile != 'traditional':
+                raise ValueError('Complete PEQ seed bundles belong to Traditional EQEmu')
+            if selections not in ([selection], candidate['selections']):
+                raise ValueError('Import the complete PEQ bundle in its validated seed order')
+            selections = candidate['selections']
+        elif selection not in selections:
+            raise ValueError('Selected database must belong to the SQL import list')
         if self.profile != 'traditional' and selections != [selection]:
             raise ValueError('Split seed bundles belong to Traditional EQEmu')
-        candidates = {c['id'] for c in self.database_candidates()}
         if any(x not in candidates for x in selections): raise ValueError('Selected database is no longer available')
+        if any(candidates[x]['kind'] != 'sql' for x in selections):
+            raise ValueError('Choose SQL files or one complete PEQ bundle')
         self.ensure_db()
         if self.config['database_imported']:
             if not args.get('replace'): raise ValueError('Database exists. Enable replacement; a backup will be made first.')
@@ -505,22 +586,11 @@ class Engine(ManagedContent):
         else:
             player_backup = None
         dump = self.work / 'run' / ('selected-database-' + secrets.token_hex(4) + '.sql')
-        stack = contextlib.ExitStack()
         try:
             count = 0
             with dump.open('wb') as out:
                 for selected in selections:
-                    file_name, sep, member = selected.partition('!')
-                    source = safe_path(self.work, file_name, True)
-                    with contextlib.ExitStack() as component:
-                        if sep:
-                            archive = component.enter_context(zipfile.ZipFile(source))
-                            stream = component.enter_context(archive.open(member))
-                            name = member
-                        else:
-                            stream = component.enter_context(source.open('rb'))
-                            name = source.name
-                        if name.endswith('.gz'): stream = component.enter_context(gzip.GzipFile(fileobj=stream))
+                    with self.database_stream(selected) as stream:
                         while True:
                             self.check_cancel()
                             b = stream.read(1024 * 1024)
@@ -535,6 +605,8 @@ class Engine(ManagedContent):
                 for line in inp:
                     upper = line.lstrip().upper()
                     if upper.startswith((b'CREATE DATABASE ', b'USE `', b'USE ')): continue
+                    if re.match(rb'^(?:SOURCE(?:\s|;|$)|\\\.)', upper):
+                        raise ValueError('SQL SOURCE commands cannot be imported. Choose a complete PEQ bundle or a standalone dump.')
                     out.write(line)
             self.config['database_imported'] = False
             self.save()
@@ -549,7 +621,6 @@ class Engine(ManagedContent):
             self.save()
             return {'imported': selection, 'player_backup':player_backup, 'message':'Database imported.' + (' Player/account snapshot retained at '+player_backup+'. Restore it from Database → Player data when ready.' if player_backup else '')}
         finally:
-            stack.close()
             dump.unlink(missing_ok=True)
             (self.work / 'run/database-import.sql').unlink(missing_ok=True)
 

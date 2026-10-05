@@ -16,7 +16,7 @@ function renderProfile(n){
    $('client-import-help').textContent='Import a separate, clean ROF2 client ZIP. Traditional uses Wine’s built-in DirectInput; your Custom client and DLL stay in their own profile.';
    $('source-import-help').textContent='Use the tested Russianranger/Server revision, then Import from GitHub. Build prepares a patched copy and fetches its pinned websocket headers. Your original source stays intact. Other revisions need qualification.';
    $('setup-finish-help').textContent='Refresh the Traditional build runtime, import the tested source, then compile and stage it in Builds. Database, maps and client imports can follow. Deployment and first login are the next milestone.';
-   $('db-detail').textContent='Select a complete PEQ seed. For a split distribution, add the world, player/system and local-login SQL files in their required order, then import the bundle once.';
+   renderDatabaseSelection();
   }
  }
  syncProfileControls();return true;
@@ -59,9 +59,10 @@ function contentArgs(){return {kind:$('content-kind').value,replace:$('replace-c
 action('content-git',async()=>{if(!$('content-url').value.trim())throw Error('Enter the component’s GitHub repository.');const result=await job('import_content',{...contentArgs(),url:$('content-url').value.trim(),ref:$('content-ref').value.trim()});$('content-result').textContent=result.message+(result.backup?' Previous component: '+result.backup:'');$('replace-content').checked=false;});
 action('content-zip',async()=>{const args=contentArgs(),f=await api('pick',{kind:'content'});const result=await job('import_content',{...args,file:f.file});$('content-result').textContent=result.message+(result.backup?' Previous component: '+result.backup:'');$('replace-content').checked=false;});
 let seedSelections=[];
-function renderSeedBundle(){$('seed-bundle').textContent=seedSelections.length?seedSelections.map((s,i)=>(i+1)+'. '+s).join('\n'):'No bundle files selected. A single full seed can use Import selected database.';}
-action('seed-add',async()=>{const selection=$('db-candidate').value;if(!selection)throw Error('Scan or upload SQL files and choose one first.');if(!seedSelections.includes(selection))seedSelections.push(selection);renderSeedBundle();});
-action('seed-clear',async()=>{seedSelections=[];renderSeedBundle();});
+function renderSeedBundle(){const selected=selectedDatabaseCandidate(),blocked=!!(busy||databaseScanning||sessionAction);$('seed-bundle').textContent=seedSelections.length?seedSelections.map((s,i)=>(i+1)+'. '+s).join('\n'):'No bundle files selected. A complete PEQ ZIP uses Import complete PEQ database.';$('seed-add').disabled=blocked||!selected||['peq_bundle','unsupported_bundle'].includes(selected.kind);$('seed-import').disabled=blocked||!seedSelections.length;}
+function clearSeedBundle(){seedSelections=[];renderSeedBundle();}
+action('seed-add',async()=>{const selected=selectedDatabaseCandidate();if(!selected||['peq_bundle','unsupported_bundle'].includes(selected.kind))throw Error('Show individual SQL files and choose one first.');const selection=selected.id;if(!seedSelections.includes(selection))seedSelections.push(selection);renderSeedBundle();});
+action('seed-clear',async()=>clearSeedBundle());
 action('seed-import',async()=>{if(!seedSelections.length)throw Error('Add the seed files in their required order first.');await job('import_database',{selection:seedSelections[0],selections:seedSelections,replace:$('replace-db').checked});seedSelections=[];renderSeedBundle();});
 // Retain every tab, while keeping fork-specific repairs out of the clean world.
 for(const id of ['ferry-service-panel','boat-trial-panel','spell-fix-panel','addon-panel','dll-panel'])if($(id))$(id).dataset.customOnly='';
