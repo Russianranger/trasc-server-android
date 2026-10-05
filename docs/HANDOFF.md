@@ -1,4 +1,4 @@
-# In progress: 0.6.6 complete PEQ ZIP selection and maps default
+# Implemented: 0.6.6 complete PEQ ZIP selection and maps default
 
 User supplied `peq-latest.zip` and requested an easier database import, plus
 `https://github.com/Russianranger/eqemu-maps` as the default maps URL.
@@ -24,7 +24,15 @@ This verifies input assembly, not an executed MariaDB import or first login.
 The report is under ignored `runtime-work/peq-archive-validation.json`.
 The Android isolated-backend-copy regression caught the new module missing from
 RuntimeManager’s explicit copy list; that list now includes `peq_database.py`.
-Browser validation and signed release are pending in CI. The local Playwright
+The complete PR management browser suite, Android compilation and lint passed
+in job `111563599329`, run `37245403254`. PR #17 merged as
+`b0a9bdf54283d6d68e7c5b0f6b78be77f3c8e1b1`. The signed release workflow is
+run `37246379109`; publication waits for its full runtime qualification gates.
+No code work remains for this request unless that run fails.
+Next delivery step: verify published 0.6.6 APK/preview-build.json source/hash,
+package/version/code and preserved certificate, save the APK, then return the
+Choose database file → complete PEQ selection → Import instructions.
+Do not restart implementation or enable Traditional Deploy/Start for this update. The local Playwright
 browser CDN returned invalid empty ZIPs, so local browser tests were unavailable.
 Do not claim a device import or Traditional first login without user evidence.
 
