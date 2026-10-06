@@ -83,6 +83,14 @@ jobs:
           cp runtime-work/traditional/integration/evidence/traditional-runtime-integration.json dist/traditional/
       - name: Verify a complete session round-trip with the new runtime
         run: bash scripts/check-management.sh "$PWD/dist/traditional/runtime-arm64.tar.gz"
+      - name: Make disposable native integration evidence readable to the runner
+        if: always()
+        run: |
+          for integration_path in runtime-work/traditional/integration runtime-work/traditional/custom-isolation; do
+            if [ -d "$integration_path" ]; then
+              sudo chown -R "$(id -u):$(id -g)" "$integration_path"
+            fi
+          done
       - name: Preserve native build, package, loader and PRoot evidence
         if: always()
         uses: actions/upload-artifact@v4
