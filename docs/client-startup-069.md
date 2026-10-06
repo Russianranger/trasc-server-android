@@ -31,7 +31,9 @@ supplied; unsupported files and unsafe archive paths remain rejected.
    select its skin in the game's existing UI controls.
 6. Export fresh Logs after the launch attempt and report the visible result.
 
-CI checks the short-path budget and profile separation on the host JVM, UI ZIP
-compatibility/rejection cases, and actual Wine/PRoot startup with Android-length
-temporary paths. Passing these infrastructure checks is not physical Thor
-gameplay acceptance.
+All 11 release jobs passed in [run 37422208379](https://github.com/Russianranger/trasc-server-android/actions/runs/37422208379),
+including the short-path budget/profile separation, UI ZIP cases, actual
+Wine/PRoot startup with Android-length temporary paths, full client graphics,
+Traditional deployment/login/zone startup and session backup/restore. The
+published APK digest matches the independently verified signed 0.6.9 APK.
+Passing these infrastructure checks is not physical Thor gameplay acceptance.

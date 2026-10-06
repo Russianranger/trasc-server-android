@@ -1,4 +1,4 @@
-# Implemented: 0.6.9 client startup path fix (2026-10-06 UTC)
+# Released: 0.6.9 client startup path fix (2026-10-06 UTC)
 
 Active follow-up: user reports Traditional client startup failure and supplies
 `logs-6853557731548116328.zip` from 0.6.8 on AYN Thor. Read the supplied scratch
@@ -24,11 +24,47 @@ Local backend suite: 322 tests passed with eight optional Lua tests skipped.
 The complete native/JVM management suite passed, including canonical Android
 path handling, socket byte limits, profile cleanup isolation and persistent
 file preservation. Independent production review has no remaining blockers.
-Actual Android-length Wine/PRoot regression, PR CI, signing and release
-publication remain pending at this implementation checkpoint. Do not
-edit `traditional_build.py` or `traditional_verify.py`: the device compile
+PR #20 merged as `57289a8a742d4743fda9a8e65ec3bfc325b51c51`; its tree is
+identical to qualified feature head `41cf24633014e423eb0803a24146b0ed6a293bbd`.
+PR run `37419938123` passed all Android, browser, backend, database/session and
+complete ARM64 client gates, including native Direct3D/input, Vulkan and VirGL
+directly and through PRoot. The full native/PRoot Traditional deployment and
+session gates also passed. Artifact `11393710321` (ZIP SHA256
+`8059be6ab1dd6e32455915f0209df5cce1d9270e2f615c526b77bbfd8d7ac1b3`)
+reproduces both exact device errors at the original 92-byte temp path. Compact
+52-byte Custom/Traditional paths pass real memfd, 146-byte translated socket
+remapping and Wine boot/PE32 success plus exit23, retaining the prefix inode.
+
+Signed main run `37422208379` completed successfully with all 11 jobs passed,
+including preview publication (`112146281851`). APK job `112136107252` passed
+all 322 backend tests, native/JVM/browser, Android compilation/lint and the
+preserved-certificate gate. APK-only artifact `11393513827` was independently
+checked for package/version/code, pinned signing identity, ZIP integrity,
+compact-path DEX code and all three changed backend assets. The
+15,277,837-byte `TRASC-Android-0.6.9.apk` has SHA256
+`42d831181646eaa57a4bf4e7a22f208595bf3dd390f3a176ad7d30a9fec79076`, exactly
+matching the published preview asset digest, and was made available directly in
+chat. Main client job `112136107774` passed all client gates,
+including the path regression and final VirGL/PRoot checks, then published the
+online/offline client runtime. Main path artifact `11394200892` has ZIP SHA256
+`1a4014754084b9c0478bc666faed0e72183f5150ad547e50fc1b3ee735b9f054`;
+its original-error and compact-path reports/logs were independently checked.
+Traditional job `112133843582` passed the nine-target ARM64 build, extracted
+PRoot deployment and real local login, native offline PEQ deployment/encrypted
+login/zone startup, complete session round trip, evidence upload and runtime
+publication. Main evidence artifact `11395177763` (129,025 bytes, ZIP SHA256
+`0bfdd811ac23501d4598e77ff2956e555e2d3209f5a4493f14428748e86416e5`)
+was downloaded and checksum/ZIP/manifests verified: both environments report
+all 13 acceptance checks passed, including preserved earlier staged builds,
+four exports, accepted/rejected login, redeploy/rollback/restart and Custom
+isolation. Public `preview`, `client-runtime-v1` and `traditional-runtime-v1`
+tags were read back and all point to source `57289a8a742d4743fda9a8e65ec3bfc325b51c51`.
+Only after all publishers finished is this documentation checkpoint being made.
+Do not edit `traditional_build.py` or `traditional_verify.py`: the device compile
 receipt hashes those recipes. No device server rebuild/runtime download, client
 reimport or prefix repair is indicated. Retry steps: [client-startup-069.md](client-startup-069.md).
+Physical Thor client startup/gameplay acceptance still requires the user's retry
+and fresh logs; CI success does not establish that device result.
 
 ---
 
