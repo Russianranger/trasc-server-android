@@ -1,6 +1,6 @@
 # Beta version 0.6
 
-This page describes the original named Beta 0.6 release. The current 0.6.5 preview adds Traditional compile-and-stage support; see [its update instructions](preview-notes.md) and [Traditional setup guide](traditional-profiles.md).
+This page describes the original named Beta 0.6 release. The current 0.6.8 preview adds Traditional deployment, local login and matching client preparation; see [its update instructions](preview-notes.md) and [Traditional setup guide](traditional-profiles.md).
 
 Repairs server and client runtime installation when Android rejects hard links with **`link failed: EACCES (Permission denied)`**. This was reported on a Samsung Galaxy Z Fold6 running Android 16 with the official Beta 0.5 release. The supplied logs confirm six failures in hard-link extraction after successful download and checksum verification; one earlier download separately suffered a connection abort.
 
