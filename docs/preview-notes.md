@@ -1,3 +1,13 @@
+# 0.6.8 — Traditional deployment and quests-linked helpers
+
+Traditional now deploys its verified nine-binary build, qualifies the PEQ/local-login schema with retained database backups, starts the local server, and generates matching client data. The build already compiled on Thor can be deployed without recompilation. Deploy and Start show missing prerequisites instead of a permanent milestone block.
+
+Perl plugins and Lua modules are detected in the imported quests tree and share its repository/revision. Quests imports retain both folders; existing separate helpers remain a fallback. Client ZIP import, preparation, exports and UI skins stay scoped to the selected world.
+
+Install in place and freshly Start runtime. No runtime refresh or server rebuild is required for this launcher update. [Device test steps](traditional-deploy-068.md).
+
+---
+
 # 0.6.7 — Separate content downloads and client UI ZIP import
 
 Traditional Setup now has separate download/ZIP cards for Perl plugins, Lua

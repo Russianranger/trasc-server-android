@@ -45,7 +45,7 @@ class TraditionalProfiles(unittest.TestCase):
         self.assertEqual(before, self.custom.config_path.read_bytes())
         self.assertNotEqual(self.custom.config['db_password'], self.engine.config['db_password'])
 
-    def test_all_components_are_separate_and_custom_unchanged(self):
+    def test_quest_helpers_are_detected_together_and_custom_unchanged(self):
         custom_file = self.custom.work / 'server/keep.txt'
         custom_file.write_text('live world')
         files = {'projecteq-master/qeynos/guard.pl': 'quest', 'projecteq-master/global/global_player.lua': 'global',
@@ -54,10 +54,13 @@ class TraditionalProfiles(unittest.TestCase):
             self.install(kind, files)
         self.install('assets', {'assets-master/opcodes/patch_RoF2.conf': 'OP_Unknown=0x0000'})
         self.assertEqual((self.engine.work / 'server/quests/qeynos/guard.pl').read_text(), 'quest')
-        self.assertFalse((self.engine.work / 'server/quests/plugins').exists())
+        self.assertEqual((self.engine.work / 'server/quests/plugins/check.pl').read_text(), 'plugin')
+        self.assertEqual((self.engine.work / 'server/quests/lua_modules/utils.lua').read_text(), 'module')
         self.assertEqual((self.engine.work / 'server/plugins/check.pl').read_text(), 'plugin')
         self.assertEqual((self.engine.work / 'server/lua_modules/utils.lua').read_text(), 'module')
         self.assertTrue(all(x['imported'] for x in content.status(self.engine)['components'].values()))
+        self.assertEqual(content.components(self.engine)['plugins']['origin'], 'quests')
+        self.assertEqual(content.components(self.engine)['lua_modules']['path'], 'server/quests/lua_modules')
         self.assertFalse(content.status(self.engine)['compilation_ready'])
         self.assertEqual(custom_file.read_text(), 'live world')
 

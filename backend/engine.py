@@ -41,11 +41,12 @@ import ferry_service
 import server_ferry
 import traditional_content
 import traditional_build
+import traditional_runtime
 import peq_database
 import client_ui
 from log_retention import rotate
 
-VERSION = '0.6.7'
+VERSION = '0.6.8'
 DEFAULT_REPO = 'https://github.com/Russianranger/Triptych-Triumvirate'
 BINARIES = ('world', 'zone', 'loginserver', 'shared_memory', 'ucs', 'eqlaunch', 'queryserv', 'export_client_files')
 CLIENT_FILES = ('spells_us.txt', 'dbstr_us.txt', 'SkillCaps.txt', 'BaseData.txt')
@@ -200,7 +201,9 @@ class Engine(ManagedContent):
         self.log('Control service ready. Server remains stopped until Start is selected.')
         self.traditional_recovery_error = None
         if profile == 'traditional':
-            try: traditional_build.recover(self)
+            try:
+                traditional_build.recover(self)
+                traditional_runtime.recover(self)
             except (ValueError, OSError) as e:
                 self.traditional_recovery_error = str(e)
                 self.log('Traditional build recovery needs attention: ' + str(e))
@@ -679,6 +682,7 @@ class Engine(ManagedContent):
         return {'message': 'Build passed. Stop the server, then select Deploy build.', 'staged': True}
 
     def deploy(self, args):
+        if self.profile == 'traditional': return traditional_runtime.deploy(self, args)
         if self.server_running(): raise ValueError('Stop the server before deploying binaries')
         stage = self.work / 'server/bin.staged'
         if not all((stage / x).exists() for x in BINARIES): raise ValueError('Complete a successful build first')
@@ -691,6 +695,7 @@ class Engine(ManagedContent):
         return {'message': 'Binaries deployed. The previous binaries are available for rollback.'}
 
     def rollback(self, args):
+        if self.profile == 'traditional': return traditional_runtime.rollback(self, args)
         if self.server_running(): raise ValueError('Stop the server before rollback')
         current, previous, temp = self.work / 'server/bin', self.work / 'server/bin.previous', self.work / 'server/bin.swap'
         if not previous.exists(): raise ValueError('No previous build available')
@@ -700,6 +705,7 @@ class Engine(ManagedContent):
         return {'message': 'Previous binaries restored. Database migrations may require restoring the matching backup.'}
 
     def sync_content(self, args):
+        if self.profile == 'traditional': return traditional_runtime.sync_content(self)
         root = self.source_root()
         runtime = self.work / 'server'
         src = root / 'Release-NMS-Server' if (root / 'Release-NMS-Server').is_dir() else root
@@ -725,6 +731,7 @@ class Engine(ManagedContent):
             if example.exists(): shutil.copy2(example, runtime / 'login.json')
 
     def write_config(self):
+        if self.profile == 'traditional': return traditional_runtime.write_config(self)
         runtime = self.work / 'server'
         cfg_path = runtime / 'eqemu_config.json'
         cfg = json.loads(cfg_path.read_text()) if cfg_path.exists() else {}
@@ -770,6 +777,7 @@ class Engine(ManagedContent):
         return p
 
     def start(self, args):
+        if self.profile == 'traditional': return traditional_runtime.start(self, args)
         self.recover_nektulos()
         if self.server_running(): raise ValueError('Server processes are already running')
         if not self.config['database_imported']: raise ValueError('Import the full database seed first')
@@ -1007,6 +1015,7 @@ class Engine(ManagedContent):
 
     def _export_client_data(self):
         """Run the real database exporter, then apply the saved client policy."""
+        if self.profile == 'traditional': traditional_runtime.require_client_data(self)
         self.ensure_db()
         self.write_config()
         runtime = self.work / 'server'
@@ -1131,8 +1140,6 @@ class Engine(ManagedContent):
         if args.get('__profile', self.profile) != self.profile:
             raise ValueError('World profile changed. Refresh before continuing.')
         if self.profile == 'traditional':
-            if op in ('deploy','rollback','start','export_client','prepare_client'):
-                raise ValueError('Traditional builds are compile-only. Deployment, local login and client data require the next validated milestone.')
             if op.startswith(('boat_trial_', 'ferry_', 'client_dll_', 'client_addons_')) or op in ('fix_nektulos','revert_nektulos','apply_spell_test','restore_spell_test'):
                 raise ValueError('This repair or addon belongs to TRASC Custom')
         if op == 'import_content': return traditional_content.install(self,args)

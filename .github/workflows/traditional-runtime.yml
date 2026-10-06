@@ -34,11 +34,53 @@ jobs:
             trasc-traditional-runtime:1 \
             python3 /tests/verify_traditional_server_build.py --work /work --jobs 2
           cp runtime-work/traditional/qualification/traditional-build-verification.json dist/traditional/
-      - name: Verify the extracted compiler, dependencies and staged binaries through PRoot
+      - name: Download immutable Traditional database, quests and one real zone map
+        run: |
+          mkdir -p runtime-work/traditional/fixtures runtime-work/traditional/integration runtime-work/traditional/custom-isolation
+          curl --fail --location --retry 3 --max-time 120 \
+            https://db.eqemu.dev/api/v1/dump/archive/peq-1759046415.zip \
+            -o runtime-work/traditional/fixtures/peq.zip
+          curl --fail --location --retry 3 --max-time 120 \
+            https://codeload.github.com/ProjectEQ/projecteqquests/zip/2124cc0f069f05f5b90916162fb2ffa430a531bf \
+            -o runtime-work/traditional/fixtures/quests.zip
+          curl --fail --location --retry 3 --max-time 120 \
+            https://raw.githubusercontent.com/Russianranger/eqemu-maps/c73d6452bac7397b892091a82eebcaa4a1675084/base/poknowledge.map \
+            -o runtime-work/traditional/fixtures/poknowledge.map
+          python3 - <<'PY'
+          import hashlib
+          from pathlib import Path
+          expected = {
+            'peq.zip': 'ac8649f23d2c3aea2cade138dfe10d46d1b21ad1a80d08ca95f5434fab7f218d',
+            'quests.zip': 'a964618fecea89053265c8f21fabbb7404a0261d43662f4171f09ba0cca1c7f7',
+            'poknowledge.map': '794b618d86852b47bd593424129aaf34eee326e5e3fec7290aeeb0e32bc41d20',
+          }
+          for name, digest in expected.items():
+              with Path('runtime-work/traditional/fixtures', name).open('rb') as stream:
+                  assert hashlib.file_digest(stream, 'sha256').hexdigest() == digest, name
+          PY
+      - name: Qualify extracted compiler, binaries, PEQ, deployment and real local login through PRoot
         run: |
           bash scripts/check-traditional-proot.sh \
             "$PWD/dist/traditional/runtime-arm64.tar.gz" \
-            "$PWD/runtime-work/traditional/qualification"
+            "$PWD/runtime-work/traditional/qualification" \
+            "$PWD/runtime-work/traditional/fixtures"
+      - name: Qualify offline deployment, actual PEQ, encrypted local login and real zone startup
+        run: |
+          docker run --rm --network none \
+            -v "$PWD/backend:/opt/trasc:ro" \
+            -v "$PWD/tests:/tests:ro" \
+            -v "$PWD/runtime-work/traditional/qualification:/compiled:ro" \
+            -v "$PWD/runtime-work/traditional/fixtures:/fixtures:ro" \
+            -v "$PWD/runtime-work/traditional/integration:/integration-work" \
+            -v "$PWD/runtime-work/traditional/custom-isolation:/custom-work" \
+            trasc-traditional-runtime:1 \
+            python3 /tests/integration_traditional_runtime.py \
+              --work /integration-work --build-work /compiled --custom-work /custom-work \
+              --database-zip /fixtures/peq.zip --quests-zip /fixtures/quests.zip \
+              --map /fixtures/poknowledge.map \
+              --output /integration-work/evidence/traditional-runtime-integration.json \
+            2>&1 | tee runtime-work/traditional/integration.log
+          cp runtime-work/traditional/integration/evidence/traditional-runtime-integration.json dist/traditional/
       - name: Verify a complete session round-trip with the new runtime
         run: bash scripts/check-management.sh "$PWD/dist/traditional/runtime-arm64.tar.gz"
       - name: Preserve native build, package, loader and PRoot evidence
@@ -51,8 +93,14 @@ jobs:
             runtime-work/traditional/qualification/traditional-build-verification.json
             runtime-work/traditional/qualification/traditional-binary-evidence/
             runtime-work/traditional/qualification/traditional-proot-evidence/
+            runtime-work/traditional/qualification/traditional-proot-integration/logs/
+            runtime-work/traditional/qualification/traditional-proot-integration/server/logs/
             runtime-work/traditional/qualification/logs/
             runtime-work/traditional/qualification/server/bin.staged/build-info.json
+            runtime-work/traditional/integration/evidence/
+            runtime-work/traditional/integration/logs/
+            runtime-work/traditional/integration/server/logs/
+            runtime-work/traditional/integration.log
           retention-days: 14
       - name: Preserve the qualified offline runtime
         uses: actions/upload-artifact@v4
@@ -73,7 +121,7 @@ jobs:
           if ! gh release view traditional-runtime-v1 >/dev/null 2>&1; then
             gh release create traditional-runtime-v1 --target "$GITHUB_SHA" --prerelease \
               --title 'Traditional EQEmu ARM64 runtime 1.0' \
-              --notes 'Separate Debian Bookworm Traditional toolchain. The actual app import, pinned-source patch and all nine native ARM64 targets passed compilation, ELF/dependency and extracted-runtime PRoot checks. Install only in Traditional EQEmu. Deployment and first device login remain separate qualification work.'
+              --notes 'Separate Debian Bookworm Traditional toolchain. App import, pinned-source patches and nine ARM64 binaries passed compilation, ELF/dependency and extracted-runtime PRoot checks. Offline integration also qualifies complete PEQ import, deployment and rollback, shared memory, generated client data, world/static zone startup, and encrypted local UDP login. Install only in Traditional EQEmu. Physical Android client gameplay remains device acceptance work.'
           fi
           gh api --method PATCH "repos/$GITHUB_REPOSITORY/git/refs/tags/traditional-runtime-v1" \
             -f sha="$GITHUB_SHA" -F force=true

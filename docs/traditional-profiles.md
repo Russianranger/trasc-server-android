@@ -1,8 +1,8 @@
-# Traditional EQEmu profiles — 0.6.7
+# Traditional EQEmu profiles — 0.6.8
 
 This milestone adds two independent worlds to the app: **TRASC Custom** and **Traditional EQEmu**. The existing installation remains Custom in its original location. Traditional starts empty, uses a separate clean ROF2 import, and has a distinct 16-bit adventure background for each of the same ten tabs.
 
-**Traditional now compiles and stages the selected server fork.** Source/content imports and management remain available. The build adapter supports `Russianranger/Server` at commit `4aceae18b94ffaafc08e2b17bc41cd72c77f795d`, applies checked changes in a separate build copy and verifies all nine Linux ARM64 executables. Deploy, binary rollback, Start and generated client-data preparation/export remain blocked until database/configuration/login qualification is complete. A successful compile does not yet make the world playable.
+**Traditional now compiles and stages the selected server fork.** Source/content imports and management remain available. The build adapter supports `Russianranger/Server` at commit `4aceae18b94ffaafc08e2b17bc41cd72c77f795d`, applies checked changes in a separate build copy and verifies all nine Linux ARM64 executables. Deploy, verified binary rollback, Start and generated client-data preparation/export now use the Traditional deployment adapter. It validates the complete PEQ/local-login schema, retains backups before migrations, configures the detected content/opcode paths and generates shared memory. Read [deployment and device acceptance steps](traditional-deploy-068.md). Physical first login and zoning remain device acceptance.
 
 ## Switching worlds
 
@@ -23,16 +23,16 @@ Custom remains at the existing app-private `files/work` and `files/rootfs`. Trad
 | Component | Where to import | Purpose / remaining validation |
 | --- | --- | --- |
 | Selected server source | Setup → Import server | New profiles default to `Russianranger/Server` and the tested commit above. Existing URLs are retained: choose **Use tested Server source**, then import from GitHub. The adapter verifies source guards and hydrates the exact websocket header revision omitted from GitHub ZIPs. Other revisions remain importable but cannot use this build recipe. |
-| PEQ world, player/system and local-login database tables | Setup → Choose database file | Select `peq-latest.zip`; the complete five-part PEQ seed is selected automatically. Review content/login/player/state/system, then choose **Import complete PEQ database**. Other split distributions can use the advanced manual bundle. The importer targets this profile's `peq` database. Exact schema and login compatibility remain to be verified. |
+| PEQ world, player/system and local-login database tables | Setup → Choose database file | Select `peq-latest.zip`; the complete five-part PEQ seed is selected automatically. Review content/login/player/state/system, then choose **Import complete PEQ database**. Other split distributions can use the advanced manual bundle. The importer targets this profile's `peq` database. Deployment validates the pinned server’s world and local-login schema before activation. |
 | Server geometry, navigation and water maps | Setup → Import maps | The default is `https://github.com/Russianranger/eqemu-maps`; leave the branch blank to use its default branch. Import base/nav/water/legacy map directories. These are server data, separate from ROF2's installed zone assets. |
-| Zone/global quest scripts | Setup → Traditional world content → Quests | Installs `server/quests`. ProjectEQ's quest repository is provided as an editable starting URL. |
-| Perl quest plugins | Setup → Perl plugins | Defaults to `ProjectEQ/projecteqquests`; imports only `plugins/` into `server/plugins`. Repository/revision and ZIP controls are separate from quests. Perl and any additional Perl modules remain runtime dependencies. |
-| Lua quest modules | Setup → Lua modules | Defaults to `ProjectEQ/projecteqquests`; imports only `lua_modules/` into `server/lua_modules`. Use the same revision as your quests. |
-| Server assets / opcode files | Setup → Server assets | Defaults to `EQEmu/EQEmu` at the qualified server revision. Selectively installs client patch configurations in `server/assets/patches` and general/mail/login opcodes in `server/assets/opcodes`; source and SQL are excluded. Deployment must activate these paths in the next milestone. |
+| Zone/global quest scripts | Setup → Quests | Installs zone scripts and helper folders in `server/quests`. ProjectEQ's quest repository is provided as an editable starting URL. |
+| Perl quest plugins | Setup → Perl plugins | Detects `server/quests/plugins` in the same imported quest tree and shows its repository/revision and script count. Existing `server/plugins` is a fallback. Perl and additional Perl packages remain runtime dependencies. |
+| Lua quest modules | Setup → Lua modules | Detects `server/quests/lua_modules` in the same imported quest tree. Existing `server/lua_modules` remains a fallback. |
+| Server assets / opcode files | Setup → Server assets | Defaults to `EQEmu/EQEmu` at the qualified server revision. Selectively installs client patch configurations in `server/assets/patches` and general/mail/login opcodes in `server/assets/opcodes`; source and SQL are excluded. Deployment configures these paths and checks the complete opcode set. |
 | A separate clean, supported ROF2 client | Client → Import your ROF2 client | User-supplied ZIP; no proprietary client is distributed. Native custom `dinput8.dll` loading and custom hooks are disabled in Traditional. Importing a modified client does not turn its other files into a clean installation. |
 | Client UI skins in either world | Client → Import a client UI skin → Choose UI ZIP | Adds named skins to that profile’s client `uifiles` directory. Replacements retain backups; built-in default skins are protected. Use the displayed `/loadskin` command in game. |
 | Wine/Box64, graphics and DirectX model helpers | Client runtime / DirectX model helpers | Install per profile. Existing display, controller, audio and graphics controls cross over. First login against the traditional server is still pending. |
-| Local login service, server config, shared memory and generated client data | Next Android deployment milestone | Qualify the compiled loginserver against its account schema, generate profile-local credentials/configuration and shared data, check ROF2 opcodes and export matching spells/strings/skills/base data. Do not reuse Custom's binaries or config. |
+| Local login service, server config, shared memory and generated client data | Builds → Deploy successful build; Server → Start; Client → Prepare client for this server | Deployment validates the compiled loginserver’s schema and retains a database backup. Startup generates shared memory; preparation/export generates matching spells/strings/skills/base data. New local accounts are created on first login. Custom's binaries/config are independent. |
 
 Spire, Gameplay rules, Database, Files, Logs and the other tabs remain available. Schema-dependent actions report actual missing tables rather than inventing support. The Fixes tab retains Wine recovery; Custom ferry/map/spell repairs and modified-client addon tools remain in Custom. Pixel artwork changes presentation only; no historical rules, zone versions, spawn restrictions or era preset is applied.
 
@@ -58,11 +58,11 @@ The compiler uses Debian ARM64 GCC, C++20, LuaJIT and Perl with OpenSSL 3's defa
 
 Verification uses ELF/loader/dependency checks and stateless toolchain fixtures. It does not run server or import/export mains: several of these tools can connect to or modify a database even when given an apparent help argument. Physical Thor compilation and first login require device acceptance.
 
-## Next milestone: deployment and first login
+## Deployment and first login
 
 1. Pin the PEQ seed, maps, quests/modules, assets/opcodes and clean ROF2 version to this server revision.
 2. Qualify database and local-login schemas against a disposable profile, migrations, account setup and advertised server address.
-3. Implement deployment/configuration with stable quest/plugin/module/map/asset paths, shared-memory creation, matching client-data exports and staged activation/rollback. Enable Deploy/Start only after these checks pass.
+3. Use the implemented deployment adapter for stable quest/plugin/module/map/asset paths, shared-memory creation, matching client-data exports and staged activation/rollback. The readiness checklist enables operations once their prerequisites are present.
 4. Test on Thor: clean client login, character creation, zoning, one Perl and one Lua quest, rules edits, restart/state persistence, backup/restore and switching back to Custom.
 5. Then implement one tested Luclin-era preset, followed by other eras and optional storage optimization. Era rules/content remain separate from solo/quality-of-life choices.
 

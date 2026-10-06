@@ -235,6 +235,11 @@ jobs:
             app/build/outputs/apk/debug/app-debug.apk
             dist/launcher-sources.tar.gz
             dist/preview-signing.sha256
+      - name: Preserve the installable APK separately for direct delivery
+        uses: actions/upload-artifact@v4
+        with:
+          name: trasc-server-android-apk
+          path: app/build/outputs/apk/debug/app-debug.apk
       - uses: actions/upload-artifact@v4
         if: always()
         with:

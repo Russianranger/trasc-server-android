@@ -32,7 +32,8 @@ const server=http.createServer((req,res)=>{
       let value={};
       if(op==='import_content'){
        if(f.components[a.kind]?.imported&&!a.replace)throw Error('Select Replace this component to preserve a backup and replace its directory');
-       f.components[a.kind]={imported:true,source:{files:7,commit:'1234567890abcdef'}};
+       f.components[a.kind]={imported:true,files:7,source:{files:7,repo:a.url,commit:'1234567890abcdef'}};
+       if(a.kind==='quests')for(const kind of ['plugins','lua_modules'])f.components[kind]={imported:true,present:true,safe:true,origin:'quests',files:7,scripts:7,path:'server/quests/'+kind,source:f.components.quests.source};
        value={message:'Component imported',backup:a.replace?'backups/content/'+a.kind+'-previous':null};
       }
       if(op==='import_client_ui'){
@@ -55,34 +56,45 @@ const server=http.createServer((req,res)=>{
   // before changing native fixture state, then await a complete new refresh.
   const updateFixture=changes=>page.evaluate(async changes=>{while(polling)await new Promise(r=>setTimeout(r,10));Object.assign(fixture,changes);await poll();},changes);
   const quests='https://github.com/ProjectEQ/projecteqquests',assets='https://github.com/EQEmu/EQEmu',revision='4aceae18b94ffaafc08e2b17bc41cd72c77f795d';
-  assert.equal(await page.inputValue('#plugins-url'),quests);
-  assert.equal(await page.inputValue('#lua-modules-url'),quests);
+  assert.equal(await page.inputValue('#plugins-url'),'');
+  assert.equal(await page.inputValue('#lua-modules-url'),'');
   assert.equal(await page.inputValue('#assets-url'),assets);
-  assert.equal(await page.inputValue('#plugins-ref'),'');assert.equal(await page.inputValue('#lua-modules-ref'),'');
   assert.equal(await page.inputValue('#assets-ref'),revision);
   assert(await page.locator('#plugins-import-panel').isVisible());assert(await page.locator('#lua-modules-import-panel').isVisible());assert(await page.locator('#assets-import-panel').isVisible());
+  assert.equal(await page.locator('#plugins-git, #lua-modules-git').count(),0,'Helpers have no redundant download actions');
+  assert((await page.textContent('#plugins-result')).includes('Folder missing'));
   assert(!(await page.locator('#content-kind').isVisible()),'Advanced compatibility selector starts collapsed');
-  await page.fill('#plugins-url','https://github.com/example/my-plugins');await page.fill('#plugins-ref','my-quest-revision');
-  await updateFixture({});
-  assert.equal(await page.inputValue('#plugins-url'),'https://github.com/example/my-plugins');assert.equal(await page.inputValue('#plugins-ref'),'my-quest-revision','Polling must preserve edited repositories/revisions');
-  await page.fill('#plugins-url',quests);await page.fill('#plugins-ref','');
-  for(const [id,kind,url,ref]of [['plugins','plugins',quests,''],['lua-modules','lua_modules',quests,''],['assets','assets',assets,revision]]){
-   await page.click('#'+id+'-git');await page.waitForFunction(()=>busy===0);
-   const call=await page.evaluate(kind=>fixture.calls.find(c=>c.op==='import_content'&&c.a.kind===kind),kind);
-   assert.deepEqual(call.a,{kind,url,ref,replace:false,__profile:'traditional'});
-   assert((await page.textContent('#'+id+'-result')).includes('7 files'));
+  await page.fill('#content-url',quests);await page.fill('#content-ref','matching-revision');
+  await updateFixture({});assert.equal(await page.inputValue('#content-ref'),'matching-revision','Polling preserves quest ref edits');
+  await page.click('#content-git');await page.waitForFunction(()=>busy===0);
+  const questCall=await page.evaluate(()=>fixture.calls.find(c=>c.op==='import_content'&&c.a.kind==='quests'));
+  assert.deepEqual(questCall.a,{kind:'quests',url:quests,ref:'matching-revision',replace:false,__profile:'traditional'});
+  for(const id of ['plugins','lua-modules']){
+   assert.equal(await page.inputValue('#'+id+'-url'),quests);
+   assert.equal(await page.locator('#'+id+'-url').getAttribute('readonly'),'');
+   assert((await page.textContent('#'+id+'-result')).includes('7 scripts in the imported quests tree'));
+   assert((await page.textContent('#'+id+'-result')).includes('1234567890'));
   }
-  // Replacements require the existing backup guard; separate ZIP controls use the native basename.
-  await page.click('#plugins-git');await page.waitForFunction(()=>busy===0);
+  await updateFixture({components:{...await page.evaluate(()=>fixture.components),plugins:{present:true,safe:true,imported:false,path:'server/quests/plugins'}}});
+  assert((await page.textContent('#plugins-result')).includes('no usable scripts'));
+  await updateFixture({components:{...await page.evaluate(()=>fixture.components),plugins:{present:true,safe:false,imported:false,path:'server/quests/plugins'}}});
+  assert((await page.textContent('#plugins-result')).includes('symbolic link'));
+  await updateFixture({components:{...await page.evaluate(()=>fixture.components),plugins:{present:true,safe:true,imported:true,origin:'standalone',scripts:5,path:'server/plugins'}}});
+  assert((await page.textContent('#plugins-path')).includes('retained separate import'));
+  await page.click('#assets-git');await page.waitForFunction(()=>busy===0);
+  const assetCall=await page.evaluate(()=>fixture.calls.find(c=>c.op==='import_content'&&c.a.kind==='assets'));
+  assert.deepEqual(assetCall.a,{kind:'assets',url:assets,ref:revision,replace:false,__profile:'traditional'});
+  assert((await page.textContent('#assets-result')).includes('7 files'));
+  await page.click('#assets-git');await page.waitForFunction(()=>busy===0);
   assert((await page.textContent('#notice')).includes('Select Replace this component'));
-  await page.check('#plugins-replace');await page.click('#plugins-zip');await page.waitForFunction(()=>busy===0);
+  await page.check('#assets-replace');await page.click('#assets-zip');await page.waitForFunction(()=>busy===0);
   const zipCall=await page.evaluate(()=>fixture.calls.filter(c=>c.op==='import_content'&&c.a.file).at(-1));
-  assert.deepEqual(zipCall.a,{kind:'plugins',file:'1790000-component.zip',replace:true,__profile:'traditional'});
-  assert.equal(await page.isChecked('#plugins-replace'),false);
-  assert((await page.textContent('#plugins-result')).includes('backups/content/plugins-previous'));
+  assert.deepEqual(zipCall.a,{kind:'assets',file:'1790000-component.zip',replace:true,__profile:'traditional'});
+  assert.equal(await page.isChecked('#assets-replace'),false);
+  assert((await page.textContent('#assets-result')).includes('backups/content/assets-previous'));
   for(const [setting,value]of [['server',true],['alive',false]]){
    await updateFixture({[setting]:value});
-   for(const id of ['plugins','lua-modules','assets'])for(const action of ['git','zip'])assert(await page.isDisabled('#'+id+'-'+action));
+   for(const id of ['content','assets'])for(const action of ['git','zip'])assert(await page.isDisabled('#'+id+'-'+action));
    await updateFixture({[setting]:setting==='alive'});
   }
   fs.mkdirSync('ui-reports',{recursive:true});await page.locator('#plugins-import-panel').scrollIntoViewIfNeeded();
@@ -124,6 +136,6 @@ const server=http.createServer((req,res)=>{
   await page.screenshot({path:'ui-reports/ui-skin-custom-thor.png',fullPage:true});
   assert(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth+1),'UI skins fit Thor landscape');
   assert.deepEqual(errors,[],'UI JavaScript errors');
-  console.log('PASS: separate plugin/Lua/asset default downloads and ZIP imports, replacement backups, preserved edits, runtime guards, independent Traditional/Custom UI skin actions and mobile layouts');
+  console.log('PASS: quests-linked helper detection, missing/empty/unsafe/legacy folders, asset downloads and backups, runtime guards, independent Traditional/Custom UI skins and mobile layouts');
  }finally{await browser.close();server.close();}
 })().catch(e=>{console.error(e);process.exitCode=1;server.close();});
