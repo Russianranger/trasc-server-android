@@ -7,6 +7,7 @@ proprietary client files are involved; device gameplay remains acceptance work.
 import argparse
 import hashlib
 import json
+import os
 from pathlib import Path
 import platform
 import re
@@ -27,6 +28,8 @@ PEQ_SHA256 = 'ac8649f23d2c3aea2cade138dfe10d46d1b21ad1a80d08ca95f5434fab7f218d'
 QUESTS_SHA256 = 'a964618fecea89053265c8f21fabbb7404a0261d43662f4171f09ba0cca1c7f7'
 MAP_SHA256 = '794b618d86852b47bd593424129aaf34eee326e5e3fec7290aeeb0e32bc41d20'
 ANSI = re.compile(r'\x1b\[[0-?]*[ -/]*[@-~]')
+FIXTURE_USER = 'integrationplayer'
+FIXTURE_PASSWORD = 'qualification-password'
 
 
 def sha256(path):
@@ -45,11 +48,20 @@ def rows(engine, query):
     return engine.mysql(query).splitlines()[1:]
 
 
-def login_cli(engine, evidence, label, *arguments):
+def login_cli(engine, evidence, label, *arguments, network_client=False):
+    environment = dict(os.environ)
+    if network_client:
+        config = json.loads((engine.work / 'server/login.json').read_text())
+        if config['general']['eqemu_loginserver_address'] != '127.0.0.1:5999':
+            raise RuntimeError('The protocol client must target the isolated local login service')
+        # The upstream arbitrary-credential client reads its configured address
+        # only with LSPX. Apply this to the separate CLI process exclusively;
+        # the live login service must continue authenticating the local source.
+        environment['LSPX'] = '1'
     completed = subprocess.run(
         [str(engine.work / 'server/bin/loginserver'), *arguments],
         cwd=engine.work / 'server', stdin=subprocess.DEVNULL,
-        capture_output=True, text=True, timeout=45,
+        capture_output=True, text=True, timeout=45, env=environment,
     )
     output = ANSI.sub('', completed.stdout + completed.stderr)
     (evidence / ('login-' + label + '.log')).write_text(output)
@@ -58,12 +70,31 @@ def login_cli(engine, evidence, label, *arguments):
     return output
 
 
-def health_login(engine, evidence, label):
-    output = login_cli(engine, evidence, label, 'health:check-login')
-    found = re.findall(r'Response code \[(\d+)\]', output)
-    if len(found) != 1:
-        raise RuntimeError('Real UDP login health fixture returned no unambiguous response')
-    return int(found[0])
+def service_logs(engine):
+    logs = list((engine.work / 'logs').glob('*.log'))
+    logs += list((engine.work / 'server/logs').glob('*.log'))
+    return '\n'.join(ANSI.sub('', path.read_text(errors='replace')) for path in logs)
+
+
+def udp_login(engine, evidence, label, username=FIXTURE_USER, password=FIXTURE_PASSWORD):
+    before = service_logs(engine)
+    output = login_cli(engine, evidence, label, 'login-user:check-external-credentials',
+                       username, password, network_client=True)
+    found = re.findall(r'Credentials were (accepted|not accepted)\b', output)
+    if len(found) != 1 or 'Deadline exceeded' in output:
+        raise RuntimeError('Real local UDP credential client failed its protocol exchange: ' + output[-2000:])
+    accepted = found[0] == 'accepted'
+    if accepted:
+        marker = 'account name [' + username + '] login server [local]'
+        wait_for_log(engine, lambda text: text.count(marker) > before.count(marker),
+                     'fresh successful local UDP authentication for ' + username)
+    else:
+        attempt = 'Attempting password based login [' + username + '] login [local]'
+        failed = 'Successful login [false]'
+        wait_for_log(engine, lambda text: (text.count(attempt) > before.count(attempt)
+                                          and text.count(failed) > before.count(failed)),
+                     'fresh local UDP password rejection for ' + username)
+    return accepted
 
 
 def wait_for_log(engine, predicate, description, seconds=120):
@@ -74,9 +105,7 @@ def wait_for_log(engine, predicate, description, seconds=120):
                   if process.poll() is not None]
         if failed:
             raise RuntimeError('Traditional processes exited: ' + ', '.join(failed))
-        logs = list((engine.work / 'logs').glob('*.log'))
-        logs += list((engine.work / 'server/logs').glob('*.log'))
-        latest = '\n'.join(ANSI.sub('', path.read_text(errors='replace')) for path in logs)
+        latest = service_logs(engine)
         if predicate(latest):
             return latest
         time.sleep(0.5)
@@ -96,6 +125,8 @@ def make_assets(engine):
 def qualify(args):
     if platform.machine() not in ('aarch64', 'arm64'):
         raise RuntimeError('Traditional runtime integration requires native ARM64')
+    if 'LSPX' in os.environ:
+        raise RuntimeError('The live fixture login service must use the local account source')
     for fixture, expected in ((args.database_zip, PEQ_SHA256),
                               (args.quests_zip, QUESTS_SHA256), (args.map, MAP_SHA256)):
         if sha256(fixture) != expected:
@@ -177,14 +208,14 @@ def qualify(args):
 
         # Explicit, synthetic CI credentials. None belong to a user or survive
         # in an online runtime; the downloaded rootfs has no integration DB.
-        login_cli(engine, evidence, 'create', 'login-user:create', 'healthcheckuser', 'healthcheckpassword')
+        login_cli(engine, evidence, 'create', 'login-user:create', FIXTURE_USER, FIXTURE_PASSWORD)
         correct = login_cli(engine, evidence, 'valid-password', 'login-user:check-credentials',
-                            'healthcheckuser', 'healthcheckpassword')
+                            FIXTURE_USER, FIXTURE_PASSWORD)
         wrong = login_cli(engine, evidence, 'wrong-password', 'login-user:check-credentials',
-                          'healthcheckuser', 'deliberately-wrong-fixture-password')
+                          FIXTURE_USER, 'deliberately-wrong-fixture-password')
         assert re.search(r'Credentials were accepted\b', correct), correct
         assert 'Credentials were not accepted' in wrong, wrong
-        account = rows(engine, "SELECT id,source_loginserver FROM login_accounts WHERE account_name='healthcheckuser';")
+        account = rows(engine, "SELECT id,source_loginserver FROM login_accounts WHERE account_name='integrationplayer';")
         assert len(account) == 1 and account[0].split('\t')[1] == 'local', account
         account_id = account[0].split('\t')[0]
         report['checks']['real_argon2_account_accept_and_reject'] = True
@@ -209,19 +240,21 @@ def qualify(args):
         shared = [path for path in (engine.work / 'server/shared').iterdir()
                   if path.is_file() and path.stat().st_size]
         assert len(shared) >= 2, shared
-        response = health_login(engine, evidence, 'udp-valid')
-        assert response == 101, 'Real UDP encrypted login failed: ' + str(response)
-        wait_for_log(engine, lambda text: 'account name [healthcheckuser] login server [local]' in text,
-                     'successful local account handshake')
+        assert udp_login(engine, evidence, 'udp-valid'), 'Real local UDP encrypted login was rejected'
         login_cli(engine, evidence, 'change-fixture', 'login-user:update-credentials',
-                  'healthcheckuser', 'deliberately-wrong-fixture-password')
-        rejected = health_login(engine, evidence, 'udp-rejected')
-        assert rejected > 101, 'Wrong password must be rejected by UDP login: ' + str(rejected)
+                  FIXTURE_USER, 'deliberately-wrong-fixture-password')
+        assert not udp_login(engine, evidence, 'udp-rejected'), 'Wrong password was accepted by UDP login'
         login_cli(engine, evidence, 'restore-fixture', 'login-user:update-credentials',
-                  'healthcheckuser', 'healthcheckpassword')
-        assert health_login(engine, evidence, 'udp-restored') == 101
+                  FIXTURE_USER, FIXTURE_PASSWORD)
+        assert udp_login(engine, evidence, 'udp-restored')
         report['checks']['real_udp_session_des_login_accept_and_reject'] = {
-            'accepted_error_string_id': response, 'rejected_error_string_id': rejected}
+            'accepted': True, 'wrong_password_rejected': True, 'restored_password_accepted': True,
+            'endpoint': '127.0.0.1:5999', 'source': 'local'}
+        assert rows(engine, "SELECT id FROM login_accounts WHERE account_name='integrationautocreate';") == []
+        assert udp_login(engine, evidence, 'udp-autocreate', 'integrationautocreate', 'new-fixture-password')
+        created = rows(engine, "SELECT id,source_loginserver FROM login_accounts WHERE account_name='integrationautocreate';")
+        assert len(created) == 1 and created[0].split('\t')[1] == 'local', created
+        report['checks']['first_udp_login_creates_local_account'] = True
         report['checks']['world_and_static_zone_running'] = True
         report['checks']['real_shared_memory_generated'] = {path.name: path.stat().st_size for path in shared}
         engine.dispatch('stop', {})
@@ -237,10 +270,10 @@ def qualify(args):
         assert engine.state()['traditional']['deployment']['rollback_allowed']
         engine.dispatch('rollback', {})
         assert json.loads((engine.work / 'server/bin/deployment.json').read_text())['transaction'] == first_receipt['transaction']
-        assert rows(engine, "SELECT id FROM login_accounts WHERE account_name='healthcheckuser';") == [account_id]
+        assert rows(engine, "SELECT id FROM login_accounts WHERE account_name='integrationplayer';") == [account_id]
         report['checks']['qualified_redeployment_and_binary_rollback_preserve_account'] = True
         engine.dispatch('start', {})
-        assert health_login(engine, evidence, 'udp-restarted') == 101
+        assert udp_login(engine, evidence, 'udp-restarted')
         engine.dispatch('stop', {})
         assert not engine.server_running()
         report['checks']['same_database_stop_restart_login'] = True
