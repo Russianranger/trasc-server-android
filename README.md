@@ -31,6 +31,8 @@ A standalone Android control app for [Russianranger/Triptych-Triumvirate](https:
 
 ## Downloads and first setup
 
+**App 0.6.9 — Traditional client startup:** Short private temporary paths let Wine and PRoot create their sockets on Android. StoneUI ZIP imports also accept the skin's packaging manifest. Keep the installed runtimes, Wine prefix, imported client, DirectX helpers and compiled server. [Client retry steps](docs/client-startup-069.md).
+
 **App 0.6.8 — Traditional deployment and quests helpers:** Deploy and start the verified Traditional build, validate its PEQ/local-login schema with database backups, and prepare/export matching RoF2 client files. Plugins and Lua modules are detected in the imported quests tree and share its revision; existing standalone imports remain fallbacks. Your successfully staged build can be deployed without recompilation. [Device test steps](docs/traditional-deploy-068.md).
 
 **App 0.6.5 — Traditional ARM64 compilation:** Traditional now imports the pinned [Russianranger/Server](https://github.com/Russianranger/Server) source, applies a checked patch recipe in a separate build copy, and compiles/stages all nine server tools. It uses its own Debian Bookworm runtime and defaults to one compiler job. Version 0.6.8 adds the deployment and local-login path described above. [Setup guide](docs/traditional-profiles.md) · [Research and CMake recipe](docs/traditional-arm-build.md).

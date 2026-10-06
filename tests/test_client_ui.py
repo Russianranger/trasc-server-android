@@ -92,6 +92,59 @@ class ClientUiTests(unittest.TestCase):
         self.assertEqual(sorted(p.name for p in (self.client / 'UIFILES/Stone').iterdir()),
                          ['.trasc-ui.json', 'EQUI_Inventory.xml'])
 
+    def test_stone_theme_metadata_is_omitted_in_both_profiles_without_xml_changes(self):
+        manifest = json.dumps({'name': 'StoneUI RoF2', 'version': '0.1.0',
+                               'files': ['EQUI_Inventory.xml'], 'theme': {'style': 'stone'}}).encode()
+        for engine in (self.engine, self.traditional):
+            with self.subTest(profile=engine.profile):
+                result = self.install({'Stone/EQUI_Inventory.xml': XML,
+                                       'Stone/STONE_THEME_MANIFEST.json': manifest}, engine)
+                installed = engine.work / 'client/current/UIFILES/Stone'
+                self.assertEqual((installed / 'EQUI_Inventory.xml').read_bytes(), XML)
+                self.assertFalse((installed / 'STONE_THEME_MANIFEST.json').exists())
+                self.assertEqual(result['installed'][0]['files'], 1)
+                self.assertEqual(result['installed'][0]['bytes'], len(XML))
+
+    def test_stone_theme_metadata_uses_windows_case_and_allows_utf8_bom(self):
+        self.install({'Stone/EQUI_Inventory.xml': XML,
+                      'Stone/stone_theme_manifest.JSON': b'\xef\xbb\xbf{"version":"0.1.0"}'})
+        installed = self.client / 'UIFILES/Stone'
+        self.assertEqual(sorted(p.name for p in installed.iterdir()), ['.trasc-ui.json', 'EQUI_Inventory.xml'])
+
+    def test_invalid_theme_metadata_preserves_existing_skin_and_backup_state(self):
+        self.install({'Stone/EQUI_Inventory.xml': XML})
+        for value in (b'MZ executable', b'{"incomplete":', b'[]', b'null', b'{"value":NaN}', b'\xff\xfe'):
+            with self.subTest(value=value), self.assertRaisesRegex(ValueError, 'theme metadata'):
+                self.install({'Stone/EQUI_Inventory.xml': NEW_XML,
+                              'Stone/STONE_THEME_MANIFEST.json': value}, replace=True)
+            self.assertEqual((self.client / 'UIFILES/Stone/EQUI_Inventory.xml').read_bytes(), XML)
+            self.assertFalse((self.engine.work / 'run/client-ui-import.json').exists())
+            self.assertFalse(any((self.engine.work / 'backups/client-ui').rglob('EQUI_Inventory.xml')))
+
+    def test_oversized_theme_metadata_is_rejected_before_skin_activation(self):
+        with patch.object(client_ui, 'MAX_THEME_METADATA_BYTES', 4):
+            with self.assertRaisesRegex(ValueError, '1 MiB'):
+                self.install({'Stone/EQUI_Inventory.xml': XML,
+                              'Stone/STONE_THEME_MANIFEST.json': b'{"name":"StoneUI"}'})
+        self.assertFalse((self.client / 'UIFILES/Stone').exists())
+
+    def test_unknown_json_and_nested_named_metadata_remain_unsupported(self):
+        for name in ('manifest.json', 'STONE_THEME_MANIFEST.json.exe', 'Options/STONE_THEME_MANIFEST.json'):
+            with self.subTest(name=name), self.assertRaisesRegex(ValueError, 'Unsupported file'):
+                self.install({'Stone/EQUI_Inventory.xml': XML, 'Stone/' + name: b'{}'})
+        self.assertFalse((self.client / 'UIFILES/Stone').exists())
+
+    def test_theme_metadata_symbolic_link_remains_rejected(self):
+        filename = self.archive({'Stone/EQUI_Inventory.xml': XML})
+        with zipfile.ZipFile(self.engine.work / 'incoming' / filename, 'a') as source:
+            link = zipfile.ZipInfo('Stone/STONE_THEME_MANIFEST.json')
+            link.create_system = 3
+            link.external_attr = (stat.S_IFLNK | 0o777) << 16
+            source.writestr(link, '/other/metadata.json')
+        with self.assertRaisesRegex(ValueError, 'ordinary'):
+            client_ui.install(self.engine, {'file': filename})
+        self.assertFalse((self.client / 'UIFILES/Stone').exists())
+
     def test_default_skin_requires_an_explicit_different_name(self):
         with self.assertRaisesRegex(ValueError, 'default UI is protected'):
             self.install({'default/EQUI_Inventory.xml': NEW_XML}, replace=True)

@@ -1,3 +1,37 @@
+# Implemented: 0.6.9 client startup path fix (2026-10-06 UTC)
+
+Active follow-up: user reports Traditional client startup failure and supplies
+`logs-6853557731548116328.zip` from 0.6.8 on AYN Thor. Read the supplied scratch
+bundle, not unrelated saved artifacts. The current run fails in Wine prefix
+update before `eqgame.exe`: PRoot shm helper says `Temporary path too long`,
+Wine server says `bind: Invalid argument`, then display connect fails. DirectX
+installation and all four client data exports/sync completed; the device server
+build/deployment is ready. An older Windows `dbg.txt` is not this launch's log.
+
+0.6.9/code58 keeps the package/certificate and persistent client/runtime/prefix,
+DirectX, controller, renderer and server files. Only transient host paths are
+shortened and separated by profile; guest `/tmp` and `/prefix` stay the same.
+Profile switching binds the explicit target profile before its marker changes.
+The bundled translator remains Wine10 WoW64/Box64 0.4.4; `runtime_mode=auto`
+controls PRoot acceleration. No translator or renderer replacement is involved.
+
+The same control log rejects StoneUI's `STONE_THEME_MANIFEST.json`. The importer
+now validates/omits only this bounded JSON object at the skin root, preserving
+XML/assets as supplied and rejecting other unsupported payloads. Both profiles,
+invalid metadata, previous-skin preservation and symlink checks are covered.
+
+Local backend suite: 322 tests passed with eight optional Lua tests skipped.
+The complete native/JVM management suite passed, including canonical Android
+path handling, socket byte limits, profile cleanup isolation and persistent
+file preservation. Independent production review has no remaining blockers.
+Actual Android-length Wine/PRoot regression, PR CI, signing and release
+publication remain pending at this implementation checkpoint. Do not
+edit `traditional_build.py` or `traditional_verify.py`: the device compile
+receipt hashes those recipes. No device server rebuild/runtime download, client
+reimport or prefix repair is indicated. Retry steps: [client-startup-069.md](client-startup-069.md).
+
+---
+
 # Released: 0.6.8 Traditional deployment and quests-linked helpers (2026-10-06 UTC)
 
 User provided `logs-2098669313453750451.zip` from 0.6.7 on AYN Thor and confirmed Traditional compilation. Its operation log ends after all 768 build steps with **Verified nine ARM64 Traditional executables and runtime dependencies**. User now requests quests-based plugin/module detection and enabling the remaining Traditional deployment/client features.

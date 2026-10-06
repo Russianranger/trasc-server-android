@@ -230,13 +230,15 @@ public final class ClientActivity extends Activity {
             try {
                 LocalSocket local=new LocalSocket();socket=local;
                 if(closed)return;
-                local.connect(new LocalSocketAddress(runtime.displaySocket().getPath(),LocalSocketAddress.Namespace.FILESYSTEM));
+                File displayPath=new File(profileRun,"display.sock");ClientTransientPaths.validateSocket(displayPath);
+                local.connect(new LocalSocketAddress(displayPath.getPath(),LocalSocketAddress.Namespace.FILESYSTEM));
                 local.setSoTimeout(15000);
                 RfbConnection r=new RfbConnection(local.getInputStream(),local.getOutputStream(),this);boolean frames=!nativeActive;r.handshake(frames);
                 local.setSoTimeout(0);connection=r;
                 try{
                     LocalSocket control=new LocalSocket();inputSocket=control;
-                    control.connect(new LocalSocketAddress(new File(profileRun,"input.sock").getPath(),LocalSocketAddress.Namespace.FILESYSTEM));control.setSoTimeout(3000);
+                    File inputPath=new File(profileRun,"input.sock");ClientTransientPaths.validateSocket(inputPath);
+                    control.connect(new LocalSocketAddress(inputPath.getPath(),LocalSocketAddress.Namespace.FILESYSTEM));control.setSoTimeout(3000);
                     relative=new RelativeInput(control.getInputStream(),control.getOutputStream());control.setSoTimeout(0);
                 }catch(IOException inputError){closeInput();RuntimeManager.recordFailure(profileWork,"client_relative_input",inputError);}
                 // A native failure can happen during the input-only handshake.

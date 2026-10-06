@@ -359,7 +359,8 @@ class Supervisor:
         self.status['graphics_threading'] = request.get('graphics_threading', 'multi')
         self.status.update(runtime_mode=request.get('runtime_mode', 'auto'),
                            runtime_acceleration=request.get('runtime_acceleration', 'unspecified'),
-                           storage=request.get('storage', {}))
+                           storage=request.get('storage', {}),
+                           transient_storage=request.get('transient_storage', {}))
         self.env = dict(os.environ, DISPLAY=':7', XAUTHORITY=str(SESSION / 'Xauthority'),
                         WINEPREFIX=str(PREFIX), WINEARCH='win64', WINEDEBUG=wine_debug(),
                         WINEDLLOVERRIDES='winemenubuilder,mscoree,mshtml,winegstreamer=',
