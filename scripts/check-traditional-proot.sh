@@ -3,6 +3,8 @@ set -euo pipefail
 repo_root="$(cd "$(dirname "$0")/.." && pwd)"
 archive="$(realpath "${1:?Pass the Traditional runtime archive}")"
 qualification_work="$(realpath "${2:?Pass the native Engine qualification workspace}")"
+fixture_dir="${3:-}"
+if [ -n "$fixture_dir" ]; then fixture_dir="$(realpath "$fixture_dir")"; fi
 task_dir="$repo_root/runtime-work/traditional-proot"
 evidence_dir="$qualification_work/traditional-proot-evidence"
 case "$(uname -m)" in aarch64|arm64) ;; *) echo 'This qualification requires a native ARM64 runner' >&2; exit 2 ;; esac
@@ -55,10 +57,17 @@ printf '127.0.0.1 localhost\n::1 localhost ip6-localhost ip6-loopback\n' > "$roo
 if [ -d "$qualification_work/builds" ]; then mv "$qualification_work/builds" "$hidden_build/builds"; fi
 export PROOT_NO_SECCOMP=1
 export PROOT_LOADER="$task_dir/proot/src/loader/loader" PROOT_TMP_DIR="$proot_tmp_dir"
+extra_bindings=()
+if [ -n "$fixture_dir" ]; then
+    integration_work="$qualification_work/traditional-proot-integration"
+    custom_work="$qualification_work/traditional-proot-custom-isolation"
+    mkdir -p "$integration_work" "$custom_work" "$rootfs_dir/integration-work" "$rootfs_dir/custom-work" "$rootfs_dir/fixtures"
+    extra_bindings=(-b "$integration_work:/integration-work" -b "$custom_work:/custom-work" -b "$fixture_dir:/fixtures")
+fi
 guest=("$task_dir/proot/src/proot" --kill-on-exit -0 -r "$rootfs_dir" \
     -b /dev -b /proc -b "$qualification_work:/work" \
     -b "$repo_root/backend:/opt/trasc" -b "$repo_root/tests:/tests" \
-    -b "$evidence_dir:/evidence" -b "$proot_tmp_dir:/tmp" -w /work \
+    -b "$evidence_dir:/evidence" -b "$proot_tmp_dir:/tmp" "${extra_bindings[@]}" -w /work \
     /usr/bin/env -i HOME=/root USER=root \
     PATH=/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin \
     LANG=C.UTF-8 TMPDIR=/tmp PYTHONUNBUFFERED=1 /usr/bin/python3)
@@ -79,3 +88,13 @@ assert native['abi_libraries'] == proot['abi_libraries'], 'PRoot quest-parser AB
 assert proot['providers'] == {'default': True, 'legacy': True, 'des_cbc': True}
 print('Packaged Traditional runtime passed PRoot compiler, file mmap/lockf and staged-binary qualification')
 PY
+if [ -n "$fixture_dir" ]; then
+    # This is the real packaged runtime with the compilation tree hidden.
+    # The fixture makes fresh copied workspaces and never downloads content.
+    timeout 1800 "${guest[@]}" /tests/integration_traditional_runtime.py \
+        --work /integration-work --build-work /work --custom-work /custom-work \
+        --database-zip /fixtures/peq.zip --quests-zip /fixtures/quests.zip \
+        --map /fixtures/poknowledge.map \
+        --output /evidence/runtime/traditional-runtime-integration.json \
+        2>&1 | tee "$evidence_dir/runtime-integration.log"
+fi

@@ -195,9 +195,9 @@ Server executables are never invoked with generic `--help` or `--version`
 arguments: several ignore those arguments and import database data or start
 services. Compilation qualification does not initialize a server database.
 
-Traditional deployment, first startup, schema migration and player/client
-export remain guarded until a separate integration verifies content paths,
-opcodes, login/account configuration and current database expectations.
+The compilation evidence above is distinct from deployment. Version 0.6.8
+adds the deployment/local-login integration and readiness guards for content
+paths, opcodes, schemas and client exports; see [device steps](traditional-deploy-068.md).
 The Custom source/build/runtime route remains independent.
 
 ## Investigation evidence

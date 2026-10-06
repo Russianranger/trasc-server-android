@@ -160,8 +160,9 @@ def prepare_content(engine, root, kind, prepared, metadata):
         return
     for source in root.iterdir():
         engine.check_cancel()
-        # Plugins and Lua modules have their own explicit import controls.
-        if source.name in ('.git', '__MACOSX', MARKER) or (kind == 'quests' and source.name in ('plugins', 'lua_modules', 'assets')):
+        # ProjectEQ ships plugins and Lua modules alongside its zone quests.
+        # Keep those directories together so one quest import updates all three.
+        if source.name in ('.git', '__MACOSX', MARKER) or (kind == 'quests' and source.name == 'assets'):
             continue
         destination = prepared / source.name
         if source.is_dir():
@@ -237,20 +238,83 @@ def install(engine, args):
             shutil.rmtree(stage)
 
 
+def _source_metadata(target):
+    marker = target / MARKER
+    try:
+        if not marker.is_symlink() and marker.is_file() and marker.stat().st_size < 16384:
+            metadata = json.loads(marker.read_text())
+            if isinstance(metadata, dict) and metadata.get('profile') == 'traditional':
+                return metadata
+    except (ValueError, OSError):
+        pass
+    return None
+
+
+def _directory_status(engine, relative, suffixes=()):
+    """Detect usable installed files without following any symbolic links."""
+    target = engine.work
+    try:
+        for name in PurePosixPath(relative).parts:
+            target = target / name
+            if target.is_symlink():
+                return {'present': False, 'files': 0, 'scripts': 0, 'safe': False}
+        if not target.is_dir():
+            return {'present': False, 'files': 0, 'scripts': 0, 'safe': True}
+        if not suffixes:
+            # A full quests tree can have tens of thousands of files. Its
+            # import marker already holds its count; only helpers need a scan.
+            return {'present': True, 'files': 0, 'scripts': 0, 'safe': True}
+        files = scripts = 0
+        def inaccessible(error):
+            raise error
+        for directory, directories, filenames in os.walk(target, followlinks=False, onerror=inaccessible):
+            root = Path(directory)
+            if any((root / name).is_symlink() for name in directories + filenames):
+                return {'present': True, 'files': 0, 'scripts': 0, 'safe': False}
+            for name in filenames:
+                if name == MARKER:
+                    continue
+                files += 1
+                scripts += Path(name).suffix.lower() in suffixes
+        return {'present': True, 'files': files, 'scripts': scripts, 'safe': True}
+    except OSError:
+        return {'present': False, 'files': 0, 'scripts': 0, 'safe': False}
+
+
+def components(engine):
+    """Prefer helpers in the pulled quests tree; retain legacy standalone ones."""
+    result = {}
+    for kind in ('quests', 'assets'):
+        path = 'server/' + kind
+        detected = _directory_status(engine, path)
+        metadata = _source_metadata(engine.work / path) if detected['safe'] else None
+        if metadata:
+            detected['files'] = metadata.get('files', 0)
+        result[kind] = dict(detected, imported=bool(metadata and detected['present']),
+                            path=path, source=metadata)
+    for kind, suffixes in (('plugins', ('.pl', '.pm')), ('lua_modules', ('.lua',))):
+        quests_path = 'server/quests/' + kind
+        embedded = _directory_status(engine, quests_path, suffixes)
+        legacy_path = 'server/' + kind
+        legacy = _directory_status(engine, legacy_path, suffixes)
+        if embedded['scripts']:
+            path, detected, origin, metadata = quests_path, embedded, 'quests', result['quests']['source']
+        elif legacy['scripts']:
+            path, detected, origin = legacy_path, legacy, 'standalone'
+            metadata = _source_metadata(engine.work / path)
+        else:
+            path, detected, origin, metadata = quests_path, embedded, 'missing', result['quests']['source']
+        result[kind] = dict(detected, imported=bool(detected['scripts']), path=path,
+                            source=metadata, origin=origin, quests_path=quests_path,
+                            quests_present=embedded['present'])
+    return result
+
+
 def status(engine):
     import traditional_build
-    result = {}
-    for kind in KINDS:
-        target = engine.work / 'server' / kind
-        marker = target / MARKER
-        metadata = None
-        try:
-            if marker.is_file() and marker.stat().st_size < 16384:
-                metadata = json.loads(marker.read_text())
-        except (ValueError, OSError):
-            pass
-        result[kind] = {'imported': bool(metadata and metadata.get('profile') == 'traditional'),
-                        'path': 'server/' + kind, 'source': metadata}
+    import traditional_runtime
+    result = components(engine)
     build = traditional_build.status(engine)
+    deployment = traditional_runtime.status(engine, build)
     return {'components': result, 'compilation_ready': build['build_allowed'], 'build': build,
-            'message': 'Supported source can be compiled and staged. Deployment, local login and client data are the next milestone.'}
+            'deployment': deployment, 'message': deployment['message']}

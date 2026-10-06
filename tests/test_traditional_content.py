@@ -82,6 +82,114 @@ class TraditionalContentImports(unittest.TestCase):
                          {'general.lua', 'commands/rules.lua', 'constants/races.lua'})
         self.assertEqual(custom.read_text(), 'custom plugin')
 
+    def test_one_quest_import_detects_plugins_and_lua_from_same_tree(self):
+        files = {'projecteqquests-main/qeynos/guard.pl': 'zone script',
+                 'projecteqquests-main/plugins/check.pl': 'perl plugin',
+                 'projecteqquests-main/plugins/lib/helpers.pm': 'perl module',
+                 'projecteqquests-main/plugins/README.md': 'documentation',
+                 'projecteqquests-main/lua_modules/general.lua': 'lua module',
+                 'projecteqquests-main/lua_modules/constants/races.lua': 'constants'}
+        result = self.install('quests', files)
+        detected = content.components(self.engine)
+        for kind, total, scripts in (('plugins', 3, 2), ('lua_modules', 2, 2)):
+            with self.subTest(kind=kind):
+                self.assertTrue(detected[kind]['imported'])
+                self.assertTrue(detected[kind]['present'])
+                self.assertTrue(detected[kind]['quests_present'])
+                self.assertEqual(detected[kind]['origin'], 'quests')
+                self.assertEqual(detected[kind]['path'], 'server/quests/' + kind)
+                self.assertEqual(detected[kind]['files'], total)
+                self.assertEqual(detected[kind]['scripts'], scripts)
+                self.assertEqual(detected[kind]['source'], result['component'])
+                self.assertFalse((self.work / 'server' / kind).exists())
+
+    def test_legacy_standalone_helpers_remain_usable_until_quests_supply_them(self):
+        self.install('plugins', {'plugins/check.pl': 'legacy plugin'})
+        self.install('lua_modules', {'lua_modules/general.lua': 'legacy module'})
+        self.install('quests', {'qeynos/guard.pl': 'zone script'})
+        detected = content.components(self.engine)
+        for kind in ('plugins', 'lua_modules'):
+            self.assertTrue(detected[kind]['imported'])
+            self.assertFalse(detected[kind]['quests_present'])
+            self.assertEqual(detected[kind]['origin'], 'standalone')
+            self.assertEqual(detected[kind]['path'], 'server/' + kind)
+            self.assertEqual(detected[kind]['quests_path'], 'server/quests/' + kind)
+        self.install('quests', {'qeynos/guard.pl': 'new zone script',
+                               'plugins/check.pl': 'new plugin',
+                               'lua_modules/general.lua': 'new module'}, replace=True)
+        for kind in ('plugins', 'lua_modules'):
+            self.assertEqual(content.components(self.engine)[kind]['origin'], 'quests')
+        self.assertEqual((self.work / 'server/plugins/check.pl').read_text(), 'legacy plugin')
+
+    def test_unmarked_existing_quest_helpers_are_detected(self):
+        for relative, value in (('server/quests/plugins/check.pl', 'plugin'),
+                                ('server/quests/lua_modules/general.lua', 'lua')):
+            path = self.work / relative
+            path.parent.mkdir(parents=True, exist_ok=True)
+            path.write_text(value)
+        for kind in ('plugins', 'lua_modules'):
+            detected = content.components(self.engine)[kind]
+            self.assertTrue(detected['imported'])
+            self.assertEqual(detected['origin'], 'quests')
+            self.assertIsNone(detected['source'])
+
+    def test_empty_or_documentation_only_helper_directories_are_missing(self):
+        self.install('quests', {'qeynos/guard.pl': 'zone',
+                               'plugins/README.md': 'no Perl scripts',
+                               'lua_modules/README.md': 'no Lua scripts'})
+        for kind in ('plugins', 'lua_modules'):
+            detected = content.components(self.engine)[kind]
+            self.assertTrue(detected['present'])
+            self.assertTrue(detected['quests_present'])
+            self.assertFalse(detected['imported'])
+            self.assertEqual(detected['origin'], 'missing')
+            self.assertEqual(detected['scripts'], 0)
+
+    def test_quests_replacement_updates_helper_detection_and_preserves_backup(self):
+        self.install('quests', {'qeynos/guard.pl': 'old zone', 'plugins/check.pl': 'old plugin',
+                               'lua_modules/general.lua': 'old module'})
+        result = self.install('quests', {'qeynos/guard.pl': 'new zone', 'plugins/new.pl': 'new plugin'}, replace=True)
+        detected = content.components(self.engine)
+        self.assertTrue(detected['plugins']['imported'])
+        self.assertEqual(detected['plugins']['files'], 1)
+        self.assertFalse(detected['lua_modules']['imported'])
+        backup = self.work / result['backup']
+        self.assertEqual((backup / 'plugins/check.pl').read_text(), 'old plugin')
+        self.assertEqual((backup / 'lua_modules/general.lua').read_text(), 'old module')
+
+    def test_symlink_helper_or_quest_parent_cannot_count_as_available(self):
+        outside = self.root / 'outside'
+        outside.mkdir()
+        (outside / 'check.pl').write_text('outside plugin')
+        quests = self.work / 'server/quests'
+        quests.mkdir()
+        (quests / 'plugins').symlink_to(outside, target_is_directory=True)
+        detected = content.components(self.engine)['plugins']
+        self.assertFalse(detected['imported'])
+        self.assertFalse(detected['safe'])
+        (quests / 'plugins').unlink()
+        quests.rmdir()
+        quests.symlink_to(outside, target_is_directory=True)
+        self.assertFalse(content.components(self.engine)['plugins']['imported'])
+
+    def test_symlink_inside_helper_tree_is_rejected_without_following_it(self):
+        self.install('quests', {'qeynos/guard.pl': 'zone', 'plugins/check.pl': 'plugin'})
+        outside = self.root / 'outside.pm'
+        outside.write_text('external module')
+        (self.work / 'server/quests/plugins/external.pm').symlink_to(outside)
+        detected = content.components(self.engine)['plugins']
+        self.assertFalse(detected['imported'])
+        self.assertFalse(detected['safe'])
+        self.assertEqual(detected['files'], 0)
+
+    def test_invalid_quest_marker_does_not_hide_usable_local_helpers(self):
+        self.install('quests', {'qeynos/guard.pl': 'zone', 'plugins/check.pl': 'plugin'})
+        (self.work / 'server/quests' / content.MARKER).write_text('[]')
+        detected = content.components(self.engine)['plugins']
+        self.assertTrue(detected['imported'])
+        self.assertEqual(detected['origin'], 'quests')
+        self.assertIsNone(detected['source'])
+
     def test_full_quests_repo_without_requested_folder_is_rejected(self):
         files = {'projecteqquests-master/qeynos/guard.pl': 'zone script',
                  'projecteqquests-master/global/global_player.lua': 'global script'}

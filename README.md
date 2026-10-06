@@ -31,7 +31,9 @@ A standalone Android control app for [Russianranger/Triptych-Triumvirate](https:
 
 ## Downloads and first setup
 
-**App 0.6.5 — Traditional ARM64 compilation:** Traditional now imports the pinned [Russianranger/Server](https://github.com/Russianranger/Server) source, applies a checked patch recipe in a separate build copy, and compiles/stages all nine server tools. It uses its own Debian Bookworm runtime and defaults to one compiler job. Deploy, Start and generated client exports await the database/login milestone. [Setup guide](docs/traditional-profiles.md) · [Research and CMake recipe](docs/traditional-arm-build.md).
+**App 0.6.8 — Traditional deployment and quests helpers:** Deploy and start the verified Traditional build, validate its PEQ/local-login schema with database backups, and prepare/export matching RoF2 client files. Plugins and Lua modules are detected in the imported quests tree and share its revision; existing standalone imports remain fallbacks. Your successfully staged build can be deployed without recompilation. [Device test steps](docs/traditional-deploy-068.md).
+
+**App 0.6.5 — Traditional ARM64 compilation:** Traditional now imports the pinned [Russianranger/Server](https://github.com/Russianranger/Server) source, applies a checked patch recipe in a separate build copy, and compiles/stages all nine server tools. It uses its own Debian Bookworm runtime and defaults to one compiler job. Version 0.6.8 adds the deployment and local-login path described above. [Setup guide](docs/traditional-profiles.md) · [Research and CMake recipe](docs/traditional-arm-build.md).
 
 **Beta 0.6 — runtime installation repair:** expands hard links into regular files when installing server/client runtimes, avoiding the `link failed: EACCES` failure reported on Fold6/Android 16. Existing working installations need only the APK update. [Release and testing instructions](docs/beta-06-release.md).
 
@@ -58,7 +60,7 @@ Reserve at least **12 GB free**, with additional space for large map sets, SQL d
 
 ## Implemented management flows
 
-The server build/start/export flows below describe the verified **Custom** adapter. Traditional adds its own compile-and-stage adapter; deployment and first login remain pending as described in the profile guide.
+The server build/start/export flows below describe the **Custom** adapter. Traditional uses its own verified compilation and deployment adapters; follow the profile guide for its schema, local-login, quests and clean-client setup. Physical Thor first login and zoning remain device acceptance.
 
 | Area | Controls |
 | --- | --- |

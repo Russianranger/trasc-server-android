@@ -15,7 +15,7 @@ function spellTestControls(){
 }
 function renderClientStatus(client){
  clientImported=!!client?.imported;spellComparison=client?.spell_test||{};
- $('client-status').textContent=clientImported?client.files+' entries · '+bytes(client.bytes)+' extracted. '+(client.dinput8_present?'dinput8.dll is present.':'dinput8.dll was not found beside eqgame.exe.'):'No client imported.';
+ $('client-status').textContent=clientImported?client.files+' entries · '+bytes(client.bytes)+' extracted. '+(activeProfile==='traditional'?'Clean Traditional client uses Wine’s built-in DirectInput.':client.dinput8_present?'dinput8.dll is present.':'dinput8.dll was not found beside eqgame.exe.'):'No client imported.';
  $('spell-test-status').textContent=spellComparison.error|| (spellComparison.state==='applied'?
   'Compatibility on · '+(spellComparison.excluded_count??spellComparison.excluded_ids.length)+' IDs excluded · '+spellComparison.filtered_rows+' rows in each folder. Future exports stay filtered. Latest full table retained for Restore.':
   ['applying','restoring'].includes(spellComparison.state)?'File update incomplete. Use Restore full spell files before launching.':

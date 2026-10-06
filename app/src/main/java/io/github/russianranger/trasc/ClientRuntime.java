@@ -112,10 +112,10 @@ final class ClientRuntime {
     synchronized JSONObject start(JSONObject options)throws Exception {
         begin();boolean started=false,compilerLease=false;
         try {
-            if(server.profiles.current().equals("traditional")) {
-                if("compiler".equals(options.optString("mode")))throw new IOException("The custom client DLL compiler belongs to TRASC Custom. Traditional compilation is the next milestone.");
+            Map<String,Object> profileOptions=ClientProfilePolicy.overrides(server.profiles.current(),options.optString("mode","client"));
+            if(!profileOptions.isEmpty()) {
                 options=new JSONObject(options.toString());
-                options.put("native_dinput8",false).put("mouse_warp",false).put("reduce_load_pauses",false).put("fast_spell_parse",false).put("particle_mode","off").put("boat_mode","off");
+                for(Map.Entry<String,Object> option:profileOptions.entrySet())options.put(option.getKey(),option.getValue());
             }
             if(alive())throw new IOException("Client is already open. View it or stop it before another launch.");
             File uiRecovery=new File(server.work,"run/client-ui-import.json");

@@ -15,7 +15,7 @@ function renderProfile(n){
    for(const option of $('build-jobs').options){option.disabled=Number(option.value)>2;if(option.value==='2')option.textContent='2 · more memory required';}
    $('client-import-help').textContent='Import a separate, clean ROF2 client ZIP. Traditional uses Wine’s built-in DirectInput; your Custom client and DLL stay in their own profile.';
    $('source-import-help').textContent='Use the tested Russianranger/Server revision, then Import from GitHub. Build prepares a patched copy and fetches its pinned websocket headers. Your original source stays intact. Other revisions need qualification.';
-   $('setup-finish-help').textContent='Refresh the Traditional build runtime, import the tested source, then compile and stage it in Builds. Database, maps and client imports can follow. Deployment and first login are the next milestone.';
+   $('setup-finish-help').textContent='Import the database, maps, quests and server assets, then deploy your staged build in Builds. Import a separate RoF2 client, prepare it and start the server.';
    renderDatabaseSelection();
   }
  }
@@ -26,7 +26,16 @@ function syncProfileControls(){
  $('world-profile').disabled=blocked;$('switch-profile').disabled=blocked||$('world-profile').value===activeProfile;
  $('profile-status').textContent=blocked?'Stop the client and server runtime, then finish transfers to switch.':'Each world keeps its own database, files, client and backups. Switching discards unsaved form edits.';
  if(traditional()){
-  for(const id of ['start-server','restart-server','deploy-build','rollback-build','export-client','spire-export','client-prepare'])$(id).disabled=true;
+  const deployment=lastState?.traditional?.deployment;
+  const serverBlocked=!!(busy||sessionAction||!lastNative?.alive||lastNative?.installing||lastNative?.session_busy||lastState?.profile!=='traditional'||lastState?.jobs?.some(j=>['queued','running'].includes(j.status)));
+  const clientBlocked=!!(serverBlocked||!lastClientNative||lastClientNative.alive||lastClientNative.busy);
+  $('deploy-build').disabled=clientBlocked||!!lastState?.running||!deployment?.deploy_allowed;
+  $('rollback-build').disabled=clientBlocked||!!lastState?.running||!deployment?.rollback_allowed;
+  $('start-server').disabled=serverBlocked||!!lastState?.running||!deployment?.start_allowed;
+  $('restart-server').disabled=serverBlocked||!lastState?.running||!deployment?.start_allowed;
+  for(const id of ['export-client','spire-export'])$(id).disabled=clientBlocked||!deployment?.client_data_allowed;
+  $('client-prepare').disabled=clientBlocked||!lastState?.client?.imported||!deployment?.client_data_allowed;
+  $('client-import').disabled=clientBlocked;
   const activeJob=lastState?.jobs?.some(j=>['queued','running'].includes(j.status));
   $('build-server').disabled=!!(busy||sessionAction||!lastNative?.alive||lastNative?.installing||lastNative?.session_busy||!lastClientNative||lastClientNative.alive||lastClientNative.busy||activeJob||lastState?.profile!=='traditional'||!lastState?.traditional?.build?.build_allowed);
   $('traditional-tested-source').disabled=!!(busy||sessionAction||lastNative?.installing||lastNative?.session_busy||activeJob);
@@ -40,14 +49,14 @@ function syncProfileControls(){
 function renderTraditionalStatus(){
  if(!traditional())return;
  const s=lastState,components=s?.traditional?.components||{},build=s?.traditional?.build;
- const entries=[['Server runtime',build?.runtime_ready?'Build tools ready':lastNative?.installed?'Installed · check build tools':'Install in this profile'],['Server source',build?.source_supported?'Supported revision':s?.source?'Imported · not qualified':'Import required'],['Compiled binaries',build?.staged_valid?'Nine binaries staged':build?.staged_message||'Build required'],['PEQ database',s?.database_imported?'Imported':'Import required'],['Server maps',s?.maps_ready?'Present':'Import required']];
+ const entries=[['Server runtime',build?.runtime_ready?'Build tools ready':lastNative?.installed?'Installed · check build tools':'Install in this profile'],['Server source',build?.source_supported?'Supported revision':s?.source?'Imported · not qualified':'Import required'],['Compiled binaries',build?.staged_valid?'Nine binaries staged':s?.traditional?.deployment?.deployed_valid?'Nine binaries deployed':build?.staged_message||'Build required'],['PEQ database',s?.database_imported?'Imported':'Import required'],['Server maps',s?.maps_ready?'Present':'Import required']];
  for(const [key,name]of Object.entries({quests:'Quests',plugins:'Perl plugins',lua_modules:'Lua modules',assets:'Server assets'})){
-  const c=components[key];entries.push([name,c?.imported?'Imported · '+c.source.files+' files'+(c.source.commit?' · '+c.source.commit.slice(0,10):''):'Import required']);
+  const c=components[key];entries.push([name,c?.imported?(c.origin==='quests'?'Detected in quests · ':'Present · ')+(c.files??c.source?.files??0)+' files'+(c.source?.commit?' · '+c.source.commit.slice(0,10):''):'Import required']);
  }
- entries.push(['ROF2 client',s?.client?.imported?'Imported separately':'Import in Client'],['Client runtime',lastClientNative?.installed?'Installed':'Install in Client'],['Deployment & first login','Next milestone']);
+ entries.push(['ROF2 client',s?.client?.imported?'Imported separately':'Import in Client'],['Client runtime',lastClientNative?.installed?'Installed':'Install in Client'],['Deployment',s?.traditional?.deployment?.deployed_valid?'Build deployed':s?.traditional?.deployment?.message||'Deploy staged build'],['Local login',s?.traditional?.deployment?.start_allowed?'Ready to start':'Complete deployment prerequisites']);
  $('traditional-checklist').replaceChildren(...entries.map(([name,state])=>{const row=document.createElement('tr');for(const text of [name,state]){const cell=document.createElement('td');cell.textContent=text;row.append(cell);}return row;}));
  const message=!build?.runtime_ready?build?.runtime_message:!build?.source_supported?build?.source_message:!build?.build_allowed?build?.runtime_message:'Ready to compile and stage. Content imports and a playable world are separate checks.';
- $('traditional-checklist-note').textContent=lastNative?.alive?message||'Checking build readiness.':'Open this profile’s runtime to inspect build readiness and imported content.';
+ $('traditional-checklist-note').textContent=lastNative?.alive?s?.traditional?.deployment?.message||message||'Checking readiness.':'Open this profile’s runtime to inspect build readiness and imported content.';
  $('traditional-build-readiness').textContent=lastNative?.alive?message||'Checking build readiness.':'Install or refresh the Traditional build runtime, then open it.';
 }
 action('traditional-tested-source',async()=>{$('source-url').value=traditionalRepository;$('source-ref').value=traditionalRevision;notice('Tested source selected. Choose Import from GitHub to download it.');});
@@ -55,7 +64,8 @@ $('world-profile').addEventListener('change',syncProfileControls);
 action('switch-profile',async()=>{await api('profile_switch',{profile:$('world-profile').value});location.reload();});
 const questContentRepository='https://github.com/ProjectEQ/projecteqquests';
 const serverAssetsRepository='https://github.com/EQEmu/EQEmu';
-const contentComponents={plugins:{kind:'plugins',name:'Perl plugins'},'lua-modules':{kind:'lua_modules',name:'Lua modules'},assets:{kind:'assets',name:'Server assets'}};
+const contentComponents={assets:{kind:'assets',name:'Server assets'}};
+const questHelpers={plugins:'plugins','lua-modules':'lua_modules'};
 const contentResults={};
 function componentStateText(kind,name){
  const c=lastState?.traditional?.components?.[kind];
@@ -65,6 +75,13 @@ function componentStateText(kind,name){
 }
 function renderContentStatus(){
  for(const [id,{kind,name}]of Object.entries(contentComponents))$(id+'-result').textContent=componentStateText(kind,name);
+ const components=lastState?.traditional?.components||{},quests=components.quests;
+ for(const [id,kind]of Object.entries(questHelpers)){
+  const c=components[kind],source=quests?.source;
+  $(id+'-url').value=source?.repo||source?.url||source?.repository||(quests?.imported?'Imported quests ZIP':'');
+  $(id+'-path').textContent='Folder: '+(c?.path||'server/quests/'+kind)+(c?.origin==='standalone'?' · retained separate import':'');
+  $(id+'-result').textContent=!lastNative?.alive?'Open this profile’s runtime to detect this folder.':c?.imported?'Detected · '+(c.scripts??c.files??0)+' scripts'+(c.origin==='quests'?' in the imported quests tree.':'. Existing separate helpers remain available; a complete quests import uses its bundled helpers.')+(source?.commit?' Quest revision: '+source.commit.slice(0,10)+'.':''):c?.safe===false?'Folder contains a symbolic link and cannot be used. Reimport a complete quests archive.':c?.present?'Folder exists, but contains no usable scripts. Import the complete quests repository below.':'Folder missing. Import or update the complete quests repository below.';
+ }
 }
 function contentChoice(){const kind=$('content-kind').value,name={quests:'quests',plugins:'Perl plugins',lua_modules:'Lua modules',assets:'server assets'}[kind];$('content-url').value=kind==='assets'?serverAssetsRepository:questContentRepository;$('content-ref').value=kind==='assets'?traditionalRevision:'';$('replace-content').checked=false;$('content-git').textContent='Download '+name;$('content-zip').textContent='Choose '+name+' ZIP';}
 $('content-kind').addEventListener('change',contentChoice);contentChoice();

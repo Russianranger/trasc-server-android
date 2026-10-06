@@ -1,3 +1,23 @@
+# Implemented: 0.6.8 Traditional deployment and quests-linked helpers
+
+User provided `logs-2098669313453750451.zip` from 0.6.7 on AYN Thor and confirmed Traditional compilation. Its operation log ends after all 768 build steps with **Verified nine ARM64 Traditional executables and runtime dependencies**. User now requests quests-based plugin/module detection and enabling the remaining Traditional deployment/client features.
+
+Implemented version 0.6.8/code57 with preserved package/key:
+
+- Quests import retains plugins and Lua modules in `server/quests`; status detects actual scripts there first, reports their shared quest source/revision, and falls back to existing standalone directories. Primary helper cards are detection/read-only source cards; the advanced standalone importer remains available.
+- Traditional deployment validates the untouched compile receipt/recipe/runtime and all nine binary hashes, qualifies PEQ/local-login tables and versions (server 9328, bots 9055, custom 0), takes a database backup, applies embedded offline migrations and atomically activates profile-local configs/binaries. Interrupted activation/rollback and recovery-error gates are covered.
+- Configuration uses the detected helpers, assets patches/opcodes and this profile’s maps/shared/logs. A missing-only local-world record avoids the pinned login server’s first-registration ID bug without recompiling or rewriting accounts. Local account auto-creation and mode14 remain on this profile; public web/API access is disabled.
+- Start generates shared memory, waits for login/world, and checks live stable dynamic zone children plus fresh sleep-mode logs. The child matcher covers guest-loader argv under PRoot. Rollback and matching four-file client export/preparation are enabled after readiness checks. Traditional clean client uses built-in DirectInput, with Custom hooks forcibly disabled.
+- Existing 0.6.5–0.6.7 builds are reusable: `traditional_build.py` and `traditional_verify.py` were deliberately not edited, since their complete file hashes define the recipe identity. Historical `compile_only` is a build receipt; the new `deployment.json` records activation. No device rebuild/runtime refresh is needed solely for this APK.
+
+Local validation: 316 backend tests passed with eight optional Lua tests skipped; native/JVM management suite passed, including clean Traditional launch policy and isolated backend packaging. Independent backend/frontend/recovery review has no remaining code blockers. Local browser installation returns empty Chromium ZIPs, so browser checks run in CI. Full real ARM64/native+PRoot integration is being added to the release workflow; do not claim it passed until that job completes.
+
+The reproducible public PEQ archive `peq-1759046415.zip` SHA256 `ac8649f23d2c3aea2cade138dfe10d46d1b21ad1a80d08ca95f5434fab7f218d` has exactly the user seed’s five SQL sections (identical bytes). Integration uses that archive, pinned full ProjectEQ helpers and a real PoK map to exercise database import, deployment, real exports, actual zone boot, encrypted UDP accepted/rejected login, restart/redeploy/rollback and Custom isolation. Physical Thor first login and zoning remain device acceptance. See [test steps](traditional-deploy-068.md). Era presets and additional ferry routes remain deferred.
+
+Publication is pending CI. Do not advance main with documentation-only checkpoints while signed publication is running. The APK-only artifact is now preserved separately as `trasc-server-android-apk` for chat delivery without another export branch.
+
+---
+
 # Implemented: 0.6.7 content downloads and client UI ZIP imports
 
 User confirmed 0.6.6 is progressing well and requested obvious GitHub/ZIP imports
