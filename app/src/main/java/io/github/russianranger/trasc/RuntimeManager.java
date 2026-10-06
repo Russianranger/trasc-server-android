@@ -59,9 +59,9 @@ public final class RuntimeManager {
                 if(!previous.equals(id)){
                     client.releaseIdleResources();
                     try {
-                        bindProfile(id);client.bindProfile();profiles.select(id);
+                        bindProfile(id);client.bindProfile(id);profiles.select(id);
                     } catch(Exception e){
-                        try{bindProfile(previous);client.bindProfile();}catch(Exception restore){recoveryError="Profile recovery requires reopening the app";e.addSuppressed(restore);}
+                        try{bindProfile(previous);client.bindProfile(previous);}catch(Exception restore){recoveryError="Profile recovery requires reopening the app";e.addSuppressed(restore);}
                         throw e;
                     }
                 }

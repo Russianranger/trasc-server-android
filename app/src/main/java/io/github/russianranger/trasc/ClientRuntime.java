@@ -16,6 +16,7 @@ final class ClientRuntime {
     final Context context;
     final RuntimeManager server;
     File root,client,prefix,run,tmp,directx;
+    private ClientTransientPaths transientPaths;
     volatile boolean busy;
     volatile String status="Install the client runtime to try Wine and ROF2.";
     private volatile Process process;
@@ -23,17 +24,18 @@ final class ClientRuntime {
     private volatile AudioBridge audio;
     ClientRuntime(Context context) {
         this.context=context;server=RuntimeManager.get(context);
-        bindProfile();
+        bindProfile(server.profiles.current());
     }
     void releaseIdleResources()throws Exception {
         if(graphics!=null){graphics.stop();graphics=null;}
         if(audio!=null){audio.close();audio=null;}
     }
-    void bindProfile() {
+    void bindProfile(String profile) {
         process=null;graphics=null;audio=null;
         root=new File(server.work,"client/runtime");client=new File(server.work,"client/current");prefix=new File(server.work,"client/prefix");
         directx=new File(server.work,"client/directx");
-        run=new File(server.home,"tmp/client/session");tmp=new File(server.home,"tmp/client/tmp");
+        transientPaths=new ClientTransientPaths(server.profiles.base,profile);
+        run=transientPaths.run;tmp=transientPaths.tmp;
         status="Client stopped. Install or start this profile’s client runtime.";
     }
     boolean installed(){return new File(root,"etc/trasc-client-runtime.json").isFile();}
@@ -177,13 +179,18 @@ final class ClientRuntime {
                 File saved=ClientPrefix.preserve(prefix);
                 RuntimeManager.write(new File(server.work,"logs/client-prefix-repair.json"),new JSONObject().put("created_utc",java.time.Instant.now().toString()).put("previous_prefix",saved==null?"none":server.work.toPath().relativize(saved.toPath()).toString()).toString(2));
             }
-            TarExtractor.remove(run);TarExtractor.remove(tmp);run.mkdirs();tmp.mkdirs();sessionPrefix.mkdirs();client.mkdirs();
+            transientPaths.prepare();sessionPrefix.mkdirs();client.mkdirs();
             File presentationLog=new File(server.work,"logs/client-presentation.log");
             LogRetention.rotate(presentationLog);
             JSONObject request=new JSONObject().put("mode",mode).put("resolution",resolution).put("executable",executable).put("native_dinput8",options.optBoolean("native_dinput8",true))
                 .put("diagnostic_logging",options.optBoolean("diagnostic_logging",false)).put("native_d3dx",mode.equals("client")&&options.optBoolean("native_d3dx",true)).put("renderer",renderer).put("cpu_profile",cpuProfile);
             request.put("runtime_mode",runtimeMode).put("storage",new JSONObject().put("kind","app_private_internal")
                 .put("android_directory",client.getCanonicalPath()).put("windows_drive","D:").put("shared_storage",false));
+            request.put("transient_storage",new JSONObject().put("profile",server.profiles.current())
+                .put("android_tmp_directory",tmp.getAbsolutePath()).put("android_session_directory",run.getAbsolutePath())
+                .put("android_tmp_canonical_directory",tmp.getCanonicalPath())
+                .put("wine_socket_path_upper_bound_bytes",ClientTransientPaths.bytes(new File(tmp.getCanonicalPath()+ClientTransientPaths.WINE_SOCKET_SUFFIX)))
+                .put("proot_socket_path_max_bytes",ClientTransientPaths.bytes(new File(tmp.getCanonicalPath()+ClientTransientPaths.PROOT_SOCKET_SUFFIX))));
             request.put("graphics_threading",graphicsThreading).put("cpu_affinity",cpuAffinity).put("fullscreen",mode.equals("client")&&options.optBoolean("fullscreen",true));
             request.put("npc_rendering",npcRendering).put("audio",options.optBoolean("audio",true)).put("sound_diagnostics",options.optBoolean("sound_diagnostics",false));
             request.put("dxvk_hud",options.optBoolean("dxvk_hud",true));
@@ -250,8 +257,12 @@ final class ClientRuntime {
                 try {
                     while(active.isAlive()) {
                         if(bridge!=null&&!bridge.alive()) {
-                            RuntimeManager.write(new File(activeRun,"gpu-failed"),"GPU bridge exited\n");
-                            RuntimeManager.recordFailure(activeWork,"client_gpu",new IOException("GPU bridge exited; see client-gpu.log. Choose Software graphics to compare."));
+                            synchronized(ClientRuntime.this) {
+                                if(process==active&&active.isAlive()) {
+                                    RuntimeManager.write(new File(activeRun,"gpu-failed"),"GPU bridge exited\n");
+                                    RuntimeManager.recordFailure(activeWork,"client_gpu",new IOException("GPU bridge exited; see client-gpu.log. Choose Software graphics to compare."));
+                                }
+                            }
                             break;
                         }
                         if(active.waitFor(1,TimeUnit.SECONDS))break;

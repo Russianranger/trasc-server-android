@@ -38,6 +38,8 @@ if ! command -v javac >/dev/null; then compiler=(java -m jdk.compiler/com.sun.to
     app/src/main/java/io/github/russianranger/trasc/ClientPrefix.java \
     app/src/main/java/io/github/russianranger/trasc/ClientProfilePolicy.java \
     tests/java/io/github/russianranger/trasc/ClientProfilePolicyHostTest.java \
+    app/src/main/java/io/github/russianranger/trasc/ClientTransientPaths.java \
+    tests/java/io/github/russianranger/trasc/ClientTransientPathsHostTest.java \
     app/src/main/java/io/github/russianranger/trasc/RfbConnection.java \
     app/src/main/java/io/github/russianranger/trasc/ClientFrameStats.java \
     app/src/main/java/io/github/russianranger/trasc/ProotAcceleration.java \
@@ -55,6 +57,7 @@ java -cp "$classes" io.github.russianranger.trasc.ServerRuntimeIdentityHostTest
 java -cp "$classes" io.github.russianranger.trasc.StorageFilesTest
 java -cp "$classes" io.github.russianranger.trasc.ClientHostTest
 java -cp "$classes" io.github.russianranger.trasc.ClientProfilePolicyHostTest
+java -cp "$classes" io.github.russianranger.trasc.ClientTransientPathsHostTest
 java -cp "$classes" io.github.russianranger.trasc.ProotAccelerationHostTest
 if [[ $# -gt 0 ]]; then
     java -Xmx512m -cp "$classes" io.github.russianranger.trasc.RuntimeSessionHostTest "$1"

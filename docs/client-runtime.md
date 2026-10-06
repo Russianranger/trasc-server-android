@@ -76,7 +76,7 @@ If it fails, the display shows a failure dialog and Logs includes `client-prefix
 - TigerVNC provides the X display. RFB listens only on an app-private Unix socket with mode 0600; TCP RFB and X11 listeners are disabled. X11 connections use a random authorization cookie.
 - A native Android display implements bounded RFB raw/copy/resize decoding and sends keyboard/mouse events. There is no external VNC app, browser service or Winlator handoff in this path.
 - `work/client/prefix` preserves the Wine registry and drive state. The imported client remains in `work/client/current`, mapped as Wine drive D:. Runtime installation does not replace the prefix or imported game.
-- Client sockets, Xauthority and process state live under the app's temporary home directory, outside complete session archives. The client runtime, prefix, client files and controller profile are included through the existing client archive component. Complete backup/restore stops the client first.
+- Client sockets, Xauthority and process state live in short, profile-specific temporary directories under app-private data, outside complete session archives. This avoids Android Unix socket pathname limits in the longer Traditional profile layout. The client runtime, prefix, client files and controller profile are included through the existing client archive component. Complete backup/restore stops the client first. See the [0.6.9 startup retry](client-startup-069.md).
 
 ## Verification
 

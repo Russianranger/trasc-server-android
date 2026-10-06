@@ -17,12 +17,14 @@ MARKER = '.trasc-ui.json'
 MAX_BYTES = 512 * 1024**2
 MAX_FILES = 20000
 MAX_XML_BYTES = 8 * 1024**2
+MAX_THEME_METADATA_BYTES = 1024**2
 MAX_SKINS = 32
 MAX_STATUS_SKINS = 256
 MAX_STATUS_FILES = 4096
 PROTECTED = {'default', 'default_old'}
 EXTENSIONS = {'.xml', '.tga', '.bmp', '.dds', '.png', '.jpg', '.jpeg',
               '.gif', '.ico', '.cur', '.ttf', '.otf', '.txt', '.md'}
+THEME_METADATA = {'stone_theme_manifest.json'}
 WINDOWS_RESERVED = {'con', 'prn', 'aux', 'nul', *(f'com{i}' for i in range(1, 10)),
                     *(f'lpt{i}' for i in range(1, 10))}
 
@@ -209,6 +211,23 @@ def _roots(stage):
     return roots
 
 
+def _theme_metadata(path, relative):
+    """Validate and omit known packaging metadata; it is not a client asset."""
+    if len(relative.parts) != 1 or path.name.casefold() not in THEME_METADATA:
+        return False
+    if path.stat().st_size > MAX_THEME_METADATA_BYTES:
+        raise ValueError('StoneUI theme metadata exceeds the 1 MiB limit: ' + str(relative))
+    def unsupported_constant(value):
+        raise ValueError('Unsupported JSON constant: ' + value)
+    try:
+        value = json.loads(path.read_text(encoding='utf-8-sig'), parse_constant=unsupported_constant)
+    except (ValueError, RecursionError) as exc:
+        raise ValueError('Invalid StoneUI theme metadata: ' + str(relative)) from exc
+    if not isinstance(value, dict):
+        raise ValueError('StoneUI theme metadata must be a JSON object: ' + str(relative))
+    return True
+
+
 def _prepare(engine, root, destination):
     files = size = 0
     destination.mkdir(parents=True)
@@ -220,6 +239,8 @@ def _prepare(engine, root, destination):
         if path.is_dir():
             continue
         if path.name.casefold() in (MARKER, '.ds_store', 'thumbs.db', 'desktop.ini'):
+            continue
+        if _theme_metadata(path, relative):
             continue
         if path.suffix.casefold() not in EXTENSIONS:
             raise ValueError('Unsupported file in UI skin: ' + str(relative))
