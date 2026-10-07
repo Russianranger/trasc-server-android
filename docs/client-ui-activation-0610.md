@@ -29,7 +29,7 @@ replaces as a new backup.
    folder name blank. Enable Replace matching skins only when replacing that
    same installed skin. Existing default UI resources remain installed.
 3. Select `UI_Rusuty_Traditional.ini` and `stoneui_rof2_720_v011`. Select
-   **Apply included window layout**, then apply the skin. If the checkbox is
+   **Apply included window layout**, then choose **Apply skin for next launch**. If the checkbox is
    unavailable, the installed skin has no matching layout text file; import the
    activation ZIP above before applying the layout.
 4. Launch ROF2 at 1280 x 720. Leave **Load Default UI** unchecked at character

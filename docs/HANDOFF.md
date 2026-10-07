@@ -1,25 +1,102 @@
-# Implemented: 0.6.10 client UI activation (2026-10-07 UTC)
+# Released: 0.6.10 client UI activation and Return to Launcher (2026-10-07 UTC)
 
-User confirmed the 0.6.9 client launches successfully on Thor. StoneUI still
-returns to Default. The latest `UI_Rusuty_Traditional(1).ini` is byte-identical
-to the earlier settings and saves `UISkin=Default`; `UIErrors.txt` contains only
-its creation timestamp. Neither proves a specific native parser rejection.
+The user confirmed client startup on Thor with 0.6.9. StoneUI fallback remains
+unresolved physically: latest `UI_Rusuty_Traditional(1).ini` is 18,544 bytes,
+SHA256 `f9094ad8efd7ed7f1ed4d941552aa8e8b5e2d2a3e5e5d4fa5a858ab92de62a38`,
+identical to the earlier file and saves `UISkin=Default`. `UIErrors.txt` contains
+only its creation timestamp. Neither identifies a native XML rejection.
 
-0.6.10/code59 adds explicit installed-skin activation for an existing character
-INI in both profiles, an optional matching included window layout, byte-exact
-backups and Restore previous UI settings. Activation is revision-checked and
-only available with the client stopped. Root `UIErrors.txt` is now included in
-log inventory, tail and export. The shared client gear action is renamed
-**Return to Launcher**, including its failure/reconnect text, for Custom and
-Traditional.
+0.6.10/code59 is now implemented, fully qualified, published and made available
+as the signed APK. Both profiles offer installed-skin activation for an existing
+character INI, optional matching included window layout, byte-exact backups and
+Restore previous UI settings. Surgical edits preserve unrelated colors, fonts,
+chat filters and unknown preferences. Native stopped-client/queued-job guards,
+profile affinity, revision checks and anchored atomic replacement protect the
+operation. Restore remains available after normal game exit rewrites the INI.
 
-Native StoneUI appearance and persistence remain device acceptance checks; do
-not claim them from host activation evidence. Follow
-[the device steps](client-ui-activation-0610.md). No renderer, translator, Wine
-prefix, client assets, compiled server or Traditional compile-receipt recipe
-is changed. Keep the installed stack and existing staged build.
+Root case-insensitive `UIErrors.txt` now participates in inventory, tail, export,
+retention and explicit log cleanup with settings/chat/binary/symlink exclusions.
+The shared ClientActivity gear button, startup-failure dialog and disconnect
+message all say **Return to Launcher** for Custom and Traditional; their finish
+behavior is unchanged. Returning to Launcher alone does not stop the game.
 
-Release qualification and publication evidence will be recorded after CI.
+## Release and independent evidence
+
+- PR #21 head `22ed170756eb40e6736f16b859f884ae29c7c4ae` qualified successfully
+  on run `37562619222`. Squash source is
+  `270b0bbb485e80397148112ebca66a5d98c0f69e`, identical reviewed tree
+  `9089bff9967ff4b49162c51850b6c9b5d6016200`.
+- Signed main run `37563916833` passed all 11 jobs, including APK
+  `112609291732`, client runtime `112609292547`, Traditional runtime
+  `112607192913` and preview publication `112618260626`. Separate cleanup run
+  `37563916543` also passed. CI ran 341 backend tests, eight Lua/protocol tests,
+  all ten browser suites, native management and Android build/lint; signing
+  verification passed. The 43 focused UI tests and independent review passed.
+- APK-only artifact `11457658097` is 15,108,343 bytes; ZIP SHA256
+  `6653593a4f7000515c5aabee88e6c6e188423c48d3eeef5d3c7f3938f03830c4`.
+  Independently verified APK is 15,288,293 bytes, SHA256
+  `ead3312ec676fd10f0940598a1f14eb8b9835f61e5678d933f5abfd6294f2488`,
+  package `io.github.russianranger.trasc.preview`, 0.6.10/code59, certificate
+  `ff9c09cdc3e2404d1d7f72d61ce2f8651464f5e03dff340f70bd4df28c70e869`.
+  ZIP integrity, all six changed bundled assets and all DEX operation/menu/log
+  markers passed. Library item `libfile_97c97277b61c819184241df828810224`, version 0,
+  retains `TRASC-Android-0.6.10.apk`; local delivery is
+  `/workspace/scratch/fdc325fcf8db/deliverables/TRASC-Android-0.6.10.apk`.
+- Public preview APK asset `617458219` size/digest match the delivered APK;
+  source archive SHA256
+  `19171b673d5eb1ba5e5c287ca7bdc254f355b0715e17469ed39337d253e4c65d`.
+  Preview, client-runtime-v1 and traditional-runtime-v1 tags all point to the
+  release source above. Documentation checkpoint follows only after all
+  publishers completed; keep those build tags on the qualified source.
+- Independent replay of the exact 22,021,350-byte StoneUI activation ZIP
+  (SHA256 `9b0e764b57bf9da37fa4cb7470d4e6f663dbc574d8bab9e434af08e08aeae478`)
+  and actual uploaded INI passed both profiles. Selection-only changes only
+  Main/UISkin. Optional layout checks verify player/group/target/viewport
+  geometry while retaining 531 unrelated original lines and chat preferences.
+  Original backups and restores are byte-exact, including restore after a
+  simulated normal game rewrite. All other client/default/skin bytes remain
+  exact. Evidence is ignored `runtime-work/client-ui-0610/replay.json` and
+  `release-proof.json`; do not publish the user's full INI.
+- PR Traditional evidence artifact `11457704230` digest was verified. Main
+  artifact `11459920751` is 129,016 bytes, SHA256
+  `2df9843cd896e3a6ae936541e60d33c83e2a8299469f5182753c51963f5b192d`.
+  Native and PRoot each passed 13 checks: PEQ 117,944 items / 40,722 spells /
+  schema [9328,0,0], genuine encrypted UDP login accepted/rejected/restored/
+  restarted/autocreated, world authentication, PoK on port 7000, dynamic-zone
+  sleep, exports, deployment/rollback and complete session round-trip.
+  All nine ARM64 reports agree and loader dependencies/providers resolve.
+  Published Traditional archive is 252,936,328 bytes, SHA256
+  `7d6f7b7b7c4d5920b0e2e5431d97b167e6110d7d3b6cbd0251cd48a5d50632ae`;
+  manifest source/tag and release digest were verified.
+- Main client evidence covers actual PE32/native DLL/D3D9, direct+PRoot DXVK,
+  compact-path SHM/socket/Wine regression, native session hash round-trip,
+  GLES lifecycle and animated direct/PRoot VirGL models/input/audio.
+  Published Wine 10 WoW64/Box64 0.4.4 archive is 353,710,680 bytes, SHA256
+  `2f130c07683e50bc606af111d5c35c4f503c1427772c1f9b0f45e1e4b75c76c4`.
+  Client tag, public manifest/source and asset size/digest match.
+
+## Next device acceptance
+
+Install in place after stopping both runtimes, then freshly Start runtime in
+Traditional. Keep the current runtimes, Wine prefix, imported client, DirectX
+helpers and compiled server. `backend/traditional_build.py` and
+`backend/traditional_verify.py` remain byte-identical; do not invalidate the
+existing device receipt with recipe edits. No renderer/translator/server changes
+were made for this UI action.
+
+Follow [the StoneUI test](client-ui-activation-0610.md): select existing
+`UI_Rusuty_Traditional.ini` and `stoneui_rof2_720_v011`, optionally apply its
+included window layout, launch at 1280x720 with Load Default UI unchecked, camp/exit
+normally and check persistence. Reimport current
+`StoneUI-RoF2-0.1.1-activation.zip` if its matching layout is missing. Current ZIP
+Library item `libfile_99df6acf12208191b77dfefaad5fb092`, version 5, is unchanged.
+If fallback persists, immediately export Logs before another reload/restart and
+retain the native chat response/screenshot. Root UIErrors is now included.
+Restore previous UI settings is available with the client stopped.
+
+Actual native StoneUI loading and appearance on Thor are still pending. Do not
+claim an XML/parser fix or physical acceptance from host activation or graphics
+probe tests. Startup was already physically accepted on 0.6.9.
 
 # Device follow-up: 0.6.9 startup accepted; StoneUI selection unresolved (2026-10-07 UTC)
 
@@ -79,7 +156,7 @@ build/deployment is ready. An older Windows `dbg.txt` is not this launch's log.
 DirectX, controller, renderer and server files. Only transient host paths are
 shortened and separated by profile; guest `/tmp` and `/prefix` stay the same.
 Profile switching binds the explicit target profile before its marker changes.
-The bundled translator remains Wine10 WoW64/Box64 0.4.4; `runtime_mode=auto`
+The bundled translator remains Wine 10 WoW64/Box64 0.4.4; `runtime_mode=auto`
 controls PRoot acceleration. No translator or renderer replacement is involved.
 
 The same control log rejects StoneUI's `STONE_THEME_MANIFEST.json`. The importer
@@ -890,7 +967,7 @@ User confirms outbound zone-border travel works, reports moving Erudin skiffs an
 
 Bundle `logs-8797392406544205673.zip` (private, uncommitted) is 0.5.5 on AYN Thor. Erudin zone log records `handoff complete; failed riders=0 phase=3 sequence=2`; departure later transfers zero riders. In `client-boats-rollover.log`, the passive detachment occurs at ticks12418680, X=-424.711,Y=-214.898,Z=17.593 with zero motion input; preceding ship origin was X=-443,Y=-178.750,Z=-19.375, heading255.750. This is distinct from the earlier deliberate step onto and back off the Erudin pier. The collision map places rocky shoreline on the old southbound leg. Death is logged at12:45:21 UTC.
 
-Branch `codex/ferry-erudin-log-cleanup`, version0.5.6/code46: new departure heads southwest to(-500,-40), then west via(-700,-80), avoiding the old(-443,-220) shoreline waypoint. Port waits180s, island60s, speed0.60. Preview route update migrates installed0.5.5 records/files transactionally with backup, unchanged IDs and offline recovery tickets. Erudin version-zero race73 skiff-only spawns are disabled with prior disabled rows retained for removal; their saved zone state is cleared. Other-zone skiffs remain. No native server/DLL change; retain the0.5.5 build.
+Branch `codex/ferry-erudin-log-cleanup`, version 0.5.6/code46: new departure heads southwest to(-500,-40), then west via(-700,-80), avoiding the old(-443,-220) shoreline waypoint. Port waits180s, island60s, speed0.60. Preview route update migrates installed0.5.5 records/files transactionally with backup, unchanged IDs and offline recovery tickets. Erudin version-zero race73 skiff-only spawns are disabled with prior disabled rows retained for removal; their saved zone state is cleared. Other-zone skiffs remain. No native server/DLL change; retain the0.5.5 build.
 
 Native Logs adds explicit older-than48h-by-file-mtime and reset-all-to-zero controls, requiring stopped client/runtime. JSON settings/deployment records, chat, backups and exports are excluded. Native export now requests a bounded ferry snapshot while the runtime is available; this bundle proved the previous native export omitted the Python-only snapshot.
 
@@ -1114,7 +1191,7 @@ On-device build/deploy succeeded: DLL1,716,224 bytes, SHA256 `a5bda1fe2af6367e8f
 
 Read [particles-0422.md](particles-0422.md). User authorized proceeding with the fix. Added default-off **First-person spell particles**: Original behavior, Diagnostics only, Repair + diagnostics (experimental). Wraps the verified first-person update, calls the original first, then uses the original permission setter only for a hidden, unpermitted current local root actor. Exact-binary/layout, thread, lifetime, scope and writable-memory guards apply; attempts/logs are bounded. Profile observes without repair; off does not hook. The new header is included in the Android deployment contract. Existing controller/reconnect/loading code is preserved; camp parked.
 
-Implementation `dde9476e9a82950bf497a0082fbb94579cdb2db6`, version0.4.22/code39, [run35385991190](https://github.com/Russianranger/trasc-server-android/actions/runs/35385991190): **all seven jobs successful**. 138 Python tests, native/JVM/browser checks, Microsoft v142 fixture and real add-on build, ARM64 Wine/Box64 particle fixture and every existing direct/PRoot Software/DXVK/VirGL graphics/audio/model/input/restart, database/session, Android lint/signing and publication gate passed. No gate waived. Original two-private-binary verifier still passes all11 scenarios. Portrait/landscape option screenshots reviewed. No subagents; no private game binaries/SDK committed.
+Implementation `dde9476e9a82950bf497a0082fbb94579cdb2db6`, version 0.4.22/code39, [run35385991190](https://github.com/Russianranger/trasc-server-android/actions/runs/35385991190): **all seven jobs successful**. 138 Python tests, native/JVM/browser checks, Microsoft v142 fixture and real add-on build, ARM64 Wine/Box64 particle fixture and every existing direct/PRoot Software/DXVK/VirGL graphics/audio/model/input/restart, database/session, Android lint/signing and publication gate passed. No gate waived. Original two-private-binary verifier still passes all11 scenarios. Portrait/landscape option screenshots reviewed. No subagents; no private game binaries/SDK committed.
 
 Independent APK v2 signature/content and preserved certificate verified; manifest0.4.22/code39; all26 backend Python/header assets and UI files match source; compiled Java contains new header/mode; 33 native source/recipe files match. APK10,537,055 bytes, SHA256 `5b7ec5d94dbe5afb2678b8dab6a42987df2f7a6b4805a5e3e1d61b31fb794cdc`. Native sources114,558,421 bytes, SHA256 `29fe73561a1f48e3210cdb6fb6b6ed935e4194ea7544d8d8203a4eee2442e1f0`. Public preview tag and asset digests match the candidate. Deterministic build-manifest reconstruction matches the published asset's full SHA256. Local verifiers/evidence under ignored runtime-work/0422. Final handoff update is docs-only [skip ci].
 
@@ -1175,7 +1252,7 @@ Next: have the user update in place, restart the server runtime with the game se
 
 Read [loading-0420.md](loading-0420.md). User authorized the next optimization and reports first-person spell particles begin working after switching to third person and back. Added independent, default-off **Reduce model-loading pauses (experimental)**, scoped to 18 verified Sleep(1) sites in global model loading; it retains scheduler yields and all model/service calls. New UI/XML/model/wait timings will identify the remaining larger costs. Camera V2 and spell loader V2 headers/behavior are unchanged. Keep the device-confirmed Faster spell loading enabled. No Thor speed claim yet; the new wait optimization may provide only a modest gain.
 
-**Released and verified:** implementation `6276054d2d0d62b9a6f85afe519269d61e842a59`, version0.4.20/code37, [run35362750049](https://github.com/Russianranger/trasc-server-android/actions/runs/35362750049), all seven jobs successful. All135 Python tests, native/JVM/browser checks, actual Microsoft v142 add-on build, Windows/x86 fixtures, full ARM64 Wine/Box64 fixture execution, database/session roundtrips, Android lint/preserved signing and all existing direct/PRoot Software/DXVK/VirGL graphics/audio/model/input/restart gates pass. No failed check waived. New fixture tests actual relocated CALL and Sleep instruction forms, boolean/ABI passthrough, import preservation, opt-out and scope/thread exclusion. Isolated128-wait sample is136,892us original/211us yield: mechanism-only evidence, not a game loading speedup. All30 CALL sites,9 import operands and18 wait sites verified against the exact supplied executable; no proprietary executable/SDK uploaded.
+**Released and verified:** implementation `6276054d2d0d62b9a6f85afe519269d61e842a59`, version 0.4.20/code37, [run35362750049](https://github.com/Russianranger/trasc-server-android/actions/runs/35362750049), all seven jobs successful. All135 Python tests, native/JVM/browser checks, actual Microsoft v142 add-on build, Windows/x86 fixtures, full ARM64 Wine/Box64 fixture execution, database/session roundtrips, Android lint/preserved signing and all existing direct/PRoot Software/DXVK/VirGL graphics/audio/model/input/restart gates pass. No failed check waived. New fixture tests actual relocated CALL and Sleep instruction forms, boolean/ABI passthrough, import preservation, opt-out and scope/thread exclusion. Isolated128-wait sample is136,892us original/211us yield: mechanism-only evidence, not a game loading speedup. All30 CALL sites,9 import operands and18 wait sites verified against the exact supplied executable; no proprietary executable/SDK uploaded.
 
 Independent APK v2 RSA/SHA256 signature/content check, manifest0.4.20/code37, all39 Python/header/UI assets,33 corresponding native source/recipe files and phone layout verified. APK10,532,759 bytes, SHA256 `c129d3fc46ad5fad8d1f6238606c494f9d3e796630902667b2db2544e20d06fc`; native sources114,558,331 bytes, SHA256 `90c7f61631939df76d8873cf05253a8a10b73e8f3af6cfb71ff4b1b8bed781f4`. Certificate remains `ff9c09cdc3e2404d1d7f72d61ce2f8651464f5e03dff340f70bd4df28c70e869`. Public preview tag and asset digests match the verified candidate. Runtime publication succeeded. Local evidence/verifier/downloads under ignored runtime-work. This final update is documentation only with [skip ci]. No subagents used.
 
@@ -1225,7 +1302,7 @@ Read [loading-0418.md](loading-0418.md) first. Latest bundle logs-70571057169119
 
 First server-to-character load is 74s: 43s before race/display init with the main thread saturated, then 25s display/models. Added precise spell-loader timing and an optional, default-off faster integer parser for this exact executable. Original reader handles every non-simple field; spell/client/server data unchanged. Requires APK update and one on-device DLL compile/deploy; existing SDK/runtime/source suffice. No Mac tools. Keep camp parked and preserve the user-confirmed source-DLL reconnect fix. No subagents used.
 
-**Released and verified:** implementation `16e989b12263b5f3df619fa74b04911914c5f7dc`, version0.4.18/code35, [run35339568776](https://github.com/Russianranger/trasc-server-android/actions/runs/35339568776), all seven jobs successful. 132 Python tests, native/JVM/browser checks, Microsoft v142 actual add-on compilation and executable parser/layout/ABI fixtures, Android lint/preserved signing, database/session roundtrips and every existing direct/PRoot Software/DXVK/VirGL graphics/audio/input/model/restart gate pass. The full production camera handler now runs in the live fixtures. Downloaded DXVK direct/PRoot evidence confirms free menus and continued camera motion after recentering. The open ARM64/Wine parser fixture takes761ms versus92ms for7,364,520 fields with matching checksums; this is not an EQ load-time result.
+**Released and verified:** implementation `16e989b12263b5f3df619fa74b04911914c5f7dc`, version 0.4.18/code35, [run35339568776](https://github.com/Russianranger/trasc-server-android/actions/runs/35339568776), all seven jobs successful. 132 Python tests, native/JVM/browser checks, Microsoft v142 actual add-on compilation and executable parser/layout/ABI fixtures, Android lint/preserved signing, database/session roundtrips and every existing direct/PRoot Software/DXVK/VirGL graphics/audio/input/model/restart gate pass. The full production camera handler now runs in the live fixtures. Downloaded DXVK direct/PRoot evidence confirms free menus and continued camera motion after recentering. The open ARM64/Wine parser fixture takes761ms versus92ms for7,364,520 fields with matching checksums; this is not an EQ load-time result.
 
 APK10,522,502 bytes, SHA256 `ed9042bac801c25cb26fc6ddd24441107181b057ac13a3dccd82f50314f5829e`. Independent APK v2 signature/content check, preserved certificate `ff9c09cdc3e2404d1d7f72d61ce2f8651464f5e03dff340f70bd4df28c70e869`, package/version and all37 bundled Python/header/UI assets verified. Phone options layout reviewed. Source archive114,558,292 bytes, SHA256 `fc2292e1021a51cea5ea32cc9aaf1908400725252d06a7260e9b82f1471f92f1`. Public preview tag and APK/source digests match the verified candidate. Runtime publication also succeeded. Artifacts/evidence/verifier are under ignored runtime-work. This final handoff commit is documentation only with [skip ci].
 
@@ -1279,7 +1356,7 @@ An isolated Windows symbol build succeeded (run35287847157, diagnostic branch25a
 
 Read [input-crashes-0415.md](input-crashes-0415.md). The new device bundle confirms MIT-SHM capture at about0.95ms, with idle/duplicate skips, but contains no usable Android crash or reconnect stack trace. Gear #tim now uses paced keys without Ctrl+A; optional Client → Recenter mouse for camera look enables Wine's own per-application warp handling after relaunch. It is off by default and requires camera/inventory acceptance on the Thor. Android exit history/uncaught-Java capture, WebView recovery and notification shutdown lifecycle handling are added. **Neither the reconnect overflow nor the reported stop crash has a proven root cause or confirmed device fix.**
 
-**Released and independently verified:** implementation **09e5e0b5334073c25a7fdca4a39240add0fc66e1**, version0.4.15/code32, [run35283326055](https://github.com/Russianranger/trasc-server-android/actions/runs/35283326055), all seven jobs successful.125 Python tests, JVM/C/controller/archive/cancellation tests, browser, Android compilation/lint/preserved signing, Microsoft DLL, database and every direct/PRoot software/DXVK/VirGL graphics/audio/input/model/shutdown/restart gate passed. Six real Windows receivers got exact #tim; buffered/polled motion continued past clipped desktop bounds and Wine recentered correctly. These are open fixtures, not physical EQ/Thor acceptance. First candidatebb6685d/run35281306782 was superseded after review corrected recovery ordering so no input callback targets a failed WebView; do not deliver its APK.
+**Released and independently verified:** implementation **09e5e0b5334073c25a7fdca4a39240add0fc66e1**, version 0.4.15/code32, [run35283326055](https://github.com/Russianranger/trasc-server-android/actions/runs/35283326055), all seven jobs successful.125 Python tests, JVM/C/controller/archive/cancellation tests, browser, Android compilation/lint/preserved signing, Microsoft DLL, database and every direct/PRoot software/DXVK/VirGL graphics/audio/input/model/shutdown/restart gate passed. Six real Windows receivers got exact #tim; buffered/polled motion continued past clipped desktop bounds and Wine recentered correctly. These are open fixtures, not physical EQ/Thor acceptance. First candidatebb6685d/run35281306782 was superseded after review corrected recovery ordering so no input callback targets a failed WebView; do not deliver its APK.
 
 **Final files:** APK10,513,934 bytes, SHA256 `f1f39f02ae6e192bd0e29c6ad11018efe18368f60b0c5fe9a8b4e22e14330d05`; source archive114,558,369 bytes, SHA256 `fb6a0784df644d91366c0f7fdf48feec98e20930f739f2e561d5df8da3bc5571`. Preserved certificate `ff9c09cdc3e2404d1d7f72d61ce2f8651464f5e03dff340f70bd4df28c70e869`, package `io.github.russianranger.trasc.preview`. Independent APK v2 signature/content verification, all33 bundled Python/UI assets, ARM64 binaries/memfd marker/helper hash and matching native sources passed. Artifacts and verifiers are under ignored `runtime-work/`; final APK is `trasc-server-android-0.4.15.apk`.
 
@@ -1319,7 +1396,7 @@ The initial run 35248592584 caught an incorrect new socket-permission assertion:
 
 - APK: `runtime-work/trasc-server-android-0.4.13.apk`, 10,491,746 bytes, SHA256 `1b17d6c2df78119f64f25940b5c2c96b4ea4d2e2111020c099e5473c2f73bb23`.
 - Matching sources: `runtime-work/launcher-sources-0.4.13.tar.gz`, 114,552,978 bytes, SHA256 `3a1dc710278ba08f9d932594b6774a850776dba80b05d4d3d5104ff5712d850a`.
-- Independently verified APK v2 RSA/SHA256 signature and complete signed-content digest; preserved certificate `ff9c09cdc3e2404d1d7f72d61ce2f8651464f5e03dff340f70bd4df28c70e869`. Package `io.github.russianranger.trasc.preview`, version0.4.13/code30. All31 packaged Python/UI assets match tested source; both presentation binaries are ARM64 ELF, helper matches its bundled hash, and all6 presentation sources/recipes match the archive. Verifier and metadata are under ignored `runtime-work/`.
+- Independently verified APK v2 RSA/SHA256 signature and complete signed-content digest; preserved certificate `ff9c09cdc3e2404d1d7f72d61ce2f8651464f5e03dff340f70bd4df28c70e869`. Package `io.github.russianranger.trasc.preview`, version 0.4.13/code30. All31 packaged Python/UI assets match tested source; both presentation binaries are ARM64 ELF, helper matches its bundled hash, and all6 presentation sources/recipes match the archive. Verifier and metadata are under ignored `runtime-work/`.
 - Runtime recovery artifact10511874660, `client-runtime`, same run: ZIP399,748,770 bytes, SHA256 `4df9a620f06dab2b14f3a591290c858a5703c7da617dbafb82589ea938466c16`. Contains runtime root/source archives and manifest. This is for publication recovery; the user should keep the already-installed working runtime.
 
 **Rendering evidence:** final downloaded DXVK/VirGL reports confirm eight XGetImage frames across two connections with two actual sends/frame. Fullscreen DXVK verifies1280×720, 3,686,400 bytes/frame, SHM flag0 and expected colors; normal SHM coverage remains. Real DXVK integration launches with HUD off. Browser screenshots of the unchanged application UI were inspected. These are CI software-rendering results, not proof of Thor speedup or physical controller/banner acceptance.
