@@ -1,3 +1,35 @@
+# Device follow-up: 0.6.9 startup accepted; StoneUI load needs native error (2026-10-07 UTC)
+
+User confirms the client launches without issues, but loading StoneUI returns
+to default. New supplied scratch bundle: `logs-8906858434605027694(1).zip`.
+Status identifies 0.6.9/Traditional and the compact transient paths. The client
+log reaches world initialization and has UI reloads at 01:26:10/01:28:27 UTC;
+it does not identify the requested skin or the parser rejection. The generic
+`Loading default UI resources` line alone does not prove a skin load failure.
+
+Imports completed at 00:42:12, 01:09:59 and 01:24:07 UTC. The current StoneUI
+Library item `libfile_99df6acf12208191b77dfefaad5fb092`, version 5,
+`StoneUI-RoF2-0.1.1-activation.zip`, contains `stoneui_rof2_720_v011`.
+Independent replay against aab4fb6 in both profiles installs 273 files with
+every byte/hash matching the archive; all 162 XML includes resolve exactly,
+and existing default UI/client-root files remain unchanged. The two supplied
+menu/chat XML Library files match this revision. The separately supplied
+`UI_Rusuty_Traditional.ini` has `[Main] UISkin=Default`; it is not a saved-INI
+snapshot in this new log bundle, so do not infer the current requested skin.
+
+The importer deliberately does not activate a skin or replace character INI
+files. Retry the exact 0.1.1 name with `/loadskin stoneui_rof2_720_v011 0`
+(or Load UI Skin with Keep Your Layout unchecked). Keep Load Default UI
+unchecked at character selection. If it falls back, immediately export
+`client/current/UIErrors.txt` through Files -> Select -> Export file and retain
+the in-game chat response before another load/restart. The native log exporter
+allows `Logs/UIErrors.txt` but currently omits root-level `UIErrors.txt`; this
+bundle therefore cannot establish the native XML failure. No skin/launcher
+fix is claimed from generic XML parsing or successful asset import. No runtime,
+renderer, prefix, server recipe or client files changed during this diagnosis.
+
+---
+
 # Released: 0.6.9 client startup path fix (2026-10-06 UTC)
 
 Active follow-up: user reports Traditional client startup failure and supplies
