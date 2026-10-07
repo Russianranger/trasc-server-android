@@ -46,7 +46,7 @@ import peq_database
 import client_ui
 from log_retention import rotate
 
-VERSION = '0.6.9'
+VERSION = '0.6.10'
 DEFAULT_REPO = 'https://github.com/Russianranger/Triptych-Triumvirate'
 BINARIES = ('world', 'zone', 'loginserver', 'shared_memory', 'ucs', 'eqlaunch', 'queryserv', 'export_client_files')
 CLIENT_FILES = ('spells_us.txt', 'dbstr_us.txt', 'SkillCaps.txt', 'BaseData.txt')
@@ -1169,6 +1169,8 @@ class Engine(ManagedContent):
             'fix_nektulos':self.fix_nektulos,'revert_nektulos':self.revert_nektulos,
             'import_client_zip':self.import_client_zip,
             'import_client_ui':lambda a:client_ui.install(self,a),
+            'activate_client_ui':lambda a:client_ui.activate(self,a),
+            'restore_client_ui':lambda a:client_ui.restore_settings(self,a),
             'prepare_client':self.prepare_client,
             'apply_spell_test':self.apply_spell_test,'restore_spell_test':self.restore_spell_test,
             'files':self.files,'edit_file':self.edit_file,'export_logs':self.export_logs,'logs':self.logs,

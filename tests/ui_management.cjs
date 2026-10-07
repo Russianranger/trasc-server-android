@@ -11,6 +11,119 @@ for(let i=0;i<1100;i++){const name='Category'+(i%47)+':Rule'+i;fixture.metadata[
 for(const [name,type,value,min,max]of [['Character:RaidExpMultiplier','real','0.3','0','1'],['Character:FinalRaidExpMultiplier','real','0.0000000000001','0','3.4e38'],['Zone:StateSavingOnShutdown','bool','true'],['World:MaxClientsPerIP','int','-1','-2147483648','2147483647'],['Custom:Greeting','string','hello']]){
  fixture.metadata[name]={type,min,max,max_length:65535,description:'Description for '+name};fixture.values[name]={value,ruleset:1};
 }
+async function verifyClientUiActivation(browser,address){
+ const page=await browser.newPage({viewport:{width:412,height:915}}),errors=[];page.on('pageerror',e=>errors.push(e.message));
+ try{
+  await page.addInitScript(()=>{
+   const defaults={traditional:{skins:[{name:'default',protected:true},{name:'StoneUI',files:20},{name:'OldUI',files:3}],characters:[{file:'UI_Rusuty_Traditional.ini',skin:'default',revision:'character-sha1',layout_skins:['StoneUI']},{file:'UI_Alt_Traditional.ini',skin:'OldUI',revision:'alt-sha1',layout_skins:[]}]},custom:{skins:[{name:'default',protected:true},{name:'CustomUI',files:4}],characters:[{file:'UI_Custom_Custom.ini',skin:'default',revision:'custom-sha1',layout_skins:[]}]}};
+   const f=window.__uiFixture={profile:localStorage.uiWorld||'traditional',alive:true,clientAlive:false,clientBusy:false,imported:true,installing:false,sessionBusy:false,jobs:[],calls:[],sequence:0,ui:JSON.parse(localStorage.uiState||JSON.stringify(defaults))};
+   f.state=()=>({profile:f.profile,version:'test',running:false,settings:{ip:'127.0.0.1',login_port:5999,repo:'fixture',ref:'main',workers:1,jobs:1},source:{},maps_ready:true,database_imported:true,processes:{},free_bytes:50e9,jobs:f.jobs,client:{imported:f.imported,ui:structuredClone(f.ui[f.profile])},traditional:{build:{},components:{}}});
+   window.Trasc={call(id,op,input){setTimeout(()=>{
+    const args=JSON.parse(input);f.calls.push({op,args});let result={};
+    try{
+     if(op!=='native_state'&&args.__profile&&args.__profile!==f.profile)throw Error('World profile changed');
+     if(op==='native_state')result={profile:f.profile,installed:true,alive:f.alive,installing:f.installing,session_busy:f.sessionBusy,status:'Runtime ready'};
+     else if(op==='client_native_state')result={profile:f.profile,installed:true,alive:f.clientAlive,busy:f.clientBusy,status:'Stopped'};
+     else if(op==='state')result=f.state();
+     else if(op==='runtime_stop')f.alive=false;
+     else if(op==='runtime_start')f.alive=true;
+     else if(op==='profile_switch'){localStorage.uiWorld=args.profile;f.profile=args.profile;}
+     else if(op==='controller_state')result={sources:[],actions:[],layers:[{name:'Main',bindings:{}}],deadzone:.2,sensitivity:700};
+     else if(op==='controller_capture')result={};
+     else if(op==='activate_client_ui'||op==='restore_client_ui'){
+      const ui=f.ui[f.profile],character=ui.characters.find(c=>c.file===args.character_file);
+      if(f.clientAlive||f.clientBusy||!f.alive||!f.imported)throw Error('Client UI settings are unavailable');
+      if(!character||character.revision!==args.revision)throw Error('Character settings changed; refresh first');
+      const oldSkin=character.skin,idValue='activation-'+(++f.sequence),backup='backups/client-ui/'+idValue+'/'+character.file;
+      if(op==='restore_client_ui'){
+       if(character.previous_settings?.id!==args.activation_id)throw Error('Previous UI backup changed');
+       character.skin=character.previous_settings.skin;
+      }else{
+       if(args.apply_layout&&!character.layout_skins.includes(args.skin))throw Error('No matching included layout');
+       character.skin=args.skin;
+      }
+      character.revision='updated-sha'+f.sequence;character.previous_settings={id:idValue,backup,skin:oldSkin};localStorage.uiState=JSON.stringify(f.ui);
+      const value={message:op==='restore_client_ui'?'Previous UI settings restored.':'UI skin saved for next launch.',skin:character.skin,character_file:character.file,revision:character.revision,backup,layout_applied:op==='activate_client_ui'&&args.apply_layout,ui:structuredClone(ui)};
+      result={id:String(f.sequence),operation:op,status:'done',result:value};f.jobs=[result];
+      if(f.holdActivation){f.holdActivation=false;window.__heldUiReply=()=>window.nativeReply(id,{ok:true,result});return;}
+     }
+     window.nativeReply(id,{ok:true,result});
+    }catch(e){window.nativeReply(id,{ok:false,error:e.message});}
+   },5);}};
+  });
+  await page.goto(address);await page.waitForFunction(()=>activeProfile==='traditional'&&!polling&&lastClientNative);
+  await page.locator('nav [data-tab=client]').click();
+  const update=changes=>page.evaluate(async changes=>{while(polling)await new Promise(r=>setTimeout(r,10));Object.assign(__uiFixture,changes);await poll();},changes);
+  const stopped=()=>page.waitForFunction(()=>busy===0&&!polling&&!document.getElementById('client-ui-activate').disabled);
+  assert(!(await page.isDisabled('#client-ui-activate')),'A stopped imported client can activate its UI');
+  assert(await page.isDisabled('#client-ui-restore'),'Restore needs a saved activation backup');
+  assert.equal(await page.inputValue('#client-ui-character'),'UI_Rusuty_Traditional.ini');
+  assert.equal(await page.inputValue('#client-ui-skin'),'default','Installed protected Default is selectable');
+  assert((await page.textContent('#client-ui-current')).includes('Saved skin for next launch: default'));
+  await page.selectOption('#client-ui-skin','StoneUI');assert(!(await page.isDisabled('#client-ui-layout')));assert(!(await page.isChecked('#client-ui-layout')),'Included layout is opt-in');
+  await update({});assert.equal(await page.inputValue('#client-ui-skin'),'StoneUI','Polling preserves skin choice');
+  await page.click('#client-ui-activate');await stopped();
+  assert.deepEqual(await page.evaluate(()=>__uiFixture.calls.find(c=>c.op==='activate_client_ui').args),{skin:'StoneUI',character_file:'UI_Rusuty_Traditional.ini',revision:'character-sha1',apply_layout:false,__profile:'traditional'});
+  assert((await page.textContent('#client-ui-activation-status')).includes('Included layout: not applied'));
+  assert((await page.textContent('#client-ui-activation-status')).includes('backups/client-ui/activation-1/UI_Rusuty_Traditional.ini'));
+  assert(!(await page.isDisabled('#client-ui-restore')));
+  await page.click('#client-ui-restore');await stopped();
+  assert.deepEqual(await page.evaluate(()=>__uiFixture.calls.find(c=>c.op==='restore_client_ui').args),{character_file:'UI_Rusuty_Traditional.ini',revision:'updated-sha1',activation_id:'activation-1',__profile:'traditional'});
+  assert((await page.textContent('#client-ui-current')).includes('Saved skin for next launch: default'));
+  assert((await page.textContent('#client-ui-activation-status')).includes('Previous UI settings restored'));
+  assert(!(await page.isDisabled('#client-ui-restore')),'Restore creates a reversible backup');
+  assert.equal(await page.inputValue('#client-ui-skin'),'StoneUI','Async result preserves the chosen skin');
+  await page.check('#client-ui-layout');await update({});assert(await page.isChecked('#client-ui-layout'),'Polling preserves explicit preset choice');
+  await page.click('#client-ui-activate');await stopped();
+  const layoutCall=await page.evaluate(()=>__uiFixture.calls.filter(c=>c.op==='activate_client_ui').at(-1).args);
+  assert.equal(layoutCall.revision,'updated-sha2');assert.equal(layoutCall.apply_layout,true);
+  assert((await page.textContent('#client-ui-activation-status')).includes('Included layout: applied'));
+  await page.selectOption('#client-ui-character','UI_Alt_Traditional.ini');
+  assert(await page.isDisabled('#client-ui-layout'));assert(!(await page.isChecked('#client-ui-layout')),'A missing preset clears the layout choice');
+  assert(await page.isDisabled('#client-ui-restore'),'Backups belong to the selected character');
+  await update({});assert.equal(await page.inputValue('#client-ui-character'),'UI_Alt_Traditional.ini','Polling preserves character choice');
+  await page.selectOption('#client-ui-character','UI_Rusuty_Traditional.ini');
+  for(const [key,value]of [['clientAlive',true],['clientBusy',true],['alive',false],['imported',false],['installing',true],['sessionBusy',true],['jobs',[{id:'queued',operation:'import_client_ui',status:'queued'}]]]){
+   await update({[key]:value});for(const id of ['client-ui-import','client-ui-activate','client-ui-restore'])assert(await page.isDisabled('#'+id),'UI changes blocked by '+key);
+   await update({[key]:key==='jobs'?[]:['alive','imported'].includes(key)});
+  }
+  await page.evaluate(()=>{busy++;renderSessionControls();});assert(await page.isDisabled('#client-ui-activate'));assert(await page.isDisabled('#client-ui-restore'));
+  await page.evaluate(()=>{busy--;renderSessionControls();});
+  const characters=await page.evaluate(()=>structuredClone(__uiFixture.ui.traditional.characters));
+  await page.evaluate(async()=>{while(polling)await new Promise(r=>setTimeout(r,10));__uiFixture.ui.traditional.characters=[];await poll();});
+  assert(await page.isDisabled('#client-ui-activate'));assert(await page.isDisabled('#client-ui-restore'));
+  assert((await page.textContent('#client-ui-activation-status')).includes('Enter the game once'));
+  await page.evaluate(async()=>{while(polling)await new Promise(r=>setTimeout(r,10));__uiFixture.ui.traditional.character_errors=[{file:'UI_Broken_Traditional.ini',error:'Unreadable settings'}];await poll();});
+  assert((await page.textContent('#client-ui-activation-status')).includes('1 character settings file needs attention'));
+  assert(!(await page.textContent('#client-ui-activation-status')).includes('Enter the game once'),'Invalid existing settings differ from missing settings');
+  await page.evaluate(async characters=>{while(polling)await new Promise(r=>setTimeout(r,10));__uiFixture.ui.traditional.character_errors=[];__uiFixture.ui.traditional.characters=characters;await poll();},characters);
+  await page.evaluate(async()=>{while(polling)await new Promise(r=>setTimeout(r,10));__uiFixture.ui.traditional.characters[0].layout_skins=[];await poll();});assert(await page.isDisabled('#client-ui-layout'));
+  await page.evaluate(async()=>{while(polling)await new Promise(r=>setTimeout(r,10));__uiFixture.ui.traditional.characters[0].layout_skins=['StoneUI'];await poll();});
+  await page.locator('#client-ui-panel').scrollIntoViewIfNeeded();await page.screenshot({path:'ui-reports/ui-skin-activation-mobile.png',fullPage:true});
+  assert(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth+1),'Skin activation fits the mobile viewport');
+  const help=await page.textContent('#client-ui-panel');assert(help.includes('/loadskin StoneUI 0'));assert(help.includes('/loadskin StoneUI 1'));assert(help.includes('personal preferences'));
+  await page.click('#runtime-close');await page.waitForFunction(()=>!lastNative?.alive&&!polling);
+  await page.selectOption('#world-profile','custom');await page.click('#switch-profile');await page.waitForFunction(()=>activeProfile==='custom'&&!polling&&lastClientNative);
+  await page.locator('nav [data-tab=client]').click();
+  assert.equal(await page.inputValue('#client-ui-skin'),'default');assert.equal(await page.inputValue('#client-ui-character'),'UI_Custom_Custom.ini');assert(!(await page.isChecked('#client-ui-layout')));
+  assert(!(await page.textContent('#client-ui-current')).includes('Traditional'),'Switching profiles resets character and backup state');
+  // Hold an actual operation response, switch the observed world, then release it.
+  await page.selectOption('#client-ui-skin','CustomUI');await page.evaluate(()=>__uiFixture.holdActivation=true);await page.click('#client-ui-activate');await page.waitForFunction(()=>typeof __heldUiReply==='function');
+  assert(await page.isDisabled('#client-ui-activate'),'An in-flight job disables another activation');
+  await page.evaluate(async()=>{while(polling)await new Promise(r=>setTimeout(r,10));__uiFixture.profile='traditional';activeProfile='traditional';lastNative={...lastNative,profile:'traditional'};lastClientNative={...lastClientNative,profile:'traditional'};render(__uiFixture.state());});
+  await page.evaluate(()=>{document.getElementById('client-ui-skin').value='OldUI';document.getElementById('client-ui-skin').dispatchEvent(new Event('change'));__heldUiReply();});
+  await stopped();assert.equal(await page.inputValue('#client-ui-skin'),'OldUI');assert.equal(await page.inputValue('#client-ui-character'),'UI_Rusuty_Traditional.ini');
+  assert(!(await page.textContent('#client-ui-activation-status')).includes('UI_Custom_Custom.ini'),'A stale profile response cannot replace current UI status');
+  assert(!(await page.textContent('#notice')).includes('UI skin saved'),'A stale profile response cannot announce success in the new world');
+  // A delayed result in this world must also preserve newer selector edits.
+  await page.selectOption('#client-ui-skin','StoneUI');await page.evaluate(()=>{__uiFixture.holdActivation=true;__heldUiReply=null;});await page.click('#client-ui-activate');await page.waitForFunction(()=>typeof __heldUiReply==='function');
+  await page.evaluate(()=>{for(const [id,value]of [['client-ui-character','UI_Alt_Traditional.ini'],['client-ui-skin','default']]){document.getElementById(id).value=value;document.getElementById(id).dispatchEvent(new Event('change'));}__heldUiReply();});
+  await stopped();assert.equal(await page.inputValue('#client-ui-character'),'UI_Alt_Traditional.ini');assert.equal(await page.inputValue('#client-ui-skin'),'default');assert(!(await page.isChecked('#client-ui-layout')));
+  assert(!(await page.textContent('#client-ui-activation-status')).includes('Character: UI_Rusuty_Traditional.ini'),'Delayed completion does not replace newer selection status');
+  assert.deepEqual(errors,[],'Skin activation JavaScript errors');
+  console.log('PASS: explicit per-character skin/layout activation, revision-checked reversible restore, runtime guards, persisted choices and stale-profile/result protection');
+ }finally{await page.close();}
+}
 (async()=>{
  await new Promise(r=>server.listen(0,'127.0.0.1',r));const browser=await chromium.launch({headless:true});
  try{
@@ -367,6 +480,6 @@ for(const [name,type,value,min,max]of [['Character:RaidExpMultiplier','real','0.
   await page.locator('#file-list button.secondary').click();await page.locator('#file-export').click();
   await page.waitForFunction(()=>window.__exports.at(-1)==='client/toolchain/sdk.json');
   await page.setViewportSize({width:960,height:540});await page.screenshot({path:'ui-reports/file-search-landscape.png',fullPage:true});
-  assert.deepEqual(errors,[],'UI JavaScript errors');console.log('PASS: management, controller, offline logs, full-folder search/pagination/export and stale-response protection');
+  assert.deepEqual(errors,[],'UI JavaScript errors');await verifyClientUiActivation(browser,'http://127.0.0.1:'+server.address().port);console.log('PASS: management, controller, offline logs, full-folder search/pagination/export and stale-response protection');
  }finally{await browser.close();server.close();}
 })().catch(e=>{console.error(e);server.close();process.exitCode=1;});

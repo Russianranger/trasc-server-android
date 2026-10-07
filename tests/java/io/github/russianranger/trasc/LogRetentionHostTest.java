@@ -35,14 +35,19 @@ public final class LogRetentionHostTest {
             Path current=write(work,"logs/world.log","CURRENT",0);
             Path backup=write(work,"backups/world_111.log","BACKUP",0);
             Path chat=write(work,"client/current/Logs/eqlog_Yehaos.txt","CHAT",0);
+            Path rootUi=write(work,"client/current/UIErrors.txt","ROOT UI DIAGNOSTIC",0);
+            Path logsUi=write(work,"client/current/LOGS/uierrors.TXT","LOGS UI DIAGNOSTIC",0);
+            Path settings=write(work,"client/current/eqclient.ini","CLIENT SETTINGS",0);
             Path unknown=write(work,"server/logs/custom_111.log","CUSTOM",0);
             Path outside=write(tmp,"outside/world_1.log","OUTSIDE",0);
             Files.createSymbolicLink(work.resolve("server/logs/linked"),outside.getParent());
             Files.createSymbolicLink(work.resolve("server/logs/world_1.log"),outside);
+            Path linkedUi=work.resolve("client/current/UiErrors.txt");Files.createSymbolicLink(linkedUi,outside);
             LogRetention.save(directory,2);
             long[] removed=LogRetention.prune(directory,proc);
             check(removed[0]>30&&removed[1]>0,"Existing collection cleaned");
-            for(Path p:new Path[]{active,current,backup,chat,unknown,outside})check(Files.exists(p),"Protected "+p);
+            for(Path p:new Path[]{active,current,backup,chat,rootUi,logsUi,settings,unknown,outside})check(Files.exists(p),"Protected "+p);
+            check(Files.readString(rootUi).equals("ROOT UI DIAGNOSTIC")&&Files.readString(logsUi).equals("LOGS UI DIAGNOSTIC"),"History pruning retains unrotated root and Logs UI diagnostics");
             for(String group:new String[]{"world","login","ucs","query_server"}) {
                 check(Files.exists(work.resolve("server/logs/"+group+"_109.log")),"Newest retained");
                 check(!Files.exists(work.resolve("server/logs/"+group+"_107.log")),"Older removed");
@@ -66,16 +71,23 @@ public final class LogRetentionHostTest {
             Path boundary=write(work,"logs/boundary.log","BOUNDARY",now-LogCleanup.TWO_DAYS);
             Path metadata=write(work,"logs/client-dll-deploy.json","BUILD RECORD",0);
             Path diagnostic=write(work,"client/current/Logs/dbg.txt","DIAGNOSTIC",now);
+            Files.setLastModifiedTime(rootUi,FileTime.fromMillis(now-LogCleanup.TWO_DAYS-1));
+            Files.setLastModifiedTime(logsUi,FileTime.fromMillis(now));
+            Path recentRootUi=write(work,"client/current/uierrors.TXT","RECENT ROOT UI DIAGNOSTIC",now);
             Path export=write(work,"exports/logs.zip","EXPORT",0);
             try{LogCleanup.clear(directory,"reset",now,true);throw new AssertionError("Active writers accepted");}catch(IOException expected){}
             check(Files.readString(old).equals("OLD"),"Active-writer rejection happens before any truncation");
+            check(Files.readString(rootUi).equals("ROOT UI DIAGNOSTIC"),"Active-writer rejection preserves root UI diagnostics");
             LogCleanup.clear(directory,"older_2_days",now,false);
             check(Files.exists(old)&&Files.size(old)==0,"Old log is emptied in place");
+            check(Files.exists(rootUi)&&Files.size(rootUi)==0,"Old root UI diagnostic is emptied in place");
             check(Files.readString(recent).equals("RECENT")&&Files.readString(boundary).equals("BOUNDARY"),"Recent and exact-boundary logs retained");
+            check(Files.readString(logsUi).equals("LOGS UI DIAGNOSTIC")&&Files.readString(recentRootUi).equals("RECENT ROOT UI DIAGNOSTIC"),"Recent UI diagnostics with varied directory and filename case retained");
             LogCleanup.clear(directory,"reset",now,false);
-            for(Path p:new Path[]{recent,boundary,diagnostic})check(Files.size(p)==0,"Reset diagnostic "+p);
+            for(Path p:new Path[]{recent,boundary,diagnostic,rootUi,logsUi,recentRootUi})check(Files.size(p)==0,"Reset diagnostic "+p);
             check(Files.readString(metadata).equals("BUILD RECORD"),"Deployment manifest retained");
-            check(Files.readString(chat).equals("CHAT")&&Files.readString(export).equals("EXPORT")&&Files.readString(backup).equals("BACKUP"),"User files retained");
+            check(Files.readString(chat).equals("CHAT")&&Files.readString(settings).equals("CLIENT SETTINGS")&&Files.readString(export).equals("EXPORT")&&Files.readString(backup).equals("BACKUP"),"User files retained");
+            check(Files.isSymbolicLink(linkedUi),"Root UI diagnostic symlink is left intact");
             check(Files.readString(outside).equals("OUTSIDE"),"Symlink target is not reset");
             check(LogRetention.count(directory)==2,"Retention setting retained");
             check(LogCleanup.clear(directory,"reset",now,false)[0]==0,"Reset is idempotent");

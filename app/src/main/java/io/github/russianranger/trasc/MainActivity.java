@@ -136,7 +136,7 @@ public final class MainActivity extends Activity {
                         case "pick": runOnUiThread(()->pick(id,args.optString("kind","file"),args.optBoolean("replace"),profile));return;
                         case "export": runOnUiThread(()->export(id,args.optString("path"),profile));return;
                         case "client_settings_save":
-                        case "import_client_zip": case "import_client_ui": case "prepare_client": case "export_client":
+                        case "import_client_zip": case "import_client_ui": case "activate_client_ui": case "restore_client_ui": case "prepare_client": case "export_client":
                         case "apply_spell_test": case "restore_spell_test":
                         case "client_addons_copy": case "client_dll_deploy":
                         case "client_dll_sdk": case "client_dll_download":

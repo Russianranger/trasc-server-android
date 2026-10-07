@@ -31,6 +31,8 @@ A standalone Android control app for [Russianranger/Triptych-Triumvirate](https:
 
 ## Downloads and first setup
 
+**App 0.6.10 — Client UI activation:** Choose an installed skin for an existing character, optionally apply its matching window layout, and restore the previous settings from an exact backup. Both profiles include root-level `UIErrors.txt` in exported logs and label the client gear action **Return to Launcher**. [StoneUI device test](docs/client-ui-activation-0610.md).
+
 **App 0.6.9 — Traditional client startup:** Short private temporary paths let Wine and PRoot create their sockets on Android. StoneUI ZIP imports also accept the skin's packaging manifest. Keep the installed runtimes, Wine prefix, imported client, DirectX helpers and compiled server. [Client retry steps](docs/client-startup-069.md).
 
 **App 0.6.8 — Traditional deployment and quests helpers:** Deploy and start the verified Traditional build, validate its PEQ/local-login schema with database backups, and prepare/export matching RoF2 client files. Plugins and Lua modules are detected in the imported quests tree and share its revision; existing standalone imports remain fallbacks. Your successfully staged build can be deployed without recompilation. [Device test steps](docs/traditional-deploy-068.md).

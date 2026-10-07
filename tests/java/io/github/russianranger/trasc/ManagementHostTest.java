@@ -77,13 +77,23 @@ public final class ManagementHostTest {
             write(work,"server/logs/zones/cabeast.log","nested zone log");
             write(work,"client/current/DINPUT8.log","system DirectInput load failed");
             write(work,"client/current/Logs/dbg.txt","game initialization failed");
-            write(work,"client/current/logs/UIErrors.txt","UI diagnostic");
+            Map<String,String> uiDiagnostics=new LinkedHashMap<>();
+            uiDiagnostics.put("UIErrors.txt","root UI diagnostic");
+            uiDiagnostics.put("uierrors.TXT","root UI diagnostic with mixed filename case");
+            uiDiagnostics.put("logs/UIErrors.txt","lowercase directory UI diagnostic");
+            uiDiagnostics.put("LOGS/UIERRORS.TXT","uppercase directory and filename UI diagnostic");
+            for(Map.Entry<String,String> entry:uiDiagnostics.entrySet())write(work,"client/current/"+entry.getKey(),entry.getValue());
             write(work,"client/current/eqclient.ini","saved client settings");
+            write(work,"client/current/Logs/eqclient.ini","nested client settings");
             write(work,"client/current/Logs/eqlog_character.txt","private chat");
+            write(work,"client/current/eqlog_character.txt","root private chat");
             write(tmp,"outside/secret.log","do not export");
+            write(tmp,"outside/UIErrors.txt","linked UI diagnostic must not export");
             Files.createSymbolicLink(work.resolve("logs/secret.log"),tmp.resolve("outside/secret.log"));
             Files.createSymbolicLink(work.resolve("logs/linked-directory"),tmp.resolve("outside"));
             Files.createSymbolicLink(work.resolve("client/current/Logs/crash.log"),tmp.resolve("outside/secret.log"));
+            Files.createSymbolicLink(work.resolve("client/current/UiErrors.txt"),tmp.resolve("outside/UIErrors.txt"));
+            Files.createSymbolicLink(work.resolve("client/current/LoGs"),tmp.resolve("outside"));
             check(LocalLogs.tail(work.toFile(),"app.log").contains("simulated archive failure"),"Native backup error is readable after runtime failure");
             String tail=LocalLogs.tail(work.toFile(),"operation.log");
             check(tail.length()==LocalLogs.TAIL_BYTES&&tail.endsWith("LATEST"),"Log viewer returns bounded latest output");
@@ -94,16 +104,26 @@ public final class ManagementHostTest {
             Map<String,Path> names=LocalLogs.inventory(work.toFile());
             check(names.containsKey("app.log")&&names.containsKey("server/zones/cabeast.log"),"Native inventory includes app and nested server logs");
             check(names.containsKey("client/DINPUT8.log")&&names.containsKey("client/Logs/dbg.txt")&&names.containsKey("client/logs/UIErrors.txt"),"Native inventory includes client startup logs with either directory case");
-            check(!names.containsKey("client/eqclient.ini")&&!names.containsKey("client/eqgame.exe")&&!names.containsKey("client/Logs/eqlog_character.txt")&&!names.containsKey("client/Logs/crash.log"),"Client inventory excludes settings, binaries, chat and symlinks");
+            for(Map.Entry<String,String> entry:uiDiagnostics.entrySet()) {
+                check(names.containsKey("client/"+entry.getKey()),"UI diagnostic inventory preserves filename case: "+entry.getKey());
+                check(LocalLogs.tail(work.toFile(),"client/"+entry.getKey()).equals(entry.getValue()),"UI diagnostic tail reads the matching root or Logs file: "+entry.getKey());
+            }
+            String[] excludedClient={"eqclient.ini","Logs/eqclient.ini","eqgame.exe","eqlog_character.txt","Logs/eqlog_character.txt","Logs/crash.log","UiErrors.txt","LoGs/UIErrors.txt"};
+            for(String name:excludedClient)check(!names.containsKey("client/"+name),"Client inventory excludes settings, binaries, chat and symlinks: "+name);
             check(!names.containsKey("secret.log")&&!names.containsKey("linked-directory/secret.log"),"Inventory never follows symlinks");
-            for(String unsafe:new String[]{"../settings.json","server/../../settings.json","secret.log","linked-directory/secret.log","client/../settings.json","client/eqclient.ini","client/Logs/../../settings.json","client/Logs/crash.log","client/Logs/eqlog_character.txt"}) {
+            for(String unsafe:new String[]{"../settings.json","server/../../settings.json","secret.log","linked-directory/secret.log","client/../settings.json","client/eqclient.ini","client/Logs/eqclient.ini","client/Logs/../../settings.json","client/Logs/crash.log","client/Logs/eqlog_character.txt","client/eqlog_character.txt","client/UiErrors.txt","client/LoGs/UIErrors.txt"}) {
                 try{LocalLogs.tail(work.toFile(),unsafe);throw new AssertionError("Unsafe log read accepted: "+unsafe);}catch(IOException expected){}
             }
             File bundle=LocalLogs.export(work.toFile(),"{\"native\":{\"alive\":false}}");
             try(ZipFile z=new ZipFile(bundle)) {
                 check(z.getEntry("logs/operation.log").getSize()==100006,"Log bundle includes full output, not just the viewer tail");
                 for(String needed:new String[]{"logs/app.log","logs/runtime.log","server/logs/zones/cabeast.log","client/current/DINPUT8.log","client/current/Logs/dbg.txt","status.json","export-notes.txt"})check(z.getEntry(needed)!=null,"Missing log bundle entry: "+needed);
-                check(z.getEntry("client/current/eqclient.ini")==null&&z.getEntry("client/current/Logs/eqlog_character.txt")==null,"Client settings and chat are not diagnostic exports");
+                for(Map.Entry<String,String> entry:uiDiagnostics.entrySet()) {
+                    ZipEntry diagnostic=z.getEntry("client/current/"+entry.getKey());
+                    check(diagnostic!=null,"UI diagnostic is exported with its original path: "+entry.getKey());
+                    try(InputStream in=z.getInputStream(diagnostic)){check(new String(in.readAllBytes(),java.nio.charset.StandardCharsets.UTF_8).equals(entry.getValue()),"Export contains the matching UI diagnostic: "+entry.getKey());}
+                }
+                for(String name:excludedClient)check(z.getEntry("client/current/"+name)==null,"Diagnostic export excludes user files and symlinks: "+name);
                 check(z.stream().noneMatch(e->e.getName().contains("secret")||e.getName().contains("settings")||e.getName().contains("api-token")),"Bundle excludes linked data and credentials");
             }
             Path empty=tmp.resolve("fresh-app");Files.createDirectories(empty);

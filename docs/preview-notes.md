@@ -1,3 +1,30 @@
+# 0.6.10 — Client UI activation and Return to Launcher
+
+Both profiles can save an installed UI skin for an existing character before
+launch. Optionally apply the skin's matching included window layout while
+retaining unrelated personal settings. The original INI is backed up exactly;
+**Restore previous UI settings** restores it while retaining the replaced copy.
+Stop the client before applying or restoring. Root `UIErrors.txt` now appears in
+exported logs to help diagnose native skin fallback.
+
+The in-client gear action is named **Return to Launcher** in TRASC Custom and
+Traditional, including startup-failure and disconnect guidance.
+
+Install in place and freshly Start runtime. No runtime refresh, server rebuild,
+client reimport or Wine-prefix repair is required solely for this update.
+[StoneUI device test steps](client-ui-activation-0610.md).
+
+---
+
+# 0.6.9 — Traditional client startup
+
+Short private temporary paths allow Wine and PRoot sockets on Android. The
+client startup fix has been confirmed on Thor. StoneUI ZIP imports accept its
+packaging manifest. Keep the existing runtimes, imported client, Wine prefix,
+DirectX helpers and compiled server. [Client steps](client-startup-069.md).
+
+---
+
 # 0.6.8 — Traditional deployment and quests-linked helpers
 
 Traditional now deploys its verified nine-binary build, qualifies the PEQ/local-login schema with retained database backups, starts the local server, and generates matching client data. The build already compiled on Thor can be deployed without recompilation. Deploy and Start show missing prerequisites instead of a permanent milestone block.
