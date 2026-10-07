@@ -114,3 +114,7 @@ body[data-profile=traditional] .content-import-grid{display:grid!important}
 .ui-skin-list strong,.ui-skin-list code{display:block}
 .ui-skin-list code{margin-top:4px;user-select:all}
 .ui-skin-list small{margin-top:5px}
+.ui-skin-activation{margin-top:22px;padding-top:18px;border-top:1px solid var(--line)}
+.ui-skin-activation h4{margin:0 0 14px;font-size:16px}
+.ui-skin-activation .hint{overflow-wrap:anywhere}
+.ui-skin-list code{white-space:pre-line}

@@ -4,7 +4,7 @@ const traditionalRevision='4aceae18b94ffaafc08e2b17bc41cd72c77f795d';
 function traditional(){return activeProfile==='traditional';}
 function renderProfile(n){
  const profile=n.profile||'custom';
- if(activeProfile&&activeProfile!==profile){location.reload();return false;}
+ if(activeProfile&&activeProfile!==profile){resetClientUi();location.reload();return false;}
  if(!activeProfile){
   activeProfile=profile;document.body.dataset.profile=profile;$('runtime-heading-label').textContent=traditional()?'Traditional EQEmu runtime':'TRASC Custom runtime';$('world-profile').value=profile;
   document.querySelector('.eyebrow').textContent=traditional()?'TRADITIONAL EQEMU · CLASSIC ADVENTURE':'TRIPTYCH · ANDROID';
@@ -101,13 +101,85 @@ for(const [id,{kind}]of Object.entries(contentComponents)){
   contentImported(kind,result,id+'-result');$(id+'-replace').checked=false;
  });
 }
-function renderClientUi(){
- const ui=lastState?.client?.ui,skins=ui?.skins||[];
- const clientStopped=!!lastClientNative&&!lastClientNative.alive&&!lastClientNative.busy;
- $('client-ui-import').disabled=!!(busy||sessionAction||!lastNative?.alive||lastNative?.installing||lastNative?.session_busy||!lastState?.client?.imported||!clientStopped||lastState?.jobs?.some(j=>['queued','running'].includes(j.status)));
- $('client-ui-skins').replaceChildren(...skins.map(s=>{const li=document.createElement('li'),name=document.createElement('strong'),command=document.createElement(/\s/.test(s.name)?'small':'code');name.textContent=s.name+(s.protected?' · built-in default':Number.isFinite(s.files)?' · '+s.files+' files':' · existing skin');command.textContent=/\s/.test(s.name)?'Select this skin in the game’s UI menu.':'/loadskin '+s.name+' 1';li.append(name,command);if(s.backup){const backup=document.createElement('small');backup.textContent='Previous skin: '+s.backup;li.append(backup);}return li;}));
- $('client-ui-status').textContent=!lastNative?.alive?'Open this profile’s server runtime to import UI skins.':!lastState?.client?.imported?'Import this profile’s RoF2 client first.':!clientStopped?'Stop the embedded client before importing UI skins.':ui?.message||(skins.length?'Installed skins are listed below. Load one inside the game.':'Choose a RoF2 UI ZIP to add a skin to this profile’s client.');
+let clientUiProfile=null,clientUiGeneration=0,clientUiEditGeneration=0,clientUiResultMessage=null;
+let clientUiSelection={skin:'',character_file:'',apply_layout:false};
+function resetClientUi(){
+ clientUiProfile=null;clientUiGeneration++;clientUiEditGeneration++;clientUiResultMessage=null;
+ clientUiSelection={skin:'',character_file:'',apply_layout:false};
+ for(const id of ['client-ui-skin','client-ui-character']){$(id).value='';$(id).disabled=true;}
+ $('client-ui-layout').checked=false;$('client-ui-layout').disabled=true;
+ $('client-ui-activate').disabled=$('client-ui-restore').disabled=true;
+ $('client-ui-current').textContent='';$('client-ui-activation-status').textContent='Checking this world’s UI settings…';
 }
+function clientUiProfileMatches(){return !!activeProfile&&(lastNative?.profile||'custom')===activeProfile&&(lastState?.profile||'custom')===activeProfile&&(!lastClientNative?.profile||lastClientNative.profile===activeProfile);}
+function clientUiData(){return clientUiProfileMatches()?lastState?.client?.ui:null;}
+function clientUiBlocked(ownAction=false){return !!(busy>(ownAction?1:0)||sessionAction||!clientUiProfileMatches()||!lastNative?.alive||lastNative?.installing||lastNative?.session_busy||!lastState?.client?.imported||!lastClientNative||lastClientNative.alive||lastClientNative.busy||lastState?.jobs?.some(j=>['queued','running'].includes(j.status)));}
+function clientUiCharacter(){return clientUiData()?.characters?.find(c=>c.file===clientUiSelection.character_file);}
+function clientUiOptions(id,entries,empty){
+ const select=$(id),signature=JSON.stringify(entries);
+ if(select.dataset.options!==signature){select.replaceChildren(...(entries.length?entries:[['',empty]]).map(([value,text])=>{const option=document.createElement('option');option.value=value;option.textContent=text;return option;}));select.dataset.options=signature;}
+}
+function renderClientUi(){
+ if(clientUiProfile!==activeProfile){resetClientUi();clientUiProfile=activeProfile;}
+ const ui=clientUiData(),skins=ui?.skins||[],characters=ui?.characters||[],characterErrors=ui?.character_errors?.length||0,blocked=clientUiBlocked();
+ $('client-ui-import').disabled=blocked;
+ $('client-ui-skins').replaceChildren(...skins.map(s=>{const li=document.createElement('li'),name=document.createElement('strong'),command=document.createElement(/\s/.test(s.name)?'small':'code');name.textContent=s.name+(s.protected?' · built-in default':Number.isFinite(s.files)?' · '+s.files+' files':' · existing skin');command.textContent=/\s/.test(s.name)?'Select this skin in the game’s UI menu.':'/loadskin '+s.name+' 0 · use the skin’s XML layout\n/loadskin '+s.name+' 1 · keep saved window positions';li.append(name,command);if(s.backup){const backup=document.createElement('small');backup.textContent='Previous skin: '+s.backup;li.append(backup);}return li;}));
+ $('client-ui-status').textContent=!lastNative?.alive?'Open this profile’s server runtime to import UI skins.':!lastState?.client?.imported?'Import this profile’s RoF2 client first.':lastClientNative?.alive||lastClientNative?.busy?'Stop the embedded client before importing UI skins.':ui?.message||(skins.length?'Installed skins are listed below.':'Choose a RoF2 UI ZIP to add a skin to this profile’s client.');
+ if(ui&&!characters.some(c=>c.file===clientUiSelection.character_file)){clientUiSelection.character_file=characters[0]?.file||'';clientUiSelection.apply_layout=false;clientUiEditGeneration++;clientUiResultMessage=null;}
+ const character=clientUiCharacter();
+ if(ui&&!skins.some(s=>s.name===clientUiSelection.skin)){clientUiSelection.skin=skins.find(s=>s.name.toLowerCase()===(character?.skin||'').toLowerCase())?.name||skins[0]?.name||'';clientUiEditGeneration++;clientUiResultMessage=null;}
+ const layoutAvailable=!!character?.layout_skins?.includes(clientUiSelection.skin);
+ if(!layoutAvailable)clientUiSelection.apply_layout=false;
+ clientUiOptions('client-ui-skin',skins.map(s=>[s.name,s.name+(s.protected?' · built-in default':'')]),'No UI skins installed');
+ clientUiOptions('client-ui-character',characters.map(c=>[c.file,c.file]),'No character settings found');
+ $('client-ui-skin').value=clientUiSelection.skin;$('client-ui-character').value=clientUiSelection.character_file;
+ $('client-ui-skin').disabled=blocked||!skins.length||!character;$('client-ui-character').disabled=blocked||!characters.length;
+ $('client-ui-layout').checked=clientUiSelection.apply_layout;$('client-ui-layout').disabled=blocked||!layoutAvailable;
+ $('client-ui-current').textContent=character?character.file+' · Saved skin for next launch: '+(character.skin||'Default')+'.'+(character.previous_settings?.backup?' Previous settings: '+character.previous_settings.backup+'.':''):'';
+ const characterAttention=characterErrors+' character settings '+(characterErrors===1?'file needs':'files need')+' attention. Check diagnostic logs or restore a known good file.';
+ $('client-ui-layout-help').textContent=layoutAvailable?'An included layout matches '+character.file+' and '+clientUiSelection.skin+'. Applying it is optional.':character?'No matching included layout is available for this character and skin.':characterErrors?characterAttention:'Enter the game once, then exit normally to create UI_<character>_<server>.ini.';
+ $('client-ui-activate').disabled=blocked||!character?.revision||!clientUiSelection.skin||!skins.some(s=>s.name===clientUiSelection.skin);
+ $('client-ui-restore').disabled=blocked||!character?.revision||!character.previous_settings?.id;
+ let status=!clientUiProfileMatches()?'Checking this world’s UI settings…':!lastNative?.alive?'Open this profile’s server runtime to apply or restore UI settings.':!lastState?.client?.imported?'Import this profile’s RoF2 client first.':!lastClientNative||lastClientNative.alive||lastClientNative.busy?'Stop the embedded client before changing UI settings.':blocked?'Finish the current operation before changing UI settings.':!character?(characterErrors?characterAttention:'Enter the game once, then exit normally to create UI_<character>_<server>.ini.'):!character.revision?'Refresh character settings before changing the UI.':!skins.length?'Import a UI skin first.':'Apply the selected skin for the next launch. Your saved positions are kept unless you choose the included layout.';
+ if(clientUiResultMessage&&clientUiResultMessage.profile===activeProfile&&!blocked)status=clientUiResultMessage.text;
+ $('client-ui-activation-status').textContent=status;
+}
+function clientUiChoiceChanged(){clientUiEditGeneration++;clientUiResultMessage=null;renderClientUi();}
+$('client-ui-skin').addEventListener('change',()=>{clientUiSelection.skin=$('client-ui-skin').value;clientUiSelection.apply_layout=false;clientUiChoiceChanged();});
+$('client-ui-character').addEventListener('change',()=>{clientUiSelection.character_file=$('client-ui-character').value;clientUiSelection.apply_layout=false;clientUiChoiceChanged();});
+$('client-ui-layout').addEventListener('change',()=>{clientUiSelection.apply_layout=$('client-ui-layout').checked;clientUiChoiceChanged();});
+function clientUiContextCurrent(context){return context.profile===activeProfile&&context.generation===clientUiGeneration&&clientUiProfileMatches();}
+async function clientUiJob(operation,args,context){
+ const started=await api(operation,args);if(!clientUiContextCurrent(context))return null;
+ notice(operation==='restore_client_ui'?'Restoring previous UI settings…':'Applying client UI skin…');
+ for(;;){
+  await new Promise(resolve=>setTimeout(resolve,1400));if(!clientUiContextCurrent(context))return null;
+  const state=await api('state');if(!clientUiContextCurrent(context)||(state.profile||'custom')!==context.profile)return null;
+  render(state);const item=state.jobs.find(j=>j.id===started.id);
+  if(!item)throw Error('Operation status was lost. Check logs.');
+  if(['error','cancelled'].includes(item.status))throw Error(item.error||'Operation cancelled.');
+  if(item.status==='done'){const result=item.result||{};notice(result.message||'UI settings saved.');return result;}
+ }
+}
+async function changeClientUi(restore=false){
+ const character=clientUiCharacter(),skin=clientUiSelection.skin;
+ if(clientUiBlocked(true)||!character?.revision)throw Error('Stop the client and finish other operations, then refresh this profile’s character settings.');
+ if(restore&&!character.previous_settings?.id)throw Error('No previous UI settings backup is available for this character.');
+ if(!restore&&!clientUiData()?.skins?.some(s=>s.name===skin))throw Error('Choose an installed UI skin.');
+ if(!restore&&clientUiSelection.apply_layout&&!character.layout_skins?.includes(skin))throw Error('No matching included layout is available for this character and skin.');
+ const context={profile:activeProfile,generation:++clientUiGeneration,edit:clientUiEditGeneration};
+ const args=restore?{character_file:character.file,revision:character.revision,activation_id:character.previous_settings.id}:{skin,character_file:character.file,revision:character.revision,apply_layout:clientUiSelection.apply_layout};
+ try{
+  await api('controller_capture',{active:false});if(!clientUiContextCurrent(context))return;
+  const result=await clientUiJob(restore?'restore_client_ui':'activate_client_ui',args,context);
+  if(!result||!clientUiContextCurrent(context))return;
+  if(result.ui)lastState.client={...lastState.client,ui:result.ui};
+  if(context.edit===clientUiEditGeneration)clientUiResultMessage={profile:context.profile,text:(result.message||(restore?'Previous UI settings restored.':'Skin saved for the next launch.'))+' Character: '+(result.character_file||character.file)+'. Skin: '+(result.skin||skin)+'.'+(!restore?' Included layout: '+(result.layout_applied?'applied':'not applied')+'.':'')+(result.backup?' Backup: '+result.backup+'.':'')};
+  renderClientUi();
+ }catch(error){if(clientUiContextCurrent(context))throw error;}
+}
+action('client-ui-activate',()=>changeClientUi());
+action('client-ui-restore',()=>changeClientUi(true));
 action('client-ui-import',async()=>{
  await api('controller_capture',{active:false});
  const f=await api('pick',{kind:'client_ui'}),args={file:f.path||f.file,replace:$('client-ui-replace').checked};

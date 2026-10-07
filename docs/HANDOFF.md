@@ -1,3 +1,26 @@
+# Implemented: 0.6.10 client UI activation (2026-10-07 UTC)
+
+User confirmed the 0.6.9 client launches successfully on Thor. StoneUI still
+returns to Default. The latest `UI_Rusuty_Traditional(1).ini` is byte-identical
+to the earlier settings and saves `UISkin=Default`; `UIErrors.txt` contains only
+its creation timestamp. Neither proves a specific native parser rejection.
+
+0.6.10/code59 adds explicit installed-skin activation for an existing character
+INI in both profiles, an optional matching included window layout, byte-exact
+backups and Restore previous UI settings. Activation is revision-checked and
+only available with the client stopped. Root `UIErrors.txt` is now included in
+log inventory, tail and export. The shared client gear action is renamed
+**Return to Launcher**, including its failure/reconnect text, for Custom and
+Traditional.
+
+Native StoneUI appearance and persistence remain device acceptance checks; do
+not claim them from host activation evidence. Follow
+[the device steps](client-ui-activation-0610.md). No renderer, translator, Wine
+prefix, client assets, compiled server or Traditional compile-receipt recipe
+is changed. Keep the installed stack and existing staged build.
+
+Release qualification and publication evidence will be recorded after CI.
+
 # Device follow-up: 0.6.9 startup accepted; StoneUI selection unresolved (2026-10-07 UTC)
 
 User supplied root `UIErrors.txt` after the follow-up: its entire 48 bytes are
