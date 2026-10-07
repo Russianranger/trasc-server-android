@@ -623,7 +623,8 @@ def _record(engine, identity, character, budget=None):
             record.get('character_file') != character or
             not isinstance(record.get('before_sha256'), str) or
             not re.fullmatch(r'[0-9a-f]{64}', record['before_sha256']) or
-            not isinstance(record.get('created_at'), (int, float)) or
+            type(record.get('created_at')) not in (int, float) or
+            not 0 <= record['created_at'] <= 2**53 or
             not math.isfinite(record['created_at'])):
         raise ValueError('Invalid previous UI configuration record')
     if budget is not None:
