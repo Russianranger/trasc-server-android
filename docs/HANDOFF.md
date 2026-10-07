@@ -1,4 +1,16 @@
-# Device follow-up: 0.6.9 startup accepted; StoneUI load needs native error (2026-10-07 UTC)
+# Device follow-up: 0.6.9 startup accepted; StoneUI selection unresolved (2026-10-07 UTC)
+
+User supplied root `UIErrors.txt` after the follow-up: its entire 48 bytes are
+`UIErrorLog created at Wed Oct 07 01:55:31 2026` plus CRLF. It contains no
+error entries and does not establish the active skin or explain a rejection.
+Read-only launch/settings audit confirms no launcher writes to `UISkin` or
+force-default flags. Launcher hints use `/loadskin <name> 1` (retain layout),
+while StoneUI's package requests `0` for its XML geometry. Needed next evidence:
+the in-game chat response immediately after the exact installed-name command,
+and `UI_Rusuty_Traditional.ini` exported after normal camp/game exit so its
+`[Main] UISkin` reflects the saved attempt. Do not substitute the older supplied
+INI or infer a successful load from an empty error file. No speculative skin
+or launcher fix has been applied.
 
 User confirms the client launches without issues, but loading StoneUI returns
 to default. New supplied scratch bundle: `logs-8906858434605027694(1).zip`.
