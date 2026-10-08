@@ -75,6 +75,8 @@ public final class ClientActivity extends Activity {
         addMenuButton("Keyboard",v->textDialog());
         addMenuButton("Controller mappings",v->controllerDialog());
         addMenuButton("Toggle classic NPC models (#tim)",v->classicNpcs());
+        addMenuButton("Apply StoneUI viewport",v->viewport(false));
+        addMenuButton("Restore full viewport",v->viewport(true));
         addMenuButton("Capture external mouse",v->{setMenuOpen(false);display.post(()->display.requestPointerCapture());});
         addMenuButton("Esc",v->{setMenuOpen(false);display.input.key("escape",0xff1b,true);display.input.key("escape",0xff1b,false);});
         status=new TextView(this);status.setTextColor(0xffe2eded);status.setTextSize(12);status.setPadding(dp(4),dp(10),dp(4),0);
@@ -141,8 +143,20 @@ public final class ClientActivity extends Activity {
         new ControllerDialog(this,controller,()->{mappingsOpen=false;controller.capture(gameInputActive());}).show();
     }
     private void classicNpcs(){
+        sendGameCommand(GameCommand.classicNpcs(),"Typed #tim · check the game’s response");
+    }
+    private void viewport(boolean full){
+        try {
+            JSONObject launch=runtime.state().optJSONObject("launch");
+            if(launch==null||!"client".equals(launch.optString("mode"))||!runtime.alive())
+                throw new IllegalArgumentException("Enter the RoF2 game before changing its viewport");
+            String resolution=launch.optString("resolution");
+            String command=full?GameCommand.fullViewport(resolution):GameCommand.stoneViewport(resolution);
+            sendGameCommand(GameCommand.chat(command),"Typed "+command+" · check the game’s response");
+        }catch(Exception error){Toast.makeText(this,error.getMessage(),Toast.LENGTH_LONG).show();}
+    }
+    private void sendGameCommand(java.util.List<GameCommand.Stroke> steps,String message){
         final int generation=++commandGeneration;commandPending=true;setMenuOpen(false);controller.capture(false);display.input.releaseAll();
-        java.util.List<GameCommand.Stroke> steps=GameCommand.classicNpcs();
         for(GameCommand.Stroke step:steps)handler.postDelayed(()->{
             if(generation!=commandGeneration)return;
             if(isFinishing()||!hasWindowFocus()||menuOpen){cancelCommand();return;}
@@ -151,7 +165,7 @@ public final class ClientActivity extends Activity {
         handler.postDelayed(()->{
             if(generation!=commandGeneration)return;
             commandPending=false;controller.capture(gameInputActive());
-            Toast.makeText(this,"Typed #tim · check the game’s response",Toast.LENGTH_SHORT).show();
+            Toast.makeText(this,message,Toast.LENGTH_SHORT).show();
         },steps.get(steps.size()-1).delay+100);
     }
     private void cancelCommand(){commandGeneration++;commandPending=false;if(display!=null)display.input.releaseAll();}

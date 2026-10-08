@@ -257,13 +257,15 @@ def main():
             display.sendall(struct.pack('>BBHI',4,0,0,ord('w')))
             wait_for(lambda:Path('/client/probe-released-key.txt').exists(),'DirectInput movement key did not release',15)
             # Replay the actual Android command schedule emitted by its Java class.
-            previous=0
-            for line in Path('/client/command-keys.txt').read_text().splitlines():
-                delay,symbol,down=map(int,line.split());time.sleep((delay-previous)/1000);previous=delay
-                display.sendall(struct.pack('>BBHI',4,down,0,symbol))
-            wait_for(lambda:Path('/client/probe-command.txt').exists(),'Command Enter was not received',10)
-            assert Path('/client/probe-command.txt').read_text()=='#tim',Path('/client/probe-command.txt').read_text()
-            print('PASS: exact #tim command received through Windows WM_CHAR, no slash or stale draft submitted')
+            for schedule,expected in [('command-keys.txt','#tim'),('viewport-keys.txt','/viewport 179 0 920 480'),('viewport-reset-keys.txt','/viewport 0 0 1280 720')]:
+                command_result=Path('/client/probe-command.txt');command_result.unlink(missing_ok=True)
+                previous=0
+                for line in Path('/client',schedule).read_text().splitlines():
+                    delay,symbol,down=map(int,line.split());time.sleep((delay-previous)/1000);previous=delay
+                    display.sendall(struct.pack('>BBHI',4,down,0,symbol))
+                wait_for(lambda:command_result.exists(),'Command Enter was not received',10)
+                assert command_result.read_text()==expected,command_result.read_text()
+            print('PASS: exact #tim, StoneUI viewport and full viewport commands received through Windows WM_CHAR, no stale draft submitted')
             check_relative_input(display)
             check_idle_frames(display,width,height)
         wait_for(lambda:json.loads(Path('/session/status.json').read_text()).get('model_libraries_loaded')=={'d3dx9_30.dll':'native','d3dx9_35.dll':'native'}, 'Native model load evidence not recognized',15)

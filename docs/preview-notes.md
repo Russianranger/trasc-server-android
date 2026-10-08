@@ -1,3 +1,20 @@
+# 0.6.11 — StoneUI viewport controls
+
+The in-game gear menu adds **Apply StoneUI viewport** and **Restore full viewport**
+in Custom and Traditional. They type the native command and press Enter. Apply
+uses `/viewport 179 0 920 480` for an active 1280×720 launch; Restore full uses the
+active launch resolution. Enter the world before using them and wait for typing
+to finish. **Return to Launcher** retains its existing wording and behavior.
+
+Install in place. Existing compiled server, imported client, Wine prefix,
+runtime and DirectX helpers are retained. This narrow APK build reuses all
+19 native payload files byte for byte from the verified 0.6.10 APK and preserves
+its signing certificate. Server/runtime compilation is not repeated.
+[Viewport test steps](client-viewport-controls.md). StoneUI asset polish is a
+separate UI ZIP import; it does not require server compilation.
+
+---
+
 # 0.6.10 — Client UI activation and Return to Launcher
 
 Both profiles can save an installed UI skin for an existing character before
