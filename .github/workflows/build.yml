@@ -197,6 +197,8 @@ jobs:
           node tests/ui_content_import.cjs
           node tests/ui_session.cjs
           node tests/ui_management.cjs
+          node tests/ui_era_rules.cjs
+          node tests/ui_themes.cjs
           node tests/ui_file_cleanup.cjs
           node tests/ui_sdk_download.cjs
           node tests/ui_spire.cjs

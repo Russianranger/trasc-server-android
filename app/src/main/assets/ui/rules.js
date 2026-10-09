@@ -40,9 +40,9 @@ function showRuleErrors(errors){
  ruleErrors=errors;const messages=Object.values(errors);$('rules-errors').hidden=!messages.length;$('rules-errors').textContent=messages.join('\n');
  if(messages.length){$('rule-search').value='';renderRuleCategories();$('rules-errors').scrollIntoView({block:'center'});}
 }
-async function loadRules(selected){
+async function loadRules(selected,stillCurrent=()=>true){
  const requested=selected==null?{}:{ruleset:selected};
- const r=await job('gameplay',requested);rulesLoaded=true;rulesValues=r.values;ruleSpecs=r.metadata;ruleDraft={};loadedRuleset=r.selected;showRuleErrors({});
+ const r=await job('gameplay',requested);if(!stillCurrent())return;rulesLoaded=true;rulesValues=r.values;ruleSpecs=r.metadata;ruleDraft={};loadedRuleset=r.selected;showRuleErrors({});
  $('ruleset').replaceChildren();for(const set of r.rulesets){const o=document.createElement('option');o.value=set.id;o.textContent=set.name+' ('+set.id+')';$('ruleset').append(o);}$('ruleset').value=r.selected;
  $('active-rules').textContent='Active global rule set: '+r.active_name+'. Zones can have their own overrides.';
  $('state-saving').checked=['true','1'].includes(ruleText('Zone:StateSavingOnShutdown').toLowerCase());$('state-saving').disabled=!ruleSpecs['Zone:StateSavingOnShutdown'];

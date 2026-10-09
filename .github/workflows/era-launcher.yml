@@ -1,0 +1,147 @@
+name: Build Traditional era rules and launcher themes
+on:
+  push:
+    branches: [codex/traditional-eras-0613]
+  workflow_dispatch:
+permissions:
+  contents: read
+concurrency:
+  group: era-launcher-${{ github.ref }}
+  cancel-in-progress: true
+jobs:
+  apk:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    env:
+      TRASC_PREVIEW_KEYSTORE: ${{ github.workspace }}/runtime-work/signing/preview.keystore
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - name: Verify the scoped launcher-only change
+        run: |
+          python3 - <<'PY'
+          import pathlib,subprocess
+          allowed=set(pathlib.Path('docs/era-0613-build-paths.txt').read_text().splitlines())
+          changed=set(subprocess.check_output(['git','diff','--name-only','2765f893b94840e165951a3831cb4b858071e6c9','HEAD'],text=True).splitlines())
+          assert changed<=allowed,sorted(changed-allowed)
+          text=pathlib.Path('app/build.gradle').read_text()
+          assert "versionName '0.6.13'" in text and 'versionCode 62' in text
+          PY
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+      - uses: android-actions/setup-android@v3
+        with:
+          packages: platform-tools
+      - run: sdkmanager 'platforms;android-35' 'build-tools;35.0.0'
+      - uses: gradle/actions/setup-gradle@v4
+        with:
+          gradle-version: '8.11.1'
+      - uses: actions/cache/restore@v4
+        with:
+          path: runtime-work/signing/preview.keystore
+          key: trasc-preview-signing-v2
+      - run: bash scripts/prepare-preview-signing.sh
+      - name: Reuse the published native client components without rebuilding servers or runtimes
+        run: |
+          mkdir -p runtime-work/baseline dist
+          curl --fail --location --retry 3 -o runtime-work/baseline/base.apk https://github.com/Russianranger/trasc-server-android/releases/download/preview/trasc-server-android-preview.apk
+          curl --fail --location --retry 3 -o runtime-work/baseline/launcher-sources.tar.gz https://github.com/Russianranger/trasc-server-android/releases/download/preview/launcher-sources.tar.gz
+          echo '843e537e8ab17d2c2b34910e79e8c3ad3cacfee70cae4dfa68126115d6828272  runtime-work/baseline/launcher-sources.tar.gz' | sha256sum --check
+          python3 scripts/reuse-launcher-native.py extract --apk runtime-work/baseline/base.apk --receipt dist/native-reuse.json --expected-sha 8d78ced6130185881f2963efffa814020f7bcaf31a278a225fd4f9a15ea80bfc --baseline-version 0.6.12 --include-camera
+      - name: Test compatibility, proxy restoration and command schedules
+        run: |
+          python3 -m unittest discover -s tests -p test_launcher_native_reuse.py -v
+          python3 -m unittest discover -s tests -p 'test_era_rules*.py' -v
+          python3 -m unittest discover -s tests -p test_traditional_camera.py -v
+          python3 -m unittest discover -s tests -p test_client_render_assets.py -v
+          python3 -m unittest discover -s tests -p test_client_mouse.py -v
+          python3 -m unittest discover -s tests -p test_vulkan.py -v
+          python3 -m unittest discover -s tests -p test_client.py -v
+          bash scripts/check-management.sh
+      - name: Verify era review, restore and launcher themes
+        run: |
+          npm install --no-save --package-lock=false playwright@1.55.0
+          npx playwright install --with-deps chromium
+          node tests/ui_profiles.cjs
+          node tests/ui_management.cjs
+          node tests/ui_era_rules.cjs
+          node tests/ui_themes.cjs
+      - name: Compile APK and lint
+        run: gradle --no-daemon :app:assembleDebug :app:lintDebug
+      - name: Verify preserved signing and native payload
+        run: |
+          "$ANDROID_HOME/build-tools/35.0.0/apksigner" verify --print-certs app/build/outputs/apk/debug/app-debug.apk > dist/apk-signing.txt
+          python3 scripts/reuse-launcher-native.py verify --apk app/build/outputs/apk/debug/app-debug.apk --receipt dist/native-reuse.json
+          python3 - <<'PY'
+          import pathlib,re
+          actual=re.search(r'Signer #1 certificate SHA-256 digest: ([0-9a-f]+)',pathlib.Path('dist/apk-signing.txt').read_text()).group(1)
+          assert actual==pathlib.Path('docs/preview-signing.sha256').read_text().strip()
+          PY
+      - name: Package APK, current launcher code and verified native sources
+        run: |
+          cp app/build/outputs/apk/debug/app-debug.apk dist/trasc-server-android-preview.apk
+          mkdir -p runtime-work/source-bundle/launcher-source
+          cp runtime-work/baseline/launcher-sources.tar.gz runtime-work/source-bundle/launcher-source/native-sources-0.6.12.tar.gz
+          git archive --format=tar.gz HEAD > runtime-work/source-bundle/launcher-source/launcher-code-0.6.13.tar.gz
+          cp dist/native-reuse.json backend-assets/traditional-camera-bundle.json THIRD_PARTY_NOTICES.md runtime-work/source-bundle/launcher-source/
+          tar -czf dist/launcher-sources.tar.gz -C runtime-work/source-bundle launcher-source
+          python3 - <<'PY'
+          import hashlib,json,os,pathlib
+          p=pathlib.Path('dist/trasc-server-android-preview.apk')
+          manifest={'commit':os.environ['GITHUB_SHA'],'sha256':hashlib.file_digest(p.open('rb'),'sha256').hexdigest(),
+            'file':p.name,'version':'0.6.13','version_code':62,'application_id':'io.github.russianranger.trasc.preview',
+            'signing_certificate_sha256':pathlib.Path('docs/preview-signing.sha256').read_text().strip(),
+            'build_run':int(os.environ['GITHUB_RUN_ID']),'native_payload_reused_from':'0.6.12',
+            'native_reuse_manifest_sha256':hashlib.sha256(pathlib.Path('dist/native-reuse.json').read_bytes()).hexdigest(),
+            'traditional_camera_adapter_sha256':hashlib.sha256(pathlib.Path('backend-assets/trasc-camera-dinput8.dll').read_bytes()).hexdigest(),
+            'source_archive_sha256':hashlib.file_digest(pathlib.Path('dist/launcher-sources.tar.gz').open('rb'),'sha256').hexdigest()}
+          pathlib.Path('dist/preview-build.json').write_text(json.dumps(manifest,indent=2)+'\n')
+          PY
+      - uses: actions/upload-artifact@v4
+        with:
+          name: era-launcher-release
+          path: |
+            dist/trasc-server-android-preview.apk
+            dist/launcher-sources.tar.gz
+            dist/preview-build.json
+            dist/native-reuse.json
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: era-launcher-android-reports
+          path: app/build/reports/
+  era-database:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - name: Install database test tools
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y mariadb-server mariadb-client
+      - name: Test actual transactional era switching and exact default restoration
+        env:
+          ERARULES_MARIADB: '1'
+        run: python3 -m unittest discover -s tests -p test_era_rules_mariadb.py -v
+  preview:
+    needs: [apk, era-database]
+    if: github.ref == 'refs/heads/codex/traditional-eras-0613'
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/download-artifact@v4
+        with:
+          name: era-launcher-release
+          path: dist
+      - name: Publish the verified era and themes preview
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          gh api --method PATCH "repos/$GITHUB_REPOSITORY/git/refs/tags/preview" -f sha="$GITHUB_SHA" -F force=true
+          gh release upload preview dist/trasc-server-android-preview.apk dist/launcher-sources.tar.gz dist/preview-build.json dist/native-reuse.json --clobber
+          gh release edit preview --notes-file docs/preview-notes.md

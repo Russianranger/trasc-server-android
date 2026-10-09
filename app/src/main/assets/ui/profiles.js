@@ -4,7 +4,7 @@ const traditionalRevision='4aceae18b94ffaafc08e2b17bc41cd72c77f795d';
 function traditional(){return activeProfile==='traditional';}
 function renderProfile(n){
  const profile=n.profile||'custom';
- if(activeProfile&&activeProfile!==profile){resetClientUi();location.reload();return false;}
+ if(activeProfile&&activeProfile!==profile){if(typeof resetEraRules==='function')resetEraRules();resetClientUi();location.reload();return false;}
  if(!activeProfile){
   activeProfile=profile;document.body.dataset.profile=profile;$('runtime-heading-label').textContent=traditional()?'Traditional EQEmu runtime':'TRASC Custom runtime';$('world-profile').value=profile;
   document.querySelector('.eyebrow').textContent=traditional()?'TRADITIONAL EQEMU · CLASSIC ADVENTURE':'TRIPTYCH · ANDROID';

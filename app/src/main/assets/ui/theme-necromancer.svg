@@ -1,0 +1,49 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1280 720" fill="none">
+ <title>Necromancer — moonlit crypt and spectral sigil</title>
+ <desc>Original TRASC launcher artwork. Stone arches, a bone mask and green soul fire beneath a violet moon.</desc>
+ <defs>
+  <linearGradient id="sky" x2="0" y2="720" gradientUnits="userSpaceOnUse"><stop stop-color="#111124"/><stop offset=".55" stop-color="#2b2542"/><stop offset="1" stop-color="#102322"/></linearGradient>
+  <radialGradient id="moon"><stop stop-color="#e2d7e9"/><stop offset=".75" stop-color="#b9a6ca"/><stop offset="1" stop-color="#887aa7"/></radialGradient>
+  <radialGradient id="aura"><stop stop-color="#77c9a3" stop-opacity=".42"/><stop offset="1" stop-color="#477c77" stop-opacity="0"/></radialGradient>
+  <linearGradient id="stone" x2="1" y2="1"><stop stop-color="#555167"/><stop offset=".5" stop-color="#292b3d"/><stop offset="1" stop-color="#181e2a"/></linearGradient>
+  <linearGradient id="bone" x2="1" y2="1"><stop stop-color="#ede3c5"/><stop offset=".55" stop-color="#b6b5a7"/><stop offset="1" stop-color="#697f78"/></linearGradient>
+  <linearGradient id="fire" x2="0" y2="1"><stop stop-color="#c6ffe3"/><stop offset=".4" stop-color="#71d1af"/><stop offset="1" stop-color="#264d52"/></linearGradient>
+  <filter id="blur"><feGaussianBlur stdDeviation="14"/></filter>
+  <pattern id="wall" width="120" height="50" patternUnits="userSpaceOnUse"><path d="M0 49H120M60 0V49" stroke="#9b91a5" stroke-opacity=".1"/><path d="M3 6H54M66 42H113" stroke="#070f16" stroke-opacity=".3"/></pattern>
+ </defs>
+ <path fill="url(#sky)" d="M0 0h1280v720H0z"/>
+ <circle cx="1015" cy="205" r="162" fill="#a391bd" opacity=".1" filter="url(#blur)"/>
+ <circle cx="1015" cy="205" r="115" fill="url(#moon)" opacity=".64"/>
+ <path d="M950 145c35-14 54 10 36 30s-51 6-36-30Zm98 12c34-23 67 31 28 35Zm-69 74c22-17 51 3 26 25Zm70 39c9-21 24-5 19 10" fill="#797392" opacity=".35"/>
+ <g fill="#dbd7ef" opacity=".55"><circle cx="634" cy="51" r="1.3"/><circle cx="737" cy="142" r="1"/><circle cx="876" cy="74" r="1.6"/><circle cx="1138" cy="69" r="1"/><circle cx="1218" cy="152" r="1.3"/><circle cx="444" cy="103" r="1"/><circle cx="596" cy="196" r="1.1"/><circle cx="786" cy="25" r=".8"/></g>
+ <path d="M0 401 106 337l91 45 85-123 95 136 74-39 80 64 110-113 103 115 91-82 98 72 96-104 138 97 113-29v344H0Z" fill="#191c30"/>
+ <path d="M0 478 125 446l105 49 126-54 114 70 130-28 143 48 109-64 114 52 118-38 96 29v210H0Z" fill="#12202a"/>
+ <path d="M0 595c255-105 467-19 700-58s352-70 580-22v205H0Z" fill="#102022"/>
+ <ellipse cx="938" cy="487" rx="445" ry="123" fill="url(#aura)"/>
+ <!-- Ruined stone gallery frames the class emblem. -->
+ <path d="M36 0h83v720H36zM238 0h68v720h-68zM373 57h50v663h-50z" fill="url(#stone)"/>
+ <path d="M37 0h281v91H37zM36 147h83v26H36zM238 125h69v21h-69zM25 614h105v37H25zM228 621h89v25h-89z" fill="#434357"/>
+ <path d="M111 298c0-145 21-193 125-222v48c-73 25-101 71-117 174Zm193-13c0-104 29-140 69-176v50c-22 33-37 66-42 126Z" fill="#454154"/>
+ <path d="M47 9h258v673H47zM383 76h25v633h-25z" fill="url(#wall)"/>
+ <path d="m29 0 20 132-3 55m263-22-27 35 18 68m84 82-11 31 20 17-10 37" stroke="#121524" stroke-width="4"/>
+ <!-- Distant gravestones and cypress silhouettes. -->
+ <g fill="#0a171d"><path d="m548 556 8-239 9 79 18 74-19-20 23 48-22-10 23 49h-20l8 39Zm114 2 7-221 13 91 14 48-19-13 23 50-23-6 14 35h-16l6 16Z"/><path d="M705 573v-55c0-26 31-26 31 0v55Zm56 15v-44h8v-21h19v21h8v44Zm383-45v-62c0-22 37-22 37 0v62Zm53 15v-41h13v-24h21v24h13v41Z"/></g>
+ <!-- An original bone mask, chains and ceremonial death sigil. -->
+ <g transform="translate(1000 337)">
+  <circle r="169" fill="#142b2d" opacity=".62"/>
+  <circle r="164" stroke="#799789" stroke-width="3" opacity=".65"/>
+  <circle r="146" stroke="#9bc7aa" stroke-width="1" opacity=".53"/>
+  <path d="M-123-96 0-161l123 65 25 134L0 161-148 38Z" stroke="#a3c2a5" opacity=".3"/>
+  <path d="M-82-126-100-100m200 0-18-26M-157 0h26m261 0h27M-82 127l-18-26m200 0-18 26" stroke="#a8ccba" stroke-width="5"/>
+  <path d="M-76-30c-10-46 14-99 76-104 62 5 86 58 76 104L63 37 35 58 28 105H-28l-7-47-28-21Z" fill="url(#bone)" stroke="#1b3638" stroke-width="5"/>
+  <path d="M-61-31c12-16 27-17 43-10L-24-3c-14 18-44 8-37-28Zm122 0C49-47 34-48 18-41L24-3c14 18 44 8 37-28ZM0-8l-15 42h30ZM-35 58h70v17h-70Z" fill="#183235"/>
+  <path d="M-53-25c10-10 17-10 29-8l-8 22h-15Zm106 0c-10-10-17-10-29-8l8 22h15Z" fill="#8beac5"/>
+  <path d="M-18 79v22M-6 79v24M6 79v24M18 79v22" stroke="#536e66" stroke-width="4"/>
+  <path d="M-62 38-42 46m104-8-20 8M-31-105l9 16M34-105l-8 16" stroke="#767f7d" stroke-width="4"/>
+  <path d="m-94 94 188 41m-188 0L94 94" stroke="#a9b49f" stroke-width="12" stroke-linecap="round"/>
+  <g fill="#bec3ac"><circle cx="-97" cy="89" r="10"/><circle cx="-99" cy="101" r="10"/><circle cx="97" cy="132" r="10"/><circle cx="99" cy="143" r="10"/><circle cx="-97" cy="132" r="10"/><circle cx="-99" cy="143" r="10"/><circle cx="97" cy="89" r="10"/><circle cx="99" cy="101" r="10"/></g>
+ </g>
+ <g transform="translate(811 543)"><path d="M-16 0c-16-32 21-41 2-76 40 21 26 42 39 52 2-19 15-29 10-48 36 45 11 58 1 72Z" fill="url(#fire)"/><path d="M-28 0h66l-10 18h-46Zm8 18h46l9 62h-64Z" fill="url(#stone)" stroke="#8a8a90" stroke-opacity=".5"/></g>
+ <path d="M347 655c206-34 472-29 693-44M206 698c339-57 655-34 961-34" stroke="#789b94" stroke-opacity=".13" stroke-width="18" filter="url(#blur)"/>
+ <path d="M0 719V665l133-30 214 27 253-9 212 29 251-13 217 33v17" fill="#0a151a"/>
+</svg>

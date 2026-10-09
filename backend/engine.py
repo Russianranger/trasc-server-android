@@ -43,10 +43,11 @@ import traditional_content
 import traditional_build
 import traditional_runtime
 import peq_database
+import era_rules
 import client_ui
 from log_retention import rotate
 
-VERSION = '0.6.10'
+VERSION = '0.6.13'
 DEFAULT_REPO = 'https://github.com/Russianranger/Triptych-Triumvirate'
 BINARIES = ('world', 'zone', 'loginserver', 'shared_memory', 'ucs', 'eqlaunch', 'queryserv', 'export_client_files')
 CLIENT_FILES = ('spells_us.txt', 'dbstr_us.txt', 'SkillCaps.txt', 'BaseData.txt')
@@ -1144,6 +1145,8 @@ class Engine(ManagedContent):
                 raise ValueError('This repair or addon belongs to TRASC Custom')
         if op == 'import_content': return traditional_content.install(self,args)
         if op == 'traditional_status': return traditional_content.status(self)
+        if op in ('era_status', 'era_preview', 'era_apply', 'era_restore'):
+            return era_rules.dispatch(self,op,args)
         if op=='ferry_diagnostics':return ferry_service.diagnostics(self,args)
         if op in ('boat_trial_status','boat_trial_preview','boat_trial_apply'):
             return boat_trial.dispatch(self,op,args)
@@ -1196,7 +1199,7 @@ def serve(work, port, token, profile='custom'):
                     threading.Thread(target=server.shutdown,daemon=True).start()
                     result={'message':'Stopping all processes and database'}
                 elif op=='cancel': engine.cancel.set(); result={'message':'Cancellation requested'}
-                elif op in ('state','files','logs','databases','client_dll_status','client_dll_download_info','ferry_diagnostics','traditional_status'): result=engine.dispatch(op,args)
+                elif op in ('state','files','logs','databases','client_dll_status','client_dll_download_info','ferry_diagnostics','traditional_status','era_status'): result=engine.dispatch(op,args)
                 else: result=engine.enqueue(op,args)
                 payload=json.dumps({'ok':True,'result':result}).encode()
             except Exception as e:

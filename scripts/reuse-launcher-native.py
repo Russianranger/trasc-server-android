@@ -18,13 +18,15 @@ ASSETS = ('audio-bundle.json', 'dxvk-d3d9.dll', 'libasound_module_pcm_trasc.so',
 def digest(data):
     return hashlib.sha256(data).hexdigest()
 
-def extract(apk, root, expected_sha=BASE_APK_SHA256):
+CAMERA_ASSETS = ('trasc-camera-dinput8.dll', 'traditional-camera-bundle.json')
+
+def extract(apk, root, expected_sha=BASE_APK_SHA256, baseline_version='0.6.11', include_camera=False):
     apk, root = Path(apk), Path(root)
     if digest(apk.read_bytes()) != expected_sha:
-        raise ValueError('Published baseline APK does not match the verified 0.6.11 hash')
+        raise ValueError('Published baseline APK does not match the verified '+baseline_version+' hash')
     mappings = [(f'lib/arm64-v8a/{name}', f'app/src/main/jniLibs/arm64-v8a/{name}')
                 for name in LIBRARIES]
-    mappings += [('assets/'+name, 'backend-assets/'+name) for name in ASSETS]
+    mappings += [('assets/'+name, 'backend-assets/'+name) for name in ASSETS + (CAMERA_ASSETS if include_camera else ())]
     with zipfile.ZipFile(apk) as archive:
         # Read the entire required set before writing any partial payload.
         payload = [(source, target, archive.read(source)) for source, target in mappings]
@@ -35,7 +37,7 @@ def extract(apk, root, expected_sha=BASE_APK_SHA256):
         destination.write_bytes(data)
         records.append({'apk_entry': source, 'path': target,
                         'sha256': digest(data), 'bytes': len(data)})
-    return {'baseline_version': '0.6.11', 'baseline_apk_sha256': expected_sha,
+    return {'baseline_version': baseline_version, 'baseline_apk_sha256': expected_sha,
             'files': records}
 
 def verify(apk, receipt):
@@ -53,10 +55,13 @@ if __name__ == '__main__':
     parser.add_argument('action', choices=['extract','verify'])
     parser.add_argument('--apk',type=Path,required=True)
     parser.add_argument('--root',type=Path,default=Path('.'))
+    parser.add_argument('--expected-sha',default=BASE_APK_SHA256)
+    parser.add_argument('--baseline-version',default='0.6.11')
+    parser.add_argument('--include-camera',action='store_true')
     parser.add_argument('--receipt',type=Path,required=True)
     args = parser.parse_args()
     if args.action == 'extract':
-        receipt = extract(args.apk,args.root)
+        receipt = extract(args.apk,args.root,args.expected_sha,args.baseline_version,args.include_camera)
         args.receipt.parent.mkdir(parents=True,exist_ok=True)
         args.receipt.write_text(json.dumps(receipt,indent=2)+'\n')
     else:

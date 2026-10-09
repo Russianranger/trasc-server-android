@@ -1,0 +1,1341 @@
+{
+  "version": 1,
+  "revision": "peq-era-presets-2026-10-09.1",
+  "source_revision": "4aceae18b94ffaafc08e2b17bc41cd72c77f795d",
+  "rule_catalog_sha256": "2faa7bd655e46fd493a3455b0546442906db225f62a64d1c633c6e9c3cb6318a",
+  "presets": {
+    "velious": {
+      "label": "Velious",
+      "expansion": 2,
+      "rules": {
+        "Character:KeepLevelOverMax": {
+          "value": "true",
+          "required": true,
+          "reason": "Preservation exception: retain existing characters above the selected era cap; do not truncate their level when experience changes.",
+          "sources": [
+            "https://github.com/Russianranger/Server/blob/4aceae18b94ffaafc08e2b17bc41cd72c77f795d/zone/exp.cpp"
+          ]
+        },
+        "Character:RestRegenEnabled": {
+          "value": "false",
+          "required": true,
+          "reason": "Disable later rest-state regeneration; ordinary HP and mana regeneration remain active.",
+          "sources": [
+            "https://github.com/Russianranger/Server/blob/4aceae18b94ffaafc08e2b17bc41cd72c77f795d/common/ruletypes.h"
+          ]
+        },
+        "Character:SoDClientUseSoDHPManaEnd": {
+          "value": "false",
+          "required": true,
+          "reason": "Use the older HP/mana/endurance formulas rather than later Seeds of Destruction formulas on RoF2.",
+          "sources": [
+            "https://github.com/Russianranger/Server/blob/4aceae18b94ffaafc08e2b17bc41cd72c77f795d/common/ruletypes.h"
+          ]
+        },
+        "Character:HPRegenMultiplier": {
+          "value": "100",
+          "required": true,
+          "reason": "Use unmultiplied normal HP regeneration; this does not replace engine regeneration formulas.",
+          "sources": [
+            "https://github.com/Russianranger/Server/blob/4aceae18b94ffaafc08e2b17bc41cd72c77f795d/common/ruletypes.h"
+          ]
+        },
+        "Character:ManaRegenMultiplier": {
+          "value": "100",
+          "required": true,
+          "reason": "Use unmultiplied normal mana regeneration; this does not implement TAKP-specific meditate code.",
+          "sources": [
+            "https://github.com/Russianranger/Server/blob/4aceae18b94ffaafc08e2b17bc41cd72c77f795d/common/ruletypes.h"
+          ]
+        },
+        "Character:EnduranceRegenMultiplier": {
+          "value": "100",
+          "required": true,
+          "reason": "Use unmultiplied normal endurance regeneration; RoF2 endurance remains a client/engine difference.",
+          "sources": [
+            "https://github.com/Russianranger/Server/blob/4aceae18b94ffaafc08e2b17bc41cd72c77f795d/common/ruletypes.h"
+          ]
+        },
+        "Character:BaseHPRegenBonusRaces": {
+          "value": "4352",
+          "required": true,
+          "reason": "Keep the Troll/Iksar regeneration bonus mask shared by upstream and TAKP.",
+          "sources": [
+            "https://github.com/Russianranger/Server/blob/4aceae18b94ffaafc08e2b17bc41cd72c77f795d/common/ruletypes.h",
+            "https://github.com/EQMacEmu/Server/blob/d8d589a0ce486ee47ec990d3c3bbbf604b2572a1/common/ruletypes.h"
+          ]
+        },
+        "Character:RespawnFromHover": {
+          "value": "false",
+          "required": true,
+          "reason": "Use death/respawn without the later hover selection window.",
+          "sources": [
+            "https://github.com/Russianranger/Server/blob/4aceae18b94ffaafc08e2b17bc41cd72c77f795d/common/ruletypes.h"
+          ]
+        },
+        "Character:EnableXTargetting": {
+          "value": "false",
+          "required": true,
+          "reason": "Disable the later Underfoot extended-targeting feature on RoF2.",
+          "sources": [
+            "https://github.com/Russianranger/Server/blob/4aceae18b94ffaafc08e2b17bc41cd72c77f795d/common/ruletypes.h"
+          ]
+        },
+        "Character:EnableAggroMeter": {
+          "value": "false",
+          "required": true,
+          "reason": "Disable the later Rain of Fear aggro-meter feature on RoF2.",
+          "sources": [
+            "https://github.com/Russianranger/Server/blob/4aceae18b94ffaafc08e2b17bc41cd72c77f795d/common/ruletypes.h"
+          ]
+        },
+        "Character:UseOldConSystem": {
+          "value": "true",
+          "required": true,
+          "reason": "Use the engine pre-Secrets of Faydwer consider system.",
+          "sources": [
+            "https://github.com/Russianranger/Server/blob/4aceae18b94ffaafc08e2b17bc41cd72c77f795d/common/ruletypes.h"
+          ]
+        },
+        "Character:UseOldBindWound": {
+          "value": "true",
+          "required": true,
+          "reason": "Use the engine original bind-wound implementation: normal 50% limit with the skilled monk exception.",
+          "sources": [
+            "https://github.com/Russianranger/Server/blob/4aceae18b94ffaafc08e2b17bc41cd72c77f795d/zone/client.cpp",
+            "https://github.com/Russianranger/Server/blob/4aceae18b94ffaafc08e2b17bc41cd72c77f795d/common/ruletypes.h"
+          ]
+        },
+        "Character:EnableBardMelody": {
+          "value": "false",
+          "required": true,
+          "reason": "Disable the later /melody convenience feature for these classic-era presets.",
+          "sources": [
+            "https://github.com/Russianranger/Server/blob/4aceae18b94ffaafc08e2b17bc41cd72c77f795d/common/ruletypes.h"
+          ]
+        },
+        "Character:HealOnLevel": {
+          "value": "false",
+          "required": true,
+          "reason": "Do not completely heal on leveling; matches the TAKP default database.",
+          "sources": [
+            "https://github.com/Russianranger/Server/blob/4aceae18b94ffaafc08e2b17bc41cd72c77f795d/common/ruletypes.h",
+            "https://github.com/EQMacEmu/Server/blob/d8d589a0ce486ee47ec990d3c3bbbf604b2572a1/utils/sql/database_full/alkabor_latest.zip"
+          ]
+        },
+        "Character:ItemCastsUseFocus": {
+          "value": "false",
+          "required": true,
+          "reason": "Keep item click casts from using level-limited focuses; matches the TAKP default database.",
+          "sources": [
+            "https://github.com/Russianranger/Server/blob/4aceae18b94ffaafc08e2b17bc41cd72c77f795d/common/ruletypes.h",
+            "https://github.com/EQMacEmu/Server/blob/d8d589a0ce486ee47ec990d3c3bbbf604b2572a1/utils/sql/database_full/alkabor_latest.zip"
+          ]
+        },
+        "Character:LeaveCorpses": {
+          "value": "true",
+          "required": true,
+          "reason": "Leave player corpses; matches the TAKP default database.",
+          "sources": [
+            "https://github.com/Russianranger/Server/blob/4aceae18b94ffaafc08e2b17bc41cd72c77f795d/zone/attack.cpp",
+            "https://github.com/EQMacEmu/Server/blob/d8d589a0ce486ee47ec990d3c3bbbf604b2572a1/utils/sql/database_full/alkabor_latest.zip"
+          ]
+        },
+        "Character:LeaveNakedCorpses": {
+          "value": "true",
+          "required": true,
+          "reason": "Retain naked player corpses as in the TAKP default database.",
+          "sources": [
+            "https://github.com/Russianranger/Server/blob/4aceae18b94ffaafc08e2b17bc41cd72c77f795d/zone/attack.cpp",
+            "https://github.com/EQMacEmu/Server/blob/d8d589a0ce486ee47ec990d3c3bbbf604b2572a1/utils/sql/database_full/alkabor_latest.zip"
+          ]
+        },
+        "Character:DeathItemLossLevel": {
+          "value": "10",
+          "required": true,
+          "reason": "Use TAKP default item-corpse threshold level 10; the upstream corpse implementation remains.",
+          "sources": [
+            "https://github.com/Russianranger/Server/blob/4aceae18b94ffaafc08e2b17bc41cd72c77f795d/zone/attack.cpp",
+            "https://github.com/EQMacEmu/Server/blob/d8d589a0ce486ee47ec990d3c3bbbf604b2572a1/utils/sql/database_full/alkabor_latest.zip"
+          ]
+        },
+        "Character:DeathExpLossLevel": {
+          "value": "11",
+          "required": true,
+          "reason": "Use TAKP default experience-loss threshold level 11; upstream uses an inclusive threshold.",
+          "sources": [
+            "https://github.com/Russianranger/Server/blob/4aceae18b94ffaafc08e2b17bc41cd72c77f795d/zone/attack.cpp",
+            "https://github.com/EQMacEmu/Server/blob/d8d589a0ce486ee47ec990d3c3bbbf604b2572a1/utils/sql/database_full/alkabor_latest.zip"
+          ]
+        },
+        "Character:CorpseDecayTime": {
+          "value": "604800000",
+          "required": true,
+          "reason": "Seven-day corpse decay, mapped from TAKP Character:CorpseDecayTimeMS.",
+          "sources": [
+            "https://github.com/Russianranger/Server/blob/4aceae18b94ffaafc08e2b17bc41cd72c77f795d/common/ruletypes.h",
+            "https://github.com/EQMacEmu/Server/blob/d8d589a0ce486ee47ec990d3c3bbbf604b2572a1/utils/sql/database_full/alkabor_latest.zip"
+          ]
+        },
+        "Character:EmptyCorpseDecayTime": {
+          "value": "10800000",
+          "required": true,
+          "reason": "Three-hour empty-corpse decay, mapped from the TAKP millisecond key.",
+          "sources": [
+            "https://github.com/Russianranger/Server/blob/4aceae18b94ffaafc08e2b17bc41cd72c77f795d/common/ruletypes.h",
+            "https://github.com/EQMacEmu/Server/blob/d8d589a0ce486ee47ec990d3c3bbbf604b2572a1/utils/sql/database_full/alkabor_latest.zip"
+          ]
+        },
+        "Character:CorpseResTime": {
+          "value": "10800000",
+          "required": true,
+          "reason": "Three-hour resurrection window, mapped from TAKP Character:CorpseResTimeMS.",
+          "sources": [
+            "https://github.com/Russianranger/Server/blob/4aceae18b94ffaafc08e2b17bc41cd72c77f795d/common/ruletypes.h",
+            "https://github.com/EQMacEmu/Server/blob/d8d589a0ce486ee47ec990d3c3bbbf604b2572a1/utils/sql/database_full/alkabor_latest.zip"
+          ]
+        },
+        "Character:UnmemSpellsOnDeath": {
+          "value": "true",
+          "required": true,
+          "reason": "Forget memorized spells on death; spellbook ownership is unchanged.",
+          "sources": [
+            "https://github.com/Russianranger/Server/blob/4aceae18b94ffaafc08e2b17bc41cd72c77f795d/common/ruletypes.h"
+          ]
+        },
+        "Spells:BuffsFadeOnDeath": {
+          "value": "true",
+          "required": true,
+          "reason": "Use ordinary loss of nonpersistent buffs on death.",
+          "sources": [
+            "https://github.com/Russianranger/Server/blob/4aceae18b94ffaafc08e2b17bc41cd72c77f795d/common/ruletypes.h"
+          ]
+        },
+        "Spells:EnableBlockedBuffs": {
+          "value": "false",
+          "required": true,
+          "reason": "Disable the later blocked-buff convenience system.",
+          "sources": [
+            "https://github.com/Russianranger/Server/blob/4aceae18b94ffaafc08e2b17bc41cd72c77f795d/common/ruletypes.h"
+          ]
+        },
+        "Spells:UseClassicHarmTouchDamage": {
+          "value": "true",
+          "required": true,
+          "reason": "Use the engine pre-2007 Harm Touch damage calculation.",
+          "sources": [
+            "https://github.com/Russianranger/Server/blob/4aceae18b94ffaafc08e2b17bc41cd72c77f795d/common/ruletypes.h"
+          ]
+        },
+        "Combat:ClassicTauntSystem": {
+          "value": "true",
+          "required": true,
+          "reason": "Use the engine pre-2006 taunt system.",
+          "sources": [
+            "https://github.com/Russianranger/Server/blob/4aceae18b94ffaafc08e2b17bc41cd72c77f795d/common/ruletypes.h"
+          ]
+        },
+        "Combat:ClassicMasterWu": {
+          "value": "true",
+          "required": true,
+          "reason": "Use engine classic random-special Master Wu behavior when the expansion-tagged AA is available.",
+          "sources": [
+            "https://github.com/Russianranger/Server/blob/4aceae18b94ffaafc08e2b17bc41cd72c77f795d/common/ruletypes.h"
+          ]
+        },
+        "World:EnableTutorialButton": {
+          "value": "false",
+          "required": true,
+          "reason": "Disable the later tutorial button; retain existing start-zone and bind data.",
+          "sources": [
+            "https://github.com/Russianranger/Server/blob/4aceae18b94ffaafc08e2b17bc41cd72c77f795d/common/ruletypes.h"
+          ]
+        },
+        "World:EnableReturnHomeButton": {
+          "value": "false",
+          "required": true,
+          "reason": "Disable the later Return Home button; retain existing home and bind data.",
+          "sources": [
+            "https://github.com/Russianranger/Server/blob/4aceae18b94ffaafc08e2b17bc41cd72c77f795d/common/ruletypes.h"
+          ]
+        },
+        "Mercs:AllowMercs": {
+          "value": "false",
+          "required": true,
+          "reason": "Mercenaries are outside Velious, Luclin and Planes of Power.",
+          "sources": [
+            "https://github.com/Russianranger/Server/blob/4aceae18b94ffaafc08e2b17bc41cd72c77f795d/common/ruletypes.h"
+          ]
+        },
+        "AA:NormalizedAAEnabled": {
+          "value": "false",
+          "required": true,
+          "reason": "Disable the TSS-and-later normalized-AA experience system.",
+          "sources": [
+            "https://github.com/Russianranger/Server/blob/4aceae18b94ffaafc08e2b17bc41cd72c77f795d/common/ruletypes.h"
+          ]
+        },
+        "AA:ModernAAScalingEnabled": {
+          "value": "false",
+          "required": true,
+          "reason": "Disable modern AA catch-up acceleration; retain baseline normal AA rate and stored AA points.",
+          "sources": [
+            "https://github.com/Russianranger/Server/blob/4aceae18b94ffaafc08e2b17bc41cd72c77f795d/common/ruletypes.h"
+          ]
+        },
+        "Bazaar:EnableWarpToTrader": {
+          "value": "false",
+          "required": true,
+          "reason": "Disable later instant travel to bazaar traders.",
+          "sources": [
+            "https://github.com/Russianranger/Server/blob/4aceae18b94ffaafc08e2b17bc41cd72c77f795d/common/ruletypes.h"
+          ]
+        },
+        "Bazaar:EnableParcelDelivery": {
+          "value": "false",
+          "required": true,
+          "reason": "Disable later bazaar parcel delivery.",
+          "sources": [
+            "https://github.com/Russianranger/Server/blob/4aceae18b94ffaafc08e2b17bc41cd72c77f795d/common/ruletypes.h"
+          ]
+        },
+        "Parcel:EnableParcelMerchants": {
+          "value": "false",
+          "required": true,
+          "reason": "Disable later parcel merchant functionality.",
+          "sources": [
+            "https://github.com/Russianranger/Server/blob/4aceae18b94ffaafc08e2b17bc41cd72c77f795d/common/ruletypes.h"
+          ]
+        },
+        "Parcel:EnableDirectToInventoryDelivery": {
+          "value": "false",
+          "required": true,
+          "reason": "Disable later direct-to-inventory bazaar delivery.",
+          "sources": [
+            "https://github.com/Russianranger/Server/blob/4aceae18b94ffaafc08e2b17bc41cd72c77f795d/common/ruletypes.h"
+          ]
+        },
+        "Expansion:UseCurrentExpansionAAOnly": {
+          "value": "true",
+          "required": true,
+          "reason": "Reject AA ranks with database expansion later than the selected era; stored AA is not deleted.",
+          "sources": [
+            "https://github.com/Russianranger/Server/blob/4aceae18b94ffaafc08e2b17bc41cd72c77f795d/zone/aa.cpp"
+          ]
+        },
+        "Expansion:AutoGrantAAExpansion": {
+          "value": "-1",
+          "required": true,
+          "reason": "Disable AA autogrant; existing purchased AA remains stored.",
+          "sources": [
+            "https://github.com/Russianranger/Server/blob/4aceae18b94ffaafc08e2b17bc41cd72c77f795d/zone/aa.cpp"
+          ]
+        },
+        "World:UseClientBasedExpansionSettings": {
+          "value": "false",
+          "required": true,
+          "reason": "Honor the selected era mask rather than RoF2 client-era defaults.",
+          "sources": [
+            "https://github.com/Russianranger/Server/blob/4aceae18b94ffaafc08e2b17bc41cd72c77f795d/world/client.cpp",
+            "https://github.com/Russianranger/Server/blob/4aceae18b94ffaafc08e2b17bc41cd72c77f795d/zone/client_packet.cpp"
+          ]
+        },
+        "Character:MaxLevel": {
+          "value": "60",
+          "required": true,
+          "reason": "Use the Velious normal level cap.",
+          "sources": [
+            "https://github.com/Russianranger/Server/blob/4aceae18b94ffaafc08e2b17bc41cd72c77f795d/common/ruletypes.h"
+          ]
+        },
+        "Character:MaxExpLevel": {
+          "value": "60",
+          "required": true,
+          "reason": "Explicitly cap experience so an inherited higher MaxExpLevel cannot override the era level cap.",
+          "sources": [
+            "https://github.com/Russianranger/Server/blob/4aceae18b94ffaafc08e2b17bc41cd72c77f795d/zone/exp.cpp"
+          ]
+        },
+        "Character:SkillCapMaxLevel": {
+          "value": "60",
+          "required": true,
+          "reason": "Limit skill-cap lookup to the era level cap using the existing PEQ skill_caps table.",
+          "sources": [
+            "https://github.com/Russianranger/Server/blob/4aceae18b94ffaafc08e2b17bc41cd72c77f795d/common/ruletypes.h"
+          ]
+        },
+        "Expansion:CurrentExpansion": {
+          "value": "2",
+          "required": true,
+          "reason": "Set engine content expansion index. The launcher must reversibly overlay the managed era rules on default because startup/content routing reloads default, then restore original rows and per-zone assignments.",
+          "sources": [
+            "https://github.com/Russianranger/Server/blob/4aceae18b94ffaafc08e2b17bc41cd72c77f795d/common/content/world_content_service.cpp",
+            "https://github.com/Russianranger/Server/blob/4aceae18b94ffaafc08e2b17bc41cd72c77f795d/zone/zoning.cpp"
+          ]
+        },
+        "World:ExpansionSettings": {
+          "value": "3",
+          "required": true,
+          "reason": "Use cumulative Kunark/Velious/Luclin/PoP client mask for this era.",
+          "sources": [
+            "https://github.com/Russianranger/Server/blob/4aceae18b94ffaafc08e2b17bc41cd72c77f795d/common/emu_versions.h",
+            "https://github.com/Russianranger/Server/blob/4aceae18b94ffaafc08e2b17bc41cd72c77f795d/zone/client_packet.cpp"
+          ]
+        },
+        "World:CharacterSelectExpansionSettings": {
+          "value": "3",
+          "required": true,
+          "reason": "Use the same era mask at character selection rather than an inherited override.",
+          "sources": [
+            "https://github.com/Russianranger/Server/blob/4aceae18b94ffaafc08e2b17bc41cd72c77f795d/world/client.cpp",
+            "https://github.com/Russianranger/Server/blob/4aceae18b94ffaafc08e2b17bc41cd72c77f795d/common/emu_versions.h"
+          ]
+        },
+        "Items:DisableSpellFocusEffects": {
+          "value": "true",
+          "required": true,
+          "reason": "Disable worn spell focuses before Luclin and enable from Luclin, matching TAKP item-loader expansion switch. Bard instruments and item records are retained.",
+          "sources": [
+            "https://github.com/Russianranger/Server/blob/4aceae18b94ffaafc08e2b17bc41cd72c77f795d/common/ruletypes.h",
+            "https://github.com/EQMacEmu/Server/blob/d8d589a0ce486ee47ec990d3c3bbbf604b2572a1/common/shareddb.cpp"
+          ]
+        }
+      },
+      "limitations": [
+        "These are PEQ-compatible era presets on the existing EQEmu server and RoF2 client, not a TAKP engine/database replacement.",
+        "Later-zone access follows zone.expansion and bypass_expansion_check for ordinary characters; GM characters bypass the engine expansion gate.",
+        "Min/max-tagged content is filtered, but missing or inaccurate PEQ tags can retain later spawns, items, loot, merchants and expansion-spanning quest behavior in older zones.",
+        "The RoF2 expansion mask affects client creation availability. The pinned server validates race/class/deity/start-zone combinations without separately checking their expansion requirement; existing characters are not changed.",
+        "AA availability depends on aa_ranks.expansion metadata. Existing purchased AA and unspent points remain stored; the preset does not clear AA allocation or implement TAKP Character:DisableAAs.",
+        "Existing over-cap characters retain their level. Normal leveling follows the selected cap, while quest character-specific level limits remain inherited.",
+        "Baseline XP multipliers, group/raid rewards, XP penalty curves, con scaling and zone modifiers are retained: TAKP formulas and AK-only bonuses cannot be safely copied without recalibrating stored character experience.",
+        "TAKP charm, resist, pet XP, monk AC, item bane/required-level, spell progression and hell-level smoothing algorithms have no complete equivalent in these upstream rule values.",
+        "The preset requires a stopped-server switch/restart. A live static/content reload can reset inherited per-zone preferences to default until another restart; the launcher does not use live rule reload.",
+        "Velious filters expansion-tagged Luclin AA and hides expansion-dependent creation choices where RoF2 honors the mask, but does not erase existing AA, Beastlords or Vah Shir characters."
+      ]
+    },
+    "luclin": {
+      "label": "Luclin",
+      "expansion": 3,
+      "rules": {
+        "Character:KeepLevelOverMax": {
+          "value": "true",
+          "required": true,
+          "reason": "Preservation exception: retain existing characters above the selected era cap; do not truncate their level when experience changes.",
+          "sources": [
+            "https://github.com/Russianranger/Server/blob/4aceae18b94ffaafc08e2b17bc41cd72c77f795d/zone/exp.cpp"
+          ]
+        },
+        "Character:RestRegenEnabled": {
+          "value": "false",
+          "required": true,
+          "reason": "Disable later rest-state regeneration; ordinary HP and mana regeneration remain active.",
+          "sources": [
+            "https://github.com/Russianranger/Server/blob/4aceae18b94ffaafc08e2b17bc41cd72c77f795d/common/ruletypes.h"
+          ]
+        },
+        "Character:SoDClientUseSoDHPManaEnd": {
+          "value": "false",
+          "required": true,
+          "reason": "Use the older HP/mana/endurance formulas rather than later Seeds of Destruction formulas on RoF2.",
+          "sources": [
+            "https://github.com/Russianranger/Server/blob/4aceae18b94ffaafc08e2b17bc41cd72c77f795d/common/ruletypes.h"
+          ]
+        },
+        "Character:HPRegenMultiplier": {
+          "value": "100",
+          "required": true,
+          "reason": "Use unmultiplied normal HP regeneration; this does not replace engine regeneration formulas.",
+          "sources": [
+            "https://github.com/Russianranger/Server/blob/4aceae18b94ffaafc08e2b17bc41cd72c77f795d/common/ruletypes.h"
+          ]
+        },
+        "Character:ManaRegenMultiplier": {
+          "value": "100",
+          "required": true,
+          "reason": "Use unmultiplied normal mana regeneration; this does not implement TAKP-specific meditate code.",
+          "sources": [
+            "https://github.com/Russianranger/Server/blob/4aceae18b94ffaafc08e2b17bc41cd72c77f795d/common/ruletypes.h"
+          ]
+        },
+        "Character:EnduranceRegenMultiplier": {
+          "value": "100",
+          "required": true,
+          "reason": "Use unmultiplied normal endurance regeneration; RoF2 endurance remains a client/engine difference.",
+          "sources": [
+            "https://github.com/Russianranger/Server/blob/4aceae18b94ffaafc08e2b17bc41cd72c77f795d/common/ruletypes.h"
+          ]
+        },
+        "Character:BaseHPRegenBonusRaces": {
+          "value": "4352",
+          "required": true,
+          "reason": "Keep the Troll/Iksar regeneration bonus mask shared by upstream and TAKP.",
+          "sources": [
+            "https://github.com/Russianranger/Server/blob/4aceae18b94ffaafc08e2b17bc41cd72c77f795d/common/ruletypes.h",
+            "https://github.com/EQMacEmu/Server/blob/d8d589a0ce486ee47ec990d3c3bbbf604b2572a1/common/ruletypes.h"
+          ]
+        },
+        "Character:RespawnFromHover": {
+          "value": "false",
+          "required": true,
+          "reason": "Use death/respawn without the later hover selection window.",
+          "sources": [
+            "https://github.com/Russianranger/Server/blob/4aceae18b94ffaafc08e2b17bc41cd72c77f795d/common/ruletypes.h"
+          ]
+        },
+        "Character:EnableXTargetting": {
+          "value": "false",
+          "required": true,
+          "reason": "Disable the later Underfoot extended-targeting feature on RoF2.",
+          "sources": [
+            "https://github.com/Russianranger/Server/blob/4aceae18b94ffaafc08e2b17bc41cd72c77f795d/common/ruletypes.h"
+          ]
+        },
+        "Character:EnableAggroMeter": {
+          "value": "false",
+          "required": true,
+          "reason": "Disable the later Rain of Fear aggro-meter feature on RoF2.",
+          "sources": [
+            "https://github.com/Russianranger/Server/blob/4aceae18b94ffaafc08e2b17bc41cd72c77f795d/common/ruletypes.h"
+          ]
+        },
+        "Character:UseOldConSystem": {
+          "value": "true",
+          "required": true,
+          "reason": "Use the engine pre-Secrets of Faydwer consider system.",
+          "sources": [
+            "https://github.com/Russianranger/Server/blob/4aceae18b94ffaafc08e2b17bc41cd72c77f795d/common/ruletypes.h"
+          ]
+        },
+        "Character:UseOldBindWound": {
+          "value": "true",
+          "required": true,
+          "reason": "Use the engine original bind-wound implementation: normal 50% limit with the skilled monk exception.",
+          "sources": [
+            "https://github.com/Russianranger/Server/blob/4aceae18b94ffaafc08e2b17bc41cd72c77f795d/zone/client.cpp",
+            "https://github.com/Russianranger/Server/blob/4aceae18b94ffaafc08e2b17bc41cd72c77f795d/common/ruletypes.h"
+          ]
+        },
+        "Character:EnableBardMelody": {
+          "value": "false",
+          "required": true,
+          "reason": "Disable the later /melody convenience feature for these classic-era presets.",
+          "sources": [
+            "https://github.com/Russianranger/Server/blob/4aceae18b94ffaafc08e2b17bc41cd72c77f795d/common/ruletypes.h"
+          ]
+        },
+        "Character:HealOnLevel": {
+          "value": "false",
+          "required": true,
+          "reason": "Do not completely heal on leveling; matches the TAKP default database.",
+          "sources": [
+            "https://github.com/Russianranger/Server/blob/4aceae18b94ffaafc08e2b17bc41cd72c77f795d/common/ruletypes.h",
+            "https://github.com/EQMacEmu/Server/blob/d8d589a0ce486ee47ec990d3c3bbbf604b2572a1/utils/sql/database_full/alkabor_latest.zip"
+          ]
+        },
+        "Character:ItemCastsUseFocus": {
+          "value": "false",
+          "required": true,
+          "reason": "Keep item click casts from using level-limited focuses; matches the TAKP default database.",
+          "sources": [
+            "https://github.com/Russianranger/Server/blob/4aceae18b94ffaafc08e2b17bc41cd72c77f795d/common/ruletypes.h",
+            "https://github.com/EQMacEmu/Server/blob/d8d589a0ce486ee47ec990d3c3bbbf604b2572a1/utils/sql/database_full/alkabor_latest.zip"
+          ]
+        },
+        "Character:LeaveCorpses": {
+          "value": "true",
+          "required": true,
+          "reason": "Leave player corpses; matches the TAKP default database.",
+          "sources": [
+            "https://github.com/Russianranger/Server/blob/4aceae18b94ffaafc08e2b17bc41cd72c77f795d/zone/attack.cpp",
+            "https://github.com/EQMacEmu/Server/blob/d8d589a0ce486ee47ec990d3c3bbbf604b2572a1/utils/sql/database_full/alkabor_latest.zip"
+          ]
+        },
+        "Character:LeaveNakedCorpses": {
+          "value": "true",
+          "required": true,
+          "reason": "Retain naked player corpses as in the TAKP default database.",
+          "sources": [
+            "https://github.com/Russianranger/Server/blob/4aceae18b94ffaafc08e2b17bc41cd72c77f795d/zone/attack.cpp",
+            "https://github.com/EQMacEmu/Server/blob/d8d589a0ce486ee47ec990d3c3bbbf604b2572a1/utils/sql/database_full/alkabor_latest.zip"
+          ]
+        },
+        "Character:DeathItemLossLevel": {
+          "value": "10",
+          "required": true,
+          "reason": "Use TAKP default item-corpse threshold level 10; the upstream corpse implementation remains.",
+          "sources": [
+            "https://github.com/Russianranger/Server/blob/4aceae18b94ffaafc08e2b17bc41cd72c77f795d/zone/attack.cpp",
+            "https://github.com/EQMacEmu/Server/blob/d8d589a0ce486ee47ec990d3c3bbbf604b2572a1/utils/sql/database_full/alkabor_latest.zip"
+          ]
+        },
+        "Character:DeathExpLossLevel": {
+          "value": "11",
+          "required": true,
+          "reason": "Use TAKP default experience-loss threshold level 11; upstream uses an inclusive threshold.",
+          "sources": [
+            "https://github.com/Russianranger/Server/blob/4aceae18b94ffaafc08e2b17bc41cd72c77f795d/zone/attack.cpp",
+            "https://github.com/EQMacEmu/Server/blob/d8d589a0ce486ee47ec990d3c3bbbf604b2572a1/utils/sql/database_full/alkabor_latest.zip"
+          ]
+        },
+        "Character:CorpseDecayTime": {
+          "value": "604800000",
+          "required": true,
+          "reason": "Seven-day corpse decay, mapped from TAKP Character:CorpseDecayTimeMS.",
+          "sources": [
+            "https://github.com/Russianranger/Server/blob/4aceae18b94ffaafc08e2b17bc41cd72c77f795d/common/ruletypes.h",
+            "https://github.com/EQMacEmu/Server/blob/d8d589a0ce486ee47ec990d3c3bbbf604b2572a1/utils/sql/database_full/alkabor_latest.zip"
+          ]
+        },
+        "Character:EmptyCorpseDecayTime": {
+          "value": "10800000",
+          "required": true,
+          "reason": "Three-hour empty-corpse decay, mapped from the TAKP millisecond key.",
+          "sources": [
+            "https://github.com/Russianranger/Server/blob/4aceae18b94ffaafc08e2b17bc41cd72c77f795d/common/ruletypes.h",
+            "https://github.com/EQMacEmu/Server/blob/d8d589a0ce486ee47ec990d3c3bbbf604b2572a1/utils/sql/database_full/alkabor_latest.zip"
+          ]
+        },
+        "Character:CorpseResTime": {
+          "value": "10800000",
+          "required": true,
+          "reason": "Three-hour resurrection window, mapped from TAKP Character:CorpseResTimeMS.",
+          "sources": [
+            "https://github.com/Russianranger/Server/blob/4aceae18b94ffaafc08e2b17bc41cd72c77f795d/common/ruletypes.h",
+            "https://github.com/EQMacEmu/Server/blob/d8d589a0ce486ee47ec990d3c3bbbf604b2572a1/utils/sql/database_full/alkabor_latest.zip"
+          ]
+        },
+        "Character:UnmemSpellsOnDeath": {
+          "value": "true",
+          "required": true,
+          "reason": "Forget memorized spells on death; spellbook ownership is unchanged.",
+          "sources": [
+            "https://github.com/Russianranger/Server/blob/4aceae18b94ffaafc08e2b17bc41cd72c77f795d/common/ruletypes.h"
+          ]
+        },
+        "Spells:BuffsFadeOnDeath": {
+          "value": "true",
+          "required": true,
+          "reason": "Use ordinary loss of nonpersistent buffs on death.",
+          "sources": [
+            "https://github.com/Russianranger/Server/blob/4aceae18b94ffaafc08e2b17bc41cd72c77f795d/common/ruletypes.h"
+          ]
+        },
+        "Spells:EnableBlockedBuffs": {
+          "value": "false",
+          "required": true,
+          "reason": "Disable the later blocked-buff convenience system.",
+          "sources": [
+            "https://github.com/Russianranger/Server/blob/4aceae18b94ffaafc08e2b17bc41cd72c77f795d/common/ruletypes.h"
+          ]
+        },
+        "Spells:UseClassicHarmTouchDamage": {
+          "value": "true",
+          "required": true,
+          "reason": "Use the engine pre-2007 Harm Touch damage calculation.",
+          "sources": [
+            "https://github.com/Russianranger/Server/blob/4aceae18b94ffaafc08e2b17bc41cd72c77f795d/common/ruletypes.h"
+          ]
+        },
+        "Combat:ClassicTauntSystem": {
+          "value": "true",
+          "required": true,
+          "reason": "Use the engine pre-2006 taunt system.",
+          "sources": [
+            "https://github.com/Russianranger/Server/blob/4aceae18b94ffaafc08e2b17bc41cd72c77f795d/common/ruletypes.h"
+          ]
+        },
+        "Combat:ClassicMasterWu": {
+          "value": "true",
+          "required": true,
+          "reason": "Use engine classic random-special Master Wu behavior when the expansion-tagged AA is available.",
+          "sources": [
+            "https://github.com/Russianranger/Server/blob/4aceae18b94ffaafc08e2b17bc41cd72c77f795d/common/ruletypes.h"
+          ]
+        },
+        "World:EnableTutorialButton": {
+          "value": "false",
+          "required": true,
+          "reason": "Disable the later tutorial button; retain existing start-zone and bind data.",
+          "sources": [
+            "https://github.com/Russianranger/Server/blob/4aceae18b94ffaafc08e2b17bc41cd72c77f795d/common/ruletypes.h"
+          ]
+        },
+        "World:EnableReturnHomeButton": {
+          "value": "false",
+          "required": true,
+          "reason": "Disable the later Return Home button; retain existing home and bind data.",
+          "sources": [
+            "https://github.com/Russianranger/Server/blob/4aceae18b94ffaafc08e2b17bc41cd72c77f795d/common/ruletypes.h"
+          ]
+        },
+        "Mercs:AllowMercs": {
+          "value": "false",
+          "required": true,
+          "reason": "Mercenaries are outside Velious, Luclin and Planes of Power.",
+          "sources": [
+            "https://github.com/Russianranger/Server/blob/4aceae18b94ffaafc08e2b17bc41cd72c77f795d/common/ruletypes.h"
+          ]
+        },
+        "AA:NormalizedAAEnabled": {
+          "value": "false",
+          "required": true,
+          "reason": "Disable the TSS-and-later normalized-AA experience system.",
+          "sources": [
+            "https://github.com/Russianranger/Server/blob/4aceae18b94ffaafc08e2b17bc41cd72c77f795d/common/ruletypes.h"
+          ]
+        },
+        "AA:ModernAAScalingEnabled": {
+          "value": "false",
+          "required": true,
+          "reason": "Disable modern AA catch-up acceleration; retain baseline normal AA rate and stored AA points.",
+          "sources": [
+            "https://github.com/Russianranger/Server/blob/4aceae18b94ffaafc08e2b17bc41cd72c77f795d/common/ruletypes.h"
+          ]
+        },
+        "Bazaar:EnableWarpToTrader": {
+          "value": "false",
+          "required": true,
+          "reason": "Disable later instant travel to bazaar traders.",
+          "sources": [
+            "https://github.com/Russianranger/Server/blob/4aceae18b94ffaafc08e2b17bc41cd72c77f795d/common/ruletypes.h"
+          ]
+        },
+        "Bazaar:EnableParcelDelivery": {
+          "value": "false",
+          "required": true,
+          "reason": "Disable later bazaar parcel delivery.",
+          "sources": [
+            "https://github.com/Russianranger/Server/blob/4aceae18b94ffaafc08e2b17bc41cd72c77f795d/common/ruletypes.h"
+          ]
+        },
+        "Parcel:EnableParcelMerchants": {
+          "value": "false",
+          "required": true,
+          "reason": "Disable later parcel merchant functionality.",
+          "sources": [
+            "https://github.com/Russianranger/Server/blob/4aceae18b94ffaafc08e2b17bc41cd72c77f795d/common/ruletypes.h"
+          ]
+        },
+        "Parcel:EnableDirectToInventoryDelivery": {
+          "value": "false",
+          "required": true,
+          "reason": "Disable later direct-to-inventory bazaar delivery.",
+          "sources": [
+            "https://github.com/Russianranger/Server/blob/4aceae18b94ffaafc08e2b17bc41cd72c77f795d/common/ruletypes.h"
+          ]
+        },
+        "Expansion:UseCurrentExpansionAAOnly": {
+          "value": "true",
+          "required": true,
+          "reason": "Reject AA ranks with database expansion later than the selected era; stored AA is not deleted.",
+          "sources": [
+            "https://github.com/Russianranger/Server/blob/4aceae18b94ffaafc08e2b17bc41cd72c77f795d/zone/aa.cpp"
+          ]
+        },
+        "Expansion:AutoGrantAAExpansion": {
+          "value": "-1",
+          "required": true,
+          "reason": "Disable AA autogrant; existing purchased AA remains stored.",
+          "sources": [
+            "https://github.com/Russianranger/Server/blob/4aceae18b94ffaafc08e2b17bc41cd72c77f795d/zone/aa.cpp"
+          ]
+        },
+        "World:UseClientBasedExpansionSettings": {
+          "value": "false",
+          "required": true,
+          "reason": "Honor the selected era mask rather than RoF2 client-era defaults.",
+          "sources": [
+            "https://github.com/Russianranger/Server/blob/4aceae18b94ffaafc08e2b17bc41cd72c77f795d/world/client.cpp",
+            "https://github.com/Russianranger/Server/blob/4aceae18b94ffaafc08e2b17bc41cd72c77f795d/zone/client_packet.cpp"
+          ]
+        },
+        "Character:MaxLevel": {
+          "value": "60",
+          "required": true,
+          "reason": "Use the Luclin normal level cap.",
+          "sources": [
+            "https://github.com/Russianranger/Server/blob/4aceae18b94ffaafc08e2b17bc41cd72c77f795d/common/ruletypes.h"
+          ]
+        },
+        "Character:MaxExpLevel": {
+          "value": "60",
+          "required": true,
+          "reason": "Explicitly cap experience so an inherited higher MaxExpLevel cannot override the era level cap.",
+          "sources": [
+            "https://github.com/Russianranger/Server/blob/4aceae18b94ffaafc08e2b17bc41cd72c77f795d/zone/exp.cpp"
+          ]
+        },
+        "Character:SkillCapMaxLevel": {
+          "value": "60",
+          "required": true,
+          "reason": "Limit skill-cap lookup to the era level cap using the existing PEQ skill_caps table.",
+          "sources": [
+            "https://github.com/Russianranger/Server/blob/4aceae18b94ffaafc08e2b17bc41cd72c77f795d/common/ruletypes.h"
+          ]
+        },
+        "Expansion:CurrentExpansion": {
+          "value": "3",
+          "required": true,
+          "reason": "Set engine content expansion index. The launcher must reversibly overlay the managed era rules on default because startup/content routing reloads default, then restore original rows and per-zone assignments.",
+          "sources": [
+            "https://github.com/Russianranger/Server/blob/4aceae18b94ffaafc08e2b17bc41cd72c77f795d/common/content/world_content_service.cpp",
+            "https://github.com/Russianranger/Server/blob/4aceae18b94ffaafc08e2b17bc41cd72c77f795d/zone/zoning.cpp"
+          ]
+        },
+        "World:ExpansionSettings": {
+          "value": "7",
+          "required": true,
+          "reason": "Use cumulative Kunark/Velious/Luclin/PoP client mask for this era.",
+          "sources": [
+            "https://github.com/Russianranger/Server/blob/4aceae18b94ffaafc08e2b17bc41cd72c77f795d/common/emu_versions.h",
+            "https://github.com/Russianranger/Server/blob/4aceae18b94ffaafc08e2b17bc41cd72c77f795d/zone/client_packet.cpp"
+          ]
+        },
+        "World:CharacterSelectExpansionSettings": {
+          "value": "7",
+          "required": true,
+          "reason": "Use the same era mask at character selection rather than an inherited override.",
+          "sources": [
+            "https://github.com/Russianranger/Server/blob/4aceae18b94ffaafc08e2b17bc41cd72c77f795d/world/client.cpp",
+            "https://github.com/Russianranger/Server/blob/4aceae18b94ffaafc08e2b17bc41cd72c77f795d/common/emu_versions.h"
+          ]
+        },
+        "Items:DisableSpellFocusEffects": {
+          "value": "false",
+          "required": true,
+          "reason": "Disable worn spell focuses before Luclin and enable from Luclin, matching TAKP item-loader expansion switch. Bard instruments and item records are retained.",
+          "sources": [
+            "https://github.com/Russianranger/Server/blob/4aceae18b94ffaafc08e2b17bc41cd72c77f795d/common/ruletypes.h",
+            "https://github.com/EQMacEmu/Server/blob/d8d589a0ce486ee47ec990d3c3bbbf604b2572a1/common/shareddb.cpp"
+          ]
+        }
+      },
+      "limitations": [
+        "These are PEQ-compatible era presets on the existing EQEmu server and RoF2 client, not a TAKP engine/database replacement.",
+        "Later-zone access follows zone.expansion and bypass_expansion_check for ordinary characters; GM characters bypass the engine expansion gate.",
+        "Min/max-tagged content is filtered, but missing or inaccurate PEQ tags can retain later spawns, items, loot, merchants and expansion-spanning quest behavior in older zones.",
+        "The RoF2 expansion mask affects client creation availability. The pinned server validates race/class/deity/start-zone combinations without separately checking their expansion requirement; existing characters are not changed.",
+        "AA availability depends on aa_ranks.expansion metadata. Existing purchased AA and unspent points remain stored; the preset does not clear AA allocation or implement TAKP Character:DisableAAs.",
+        "Existing over-cap characters retain their level. Normal leveling follows the selected cap, while quest character-specific level limits remain inherited.",
+        "Baseline XP multipliers, group/raid rewards, XP penalty curves, con scaling and zone modifiers are retained: TAKP formulas and AK-only bonuses cannot be safely copied without recalibrating stored character experience.",
+        "TAKP charm, resist, pet XP, monk AC, item bane/required-level, spell progression and hell-level smoothing algorithms have no complete equivalent in these upstream rule values.",
+        "The preset requires a stopped-server switch/restart. A live static/content reload can reset inherited per-zone preferences to default until another restart; the launcher does not use live rule reload."
+      ]
+    },
+    "pop": {
+      "label": "Planes of Power",
+      "expansion": 4,
+      "rules": {
+        "Character:KeepLevelOverMax": {
+          "value": "true",
+          "required": true,
+          "reason": "Preservation exception: retain existing characters above the selected era cap; do not truncate their level when experience changes.",
+          "sources": [
+            "https://github.com/Russianranger/Server/blob/4aceae18b94ffaafc08e2b17bc41cd72c77f795d/zone/exp.cpp"
+          ]
+        },
+        "Character:RestRegenEnabled": {
+          "value": "false",
+          "required": true,
+          "reason": "Disable later rest-state regeneration; ordinary HP and mana regeneration remain active.",
+          "sources": [
+            "https://github.com/Russianranger/Server/blob/4aceae18b94ffaafc08e2b17bc41cd72c77f795d/common/ruletypes.h"
+          ]
+        },
+        "Character:SoDClientUseSoDHPManaEnd": {
+          "value": "false",
+          "required": true,
+          "reason": "Use the older HP/mana/endurance formulas rather than later Seeds of Destruction formulas on RoF2.",
+          "sources": [
+            "https://github.com/Russianranger/Server/blob/4aceae18b94ffaafc08e2b17bc41cd72c77f795d/common/ruletypes.h"
+          ]
+        },
+        "Character:HPRegenMultiplier": {
+          "value": "100",
+          "required": true,
+          "reason": "Use unmultiplied normal HP regeneration; this does not replace engine regeneration formulas.",
+          "sources": [
+            "https://github.com/Russianranger/Server/blob/4aceae18b94ffaafc08e2b17bc41cd72c77f795d/common/ruletypes.h"
+          ]
+        },
+        "Character:ManaRegenMultiplier": {
+          "value": "100",
+          "required": true,
+          "reason": "Use unmultiplied normal mana regeneration; this does not implement TAKP-specific meditate code.",
+          "sources": [
+            "https://github.com/Russianranger/Server/blob/4aceae18b94ffaafc08e2b17bc41cd72c77f795d/common/ruletypes.h"
+          ]
+        },
+        "Character:EnduranceRegenMultiplier": {
+          "value": "100",
+          "required": true,
+          "reason": "Use unmultiplied normal endurance regeneration; RoF2 endurance remains a client/engine difference.",
+          "sources": [
+            "https://github.com/Russianranger/Server/blob/4aceae18b94ffaafc08e2b17bc41cd72c77f795d/common/ruletypes.h"
+          ]
+        },
+        "Character:BaseHPRegenBonusRaces": {
+          "value": "4352",
+          "required": true,
+          "reason": "Keep the Troll/Iksar regeneration bonus mask shared by upstream and TAKP.",
+          "sources": [
+            "https://github.com/Russianranger/Server/blob/4aceae18b94ffaafc08e2b17bc41cd72c77f795d/common/ruletypes.h",
+            "https://github.com/EQMacEmu/Server/blob/d8d589a0ce486ee47ec990d3c3bbbf604b2572a1/common/ruletypes.h"
+          ]
+        },
+        "Character:RespawnFromHover": {
+          "value": "false",
+          "required": true,
+          "reason": "Use death/respawn without the later hover selection window.",
+          "sources": [
+            "https://github.com/Russianranger/Server/blob/4aceae18b94ffaafc08e2b17bc41cd72c77f795d/common/ruletypes.h"
+          ]
+        },
+        "Character:EnableXTargetting": {
+          "value": "false",
+          "required": true,
+          "reason": "Disable the later Underfoot extended-targeting feature on RoF2.",
+          "sources": [
+            "https://github.com/Russianranger/Server/blob/4aceae18b94ffaafc08e2b17bc41cd72c77f795d/common/ruletypes.h"
+          ]
+        },
+        "Character:EnableAggroMeter": {
+          "value": "false",
+          "required": true,
+          "reason": "Disable the later Rain of Fear aggro-meter feature on RoF2.",
+          "sources": [
+            "https://github.com/Russianranger/Server/blob/4aceae18b94ffaafc08e2b17bc41cd72c77f795d/common/ruletypes.h"
+          ]
+        },
+        "Character:UseOldConSystem": {
+          "value": "true",
+          "required": true,
+          "reason": "Use the engine pre-Secrets of Faydwer consider system.",
+          "sources": [
+            "https://github.com/Russianranger/Server/blob/4aceae18b94ffaafc08e2b17bc41cd72c77f795d/common/ruletypes.h"
+          ]
+        },
+        "Character:UseOldBindWound": {
+          "value": "true",
+          "required": true,
+          "reason": "Use the engine original bind-wound implementation: normal 50% limit with the skilled monk exception.",
+          "sources": [
+            "https://github.com/Russianranger/Server/blob/4aceae18b94ffaafc08e2b17bc41cd72c77f795d/zone/client.cpp",
+            "https://github.com/Russianranger/Server/blob/4aceae18b94ffaafc08e2b17bc41cd72c77f795d/common/ruletypes.h"
+          ]
+        },
+        "Character:EnableBardMelody": {
+          "value": "false",
+          "required": true,
+          "reason": "Disable the later /melody convenience feature for these classic-era presets.",
+          "sources": [
+            "https://github.com/Russianranger/Server/blob/4aceae18b94ffaafc08e2b17bc41cd72c77f795d/common/ruletypes.h"
+          ]
+        },
+        "Character:HealOnLevel": {
+          "value": "false",
+          "required": true,
+          "reason": "Do not completely heal on leveling; matches the TAKP default database.",
+          "sources": [
+            "https://github.com/Russianranger/Server/blob/4aceae18b94ffaafc08e2b17bc41cd72c77f795d/common/ruletypes.h",
+            "https://github.com/EQMacEmu/Server/blob/d8d589a0ce486ee47ec990d3c3bbbf604b2572a1/utils/sql/database_full/alkabor_latest.zip"
+          ]
+        },
+        "Character:ItemCastsUseFocus": {
+          "value": "false",
+          "required": true,
+          "reason": "Keep item click casts from using level-limited focuses; matches the TAKP default database.",
+          "sources": [
+            "https://github.com/Russianranger/Server/blob/4aceae18b94ffaafc08e2b17bc41cd72c77f795d/common/ruletypes.h",
+            "https://github.com/EQMacEmu/Server/blob/d8d589a0ce486ee47ec990d3c3bbbf604b2572a1/utils/sql/database_full/alkabor_latest.zip"
+          ]
+        },
+        "Character:LeaveCorpses": {
+          "value": "true",
+          "required": true,
+          "reason": "Leave player corpses; matches the TAKP default database.",
+          "sources": [
+            "https://github.com/Russianranger/Server/blob/4aceae18b94ffaafc08e2b17bc41cd72c77f795d/zone/attack.cpp",
+            "https://github.com/EQMacEmu/Server/blob/d8d589a0ce486ee47ec990d3c3bbbf604b2572a1/utils/sql/database_full/alkabor_latest.zip"
+          ]
+        },
+        "Character:LeaveNakedCorpses": {
+          "value": "true",
+          "required": true,
+          "reason": "Retain naked player corpses as in the TAKP default database.",
+          "sources": [
+            "https://github.com/Russianranger/Server/blob/4aceae18b94ffaafc08e2b17bc41cd72c77f795d/zone/attack.cpp",
+            "https://github.com/EQMacEmu/Server/blob/d8d589a0ce486ee47ec990d3c3bbbf604b2572a1/utils/sql/database_full/alkabor_latest.zip"
+          ]
+        },
+        "Character:DeathItemLossLevel": {
+          "value": "10",
+          "required": true,
+          "reason": "Use TAKP default item-corpse threshold level 10; the upstream corpse implementation remains.",
+          "sources": [
+            "https://github.com/Russianranger/Server/blob/4aceae18b94ffaafc08e2b17bc41cd72c77f795d/zone/attack.cpp",
+            "https://github.com/EQMacEmu/Server/blob/d8d589a0ce486ee47ec990d3c3bbbf604b2572a1/utils/sql/database_full/alkabor_latest.zip"
+          ]
+        },
+        "Character:DeathExpLossLevel": {
+          "value": "11",
+          "required": true,
+          "reason": "Use TAKP default experience-loss threshold level 11; upstream uses an inclusive threshold.",
+          "sources": [
+            "https://github.com/Russianranger/Server/blob/4aceae18b94ffaafc08e2b17bc41cd72c77f795d/zone/attack.cpp",
+            "https://github.com/EQMacEmu/Server/blob/d8d589a0ce486ee47ec990d3c3bbbf604b2572a1/utils/sql/database_full/alkabor_latest.zip"
+          ]
+        },
+        "Character:CorpseDecayTime": {
+          "value": "604800000",
+          "required": true,
+          "reason": "Seven-day corpse decay, mapped from TAKP Character:CorpseDecayTimeMS.",
+          "sources": [
+            "https://github.com/Russianranger/Server/blob/4aceae18b94ffaafc08e2b17bc41cd72c77f795d/common/ruletypes.h",
+            "https://github.com/EQMacEmu/Server/blob/d8d589a0ce486ee47ec990d3c3bbbf604b2572a1/utils/sql/database_full/alkabor_latest.zip"
+          ]
+        },
+        "Character:EmptyCorpseDecayTime": {
+          "value": "10800000",
+          "required": true,
+          "reason": "Three-hour empty-corpse decay, mapped from the TAKP millisecond key.",
+          "sources": [
+            "https://github.com/Russianranger/Server/blob/4aceae18b94ffaafc08e2b17bc41cd72c77f795d/common/ruletypes.h",
+            "https://github.com/EQMacEmu/Server/blob/d8d589a0ce486ee47ec990d3c3bbbf604b2572a1/utils/sql/database_full/alkabor_latest.zip"
+          ]
+        },
+        "Character:CorpseResTime": {
+          "value": "10800000",
+          "required": true,
+          "reason": "Three-hour resurrection window, mapped from TAKP Character:CorpseResTimeMS.",
+          "sources": [
+            "https://github.com/Russianranger/Server/blob/4aceae18b94ffaafc08e2b17bc41cd72c77f795d/common/ruletypes.h",
+            "https://github.com/EQMacEmu/Server/blob/d8d589a0ce486ee47ec990d3c3bbbf604b2572a1/utils/sql/database_full/alkabor_latest.zip"
+          ]
+        },
+        "Character:UnmemSpellsOnDeath": {
+          "value": "true",
+          "required": true,
+          "reason": "Forget memorized spells on death; spellbook ownership is unchanged.",
+          "sources": [
+            "https://github.com/Russianranger/Server/blob/4aceae18b94ffaafc08e2b17bc41cd72c77f795d/common/ruletypes.h"
+          ]
+        },
+        "Spells:BuffsFadeOnDeath": {
+          "value": "true",
+          "required": true,
+          "reason": "Use ordinary loss of nonpersistent buffs on death.",
+          "sources": [
+            "https://github.com/Russianranger/Server/blob/4aceae18b94ffaafc08e2b17bc41cd72c77f795d/common/ruletypes.h"
+          ]
+        },
+        "Spells:EnableBlockedBuffs": {
+          "value": "false",
+          "required": true,
+          "reason": "Disable the later blocked-buff convenience system.",
+          "sources": [
+            "https://github.com/Russianranger/Server/blob/4aceae18b94ffaafc08e2b17bc41cd72c77f795d/common/ruletypes.h"
+          ]
+        },
+        "Spells:UseClassicHarmTouchDamage": {
+          "value": "true",
+          "required": true,
+          "reason": "Use the engine pre-2007 Harm Touch damage calculation.",
+          "sources": [
+            "https://github.com/Russianranger/Server/blob/4aceae18b94ffaafc08e2b17bc41cd72c77f795d/common/ruletypes.h"
+          ]
+        },
+        "Combat:ClassicTauntSystem": {
+          "value": "true",
+          "required": true,
+          "reason": "Use the engine pre-2006 taunt system.",
+          "sources": [
+            "https://github.com/Russianranger/Server/blob/4aceae18b94ffaafc08e2b17bc41cd72c77f795d/common/ruletypes.h"
+          ]
+        },
+        "Combat:ClassicMasterWu": {
+          "value": "true",
+          "required": true,
+          "reason": "Use engine classic random-special Master Wu behavior when the expansion-tagged AA is available.",
+          "sources": [
+            "https://github.com/Russianranger/Server/blob/4aceae18b94ffaafc08e2b17bc41cd72c77f795d/common/ruletypes.h"
+          ]
+        },
+        "World:EnableTutorialButton": {
+          "value": "false",
+          "required": true,
+          "reason": "Disable the later tutorial button; retain existing start-zone and bind data.",
+          "sources": [
+            "https://github.com/Russianranger/Server/blob/4aceae18b94ffaafc08e2b17bc41cd72c77f795d/common/ruletypes.h"
+          ]
+        },
+        "World:EnableReturnHomeButton": {
+          "value": "false",
+          "required": true,
+          "reason": "Disable the later Return Home button; retain existing home and bind data.",
+          "sources": [
+            "https://github.com/Russianranger/Server/blob/4aceae18b94ffaafc08e2b17bc41cd72c77f795d/common/ruletypes.h"
+          ]
+        },
+        "Mercs:AllowMercs": {
+          "value": "false",
+          "required": true,
+          "reason": "Mercenaries are outside Velious, Luclin and Planes of Power.",
+          "sources": [
+            "https://github.com/Russianranger/Server/blob/4aceae18b94ffaafc08e2b17bc41cd72c77f795d/common/ruletypes.h"
+          ]
+        },
+        "AA:NormalizedAAEnabled": {
+          "value": "false",
+          "required": true,
+          "reason": "Disable the TSS-and-later normalized-AA experience system.",
+          "sources": [
+            "https://github.com/Russianranger/Server/blob/4aceae18b94ffaafc08e2b17bc41cd72c77f795d/common/ruletypes.h"
+          ]
+        },
+        "AA:ModernAAScalingEnabled": {
+          "value": "false",
+          "required": true,
+          "reason": "Disable modern AA catch-up acceleration; retain baseline normal AA rate and stored AA points.",
+          "sources": [
+            "https://github.com/Russianranger/Server/blob/4aceae18b94ffaafc08e2b17bc41cd72c77f795d/common/ruletypes.h"
+          ]
+        },
+        "Bazaar:EnableWarpToTrader": {
+          "value": "false",
+          "required": true,
+          "reason": "Disable later instant travel to bazaar traders.",
+          "sources": [
+            "https://github.com/Russianranger/Server/blob/4aceae18b94ffaafc08e2b17bc41cd72c77f795d/common/ruletypes.h"
+          ]
+        },
+        "Bazaar:EnableParcelDelivery": {
+          "value": "false",
+          "required": true,
+          "reason": "Disable later bazaar parcel delivery.",
+          "sources": [
+            "https://github.com/Russianranger/Server/blob/4aceae18b94ffaafc08e2b17bc41cd72c77f795d/common/ruletypes.h"
+          ]
+        },
+        "Parcel:EnableParcelMerchants": {
+          "value": "false",
+          "required": true,
+          "reason": "Disable later parcel merchant functionality.",
+          "sources": [
+            "https://github.com/Russianranger/Server/blob/4aceae18b94ffaafc08e2b17bc41cd72c77f795d/common/ruletypes.h"
+          ]
+        },
+        "Parcel:EnableDirectToInventoryDelivery": {
+          "value": "false",
+          "required": true,
+          "reason": "Disable later direct-to-inventory bazaar delivery.",
+          "sources": [
+            "https://github.com/Russianranger/Server/blob/4aceae18b94ffaafc08e2b17bc41cd72c77f795d/common/ruletypes.h"
+          ]
+        },
+        "Expansion:UseCurrentExpansionAAOnly": {
+          "value": "true",
+          "required": true,
+          "reason": "Reject AA ranks with database expansion later than the selected era; stored AA is not deleted.",
+          "sources": [
+            "https://github.com/Russianranger/Server/blob/4aceae18b94ffaafc08e2b17bc41cd72c77f795d/zone/aa.cpp"
+          ]
+        },
+        "Expansion:AutoGrantAAExpansion": {
+          "value": "-1",
+          "required": true,
+          "reason": "Disable AA autogrant; existing purchased AA remains stored.",
+          "sources": [
+            "https://github.com/Russianranger/Server/blob/4aceae18b94ffaafc08e2b17bc41cd72c77f795d/zone/aa.cpp"
+          ]
+        },
+        "World:UseClientBasedExpansionSettings": {
+          "value": "false",
+          "required": true,
+          "reason": "Honor the selected era mask rather than RoF2 client-era defaults.",
+          "sources": [
+            "https://github.com/Russianranger/Server/blob/4aceae18b94ffaafc08e2b17bc41cd72c77f795d/world/client.cpp",
+            "https://github.com/Russianranger/Server/blob/4aceae18b94ffaafc08e2b17bc41cd72c77f795d/zone/client_packet.cpp"
+          ]
+        },
+        "Character:MaxLevel": {
+          "value": "65",
+          "required": true,
+          "reason": "Use the Planes of Power normal level cap.",
+          "sources": [
+            "https://github.com/Russianranger/Server/blob/4aceae18b94ffaafc08e2b17bc41cd72c77f795d/common/ruletypes.h"
+          ]
+        },
+        "Character:MaxExpLevel": {
+          "value": "65",
+          "required": true,
+          "reason": "Explicitly cap experience so an inherited higher MaxExpLevel cannot override the era level cap.",
+          "sources": [
+            "https://github.com/Russianranger/Server/blob/4aceae18b94ffaafc08e2b17bc41cd72c77f795d/zone/exp.cpp"
+          ]
+        },
+        "Character:SkillCapMaxLevel": {
+          "value": "65",
+          "required": true,
+          "reason": "Limit skill-cap lookup to the era level cap using the existing PEQ skill_caps table.",
+          "sources": [
+            "https://github.com/Russianranger/Server/blob/4aceae18b94ffaafc08e2b17bc41cd72c77f795d/common/ruletypes.h"
+          ]
+        },
+        "Expansion:CurrentExpansion": {
+          "value": "4",
+          "required": true,
+          "reason": "Set engine content expansion index. The launcher must reversibly overlay the managed era rules on default because startup/content routing reloads default, then restore original rows and per-zone assignments.",
+          "sources": [
+            "https://github.com/Russianranger/Server/blob/4aceae18b94ffaafc08e2b17bc41cd72c77f795d/common/content/world_content_service.cpp",
+            "https://github.com/Russianranger/Server/blob/4aceae18b94ffaafc08e2b17bc41cd72c77f795d/zone/zoning.cpp"
+          ]
+        },
+        "World:ExpansionSettings": {
+          "value": "15",
+          "required": true,
+          "reason": "Use cumulative Kunark/Velious/Luclin/PoP client mask for this era.",
+          "sources": [
+            "https://github.com/Russianranger/Server/blob/4aceae18b94ffaafc08e2b17bc41cd72c77f795d/common/emu_versions.h",
+            "https://github.com/Russianranger/Server/blob/4aceae18b94ffaafc08e2b17bc41cd72c77f795d/zone/client_packet.cpp"
+          ]
+        },
+        "World:CharacterSelectExpansionSettings": {
+          "value": "15",
+          "required": true,
+          "reason": "Use the same era mask at character selection rather than an inherited override.",
+          "sources": [
+            "https://github.com/Russianranger/Server/blob/4aceae18b94ffaafc08e2b17bc41cd72c77f795d/world/client.cpp",
+            "https://github.com/Russianranger/Server/blob/4aceae18b94ffaafc08e2b17bc41cd72c77f795d/common/emu_versions.h"
+          ]
+        },
+        "Items:DisableSpellFocusEffects": {
+          "value": "false",
+          "required": true,
+          "reason": "Disable worn spell focuses before Luclin and enable from Luclin, matching TAKP item-loader expansion switch. Bard instruments and item records are retained.",
+          "sources": [
+            "https://github.com/Russianranger/Server/blob/4aceae18b94ffaafc08e2b17bc41cd72c77f795d/common/ruletypes.h",
+            "https://github.com/EQMacEmu/Server/blob/d8d589a0ce486ee47ec990d3c3bbbf604b2572a1/common/shareddb.cpp"
+          ]
+        }
+      },
+      "limitations": [
+        "These are PEQ-compatible era presets on the existing EQEmu server and RoF2 client, not a TAKP engine/database replacement.",
+        "Later-zone access follows zone.expansion and bypass_expansion_check for ordinary characters; GM characters bypass the engine expansion gate.",
+        "Min/max-tagged content is filtered, but missing or inaccurate PEQ tags can retain later spawns, items, loot, merchants and expansion-spanning quest behavior in older zones.",
+        "The RoF2 expansion mask affects client creation availability. The pinned server validates race/class/deity/start-zone combinations without separately checking their expansion requirement; existing characters are not changed.",
+        "AA availability depends on aa_ranks.expansion metadata. Existing purchased AA and unspent points remain stored; the preset does not clear AA allocation or implement TAKP Character:DisableAAs.",
+        "Existing over-cap characters retain their level. Normal leveling follows the selected cap, while quest character-specific level limits remain inherited.",
+        "Baseline XP multipliers, group/raid rewards, XP penalty curves, con scaling and zone modifiers are retained: TAKP formulas and AK-only bonuses cannot be safely copied without recalibrating stored character experience.",
+        "TAKP charm, resist, pet XP, monk AC, item bane/required-level, spell progression and hell-level smoothing algorithms have no complete equivalent in these upstream rule values.",
+        "The preset requires a stopped-server switch/restart. A live static/content reload can reset inherited per-zone preferences to default until another restart; the launcher does not use live rule reload."
+      ]
+    }
+  },
+  "sources": [
+    {
+      "id": "eqemu-rule-catalog",
+      "url": "https://github.com/Russianranger/Server/blob/4aceae18b94ffaafc08e2b17bc41cd72c77f795d/common/ruletypes.h",
+      "revision": "4aceae18b94ffaafc08e2b17bc41cd72c77f795d",
+      "title": "Pinned Traditional EQEmu rule catalogue"
+    },
+    {
+      "id": "eqemu-expansion-masks",
+      "url": "https://github.com/Russianranger/Server/blob/4aceae18b94ffaafc08e2b17bc41cd72c77f795d/common/emu_versions.h",
+      "revision": "4aceae18b94ffaafc08e2b17bc41cd72c77f795d",
+      "title": "EQEmu expansion IDs and masks"
+    },
+    {
+      "id": "eqemu-content-routing",
+      "url": "https://github.com/Russianranger/Server/blob/4aceae18b94ffaafc08e2b17bc41cd72c77f795d/common/content/world_content_service.cpp",
+      "revision": "4aceae18b94ffaafc08e2b17bc41cd72c77f795d",
+      "title": "Default-ruleset expansion context and content filtering"
+    },
+    {
+      "id": "eqemu-zone-access",
+      "url": "https://github.com/Russianranger/Server/blob/4aceae18b94ffaafc08e2b17bc41cd72c77f795d/zone/zoning.cpp",
+      "revision": "4aceae18b94ffaafc08e2b17bc41cd72c77f795d",
+      "title": "Ordinary-character expansion zone gate and GM bypass"
+    },
+    {
+      "id": "eqemu-aa",
+      "url": "https://github.com/Russianranger/Server/blob/4aceae18b94ffaafc08e2b17bc41cd72c77f795d/zone/aa.cpp",
+      "revision": "4aceae18b94ffaafc08e2b17bc41cd72c77f795d",
+      "title": "AA rank expansion checks and autogrant"
+    },
+    {
+      "id": "eqemu-character-create",
+      "url": "https://github.com/Russianranger/Server/blob/4aceae18b94ffaafc08e2b17bc41cd72c77f795d/world/client.cpp",
+      "revision": "4aceae18b94ffaafc08e2b17bc41cd72c77f795d",
+      "title": "Expansion info and RoF2 character-creation validation"
+    },
+    {
+      "id": "eqemu-experience",
+      "url": "https://github.com/Russianranger/Server/blob/4aceae18b94ffaafc08e2b17bc41cd72c77f795d/zone/exp.cpp",
+      "revision": "4aceae18b94ffaafc08e2b17bc41cd72c77f795d",
+      "title": "Caps, stored XP curves and AA XP behavior"
+    },
+    {
+      "id": "takp-rules",
+      "url": "https://github.com/EQMacEmu/Server/blob/d8d589a0ce486ee47ec990d3c3bbbf604b2572a1/common/ruletypes.h",
+      "revision": "d8d589a0ce486ee47ec990d3c3bbbf604b2572a1",
+      "title": "TAKP rule defaults and unique AlKabor/expansion rules"
+    },
+    {
+      "id": "takp-database",
+      "url": "https://github.com/EQMacEmu/Server/blob/d8d589a0ce486ee47ec990d3c3bbbf604b2572a1/utils/sql/database_full/alkabor_latest.zip",
+      "revision": "d8d589a0ce486ee47ec990d3c3bbbf604b2572a1",
+      "title": "TAKP official database export, alkabor_2026-09-08-19_10",
+      "sha256": "6f5a61206b22d3d70c20ece7fb8c617bbe0849d286b2cb48279841f4c6103433"
+    },
+    {
+      "id": "takp-item-expansion",
+      "url": "https://github.com/EQMacEmu/Server/blob/d8d589a0ce486ee47ec990d3c3bbbf604b2572a1/common/shareddb.cpp",
+      "revision": "d8d589a0ce486ee47ec990d3c3bbbf604b2572a1",
+      "title": "TAKP pre-Luclin item focus/bane/required-level switch"
+    },
+    {
+      "id": "takp-experience",
+      "url": "https://github.com/EQMacEmu/Server/blob/d8d589a0ce486ee47ec990d3c3bbbf604b2572a1/zone/exp.cpp",
+      "revision": "d8d589a0ce486ee47ec990d3c3bbbf604b2572a1",
+      "title": "TAKP distinct XP, AA and death-loss formulas"
+    },
+    {
+      "id": "eqemu-shared_memory-main-cpp",
+      "url": "https://github.com/Russianranger/Server/blob/4aceae18b94ffaafc08e2b17bc41cd72c77f795d/shared_memory/main.cpp",
+      "revision": "4aceae18b94ffaafc08e2b17bc41cd72c77f795d",
+      "title": "Shared-memory boot selected rules then default expansion reload"
+    },
+    {
+      "id": "eqemu-common-shareddb-cpp",
+      "url": "https://github.com/Russianranger/Server/blob/4aceae18b94ffaafc08e2b17bc41cd72c77f795d/common/shareddb.cpp",
+      "revision": "4aceae18b94ffaafc08e2b17bc41cd72c77f795d",
+      "title": "Shared-memory item focus cache switch"
+    },
+    {
+      "id": "eqemu-world-world_boot-cpp",
+      "url": "https://github.com/Russianranger/Server/blob/4aceae18b94ffaafc08e2b17bc41cd72c77f795d/world/world_boot.cpp",
+      "revision": "4aceae18b94ffaafc08e2b17bc41cd72c77f795d",
+      "title": "World startup default expansion context"
+    },
+    {
+      "id": "eqemu-zone-zone-cpp",
+      "url": "https://github.com/Russianranger/Server/blob/4aceae18b94ffaafc08e2b17bc41cd72c77f795d/zone/zone.cpp",
+      "revision": "4aceae18b94ffaafc08e2b17bc41cd72c77f795d",
+      "title": "Per-zone ruleset resolution"
+    },
+    {
+      "id": "eqemu-common-rulesys-cpp",
+      "url": "https://github.com/Russianranger/Server/blob/4aceae18b94ffaafc08e2b17bc41cd72c77f795d/common/rulesys.cpp",
+      "revision": "4aceae18b94ffaafc08e2b17bc41cd72c77f795d",
+      "title": "Default-first named ruleset inheritance"
+    },
+    {
+      "id": "eqemutools-client-expansion-switcher",
+      "url": "https://github.com/EQEmuTools/eq-expansion-switcher/blob/55fa9e12937d69a2cf0be073a494d783d2f54aa1/internal/eqassets/eqassets.go",
+      "revision": "55fa9e12937d69a2cf0be073a494d783d2f54aa1",
+      "title": "Client asset patcher examined separately; not imported because it replaces/deletes client zone files"
+    }
+  ]
+}

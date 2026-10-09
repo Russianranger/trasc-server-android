@@ -1,26 +1,28 @@
-# TRASC Android 0.6.12 / code 61
+# TRASC Android 0.6.13 / code 62
 
-Traditional now offers optional camera-only mouse recentering. A bundled,
-verified 32-bit proxy forwards system DirectInput; it preserves and restores
-any original DLL automatically. Custom loading, particle, boat and gameplay
-hooks remain disabled for Traditional. No SDK import or client compilation is
-needed. See [camera acceptance and restore](docs/client-camera-0612.md).
+Traditional now offers reviewed Velious, Luclin and Planes of Power ruleset
+presets, plus Return to default. The presets use 47 source-supported era values,
+reversible startup-default overlays, and composite per-zone sets preserving
+unrelated existing overrides. Preview before applying; stop the server and client,
+then start the existing server again. Original default values and zone routing
+are restored without rewinding character progress. A database backup precedes
+changes, and stale previews and unsupported schemas are rejected.
 
-The new **Name / sky compatibility (experimental, Turnip)** checkbox changes
-only DXVK shader-constant handling. It is a candidate correction for distorted
-character-selection labels and a black sky, requiring Thor acceptance. Disabling
-it restores the existing rendering configuration. The launcher also records
-bounded rendering-setting and asset-hash evidence without changing INIs or
-client assets. See [evidence and focused acceptance](docs/traditional-name-sky-0612.md).
+The official TAKP database and engine, pinned Traditional EQEmu source, Daybreak
+era documentation, EQEmuTools expansion switcher and supplied PEQ database were
+researched. PEQ's sparse era tags and upstream mechanics limit historical fidelity;
+these are compatible approximations, not a TAKP database replacement. Existing XP
+curves/rates and over-cap characters are preserved. See
+[research, exact behavior and focused acceptance](docs/traditional-eras-0613.md).
 
-Existing viewport gear actions and **Return to Launcher** are retained. Update
-the APK in place; keep the compiled servers, imported client, Wine prefix,
-runtime, DirectX helpers and character preferences. No server/runtime builds
-are part of this scoped release. The 19 existing native payload files and the
-signing certificate are checked against the published 0.6.11 baseline.
+Launcher theme choices **Default**, **Necromancer** and **Monk** persist across
+reloads and both profiles. Default preserves the current appearance; class themes
+have distinct palettes and original offline vector scenes. They do not change
+StoneUI, client INIs, game models or server rules.
 
-The separate updated StoneUI skin removes the projecting chat title strip,
-uses black Main/Other Chat titles, and replaces oversized decorative hotbar
-tiles with continuous stone behind the native button frames. Import the
-matching class ZIP with replacements enabled; no included-layout merge is
-needed for these cosmetic changes.
+Update the APK in place. The existing compiled Traditional server, imported RoF2
+client, Wine prefix, runtime, DirectX helpers, controller bindings and unrelated
+preferences remain. This scoped build reuses all 21 existing native components
+from verified 0.6.12, including the camera proxy; no server/runtime/native builds
+are performed. Existing camera/name-sky options, viewport gear actions and
+**Return to Launcher** remain. Physical Thor era acceptance remains a device test.
