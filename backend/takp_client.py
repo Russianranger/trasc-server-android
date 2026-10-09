@@ -134,7 +134,45 @@ def login_text(address, port):
     if not 1 <= port <= 65535:
         raise ValueError('Invalid TAKP login UDP port')
     endpoint = '"' + address + ':' + str(port) + '"\r\n'
-    return '[RegistrationServers]\r\n{\r\n' + endpoint + '}\r\n[LoginServers]\r\n{\r\n' + endpoint + '}\r\n'
+    return '[Registration Servers]\r\n{\r\n' + endpoint + '}\r\n[Login Servers]\r\n{\r\n' + endpoint + '}\r\n'
+
+
+def repair_login_file(client, prefix):
+    """Repair the 0.6.16/17 section names without changing the login address."""
+    from client_display import atomic_bytes
+    client, prefix = Path(client), Path(prefix)
+    if client.is_symlink() or prefix.is_symlink():
+        raise ValueError('TAKP login repair cannot follow linked directories')
+    host = file_at(client, 'eqhost.txt', True)
+    if host.stat().st_size > 16384:
+        raise ValueError('TAKP eqhost.txt is too large; Prepare this client again')
+    original = host.read_bytes()
+    if original.startswith((b'\xff\xfe', b'\xfe\xff')):
+        raise ValueError('TAKP eqhost.txt must use the legacy text format; Prepare this client again')
+    updated = original
+    for old, new in ((b'RegistrationServers', b'Registration Servers'),
+                     (b'LoginServers', b'Login Servers')):
+        updated = re.sub(rb'(?mi)^[ \t]*\[' + old + rb'\][ \t]*(?=\r?$)',
+                         b'[' + new + b']', updated)
+        if len(re.findall(rb'(?mi)^[ \t]*\[' + new + rb'\][ \t]*\r?$', updated)) != 1:
+            raise ValueError('TAKP eqhost.txt needs one [' + new.decode() + '] section; Prepare this client again')
+    report = {'format': 'takp_legacy', 'repaired': updated != original}
+    if updated == original:
+        return report
+    backup = prefix / 'trasc-takp-login-originals'
+    if backup.is_symlink() or (backup.exists() and not backup.is_dir()):
+        raise ValueError('TAKP login backup must be an ordinary directory')
+    backup.mkdir(parents=True, exist_ok=True)
+    first, previous = backup / 'eqhost.txt', backup / 'eqhost.previous.txt'
+    for target in (first, previous):
+        if target.is_symlink() or (target.exists() and not target.is_file()):
+            raise ValueError('TAKP login backup must be an ordinary file')
+    if not first.exists():
+        atomic_bytes(first, original)
+    atomic_bytes(previous, original)
+    atomic_bytes(host, updated)
+    report['backup'] = 'client/prefix/trasc-takp-login-originals'
+    return report
 
 
 def data_changes(engine, client):

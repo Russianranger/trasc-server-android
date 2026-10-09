@@ -152,7 +152,8 @@ class TakpClientTests(unittest.TestCase):
         self.assertEqual((self.client/'spells_en.txt').read_bytes(), original_spells)
         self.assertFalse((self.client/'BaseData.txt').exists()); self.assertFalse((self.client/'dbstr_us.txt').exists())
         host = (self.client/'eqhost.txt').read_bytes()
-        self.assertIn(b'[RegistrationServers]', host); self.assertIn(b'[LoginServers]', host)
+        self.assertIn(b'[Registration Servers]', host); self.assertIn(b'[Login Servers]', host)
+        self.assertNotIn(b'[RegistrationServers]', host); self.assertNotIn(b'[LoginServers]', host)
         self.assertEqual(host.count(b'"127.0.0.1:6000"'),2)
         self.assertNotIn(b'Host=',host)
         ini = (self.client/'eqclient.ini').read_bytes()
@@ -162,6 +163,43 @@ class TakpClientTests(unittest.TestCase):
         self.assertEqual((backup/'eqclient.ini').read_bytes(),original)
         self.assertFalse((backup/'spells_en.txt').exists())
         self.assertEqual((self.client/'eqmac.exe').read_bytes(),b'fixture eqmac.exe')
+
+    def test_old_login_file_is_repaired_with_backup_and_endpoint_unchanged(self):
+        self.client.mkdir(parents=True)
+        prefix = self.engine.work/'client/prefix'
+        original = b'; keep comment\r\n[RegistrationServers]\r\n{\r\n"192.168.1.20:6000"\r\n}\r\n[LoginServers]\r\n{\r\n"192.168.1.20:6000"\r\n}\r\n'
+        (self.client/'EQHOST.TXT').write_bytes(original)
+        result = takp_client.repair_login_file(self.client, prefix)
+        expected = original.replace(b'[RegistrationServers]', b'[Registration Servers]').replace(b'[LoginServers]', b'[Login Servers]')
+        self.assertTrue(result['repaired'])
+        self.assertEqual((self.client/'EQHOST.TXT').read_bytes(), expected)
+        self.assertFalse((self.client/'eqhost.txt').exists())
+        self.assertEqual((prefix/'trasc-takp-login-originals/eqhost.txt').read_bytes(), original)
+        self.assertEqual((prefix/'trasc-takp-login-originals/eqhost.previous.txt').read_bytes(), original)
+        self.assertFalse(takp_client.repair_login_file(self.client, prefix)['repaired'])
+        self.assertEqual((prefix/'trasc-takp-login-originals/eqhost.previous.txt').read_bytes(), original)
+
+    def test_login_repair_rejects_duplicate_sections_before_any_write(self):
+        self.client.mkdir(parents=True)
+        original = takp_client.login_text('127.0.0.1', 6000).encode() + b'[LoginServers]\r\n{\r\n"127.0.0.1:6000"\r\n}\r\n'
+        (self.client/'eqhost.txt').write_bytes(original)
+        prefix = self.engine.work/'client/prefix'
+        with self.assertRaisesRegex(ValueError, 'one \\[Login Servers\\]'):
+            takp_client.repair_login_file(self.client, prefix)
+        self.assertEqual((self.client/'eqhost.txt').read_bytes(), original)
+        self.assertFalse((prefix/'trasc-takp-login-originals').exists())
+
+    def test_login_repair_refuses_linked_backup_without_changing_host(self):
+        self.client.mkdir(parents=True)
+        prefix = self.engine.work/'client/prefix'; prefix.mkdir()
+        outside = self.root/'outside'; outside.mkdir()
+        (prefix/'trasc-takp-login-originals').symlink_to(outside, target_is_directory=True)
+        original = takp_client.login_text('127.0.0.1', 6000).replace('Registration Servers', 'RegistrationServers').replace('Login Servers', 'LoginServers').encode()
+        (self.client/'eqhost.txt').write_bytes(original)
+        with self.assertRaisesRegex(ValueError, 'ordinary directory'):
+            takp_client.repair_login_file(self.client, prefix)
+        self.assertEqual((self.client/'eqhost.txt').read_bytes(), original)
+        self.assertEqual(list(outside.iterdir()), [])
 
     def test_prepare_cancel_rolls_back_all_files_and_does_not_mark_prepared(self):
         self.import_zip(self.content(self.root/'source'))

@@ -79,8 +79,9 @@ class WineLog:
     between polls. A pipe reader owns rotation: renaming a direct subprocess
     output file would leave Wine writing to the old file descriptor.
     """
-    def __init__(self, path, limit=WINE_LOG_LIMIT):
+    def __init__(self, path, limit=WINE_LOG_LIMIT, game=False):
         self.path, self.limit = path, limit
+        self.game = game
         self.lock = threading.Lock()
         self.fields = {'wine_log_bytes': 0, 'wine_log_rotations': 0,
                        'native_loaded': False, 'system_dinput8_loaded': False, 'dll_evidence': [],
@@ -128,7 +129,7 @@ class WineLog:
             # Keep actual load evidence, not repeating MODULE thread events.
             if observed['native_loaded'] or observed['system_dinput8_loaded']:
                 self.fields['dll_evidence'] = list(dict.fromkeys(self.fields['dll_evidence'] + observed['evidence']))[-8:]
-            self.error = self.error or fatal_launch_error(self.trace)
+            self.error = self.error or fatal_launch_error(self.trace, game=self.game)
 
     def save_sound_trace(self, final=False):
         if not final and time.monotonic()-self.sound_saved_at < 5: return
@@ -242,7 +243,17 @@ def client_arguments(request):
     return arguments if request.get('profile') == 'takp' else arguments + ['patchme']
 
 
-def fatal_launch_error(log):
+def fatal_launch_error(log, game=False):
+    # Wine emits this only after an exception escaped the application's
+    # handlers. Ordinary +seh traces and optional dependency warnings can
+    # recover. A crashed application in Wine desktop mode must not close the
+    # whole desktop; an explicit game launch should end its display session.
+    if game:
+        crash = re.search(r'^wine: Unhandled (page fault|exception)\b([^\r\n]{0,240})starting debugger', log, re.I | re.M)
+        if crash:
+            address = re.search(r'\bat address ((?:0x)?[0-9a-f]{1,16})\b', crash[2], re.I)
+            location = ' at ' + (address[1] if address[1].lower().startswith('0x') else '0x' + address[1]) if address else ''
+            return 'The Windows game crashed (unhandled ' + crash[1].lower() + location + '). See client-wine.log and export Logs for details.'
     match = re.search(r'wine: could not load kernel32\.dll, status ([0-9a-f]+)', log, re.I)
     if match:
         return 'Wine could not start its Windows loader (kernel32.dll, ' + match[1] + '). See client-prefix.log and client-wine.log; ROF2 did not reach game initialization.'
@@ -505,7 +516,7 @@ class Supervisor:
 
     def spawn(self, args, log, env=None):
         if log == 'client-wine.log':
-            self.wine_log = WineLog(LOGS / log)
+            self.wine_log = WineLog(LOGS / log, game=self.request['mode'] == 'client')
             process = subprocess.Popen(args, env=env or self.env, stdin=subprocess.DEVNULL,
                                        stdout=subprocess.PIPE, stderr=subprocess.STDOUT, start_new_session=True, cwd=CLIENT)
             self.log_thread = threading.Thread(target=self.wine_log.pump, args=(process.stdout,), daemon=True)
@@ -702,6 +713,7 @@ class Supervisor:
             # The imported DLL forwards DirectInput8Create to an absolute system
             # dinput8 path. Native-only blocks Wine's system DLL and breaks input.
             if self.request.get('profile') == 'takp':
+                self.update(takp_login=takp_client.repair_login_file(CLIENT, PREFIX))
                 self.update(takp_dependencies=takp_client.runtime_dependencies(PREFIX, Path('/directx')),
                             client_type='takp', checksum_file='eqmac.exe', launch_arguments=[],
                             native_dinput8_requested=False, dinput8_override='b')
