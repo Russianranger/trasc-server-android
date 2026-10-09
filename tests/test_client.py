@@ -338,6 +338,55 @@ class ClientTests(unittest.TestCase):
         self.assertIsNone(client_runner.fatal_launch_error(dependency))
         self.assertIn('VCRUNTIME140.dll',client_runner.fatal_launch_error(dependency+'\nerr:module:loader_init Importing dlls for L"D:\\eqgame.exe" failed, status c0000135'))
 
+    def test_device_page_fault_survives_split_reads_and_is_game_scoped(self):
+        crash=b'wine: Unhandled page fault on read access to 00000000 at address 8076F72C (thread 01ec), starting debugger...'
+        for game in (False,True):
+            path=self.root/('game-wine.log' if game else 'desktop-wine.log')
+            capture=client_runner.WineLog(path,1024,game=game)
+            payload=b'ordinary output\n'*900+crash
+            capture.pump(io.BufferedReader(io.BytesIO(payload),buffer_size=37))
+            fields,error=capture.snapshot()
+            self.assertGreater(fields['wine_log_rotations'],1)
+            if game:
+                self.assertIn('game crashed',error)
+                self.assertIn('0x8076F72C',error)
+            else:
+                self.assertIsNone(error)
+            self.assertIn(crash,path.read_bytes())
+
+    def test_handled_seh_and_optional_warnings_do_not_end_game(self):
+        trace='\n'.join([
+            '10.1:01ec:trace:seh:dispatch_exception code=c0000005 flags=0 addr=8076F72C',
+            '10.1:01ec:trace:seh:call_vectored_handlers handler returned ffffffff',
+            '10.2:01ec:trace:seh:dispatch_exception code=40010006 flags=0',
+            'warn:debug:output Application mentions Unhandled page fault and starting debugger',
+            'err:module:import_dll Library optional.dll not found',
+        ])
+        self.assertIsNone(client_runner.fatal_launch_error(trace,game=True))
+        crash='wine: Unhandled exception 0xc0000005 at address 0x8076F72C (thread 01ec), starting debugger...'
+        self.assertIn('unhandled exception at 0x8076F72C',client_runner.fatal_launch_error(crash,game=True))
+
+    def test_runtime_crash_keeps_error_and_closes_display(self):
+        session=self.root/'session';session.mkdir()
+        logs=self.root/'logs';logs.mkdir(exist_ok=True)
+        request={'mode':'client','resolution':'800x600'}
+        (session/'request.json').write_text(json.dumps(request))
+        (session/'display.sock').touch()
+        supervisor=client_runner.Supervisor(request)
+        supervisor.status['display_ready']=True
+        failure=client_runner.fatal_launch_error('wine: Unhandled page fault on read access to 00000000 at address 8076F72C (thread 01ec), starting debugger...',game=True)
+        with patch.object(client_runner,'SESSION',session),patch.object(client_runner,'LOGS',logs),patch.object(client_runner,'Supervisor',return_value=supervisor),patch.object(supervisor,'start',side_effect=RuntimeError(failure)),patch.object(client_runner.signal,'signal'),patch.object(client_runner.subprocess,'run') as stop_wine,patch('builtins.print'):
+            with self.assertRaisesRegex(RuntimeError,'game crashed'):
+                client_runner.main()
+        stop_wine.assert_called_once()
+        self.assertEqual(stop_wine.call_args.args[0][-1],'-k')
+        self.assertFalse((session/'display.sock').exists())
+        for path in (session/'status.json',logs/'client-state.json'):
+            report=json.loads(path.read_text())
+            self.assertEqual(report['phase'],'error')
+            self.assertEqual(report['error'],failure)
+            self.assertFalse(report['display_ready'])
+
     def test_prefix_check_distinguishes_incomplete_prefix_from_missing_runtime(self):
         prefix=self.root/'prefix';wine=self.root/'wine'
         for parent in (prefix/'drive_c/windows/syswow64',wine/'lib/wine/i386-windows'):
