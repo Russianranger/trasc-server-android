@@ -12,6 +12,7 @@ sys.path.insert(0, str(Path(__file__).resolve().parents[1] / 'backend'))
 from engine import Engine
 import takp_build
 import takp_runtime
+from integration_takp_runtime import npc_spawn_ids
 
 
 class TakpServerTests(unittest.TestCase):
@@ -132,6 +133,38 @@ class TakpServerTests(unittest.TestCase):
         self.assertTrue(server['directories']['shared_memory'].endswith('/'))
         self.assertEqual(server['files']['chat_opcodes'], 'chat_opcodes.conf')
         self.assertFalse(server['auto_database_updates'])
+
+    def test_spawn_logging_is_best_effort_and_preserves_existing_detail(self):
+        levels = {15: 0, 23: 2, 1: 0, 20: 0}
+        queries = []
+        def mysql(query):
+            queries.append(query)
+            self.assertEqual(query, 'UPDATE logsys_categories SET log_to_file=GREATEST(log_to_file,1) '
+                                   'WHERE log_category_id IN (15,23);')
+            for category in (15, 23):
+                levels[category] = max(levels[category], 1)
+        with patch.object(self.engine, 'mysql', side_effect=mysql):
+            takp_runtime.enable_spawn_logging(self.engine)
+            takp_runtime.enable_spawn_logging(self.engine)
+        self.assertEqual(levels, {15: 1, 23: 2, 1: 0, 20: 0})
+        self.assertEqual(len(queries), 2)
+        with patch.object(self.engine, 'mysql', side_effect=ValueError('diagnostic database unavailable')):
+            takp_runtime.enable_spawn_logging(self.engine)
+        with patch.object(self.custom, 'mysql') as mysql:
+            with self.assertRaisesRegex(ValueError, 'TAKP World'):
+                takp_runtime.enable_spawn_logging(self.custom)
+            mysql.assert_not_called()
+
+    def test_qualification_counts_zone_file_creation_events_without_console_suffix(self):
+        log_root = self.engine.work / 'server/logs/zone'
+        log_root.mkdir(parents=True)
+        # Pinned server's actual file format, including a duplicate event and a
+        # loaded spawnentry count, must not overstate distinct NPC creations.
+        line = '[10-09-2026 15:56:39] [Zone] [Spawns] [spawn2.cpp::Process:295] '
+        creation = line + 'Spawn2 [368298]: Group [223442] spawned [Gerot_Kastane000] ([75004]) at ([671.000], [799.000], [-122.100]).\n'
+        (log_root / 'paineel_port_7118_83.log').write_text(creation + creation + line + 'Loaded [117] spawn entries\n')
+        (log_root / 'qeynos_port_7117_83.log').write_text(creation.replace('368298', '1000'))
+        self.assertEqual(npc_spawn_ids(self.engine.work / 'server/logs', 'paineel'), {368298})
 
     def test_export_uses_only_two_unfiltered_files(self):
         data = {'spells_us.txt': b'1^spell\n50000^full spell\n', 'SkillCaps.txt': b'1^0^1^5^0\n'}

@@ -16,7 +16,7 @@ public final class ClientHostTest {
         return data.toByteArray();
     }
     public static void main(String[] args)throws Exception {
-        relativeInput();frameMeasurements();reusedPixels();controllerLayers();namedLayers();
+        relativeInput();takpCameraInput();frameMeasurements();reusedPixels();controllerLayers();namedLayers();
         int[] pixels=new int[6];ByteArrayOutputStream wire=new ByteArrayOutputStream();
         RfbConnection.Screen screen=new RfbConnection.Screen(){public void resize(int w,int h){check(w==3&&h==2,"Display dimensions");}public void pixels(int x,int y,int w,int h,int[] colors){System.arraycopy(colors,0,pixels,0,6);}public void copy(int x,int y,int w,int h,int sx,int sy){}public void updated(){}};
         RfbConnection r=new RfbConnection(new ByteArrayInputStream(server(false)),wire,screen);r.handshake();r.readUpdate();
@@ -64,6 +64,34 @@ public final class ClientHostTest {
         check(dx[0]==6000&&held[0]==4&&absolute[0]==0,"Stick deltas accumulate past screen bounds without absolute recenter jumps");
         input.position(25,40);check(absolute[0]==1,"Touch remains absolute");input.releaseAll();check(held[0]==0,"Focus loss releases relative mouse buttons");
         System.out.println("PASS: relative mouse wire, fractional deltas beyond screen bounds, absolute touch and held-button release");
+    }
+    static void takpCameraInput(){
+        for(String profile:Arrays.asList("custom","traditional","takp")){
+            final int[] motion={0,0},held={0},absolute={0};
+            DisplayInput input=new DisplayInput(new DisplayInput.Sink(){public void key(int k,boolean down){}public void pointer(int x,int y,int mask){absolute[0]++;}
+                public boolean relative(int x,int y,int mask){motion[0]+=x;motion[1]+=y;held[0]=mask;return true;}public boolean buttons(int mask){held[0]=mask;return true;}},profile);
+            input.move(20,-20);check(motion[0]==20&&motion[1]==-20,"All worlds retain normal menu pointer speed");
+            motion[0]=motion[1]=0;input.action("MouseRight",true);
+            for(int i=0;i<200;i++)input.move(.5f,-.5f);
+            int expected=profile.equals("takp")?15:100;
+            check(Math.abs(motion[0]-expected)<=1&&Math.abs(motion[1]+expected)<=1&&held[0]==4,"TAKP alone scales held RMB deltas, including fractional and signed motion");
+            input.mouse("other-right",4,true);input.action("MouseRight",false);motion[0]=motion[1]=0;
+            input.move(20,-20);check(motion[0]==(profile.equals("takp")?3:20)&&held[0]==4,"A second held RMB source retains the camera gain");
+            input.mouse("other-right",4,false);motion[0]=motion[1]=0;input.move(20,-20);
+            check(motion[0]==20&&motion[1]==-20&&held[0]==0,"Releasing final RMB restores menu speed immediately");
+            input.action("MouseLeft",true);motion[0]=motion[1]=0;input.move(20,-20);
+            check(motion[0]==20&&motion[1]==-20,"Left-click dragging remains at ordinary cursor speed");
+            input.position(25,40);check(absolute[0]==1,"TAKP touch positions remain exact absolute coordinates");
+            input.releaseAll();check(held[0]==0,"Focus loss releases camera buttons");
+        }
+        final int[] motion={0};
+        DisplayInput input=new DisplayInput(new DisplayInput.Sink(){public void key(int k,boolean down){}public void pointer(int x,int y,int mask){}
+            public boolean relative(int x,int y,int mask){motion[0]+=x;return true;}public boolean buttons(int mask){return true;}},"takp");
+        input.move(.9f,0);input.action("MouseRight",true);input.move(1,0);
+        check(motion[0]==0,"Menu fractional remainder cannot jump into camera look");
+        input.action("MouseRight",false);input.move(.9f,0);
+        check(motion[0]==0,"Camera fractional remainder cannot jump into menu pointing");
+        System.out.println("PASS: TAKP camera gain, fractional signed deltas, overlapping RMB holds, free menu/touch pointer and other worlds unchanged");
     }
     static void controllerLayers(){
         List<String> events=new ArrayList<>();

@@ -192,7 +192,7 @@ def install_export(engine, client, result):
             raise ValueError('TAKP client export missing: ' + source.name)
     backup = engine._apply_client_changes(client, changes)
     result.update(local_client_synced=True, copied_files=2, backup=backup,
-                  message='TAKP spells and skill caps copied to this client; originals saved in ' + backup + '.')
+                  message='TAKP server exports spells_us.txt and SkillCaps.txt copied to this client; any supplied spells_en.txt remains unchanged. Originals saved in ' + backup + '.')
     atomic_json(engine.work / 'logs/client-data-sync.json', result)
     return result
 
@@ -227,7 +227,7 @@ def prepare(engine, args):
     record.update(report)
     atomic_json(marker, record)
     result.update(local_client_synced=True, copied_files=2, backup=backup, client=record,
-                  message='TAKP client prepared for ' + engine.config['ip'] + ':' + str(engine.config['login_port']) + '. Two data files, bundled TAKP DLLs and display settings updated; originals saved in ' + backup + '.')
+                  message='TAKP client prepared for ' + engine.config['ip'] + ':' + str(engine.config['login_port']) + '. Server exports spells_us.txt and SkillCaps.txt, bundled TAKP DLLs and display settings updated; any supplied spells_en.txt remains unchanged. Originals saved in ' + backup + '.')
     atomic_json(engine.work / 'logs/client-data-sync.json', result)
     return result
 

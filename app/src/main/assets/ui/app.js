@@ -1,5 +1,5 @@
 'use strict';
-const $=id=>document.getElementById(id), pending=new Map();
+const $=id=>document.getElementById(id), pending=new Map(),activeUiActions=new Set();
 let activeProfile=null,lastClientNative=null;
 let databaseCandidates=[],databaseScanning=false,databaseScanGeneration=0;
 let seq=0,currentTab='setup',lastState=null,lastNative=null,busy=0,rulesLoaded=false,rulesValues={},initialSettings=false,polling=false,sessionAction=null;
@@ -11,7 +11,7 @@ function ready(id,ok){$(id).textContent=ok?'Ready':'Required';$(id).classList.to
 function tab(name){if(currentTab==='client'&&name!=='client')api('controller_capture',{active:false}).catch(()=>{});currentTab=name;document.body.dataset.scene=name;renderOverview();document.querySelectorAll('.tab').forEach(e=>e.classList.toggle('active',e.id===name));document.querySelectorAll('nav button').forEach(e=>e.classList.toggle('active',e.dataset.tab===name));if(name==='client'&&typeof loadController==='function')loadController().catch(e=>notice(e.message,true));if(name==='gameplay'&&typeof refreshEraStatus==='function')refreshEraStatus().catch(e=>notice(e.message,true));if(name==='spire'&&typeof loadSpire==='function')loadSpire().catch(e=>notice(e.message,true));if(name==='files')browse().catch(e=>notice(e.message,true));if(name==='logs'){logs().catch(()=>{});loadLogRetention().catch(e=>notice(e.message,true));}}
 window.appBack=()=>tab('server');
 document.querySelectorAll('[data-tab]').forEach(b=>b.addEventListener('click',()=>tab(b.dataset.tab)));
-function action(id,fn){$(id).addEventListener('click',async()=>{const b=$(id);b.disabled=true;busy++;renderSessionControls();try{await fn();}catch(e){notice(e.message,true);}finally{busy--;b.disabled=false;renderSessionControls();poll().catch(()=>{});}});}
+function action(id,fn){$(id).addEventListener('click',async()=>{const b=$(id);b.disabled=true;busy++;activeUiActions.add(id);renderSessionControls();try{await fn();}catch(e){notice(e.message,true);}finally{activeUiActions.delete(id);busy--;b.disabled=false;renderSessionControls();poll().catch(()=>{});}});}
 const operationLabels={import_content:'Importing world content',import_client_ui:'Importing client UI skin',client_dll_download:'Preparing Microsoft toolchain',ferry_service_status:'Checking Qeynos–Erudin route',ferry_service_preview:'Previewing route changes',ferry_service_apply:'Saving route changes',boat_trial_status:'Checking ferry',boat_trial_preview:'Previewing ferry changes',boat_trial_apply:'Saving ferry changes',start:'Starting server',stop:'Stopping server',spire_catalog:'Loading Spire',spire_search:'Searching content',spire_detail:'Loading record',spire_preview:'Validating changes',spire_apply:'Saving content',spire_history:'Loading change history'};
 Object.assign(operationLabels,{activate_client_ui:'Saving client UI skin',restore_client_ui:'Restoring client UI settings',era_preview:'Reviewing era rules',era_apply:'Applying era rules',era_restore:'Restoring database default'});
 Object.assign(operationLabels,{takp_setup:'Downloading TAKP world files',takp_initialize_database:'Initializing TAKP database and playerbots',takp_create_account:'Creating local TAKP account'});
@@ -37,6 +37,7 @@ const tabStories={
 };
 function renderOverview(){const [title,summary]=tabStories[currentTab]||tabStories.setup;$('headline').textContent=currentTab==='server'&&lastState?.running?'Your world is running.':title;$('summary').textContent=activeProfile==='takp'&&currentTab==='setup'?'Download your TAKP forks, prepare the local world and bring in your Windows TAKP client.':activeProfile==='takp'&&currentTab==='build'?'Compile and stage the pinned TAKP server with playerbots.':activeProfile==='traditional'&&currentTab==='build'?'Prepare a copy of the tested source, then compile and stage its binaries.':summary;}
 function statusBadge(id,label,state){const el=$(id);el.textContent=label;el.dataset.state=state;el.classList.toggle('online',state==='running');}
+function clientStopBlocked(s=lastClientNative){return !s?.alive||!!(s.busy||lastNative?.session_busy||activeUiActions.has('client-stop')||activeUiActions.has('session-import')||activeUiActions.has('session-export')||(s.profile&&activeProfile&&s.profile!==activeProfile));}
 function renderClientActivity(s){
  lastClientNative=s;if(typeof syncProfileControls==='function')syncProfileControls();if(typeof cleanupControls==='function')cleanupControls();
  let label='Client · Stopped',state='stopped';
@@ -49,6 +50,7 @@ function renderClientActivity(s){
    label=fresh&&sample.game_running?'Client · Running in background':s.display_ready?'Client · Runtime open':'Client · Starting';state=fresh&&sample.game_running?'running':'busy';}
  }else if(s.busy){label='Client · Preparing';state='busy';}
  statusBadge('client-badge',label,state);
+ $('client-stop').disabled=clientStopBlocked(s);
 }
 function renderSessionControls(){
  const n=lastNative,s=lastState,active=s?.jobs?.find(j=>['queued','running'].includes(j.status));
@@ -57,6 +59,7 @@ function renderSessionControls(){
  $('runtime-close').disabled=blocked||!n?.alive;
  $('start-server').disabled=blocked||!n?.alive||!s||!!s.running||!s.binaries_ready||!s.database_imported;
  $('stop-server').disabled=$('restart-server').disabled=blocked||!n?.alive||!s?.running;
+ $('client-stop').disabled=clientStopBlocked();
  const operation=sessionAction||active?.operation;
  if(['start','stop','restart'].includes(operation)){statusBadge('badge','Server · '+({start:'Starting',stop:'Stopping',restart:'Restarting'}[operation]),'busy');}
  else if(!n){statusBadge('badge','Server · Status unavailable','unknown');}
