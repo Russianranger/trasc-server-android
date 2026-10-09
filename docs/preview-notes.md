@@ -1,28 +1,19 @@
-# TRASC Android 0.6.13 / code 62
+# TRASC Android 0.6.14 / code 63
 
-Traditional now offers reviewed Velious, Luclin and Planes of Power ruleset
-presets, plus Return to default. The presets use 47 source-supported era values,
-reversible startup-default overlays, and composite per-zone sets preserving
-unrelated existing overrides. Preview before applying; stop the server and client,
-then start the existing server again. Original default values and zone routing
-are restored without rewinding character progress. A database backup precedes
-changes, and stale previews and unsupported schemas are rejected.
+The Necromancer launcher theme now uses a gritty black and dark red palette with
+four original offline background paintings: a crypt, ritual chamber, forbidden
+grimoire and ossuary. The new scenes replace the former violet and green backdrop
+and give launcher sections distinct artwork.
 
-The official TAKP database and engine, pinned Traditional EQEmu source, Daybreak
-era documentation, EQEmuTools expansion switcher and supplied PEQ database were
-researched. PEQ's sparse era tags and upstream mechanics limit historical fidelity;
-these are compatible approximations, not a TAKP database replacement. Existing XP
-curves/rates and over-cap characters are preserved. See
-[research, exact behavior and focused acceptance](https://github.com/Russianranger/trasc-server-android/blob/main/docs/traditional-eras-0613.md).
+The **Launcher theme** selector now shares the **World profile** bar. Choose
+**Default**, **Necromancer** or **Monk** there; the selected theme persists across
+reloads and world profiles. Default and Monk retain their existing appearance.
 
-Launcher theme choices **Default**, **Necromancer** and **Monk** persist across
-reloads and both profiles. Default preserves the current appearance; class themes
-have distinct palettes and original offline vector scenes. They do not change
-StoneUI, client INIs, game models or server rules.
+Install this APK as an update. These changes affect the launcher only; the
+existing compiled Traditional server, imported RoF2 client, Wine prefix, runtime,
+DirectX helpers, controller bindings, character preferences and era rules remain.
+This scoped build reuses all 21 verified native components from 0.6.13, including
+the camera proxy, without server, runtime or native component compilation.
 
-Update the APK in place. The existing compiled Traditional server, imported RoF2
-client, Wine prefix, runtime, DirectX helpers, controller bindings and unrelated
-preferences remain. This scoped build reuses all 21 existing native components
-from verified 0.6.12, including the camera proxy; no server/runtime/native builds
-are performed. Existing camera/name-sky options, viewport gear actions and
-**Return to Launcher** remain. Physical Thor era acceptance remains a device test.
+For the background and selector acceptance checks, see
+[launcher theme guide](https://github.com/Russianranger/trasc-server-android/blob/main/docs/launcher-themes-0614.md).

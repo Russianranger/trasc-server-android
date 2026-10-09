@@ -1,11 +1,20 @@
 /* Default deliberately inherits style.css, including each world's existing art. */
-.launcher-appearance{display:flex;align-items:center;flex-wrap:wrap;gap:8px 14px;margin:0 0 12px;padding:10px 14px;border:1px solid var(--line);border-radius:4px;background:var(--panel)}
-.launcher-appearance label{margin:0;font-size:12px;white-space:nowrap}
-.launcher-appearance select{width:auto;min-width:150px;max-width:240px;margin:0;font-size:13px}
-.launcher-appearance small{margin:0;font-size:11px;flex:1;min-width:180px}
-body[data-launcher-theme=necromancer]{--bg:#0d1018;--panel:#191c2bef;--line:#77678b;--text:#f3edf5;--muted:#c7bed2;--green:#b6ddc6;--gold:#d9bdf1;--theme-card:#1e2031f5;--theme-card-edge:#29253bef;--theme-surface:#101722;--theme-header:#111521;--theme-button:#b8dcc9;--theme-button-edge:#89bda7;--theme-button-text:#11281e;--theme-secondary:#262a3d;--theme-secondary-edge:#1c2230;--theme-muted:#d2cadd}
+.profile-bar{flex-wrap:wrap;gap:10px 24px}
+.profile-world-controls,.profile-theme-controls{display:flex;align-items:center;gap:10px;min-width:0}
+.profile-world-controls{flex:1 1 440px}
+.profile-world-controls select{width:230px;flex:1;max-width:260px}
+.profile-theme-controls{flex:0 1 285px;margin-left:auto}
+.profile-theme-controls select{width:160px;flex:1;font-size:12px}
+.profile-bar label{margin:0;white-space:nowrap}
+.profile-bar select,.profile-bar button{min-height:44px}
+.profile-details{display:flex;justify-content:space-between;flex-wrap:wrap;gap:4px 20px;padding-bottom:8px}
+.profile-details small,#profile-status{margin:0;font-size:10px;line-height:1.4}
+body[data-launcher-theme=necromancer]{--bg:#090909;--panel:#191414f2;--line:#86504e;--text:#f4ece3;--muted:#c9b8b0;--green:#e7b9ad;--gold:#edb6a6;--red:#ffb0a7;--theme-card:#1b1515f5;--theme-card-edge:#292020f2;--theme-surface:#100d0d;--theme-header:#100c0c;--theme-button:#90252c;--theme-button-edge:#65181f;--theme-button-text:#fff1e4;--theme-secondary:#322020;--theme-secondary-edge:#201616;--theme-muted:#d5c2b8}
 body[data-launcher-theme=monk]{--bg:#111b1c;--panel:#1d2c2aef;--line:#a18c63;--text:#f5eddc;--muted:#d4c6ad;--green:#bfdfcc;--gold:#efd19a;--theme-card:#20312cf5;--theme-card-edge:#344139ef;--theme-surface:#10211f;--theme-header:#172c28;--theme-button:#e6c98e;--theme-button-edge:#c7a76a;--theme-button-text:#293024;--theme-secondary:#354c3c;--theme-secondary-edge:#223a31;--theme-muted:#e3d6be}
-body[data-launcher-theme=necromancer][data-scene]{--scene-image:url('theme-necromancer.svg')}
+body[data-launcher-theme=necromancer][data-scene=setup],body[data-launcher-theme=necromancer][data-scene=server]{--scene-image:url('theme-necromancer-crypt.webp')}
+body[data-launcher-theme=necromancer][data-scene=gameplay],body[data-launcher-theme=necromancer][data-scene=fixes]{--scene-image:url('theme-necromancer-ritual.webp')}
+body[data-launcher-theme=necromancer][data-scene=spire],body[data-launcher-theme=necromancer][data-scene=database]{--scene-image:url('theme-necromancer-grimoire.webp')}
+body[data-launcher-theme=necromancer][data-scene=build],body[data-launcher-theme=necromancer][data-scene=client],body[data-launcher-theme=necromancer][data-scene=files],body[data-launcher-theme=necromancer][data-scene=logs]{--scene-image:url('theme-necromancer-ossuary.webp')}
 body[data-launcher-theme=monk][data-scene]{--scene-image:url('theme-monk.svg')}
 body[data-launcher-theme]:not([data-launcher-theme=default]){background:var(--bg)}
 body[data-launcher-theme]:not([data-launcher-theme=default])::before{background-image:linear-gradient(180deg,#0a12182b,#0a1218dc 82%),var(--scene-image);background-position:center top}
@@ -38,5 +47,11 @@ body[data-launcher-theme]:not([data-launcher-theme=default]) .session-status .ba
 body[data-launcher-theme]:not([data-launcher-theme=default]) .sdk-consent{background:var(--theme-card);border-color:var(--line)}
 body[data-launcher-theme]:not([data-launcher-theme=default]) a{color:var(--gold)}
 body[data-launcher-theme]:not([data-launcher-theme=default]) button:focus-visible,body[data-launcher-theme]:not([data-launcher-theme=default]) input:focus,body[data-launcher-theme]:not([data-launcher-theme=default]) textarea:focus,body[data-launcher-theme]:not([data-launcher-theme=default]) select:focus{outline:2px solid var(--gold);outline-offset:2px}
-@media(max-width:680px){.launcher-appearance{gap:7px 10px}.launcher-appearance select{flex:1;max-width:none;min-width:0;min-height:44px}.launcher-appearance small{flex-basis:100%;min-width:0}}
-@media(prefers-reduced-motion:reduce){.launcher-appearance *{scroll-behavior:auto}}
+body[data-launcher-theme=necromancer]::before{background-image:linear-gradient(180deg,#08050535,#090707e8 86%),var(--scene-image)}
+body[data-launcher-theme=necromancer] .overview{background-image:linear-gradient(90deg,#100c0cf2 0%,#100c0cd9 36%,#100c0c44 70%,#100c0c88),var(--scene-image);box-shadow:inset 0 0 0 2px #1c0a0a88,0 8px 24px #0008}
+body[data-launcher-theme=necromancer] .card{box-shadow:inset 0 0 0 3px #150c0c66,0 12px 24px #0006}
+body[data-launcher-theme=necromancer] .step{border-color:var(--line)}
+body[data-launcher-theme=necromancer] .tag,body[data-launcher-theme=necromancer] .activity,body[data-launcher-theme=necromancer] #notice{background:#2d1b1b;color:var(--text);border-color:var(--line)}
+body[data-launcher-theme=necromancer] .tag.done,body[data-launcher-theme=necromancer] .badge.online{background:#34201e;color:var(--green);border-color:var(--line)}
+body[data-launcher-theme=necromancer] button.danger,body[data-launcher-theme=necromancer] #notice.error{background:linear-gradient(#631f26,#43161c);color:#fff0e7;border-color:#a95959}
+@media(max-width:680px){.profile-bar{gap:12px}.profile-world-controls{flex:1 1 100%;flex-wrap:wrap;gap:6px}.profile-world-controls label{width:100%}.profile-world-controls select{flex:1;max-width:none;width:auto}.profile-theme-controls{flex:1 1 100%;gap:10px}.profile-theme-controls label{width:auto}.profile-theme-controls select{max-width:none;width:auto}.profile-details{gap:4px}.profile-details small{flex-basis:100%}}
