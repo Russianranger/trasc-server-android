@@ -101,8 +101,8 @@ the client may resolve packed assets or another search path.
 
 Current hypothesis order is shared translated geometry/shader state, an
 unobserved imported sky/rendering setting, then missing/incompatible sky data.
-The new inventory distinguishes the latter two from actual graphics state
-without resetting preferences. If the option fails, compare its effective
+The new inventory adds evidence to distinguish those possibilities without
+resetting preferences. If the option fails, compare its effective
 DXVK setting and exact client/graphics hashes before choosing a different
 rendering change. Do not clear caches, reimport the client, repair the prefix,
 rebuild the server or repeat the old direct-mapping/math comparisons.
