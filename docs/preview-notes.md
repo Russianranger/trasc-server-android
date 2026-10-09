@@ -57,7 +57,11 @@ signing certificate and all 21 verified native launcher components from 0.6.18.
 Existing Custom and Traditional profile files stay in their own locations.
 The pinned server binaries, runtimes and renderer remain unchanged.
 
-Version 0.6.19 automation is pending until the build completes. Camera behavior,
+Version 0.6.19 passed 408 Python tests without skips, all thirteen browser programs,
+management/native and DirectX checks, Android assembly/lint and signing checks.
+ARM64 qualification passed all twelve checks, including creation events for all
+156 seeded Paineel NPCs. See [release verification](release-status-0619.md).
+Camera behavior,
 NPC visibility, graphics/audio, zoning and bots require further device testing.
 TAKP uses its EQW input wrapper;
 RoF2 DLL hooks, launcher skin activation, Spire editing and PEQ era presets are
