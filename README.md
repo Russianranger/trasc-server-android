@@ -31,7 +31,7 @@ A standalone Android control app for [Russianranger/Triptych-Triumvirate](https:
 
 ## Downloads and first setup
 
-**App 0.6.16 — TAKP World:** Adds a third independent world using your pinned TAKP server with playerbots, quests, maps and fresh database setup. Import a full Windows TAKP client, prepare its two matching data files and bundled compatibility DLLs, then launch `eqgame.exe` through its own client runtime. Physical Android login and gameplay remain the first device acceptance. [TAKP setup and testing guide](docs/takp-world-0616.md).
+**App 0.6.17 — TAKP client import fix:** Accepts the `spells_en.txt` shipped with the Windows TAKP 2.1c client and preserves it during Prepare and Export & sync. The server's `spells_us.txt` export stays separate because the pinned server validates the original client's spell checksum. Reimport the original ZIP after updating; no manual rename is needed. TAKP World remains independent of Custom and Traditional, with the pinned playerbot server, quests, maps and database setup. Physical Android login and gameplay remain the first device acceptance. [TAKP setup and testing guide](docs/takp-world-0616.md).
 
 **App 0.6.10 — Client UI activation:** Choose an installed skin for an existing character, optionally apply its matching window layout, and restore the previous settings from an exact backup. Both profiles include root-level `UIErrors.txt` in exported logs and label the client gear action **Return to Launcher**. [StoneUI device test](docs/client-ui-activation-0610.md).
 

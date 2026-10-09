@@ -6,6 +6,8 @@ from pathlib import Path
 import re
 import struct
 
+# The server exporter produces spells_us.txt; keep it separate from the
+# client's supplied spells_en.txt, whose checksum the pinned server validates.
 CLIENT_FILES = ('spells_us.txt', 'SkillCaps.txt')
 WINDOWS_FILES = ('eqgame.exe', 'eqmain.dll', 'eqgfx_dx8.dll')
 PATCHES = {
@@ -54,8 +56,15 @@ def validate_client(client, patched=False):
         files[name] = path.name
     # eqgame.dll computes the server checksum from the Intel Mac executable.
     # It must remain beside eqgame.exe, but is never launched under Wine.
-    for name in ('eqmac.exe', 'spells_us.txt', 'eqstr_en.txt'):
+    for name in ('eqmac.exe', 'eqstr_en.txt'):
         files[name] = file_at(client, name, True).name
+    spell = file_at(client, 'spells_en.txt')
+    legacy_spell = file_at(client, 'spells_us.txt')
+    if not spell.is_file() or not spell.stat().st_size:
+        if not legacy_spell.is_file() or not legacy_spell.stat().st_size:
+            raise ValueError('Import the complete TAKP 2.1/2.2 client ZIP; missing spells_en.txt (or legacy spells_us.txt)')
+        spell = legacy_spell
+    files['spells_en.txt'] = spell.name
     archives = [p for p in client.iterdir() if p.suffix.casefold() == '.s3d' and p.is_file() and not p.is_symlink() and p.stat().st_size]
     if not archives:
         raise ValueError('Import the full TAKP game ZIP, including its .s3d zone/model assets')
@@ -170,11 +179,11 @@ def prepare(engine, args):
     bom = b'\xef\xbb\xbf' if raw.startswith(b'\xef\xbb\xbf') else b''
     changes[ini] = bom + display_ini(raw[len(bom):].decode('latin-1'), resolution, fullscreen, profile='takp').encode('latin-1')
     result = engine._export_client_data()
-    for name in CLIENT_FILES:
-        if not changes[file_at(client, name)].is_file():
-            raise ValueError('TAKP client export missing: ' + name)
+    for source in data_changes(engine, client).values():
+        if source.is_symlink() or not source.is_file() or not source.stat().st_size:
+            raise ValueError('TAKP client export missing: ' + source.name)
     backup = engine._apply_client_changes(client, changes)
-    report.update(patches=PATCHES, prepared_at=__import__('time').time(), prepared=True)
+    report.update(validate_client(client, patched=True), prepared_at=__import__('time').time(), prepared=True)
     marker = file_at(client, 'trasc-client.json', True)
     record = json.loads(marker.read_text())
     record.update(report)

@@ -53,11 +53,11 @@ class TakpClientTests(unittest.TestCase):
         self.engine = TestEngine(self.root)
         self.client = self.engine.work / 'client/current'
 
-    def content(self, folder):
+    def content(self, folder, spell='spells_en.txt'):
         folder.mkdir(parents=True)
         for name in takp_client.WINDOWS_FILES:
             (folder / name).write_bytes(pe32())
-        for name in ('eqmac.exe', 'spells_us.txt', 'eqstr_en.txt', 'global_chr.s3d'):
+        for name in ('eqmac.exe', spell, 'eqstr_en.txt', 'global_chr.s3d'):
             (folder / name).write_bytes(b'fixture ' + name.encode())
         (folder / 'eqclient.ini').write_bytes(b'; user settings\r\n[Other]\r\nName=caf\xe9\r\n')
         return folder
@@ -85,6 +85,41 @@ class TakpClientTests(unittest.TestCase):
         self.assertEqual((other/'eqgame.exe').read_bytes(), b'Traditional untouched')
         self.assertFalse((self.engine.work/'incoming/client.zip').exists())
 
+    def test_legacy_us_import_remains_supported(self):
+        self.import_zip(self.content(self.root/'source', spell='spells_us.txt'))
+        original = (self.client/'spells_us.txt').read_bytes()
+        self.assertFalse((self.client/'spells_en.txt').exists())
+        result = self.engine.prepare_client({})
+        self.assertFalse((self.client/'spells_en.txt').exists())
+        self.assertEqual((self.client/'spells_us.txt').read_bytes(), b'TAKP native spells_us.txt')
+        self.assertEqual((self.engine.work/result['backup']/'spells_us.txt').read_bytes(), original)
+        self.assertEqual(result['client']['required_files']['spells_en.txt'], 'spells_us.txt')
+        self.assertEqual(result['copied_files'], 2)
+
+    def test_en_file_wins_when_both_names_exist_and_sync_preserves_its_checksum(self):
+        content = self.content(self.root/'source')
+        (content/'spells_us.txt').write_bytes(b'legacy file')
+        (content/'spells_en.txt').rename(content/'Spells_EN.TXT')
+        self.import_zip(content)
+        result = takp_client.install_export(self.engine, self.client, self.engine._export_client_data())
+        self.assertEqual((self.client/'Spells_EN.TXT').read_bytes(), b'fixture spells_en.txt')
+        self.assertEqual((self.client/'spells_us.txt').read_bytes(), b'TAKP native spells_us.txt')
+        backup = self.engine.work / result['backup']
+        self.assertEqual((backup/'spells_us.txt').read_bytes(), b'legacy file')
+        self.assertFalse((backup/'Spells_EN.TXT').exists())
+        self.assertEqual(takp_client.validate_client(self.client)['required_files']['spells_en.txt'], 'Spells_EN.TXT')
+        self.assertFalse((self.client/'spells_en.txt').exists())
+
+    def test_missing_or_empty_spell_file_rejects_and_preserves_previous_client(self):
+        self.client.mkdir(parents=True); (self.client/'keep').write_bytes(b'previous')
+        content = self.content(self.root/'source')
+        (content/'spells_en.txt').write_bytes(b'')
+        with self.assertRaisesRegex(ValueError, 'missing spells_en.txt'): self.import_zip(content)
+        self.assertEqual((self.client/'keep').read_bytes(), b'previous')
+        (content/'spells_en.txt').unlink()
+        with self.assertRaisesRegex(ValueError, 'missing spells_en.txt'): self.import_zip(content)
+        self.assertEqual((self.client/'keep').read_bytes(), b'previous')
+
     def test_incomplete_or_rof2_upload_rejects_and_preserves_previous_install(self):
         self.client.mkdir(parents=True); (self.client/'keep').write_bytes(b'previous')
         content = self.content(self.root / 'source'); (content/'eqgfx_dx8.dll').unlink()
@@ -106,6 +141,7 @@ class TakpClientTests(unittest.TestCase):
     def test_prepare_two_files_legacy_login_and_native_window_settings_with_backups(self):
         self.import_zip(self.content(self.root/'source'))
         original = (self.client/'eqclient.ini').read_bytes()
+        original_spells = (self.client/'spells_en.txt').read_bytes()
         result = self.engine.prepare_client({'resolution':'1280x720','fullscreen':True})
         self.assertEqual(result['copied_files'], 2)
         self.assertFalse(result['filter_applied'])
@@ -113,6 +149,7 @@ class TakpClientTests(unittest.TestCase):
         self.assertFalse((self.client/'Resources').exists())
         for name in takp_client.CLIENT_FILES:
             self.assertEqual((self.client/name).read_bytes(), b'TAKP native '+name.encode())
+        self.assertEqual((self.client/'spells_en.txt').read_bytes(), original_spells)
         self.assertFalse((self.client/'BaseData.txt').exists()); self.assertFalse((self.client/'dbstr_us.txt').exists())
         host = (self.client/'eqhost.txt').read_bytes()
         self.assertIn(b'[RegistrationServers]', host); self.assertIn(b'[LoginServers]', host)
@@ -123,6 +160,7 @@ class TakpClientTests(unittest.TestCase):
             self.assertIn(value,ini)
         backup = self.engine.work / result['backup']
         self.assertEqual((backup/'eqclient.ini').read_bytes(),original)
+        self.assertFalse((backup/'spells_en.txt').exists())
         self.assertEqual((self.client/'eqmac.exe').read_bytes(),b'fixture eqmac.exe')
 
     def test_prepare_cancel_rolls_back_all_files_and_does_not_mark_prepared(self):
