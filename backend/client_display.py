@@ -28,10 +28,27 @@ def update_ini(text, section, values):
 
 
 
-def display_ini(text, resolution, fullscreen):
+def display_ini(text, resolution, fullscreen, profile='custom'):
     if resolution not in RESOLUTIONS: raise ValueError('Unsupported client resolution')
     if not isinstance(fullscreen, bool): raise ValueError('Invalid fullscreen option')
     width, height = resolution.split('x')
+    if profile == 'takp':
+        # eqw_takp owns the window; legacy Options/WindowedMode no longer does.
+        text = update_ini(text, 'EqwGeneral', {'FullScreenMode':'TRUE' if fullscreen else 'FALSE'})
+        text = update_ini(text, 'VideoMode', {'Width':width, 'Height':height, 'BitsPerPixel':'32'})
+        # Seed safe defaults without overwriting an imported user's FPS choices.
+        for section, values in (('eqgame_dll', {'EnableFPSLimiter':'TRUE'}),
+                                ('Options', {'MaxFPS':'60', 'MaxBGFPS':'30', 'MaxMouseLookFPS':'60'})):
+            active, present = False, set()
+            for line in text.splitlines():
+                stripped = line.strip()
+                if stripped.startswith('[') and stripped.endswith(']'):
+                    active = stripped[1:-1].casefold() == section.casefold()
+                elif active and '=' in line and not stripped.startswith((';', '#')):
+                    present.add(line.split('=', 1)[0].strip().casefold())
+            missing = {name:value for name,value in values.items() if name.casefold() not in present}
+            if missing: text = update_ini(text, section, missing)
+        return text
     text = update_ini(text, 'Defaults', {'WindowedMode':'FALSE' if fullscreen else 'TRUE'})
     return update_ini(text, 'VideoMode', {'Width':width, 'Height':height,
                                         'WindowedWidth':width, 'WindowedHeight':height})
@@ -48,9 +65,9 @@ def atomic_bytes(target, data):
         Path(name).unlink(missing_ok=True)
 
 
-def apply_display(client, prefix, resolution, fullscreen):
+def apply_display(client, prefix, resolution, fullscreen, profile='custom'):
     # Apply only on an explicit client launch, after the old game has stopped.
-    display_ini('', resolution, fullscreen)  # Validate before touching any file.
+    display_ini('', resolution, fullscreen, profile)  # Validate before touching any file.
     if client.is_symlink(): raise ValueError('Client directory cannot be a symlink')
     matches = [p for p in client.iterdir() if p.name.casefold() == 'eqclient.ini']
     if len(matches) > 1: raise ValueError('Ambiguous client filename: eqclient.ini')
@@ -65,7 +82,7 @@ def apply_display(client, prefix, resolution, fullscreen):
     if original.startswith((b'\xff\xfe', b'\xfe\xff')):
         raise ValueError('UTF-16 eqclient.ini is unsupported; display settings were not changed')
     bom = b'\xef\xbb\xbf' if original.startswith(b'\xef\xbb\xbf') else b''
-    updated = bom + display_ini(original[len(bom):].decode('latin-1'), resolution, fullscreen).encode('latin-1')
+    updated = bom + display_ini(original[len(bom):].decode('latin-1'), resolution, fullscreen, profile).encode('latin-1')
     report = {'resolution':resolution, 'fullscreen':fullscreen, 'changed':updated != original}
     if updated == original: return report
     backup = prefix/'trasc-display-originals'

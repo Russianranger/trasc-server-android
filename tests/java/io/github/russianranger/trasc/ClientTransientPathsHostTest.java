@@ -15,10 +15,15 @@ public final class ClientTransientPathsHostTest {
     public static void main(String[] args)throws Exception {
         for(String home:new String[]{"/data/data/io.github.russianranger.trasc.preview","/data/user/0/io.github.russianranger.trasc.preview"}) {
             File files=new File(home,"files");
-            ClientTransientPaths custom=new ClientTransientPaths(files,"custom"),traditional=new ClientTransientPaths(files,"traditional");
-            check(custom.tmp.equals(new File(home,"c"))&&traditional.tmp.equals(new File(home,"t")),"Compact temp roots belong to distinct worlds");
+            ClientTransientPaths custom=new ClientTransientPaths(files,"custom"),traditional=new ClientTransientPaths(files,"traditional"),takp=new ClientTransientPaths(files,"takp");
+            check(custom.tmp.equals(new File(home,"c"))&&traditional.tmp.equals(new File(home,"t"))&&takp.tmp.equals(new File(home,"k")),"Compact client temp roots belong to three distinct worlds");
             check(traditional.run.equals(new File(traditional.tmp,"s")),"All session sockets use the compact temp root");
-            custom.validate();traditional.validate();
+            custom.validate();traditional.validate();takp.validate();
+            for(String profile:new String[]{"custom","traditional","takp"}) {
+                ClientTransientPaths server=new ClientTransientPaths(files,profile,true),client=new ClientTransientPaths(files,profile);
+                check(!server.tmp.equals(client.tmp),"Server and client PRoot sessions use separate temporary roots");
+                server.validate();
+            }
             File old=new File(files,"profiles/traditional/tmp/client/tmp"+ClientTransientPaths.PROOT_SOCKET_SUFFIX);
             check(ClientTransientPaths.bytes(old)>ClientTransientPaths.MAX_SOCKET_BYTES,"The old Traditional PRoot helper path exceeds the Unix limit");
         }
@@ -32,9 +37,14 @@ public final class ClientTransientPathsHostTest {
             Path customData=files.resolve("work/client/prefix/user.reg"),traditionalData=files.resolve("profiles/traditional/work/client/current/eqgame.exe");
             Files.createDirectories(customData.getParent());Files.writeString(customData,"existing Wine settings");
             Files.createDirectories(traditionalData.getParent());Files.writeString(traditionalData,"owned client");
-            ClientTransientPaths custom=new ClientTransientPaths(files.toFile(),"custom"),traditional=new ClientTransientPaths(files.toFile(),"traditional");
+            ClientTransientPaths custom=new ClientTransientPaths(files.toFile(),"custom"),traditional=new ClientTransientPaths(files.toFile(),"traditional"),takp=new ClientTransientPaths(files.toFile(),"takp"),takpServer=new ClientTransientPaths(files.toFile(),"takp",true);
             custom.prepare();Files.writeString(custom.run.toPath().resolve("status.json"),"custom session");
             traditional.prepare();Files.writeString(traditional.run.toPath().resolve("status.json"),"traditional session");
+            takp.prepare();Files.writeString(takp.run.toPath().resolve("status.json"),"takp client session");
+            takpServer.prepare();Files.writeString(takpServer.tmp.toPath().resolve("proot-helper"),"takp server session");
+            check(Files.readString(takp.run.toPath().resolve("status.json")).equals("takp client session"),"Server startup preserves the TAKP client's active sockets");
+            takp.prepare();
+            check(Files.readString(takpServer.tmp.toPath().resolve("proot-helper")).equals("takp server session"),"TAKP client startup preserves server PRoot helpers");
             custom.prepare();
             check(!Files.exists(custom.run.toPath().resolve("status.json")),"Starting a client clears only its old transient session");
             check(Files.readString(traditional.run.toPath().resolve("status.json")).equals("traditional session"),"Custom restart preserves Traditional session files");
@@ -55,6 +65,6 @@ public final class ClientTransientPathsHostTest {
             rejected(aliased::prepare);
             check(Files.isDirectory(longParent.resolve("private/files")),"Canonical PRoot budget rejection preserves persistent files");
         } finally {TarExtractor.remove(root.toFile());}
-        System.out.println("PASS: compact Android client paths, Unix byte limits, private temp permissions, separate profile cleanup and unchanged persistent imports/prefixes");
+        System.out.println("PASS: three compact world paths, independent server/client PRoot helpers, Unix byte limits, private permissions and unchanged persistent imports/prefixes");
     }
 }

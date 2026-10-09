@@ -94,11 +94,15 @@ public final class RuntimeManager {
         File proot=new File(nativeDir,"libproot.so"), loader=new File(nativeDir,"libproot-loader.so");
         if (!proot.canExecute() || !loader.exists()) throw new IOException("This APK is missing its ARM64 runtime launcher");
         File backend=new File(home,"backend"); backend.mkdirs();
-        for(String name:new String[]{"engine.py","era_rules.py","era_presets.json","peq_database.py","client_ui.py","traditional_content.py","traditional_build.py","traditional_verify.py","traditional_runtime.py","boat_trial.py","ferry_service.py","ferry_service.lua","ferry_route.py","server_ferry.py","eq_server_ferry.h","spire.py","spire_catalog.py","log_retention.py","rule_catalog.py","managed_content.py","client_display.py","client_xauthority.py","client_settings.py","client_spells.py","client_addons.py","client_dll.py","client_toolchain.py","pack-client-sdk.py","client_mouse.py","eq_camera_mouse.h","eq_client_loading.h","eq_fast_decimal.h","eq_spell_checksum.h","eq_display_loading.h","eq_first_person_particles.h","eq_boat_diagnostics.h","player_data.py","player_tables.py","client_compile_runner.py"})
+        for(String name:new String[]{"engine.py","era_rules.py","era_presets.json","peq_database.py","client_ui.py","traditional_content.py","traditional_build.py","traditional_verify.py","traditional_runtime.py","takp_build.py","takp_runtime.py","takp_client.py","takp-client/bundle.json","takp-client/d3d8.dll","takp-client/eqgame.dll","takp-client/eqw.dll","boat_trial.py","ferry_service.py","ferry_service.lua","ferry_route.py","server_ferry.py","eq_server_ferry.h","spire.py","spire_catalog.py","log_retention.py","rule_catalog.py","managed_content.py","client_display.py","client_xauthority.py","client_settings.py","client_spells.py","client_addons.py","client_dll.py","client_toolchain.py","pack-client-sdk.py","client_mouse.py","eq_camera_mouse.h","eq_client_loading.h","eq_fast_decimal.h","eq_spell_checksum.h","eq_display_loading.h","eq_first_person_particles.h","eq_boat_diagnostics.h","player_data.py","player_tables.py","client_compile_runner.py"})
+            try(InputStream in=context.getAssets().open(name)) { copy(in,new File(backend,name)); }
+        for(String name:new String[]{"takp-client/eqw-LICENSE.txt","takp-client/d3d8to9-LICENSE.txt"})
             try(InputStream in=context.getAssets().open(name)) { copy(in,new File(backend,name)); }
         byte[] secret=new byte[32]; new SecureRandom().nextBytes(secret); token=hex(secret);
         write(new File(work,"run/api-token"),token);
-        File tmp=new File(home,"tmp"); tmp.mkdirs();
+        ClientTransientPaths temporary=new ClientTransientPaths(context.getFilesDir(),profiles.current(),true);
+        temporary.prepare();
+        File tmp=temporary.tmp;
         new File(rootfs,"tmp").mkdirs(); new File(rootfs,"work").mkdirs(); new File(rootfs,"opt/trasc").mkdirs();
         // Docker's generated hosts file is absent from exported runtime archives.
         // Repair existing installations too, before any Linux process starts.
@@ -214,7 +218,7 @@ public final class RuntimeManager {
             .put("message","Reset "+cleared[0]+" diagnostic log files to 0 bytes.");
     }
     private void captureFerryDiagnostics() {
-        if(!alive()||profiles.current().equals("traditional"))return;
+        if(!alive()||!profiles.current().equals("custom"))return;
         try {
             JSONObject snapshot=request("ferry_diagnostics",new JSONObject(),5000);
             if(!snapshot.optBoolean("ok"))throw new IOException(snapshot.optString("error"));
@@ -239,9 +243,11 @@ public final class RuntimeManager {
         try{LocalLogs.failure(work,operation,error);}catch(IOException ignored){android.util.Log.e("TRASC",operation+" failed",error);}
     }
     void installOnline() throws Exception {
-        File manifest=new File(context.getCacheDir(),"runtime-manifest.json"), archive=new File(context.getCacheDir(),"runtime.tar.gz");
         beginInstall();
+        File cache=new File(context.getCacheDir(),profiles.current()+"/server-runtime");
+        File manifest=new File(cache,"runtime-manifest.json"), archive=new File(cache,"runtime.tar.gz");
         try {
+            Files.createDirectories(cache.toPath());
             String release=ServerRuntimeIdentity.release(profiles.current());
             download(release+"runtime-manifest.json",manifest);
             JSONObject m=new JSONObject(new String(Files.readAllBytes(manifest.toPath()),StandardCharsets.UTF_8));
@@ -378,9 +384,15 @@ public final class RuntimeManager {
                 marker.optString("profile"),marker.optString("runtime"),marker.optInt("build_adapter"));
             for(String needed:new String[]{"usr/bin/python3.11","usr/sbin/mariadbd","usr/bin/cmake","usr/bin/git","usr/bin/g++"})
                 if(!new File(staging,needed).exists()) throw new IOException("Runtime is incomplete: "+needed);
-            if("traditional".equals(profiles.current()))
+            if(!"custom".equals(profiles.current()))
                 for(String needed:new String[]{"usr/bin/ninja","usr/bin/pkg-config","usr/bin/openssl","usr/bin/luajit","usr/bin/readelf","usr/lib/aarch64-linux-gnu/ossl-modules/legacy.so"})
-                    if(!new File(staging,needed).isFile())throw new IOException("Traditional runtime is incomplete: "+needed);
+                    if(!new File(staging,needed).isFile())throw new IOException(WorldProfiles.label(profiles.current())+" runtime is incomplete: "+needed);
+            if(ServerRuntimeIdentity.reusableTakpImage(profiles.current(),marker.optInt("format"),marker.optString("architecture"),
+                    marker.optString("profile"),marker.optString("runtime"),marker.optInt("build_adapter"))) {
+                marker.put("source_profile",marker.getString("profile")).put("source_runtime",marker.getString("runtime"))
+                    .put("profile","takp").put("runtime",ServerRuntimeIdentity.TAKP_VERSION);
+                write(new File(staging,"etc/trasc-runtime.json"),marker.toString(2)+"\n");
+            }
             TarExtractor.remove(previous);
             if(rootfs.exists() && !rootfs.renameTo(previous)) throw new IOException("Could not preserve previous runtime");
             if(!staging.renameTo(rootfs)) {previous.renameTo(rootfs); throw new IOException("Could not activate runtime");}

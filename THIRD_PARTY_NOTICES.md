@@ -18,13 +18,25 @@ The APK release includes `launcher-sources.tar.gz` with the pinned PRoot/talloc 
 - [Wine 10.0](https://dl.winehq.org/wine/source/10.0/), LGPL-2.1-or-later, vanilla WoW64 binary from [Kron4ek's 10.0 release](https://github.com/Kron4ek/Wine-Builds/releases/tag/10.0). The exact binary archive SHA-256 is pinned in the Dockerfile. Upstream Wine source and the Box64 source accompany the release as `client-runtime-sources.tar.gz`; Kron4ek's repository documents the compiler flags and Ubuntu build environment used for its binaries.
 - Debian's TigerVNC/X server, Mesa llvmpipe, fonts and support libraries. `/etc/trasc-client-packages.txt` records exact package versions and `/usr/share/doc/*/copyright` retains the package license notices. Corresponding versioned source packages are available from Debian. TigerVNC is GPL-2.0-or-later; Mesa and X components retain their respective upstream licenses.
 
-The Android RFB client is implemented in this repository from the public protocol specification. The Windows integration-test EXE/DLL are built from `tests/client_probe*.c`; they contain no proprietary client code. No EverQuest executables, modified client DLLs, copyrighted game assets or Winlator binaries are redistributed.
+The Android RFB client is implemented in this repository from the public protocol specification. The Windows integration-test EXE/DLL are built from `tests/client_probe*.c`; they contain no proprietary client code. The TAKP compatibility DLLs listed below are bundled separately. No EverQuest executables, copyrighted game assets or Winlator binaries are redistributed.
+
+## TAKP client compatibility files (0.6.16)
+
+The APK includes the following unchanged, user-provided 32-bit compatibility DLLs. Their versions and SHA-256 checksums are recorded in `backend/takp-client/bundle.json`. The launcher verifies them before copying them into this world's user-imported client; the original files are retained in that client's preparation backup.
+
+| File | Upstream release | License / notices |
+| --- | --- | --- |
+| `eqgame.dll` | [EQMacEmu/eqgame_dll_takp v0.0.0.3](https://github.com/EQMacEmu/eqgame_dll_takp/releases/tag/v0.0.0.3) | The upstream repository does not declare a license. This project records its provenance and does not assign it an MIT or other license. |
+| `eqw.dll` | [CoastalRedwood/eqw_takp v1.0.2](https://github.com/CoastalRedwood/eqw_takp/releases/tag/v1.0.2) | MIT, copyright 2025 CoastalRedwood. Complete upstream notice is retained in `backend/takp-client/eqw-LICENSE.txt`. |
+| `d3d8.dll` | [crosire/d3d8to9 v1.16.0](https://github.com/crosire/d3d8to9/releases/tag/v1.16.0) | BSD-2-Clause. Complete upstream notice is retained in `backend/takp-client/d3d8to9-LICENSE.txt`. |
+
+The APK's `takp-client/` assets retain those license files and bundle manifest. The compatibility files supply the TAKP Windows modifications, window/input handling, and conversion from Direct3D 8 to Direct3D 9. They do not include the game's executable, `eqmac.exe` checksum resource, zone/model archives, textures, audio, or other game content. The uploaded `eqw.pdb` is a debug symbol file and is not included in the APK. Players import their own complete supported TAKP client installation.
 
 ## DirectX model helper installer
 
 The APK packages [cabextract 1.11](https://www.cabextract.org.uk/) with its bundled libmspack cabinet decoder. The exact source archive (SHA-256 `b5546db1155e4c718ff3d4b278573604f30dd64c3c5bfd4657cd089b823a3ac6`) and `scripts/build-cabextract.sh` accompany the APK in `launcher-sources.tar.gz`. See that archive's COPYING and source notices for the GPL/libmspack terms.
 
-The optional installation action downloads the [Microsoft DirectX End-User Runtimes (June 2010)](https://www.microsoft.com/en-us/download/details.aspx?id=8109) directly from Microsoft, or reads the user's matching offline EXE. It verifies the entire package SHA-256 before extracting only x86 d3dx9_30.dll and d3dx9_35.dll. Microsoft libraries retain Microsoft's license terms; none are included in this repository, APK, Linux runtime archive or published test artifacts. CI obtains the same official package temporarily to verify installation and model APIs.
+The optional installation action downloads the [Microsoft DirectX End-User Runtimes (June 2010)](https://www.microsoft.com/en-us/download/details.aspx?id=8109) directly from Microsoft, or reads the user's matching offline EXE. It verifies the entire package SHA-256 before extracting only x86 d3dx9_30.dll, d3dx9_35.dll and d3dx9_43.dll. The first two remain the RoF2 model helpers; TAKP's D3D8 wrapper uses d3dx9_43.dll. Microsoft libraries retain Microsoft's license terms; none are included in this repository, APK, Linux runtime archive or published test artifacts. CI obtains the same official package temporarily to verify installation and model APIs.
 
 ## Native graphics bridge
 

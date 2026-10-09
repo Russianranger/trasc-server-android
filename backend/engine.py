@@ -42,12 +42,14 @@ import server_ferry
 import traditional_content
 import traditional_build
 import traditional_runtime
+import takp_build
+import takp_runtime
 import peq_database
 import era_rules
 import client_ui
 from log_retention import rotate
 
-VERSION = '0.6.15'
+VERSION = '0.6.16'
 DEFAULT_REPO = 'https://github.com/Russianranger/Triptych-Triumvirate'
 BINARIES = ('world', 'zone', 'loginserver', 'shared_memory', 'ucs', 'eqlaunch', 'queryserv', 'export_client_files')
 CLIENT_FILES = ('spells_us.txt', 'dbstr_us.txt', 'SkillCaps.txt', 'BaseData.txt')
@@ -166,16 +168,16 @@ def validate_rule(name, value):
 
 class Engine(ManagedContent):
     def __init__(self, work, profile='custom'):
-        if profile not in ('custom', 'traditional'): raise ValueError('Unknown world profile')
+        if profile not in ('custom', 'traditional', 'takp'): raise ValueError('Unknown world profile')
         self.profile = profile
         self.work = Path(work).resolve()
         for name in ('incoming', 'sources', 'server', 'maps', 'database', 'backups', 'exports', 'logs', 'run', 'builds', 'client'):
             (self.work / name).mkdir(parents=True, exist_ok=True)
-        client_dll.recover_sdk(self)
+        if profile != 'takp': client_dll.recover_sdk(self)
         self.config_path = self.work / 'settings.json'
         self.config = json.loads(self.config_path.read_text()) if self.config_path.exists() else {
-            'repo': traditional_build.REPOSITORY if profile == 'traditional' else DEFAULT_REPO, 'ref': traditional_build.REVISION if profile == 'traditional' else 'main', 'ip': '127.0.0.1', 'login_port': 5999,
-            'workers': 3, 'jobs': 1 if profile == 'traditional' else 2, 'database': 'peq' if profile == 'traditional' else 'triune', 'db_port': 13306,
+            'repo': takp_build.REPOSITORY if profile == 'takp' else (traditional_build.REPOSITORY if profile == 'traditional' else DEFAULT_REPO), 'ref': takp_build.REVISION if profile == 'takp' else (traditional_build.REVISION if profile == 'traditional' else 'main'), 'ip': '127.0.0.1', 'login_port': 6000 if profile == 'takp' else 5999,
+            'workers': 3, 'jobs': 1 if profile in ('traditional', 'takp') else 2, 'database': 'takp' if profile == 'takp' else ('peq' if profile == 'traditional' else 'triune'), 'db_port': 13306,
             'db_password': secrets.token_hex(20), 'server_key': secrets.token_hex(20),
             'database_imported': False, 'rules_pending_restart': False,
         }
@@ -183,7 +185,8 @@ class Engine(ManagedContent):
             raise ValueError('Workspace belongs to a different world profile')
         self.config['profile'] = profile
         if profile == 'traditional': traditional_content.recover(self)
-        client_ui.recover(self)
+        if profile == 'takp': takp_runtime.recover(self)
+        if profile != 'takp': client_ui.recover(self)
         self.config.setdefault('root_password', secrets.token_hex(20))
         self.save()
         self.processes = {}
@@ -208,8 +211,9 @@ class Engine(ManagedContent):
             except (ValueError, OSError) as e:
                 self.traditional_recovery_error = str(e)
                 self.log('Traditional build recovery needs attention: ' + str(e))
-        try: self.recover_nektulos()
-        except (ValueError, OSError) as e: self.log('Nektulos recovery needs attention: ' + str(e))
+        if profile != 'takp':
+            try: self.recover_nektulos()
+            except (ValueError, OSError) as e: self.log('Nektulos recovery needs attention: ' + str(e))
 
     def save(self):
         atomic_json(self.config_path, self.config)
@@ -350,6 +354,8 @@ class Engine(ManagedContent):
         raise ValueError('Import the server source first')
 
     def import_source(self, args):
+        if self.profile == 'takp' and self.server_running():
+            raise ValueError('Stop the TAKP server before replacing its source')
         stage = self.work / 'sources' / ('import-' + secrets.token_hex(4))
         metadata = {'imported': time.time(), 'type': 'archive'}
         try:
@@ -359,13 +365,14 @@ class Engine(ManagedContent):
                 metadata['type'] = 'github'
             else:
                 archive = safe_path(self.work / 'incoming', args['file'], True)
-            if self.profile == 'traditional':
+            if self.profile in ('traditional', 'takp'):
                 digest = hashlib.sha256()
                 with archive.open('rb') as stream:
                     for block in iter(lambda: stream.read(1024 * 1024), b''):
                         self.check_cancel()
                         digest.update(block)
                 metadata['archive_sha256'] = digest.hexdigest()
+            if self.profile == 'takp': traditional_content.validate_archive_members(archive)
             extract_archive(archive, stage)
             self.check_cancel()
             candidates = []
@@ -375,6 +382,8 @@ class Engine(ManagedContent):
             candidate = candidates[0]
             if self.profile == 'traditional' and (candidate / 'Release-NMS-Server').exists():
                 raise ValueError('Choose a traditional EQEmu source tree for this profile')
+            if self.profile == 'takp':
+                metadata['takp'] = takp_build.qualify_source(candidate, self.check_cancel)
             atomic_json(candidate / 'trasc-source.json', metadata)
             current, previous = self.work / 'sources/current', self.work / 'sources/previous'
             if previous.exists(): shutil.rmtree(previous)
@@ -388,6 +397,7 @@ class Engine(ManagedContent):
             if stage.exists(): shutil.rmtree(stage)
 
     def import_maps(self, args):
+        if self.profile == 'takp': return takp_runtime.import_content(self, dict(args, kind='maps'))
         if self.server_running(): raise ValueError('Stop the server before replacing maps')
         stage = self.work / ('maps-import-' + secrets.token_hex(4))
         try:
@@ -560,6 +570,8 @@ class Engine(ManagedContent):
             self.mysql(f"CREATE DATABASE IF NOT EXISTS `{self.config['database']}` CHARACTER SET utf8mb4; CREATE USER IF NOT EXISTS 'trasc'@'127.0.0.1' IDENTIFIED BY {password}; ALTER USER 'trasc'@'127.0.0.1' IDENTIFIED BY {password}; GRANT ALL ON `{self.config['database']}`.* TO 'trasc'@'127.0.0.1';", database=False)
 
     def import_database(self, args):
+        if self.profile == 'takp' and not args.get('_takp_restore'):
+            raise ValueError('Use Initialize TAKP database for the complete TAKP seed and bot migrations')
         if self.server_running(): raise ValueError('Stop the server before importing a database')
         selection = args['selection']
         if not isinstance(selection, str): raise ValueError('Choose a database seed')
@@ -587,7 +599,7 @@ class Engine(ManagedContent):
         self.ensure_db()
         if self.config['database_imported']:
             if not args.get('replace'): raise ValueError('Database exists. Enable replacement; a backup will be made first.')
-            player_backup = player_data.export_players(self, {})['file']
+            player_backup = player_data.export_players(self, {})['file'] if self.profile != 'takp' else None
             self.backup_database({})
         else:
             player_backup = None
@@ -645,9 +657,16 @@ class Engine(ManagedContent):
         if not source.is_relative_to(self.work / 'backups'): raise ValueError('Select a database backup')
         incoming = self.work / 'incoming' / source.name
         shutil.copy2(source, incoming)
-        return self.import_database({'selection': str(incoming.relative_to(self.work)), 'replace': True})
+        result = self.import_database({'selection': str(incoming.relative_to(self.work)), 'replace': True,
+                                      '_takp_restore': self.profile == 'takp'})
+        if self.profile == 'takp':
+            takp_runtime.verify_database(self)
+            self.config['takp_local_accounts'] = int(takp_runtime._rows(self, 'SELECT COUNT(*) FROM tblLoginServerAccounts;')[0][0])
+            self.save()
+        return result
 
     def build(self, args):
+        if self.profile == 'takp': return takp_build.build(self, args)
         if self.profile == 'traditional': return traditional_build.build(self, args)
         root = self.source_root()
         server = root / 'Release-NMS-Server' if (root / 'Release-NMS-Server').is_dir() else root
@@ -683,6 +702,7 @@ class Engine(ManagedContent):
         return {'message': 'Build passed. Stop the server, then select Deploy build.', 'staged': True}
 
     def deploy(self, args):
+        if self.profile == 'takp': return takp_runtime.deploy(self, args)
         if self.profile == 'traditional': return traditional_runtime.deploy(self, args)
         if self.server_running(): raise ValueError('Stop the server before deploying binaries')
         stage = self.work / 'server/bin.staged'
@@ -696,6 +716,7 @@ class Engine(ManagedContent):
         return {'message': 'Binaries deployed. The previous binaries are available for rollback.'}
 
     def rollback(self, args):
+        if self.profile == 'takp': return takp_runtime.rollback(self, args)
         if self.profile == 'traditional': return traditional_runtime.rollback(self, args)
         if self.server_running(): raise ValueError('Stop the server before rollback')
         current, previous, temp = self.work / 'server/bin', self.work / 'server/bin.previous', self.work / 'server/bin.swap'
@@ -706,6 +727,7 @@ class Engine(ManagedContent):
         return {'message': 'Previous binaries restored. Database migrations may require restoring the matching backup.'}
 
     def sync_content(self, args):
+        if self.profile == 'takp': return takp_runtime.sync_content(self)
         if self.profile == 'traditional': return traditional_runtime.sync_content(self)
         root = self.source_root()
         runtime = self.work / 'server'
@@ -732,6 +754,7 @@ class Engine(ManagedContent):
             if example.exists(): shutil.copy2(example, runtime / 'login.json')
 
     def write_config(self):
+        if self.profile == 'takp': return takp_runtime.write_config(self)
         if self.profile == 'traditional': return traditional_runtime.write_config(self)
         runtime = self.work / 'server'
         cfg_path = runtime / 'eqemu_config.json'
@@ -778,6 +801,7 @@ class Engine(ManagedContent):
         return p
 
     def start(self, args):
+        if self.profile == 'takp': return takp_runtime.start(self, args)
         if self.profile == 'traditional': return traditional_runtime.start(self, args)
         self.recover_nektulos()
         if self.server_running(): raise ValueError('Server processes are already running')
@@ -995,6 +1019,18 @@ class Engine(ManagedContent):
         return {'output': result[:200000], 'truncated': len(result)>200000}
 
     def export_client(self, args):
+        if self.profile == 'takp':
+            import takp_client
+            client = self._local_client(required=False)
+            result = self._export_client_data()
+            if client:
+                result = takp_client.install_export(self, client, result)
+            else:
+                result.update(local_client_synced=False, copied_files=0,
+                              message='TAKP data ZIP exported with spells_us.txt and SkillCaps.txt. Import the full TAKP client to install them locally.')
+                atomic_json(self.work / 'logs/client-data-sync.json', result)
+            self.log(result['message'])
+            return result
         from client_spells import require_export_ready, install_export
         client = self._local_client(required=False)
         require_export_ready(self.work, client)
@@ -1016,6 +1052,7 @@ class Engine(ManagedContent):
 
     def _export_client_data(self):
         """Run the real database exporter, then apply the saved client policy."""
+        if self.profile == 'takp': return takp_runtime.export_client_data(self)
         if self.profile == 'traditional': traditional_runtime.require_client_data(self)
         self.ensure_db()
         self.write_config()
@@ -1127,12 +1164,13 @@ class Engine(ManagedContent):
         source=self.work/'sources/current/trasc-source.json'
         config={k:v for k,v in self.config.items() if 'password' not in k and 'key' not in k}
         traditional=traditional_content.status(self) if self.profile=='traditional' else None
+        takp=takp_runtime.status(self) if self.profile=='takp' else None
         client=self.client_status()
         client['ui']=client_ui.status(self)
-        return {'version':VERSION,'profile':self.profile,'traditional':traditional,'settings':config,'source':json.loads(source.read_text()) if source.exists() else None,
+        return {'version':VERSION,'profile':self.profile,'traditional':traditional,'takp':takp,'settings':config,'source':json.loads(source.read_text()) if source.exists() else None,
             'runtime_ready':True,'database_running':bool(self.db and self.db.poll() is None),'database_imported':self.config['database_imported'],
-            'maps_ready':(self.work/'maps/base').is_dir(),'binaries_ready':all((self.work/'server/bin'/x).exists() for x in BINARIES),
-            'build_ready':traditional['build']['staged_valid'] if traditional else (self.work/'server/bin.staged/build-info.json').exists(), 'rollback_ready':(self.work/'server/bin.previous').exists(),
+            'maps_ready':takp['maps_ready'] if takp else (self.work/'maps/base').is_dir(),'binaries_ready':takp['build']['deployed_valid'] if takp else all((self.work/'server/bin'/x).exists() for x in BINARIES),
+            'build_ready':takp['build']['staged_valid'] if takp else (traditional['build']['staged_valid'] if traditional else (self.work/'server/bin.staged/build-info.json').exists()), 'rollback_ready':takp['deployment']['rollback_allowed'] if takp else (self.work/'server/bin.previous').exists(),
             'processes':{name:{'pid':p.pid,'running':p.poll() is None,'exit':p.poll()} for name,p in self.processes.items()},
             'jobs':self.jobs,'free_bytes':shutil.disk_usage(self.work).free,'running':self.server_running(),
             'nektulos':self.nektulos_status(), 'client':client}
@@ -1140,10 +1178,20 @@ class Engine(ManagedContent):
     def dispatch(self,op,args):
         if args.get('__profile', self.profile) != self.profile:
             raise ValueError('World profile changed. Refresh before continuing.')
-        if self.profile == 'traditional':
+        if self.profile in ('traditional', 'takp'):
             if op.startswith(('boat_trial_', 'ferry_', 'client_dll_', 'client_addons_')) or op in ('fix_nektulos','revert_nektulos','apply_spell_test','restore_spell_test'):
                 raise ValueError('This repair or addon belongs to TRASC Custom')
-        if op == 'import_content': return traditional_content.install(self,args)
+        if self.profile == 'takp' and op.startswith('spire_'):
+            raise ValueError('Spire content editing currently supports the Custom and Traditional schemas')
+        if self.profile == 'takp' and op in ('player_export', 'player_preview', 'player_restore'):
+            raise ValueError('Use a full TAKP database or session backup to preserve its login accounts and playerbots')
+        if op == 'import_content': return takp_runtime.import_content(self,args) if self.profile == 'takp' else traditional_content.install(self,args)
+        if op == 'takp_setup': return takp_runtime.setup(self,args)
+        if op == 'takp_initialize_database': return takp_runtime.initialize_database(self,args)
+        if op == 'takp_create_account': return takp_runtime.create_account(self,args)
+        if op == 'takp_status':
+            if self.profile != 'takp': raise ValueError('This operation belongs to TAKP World')
+            return takp_runtime.status(self)
         if op == 'traditional_status': return traditional_content.status(self)
         if op in ('era_status', 'era_preview', 'era_apply', 'era_restore'):
             return era_rules.dispatch(self,op,args)
@@ -1199,7 +1247,7 @@ def serve(work, port, token, profile='custom'):
                     threading.Thread(target=server.shutdown,daemon=True).start()
                     result={'message':'Stopping all processes and database'}
                 elif op=='cancel': engine.cancel.set(); result={'message':'Cancellation requested'}
-                elif op in ('state','files','logs','databases','client_dll_status','client_dll_download_info','ferry_diagnostics','traditional_status','era_status'): result=engine.dispatch(op,args)
+                elif op in ('state','files','logs','databases','client_dll_status','client_dll_download_info','ferry_diagnostics','traditional_status','takp_status','era_status'): result=engine.dispatch(op,args)
                 else: result=engine.enqueue(op,args)
                 payload=json.dumps({'ok':True,'result':result}).encode()
             except Exception as e:
@@ -1222,6 +1270,6 @@ if __name__=='__main__':
     parser.add_argument('--work',default='/work')
     parser.add_argument('--port',type=int,default=18775)
     parser.add_argument('--token-file',required=True)
-    parser.add_argument('--profile',choices=('custom','traditional'),default='custom')
+    parser.add_argument('--profile',choices=('custom','traditional','takp'),default='custom')
     a=parser.parse_args()
     serve(a.work,a.port,Path(a.token_file).read_text().strip(),a.profile)

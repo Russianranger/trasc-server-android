@@ -279,6 +279,8 @@ def _prepare(engine, root, destination):
 
 
 def install(engine, args):
+    if engine.profile == 'takp':
+        raise ValueError('RoF2 UI ZIPs are incompatible with TAKP. Use a TAKP skin included in its client and /loadskin <skin> 1 in game')
     from engine import atomic_json, extract_archive
     # Android serializes this operation with ClientRuntime.start/stop and blocks
     # both live and starting clients. Linux has a separate client rootfs/process.
@@ -715,6 +717,7 @@ def _replace_settings(engine, client, path, original, updated, operation, layout
 
 
 def activate(engine, args):
+    if engine.profile == 'takp': raise ValueError('Select a native TAKP skin in game with /loadskin <skin> 1')
     if not isinstance(args.get('apply_layout', False), bool):
         raise ValueError('Choose whether to apply the included layout')
     client, ui, _ = _locations(engine)
@@ -742,6 +745,7 @@ def activate(engine, args):
 
 
 def restore_settings(engine, args):
+    if engine.profile == 'takp': raise ValueError('TAKP character UI settings are managed by its native client')
     client, _, _ = _locations(engine)
     recover(engine)
     path, raw, parsed = _character_file(client, args.get('character_file'))
@@ -805,6 +809,11 @@ def _characters(engine, client, ui, skins):
 
 
 def status(engine):
+    if engine.profile == 'takp':
+        return {'client_imported': engine._local_client(False) is not None, 'imported': False,
+                'skins': [], 'characters': [], 'supported': False,
+                'activation_hint': 'Use a native TAKP skin included in its client and /loadskin <skin> 1 in game.',
+                'message': 'TAKP uses its December 2002 interface. RoF2 skin imports and layout activation are unavailable.'}
     result = {'client_imported': False, 'imported': False, 'skins': [], 'characters': [],
               'activation_hint': 'Select an installed skin in game with /loadskin <skin> 1.'}
     try:

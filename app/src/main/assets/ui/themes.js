@@ -11,7 +11,7 @@
   const theme=valid(value);let saved=true;
   if(persist){try{localStorage.setItem(key,theme);}catch{saved=false;}}
   document.body.dataset.launcherTheme=theme;select.value=theme;
-  status.textContent=names[theme]+' theme · applies to both worlds.'+(saved?'':' Available for this session; device storage is unavailable.');
+  status.textContent=names[theme]+' theme · applies to all worlds.'+(saved?'':' Available for this session; device storage is unavailable.');
  }
  let saved='default';try{saved=localStorage.getItem(key);}catch{}
  apply(saved);

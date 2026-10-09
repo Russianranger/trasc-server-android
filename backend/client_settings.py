@@ -9,6 +9,9 @@ RACES = ('Human', 'Barbarian', 'Erudite', 'WoodElf', 'HighElf', 'DarkElf',
 MODELS = ['AllLuclinPcModelsOff'] + ['UseLuclin'+race+gender for race in RACES for gender in ('Male','Female')] + ['UseLuclinElementals','LoadVeliousArmorsWithLuclin','LoadSocialAnimations']
 MANAGED = {('defaults','windowedmode')} | {('videomode', k) for k in ('width','height','windowedwidth','windowedheight')}
 
+def managed(engine):
+    return MANAGED | {('eqwgeneral','fullscreenmode'), ('videomode','bitsperpixel')} if getattr(engine, 'profile', 'custom') == 'takp' else MANAGED
+
 def source(engine):
     root = engine.work/'client/current'
     if root.parent.is_symlink() or root.is_symlink() or not root.is_dir(): raise ValueError('Import the client first')
@@ -38,11 +41,12 @@ def inspect(engine, args=None):
         identity = (section.casefold(),key.casefold())
         if identity in seen: raise ValueError('Duplicate INI setting: '+section+'/'+key+'. Resolve it before using the editor.')
         seen.add(identity)
-        entries.append({'section':section,'key':key,'value':value,'managed':identity in MANAGED})
-    for key in MODELS:
+        entries.append({'section':section,'key':key,'value':value,'managed':identity in managed(engine)})
+    models = [name for name in MODELS if name != 'LoadSocialAnimations'] if getattr(engine, 'profile', 'custom') == 'takp' else MODELS
+    for key in models:
         if ('defaults',key.casefold()) not in seen:
             entries.append({'section':'Defaults','key':key,'value':'','missing':True,'managed':False})
-    return {'revision':hashlib.sha256(raw).hexdigest(),'entries':entries,'models':MODELS}
+    return {'revision':hashlib.sha256(raw).hexdigest(),'entries':entries,'models':models, 'client_type':'takp' if getattr(engine, 'profile', 'custom') == 'takp' else 'rof2'}
 
 def save(engine, args):
     snapshot = inspect(engine)
@@ -54,7 +58,7 @@ def save(engine, args):
     for item in changes:
         if not isinstance(item,dict) or not all(isinstance(item.get(k),str) for k in ('section','key','value')): raise ValueError('Invalid INI setting')
         identity = (item['section'].casefold(),item['key'].casefold()); value = item['value']
-        if identity not in known or identity in MANAGED or identity in pending: raise ValueError('Unknown, repeated or launcher-managed setting')
+        if identity not in known or identity in managed(engine) or identity in pending: raise ValueError('Unknown, repeated or launcher-managed setting')
         if len(value)>1024 or any(ord(c)<32 or ord(c)>255 for c in value): raise ValueError('Use a single-line Windows INI value')
         if identity[0]=='defaults' and known[identity]['key'] in MODELS and value.upper() not in ('TRUE','FALSE'): raise ValueError('Model settings must be TRUE or FALSE')
         if value != known[identity]['value']: pending[identity] = value

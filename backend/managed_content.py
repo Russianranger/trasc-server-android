@@ -158,15 +158,28 @@ class ManagedContent:
         from client_spells import test_record
         marker = self.work / 'client/current/trasc-client.json'
         result = json.loads(marker.read_text()) if marker.exists() else {'imported': False}
+        if self.profile == 'takp':
+            import takp_client
+            result.update(client_type='takp', profile='takp', exported_files=list(takp_client.CLIENT_FILES), spell_test={'state':'off'})
+            if result.get('imported'):
+                try:
+                    result['validation'] = takp_client.validate_client(self.work / 'client/current', patched=True)
+                except (ValueError, OSError) as error:
+                    result.update(valid=False, validation_error=str(error))
+                else:
+                    result['valid'] = True
+            return result
         try: result['spell_test'] = test_record(self.work)
         except (ValueError, OSError) as e: result['spell_test'] = {'state': 'error', 'error': str(e)}
         return result
 
     def apply_spell_test(self, args):
+        if self.profile == 'takp': raise ValueError('The RoF2 spell comparison does not apply to TAKP. Prepare its two native data files instead')
         from client_spells import apply_test
         return apply_test(self.work, self._local_client(), self.check_cancel)
 
     def restore_spell_test(self, args):
+        if self.profile == 'takp': raise ValueError('The RoF2 spell comparison does not apply to TAKP')
         from client_spells import restore_test
         return restore_test(self.work, self._local_client())
 
@@ -182,6 +195,9 @@ class ManagedContent:
         return client
 
     def _client_data_changes(self, client):
+        if self.profile == 'takp':
+            from takp_client import data_changes
+            return data_changes(self, client)
         from engine import CLIENT_FILES
         changes = {}
         resources = client_file(client, 'Resources')
@@ -227,6 +243,9 @@ class ManagedContent:
         return str(backup.relative_to(self.work))
 
     def prepare_client(self, args):
+        if self.profile == 'takp':
+            from takp_client import prepare
+            return prepare(self, args)
         from engine import atomic_json
         from client_spells import require_export_ready, install_export
         client = self._local_client()
@@ -253,13 +272,13 @@ class ManagedContent:
     def import_client_zip(self, args):
         from engine import atomic_json, safe_path, extract_archive
         from client_spells import require_no_test
-        require_no_test(self.work)
+        if self.profile != 'takp': require_no_test(self.work)
         archive = safe_path(self.work / 'incoming', args['file'], True)
         if not archive.is_file() or archive.parent != self.work / 'incoming':
             raise ValueError('Choose a client ZIP through the Android file picker')
         stage = self.work / 'client' / ('import-' + secrets.token_hex(4))
         try:
-            if not zipfile.is_zipfile(archive): raise ValueError('Select a ZIP containing your ROF2 client')
+            if not zipfile.is_zipfile(archive): raise ValueError('Select a ZIP containing your ' + ('TAKP' if self.profile == 'takp' else 'ROF2') + ' client')
             stats = extract_archive(archive, stage)
             candidates = [p.parent for p in stage.rglob('*') if p.is_file() and p.name.lower() == 'eqgame.exe']
             if len(candidates) != 1: raise ValueError('The ZIP must contain exactly one client directory with eqgame.exe')
@@ -271,6 +290,16 @@ class ManagedContent:
             record = {'imported': True, 'imported_at': time.time(), 'files': stats['files'], 'bytes': stats['bytes'],
                       'executable': executable.name, 'dinput8_present': dll is not None,
                       'dinput8_sha256': digest(dll) if dll else None, 'launch_available': False}
+            if self.profile == 'takp':
+                import takp_client
+                record.update(takp_client.validate_client(root))
+                # Stage the verified mod pair/wrapper before activating this
+                # client. The previous profile installation is still untouched.
+                for target, source in takp_client.bundle_changes(root).items():
+                    self.check_cancel()
+                    replace_client_file(target, source)
+                record.update(takp_client.validate_client(root, patched=True))
+                record.update(prepared=False, dinput8_present=False, dinput8_sha256=None)
             atomic_json(root / 'trasc-client.json', record)
             self.check_cancel()
             current, previous = self.work / 'client/current', self.work / 'client/previous'
@@ -280,7 +309,8 @@ class ManagedContent:
             except Exception:
                 if previous.exists(): os.replace(previous, current)
                 raise
-            return {'message': 'Client extracted. The temporary ZIP inside this app was deleted; your original ZIP is unchanged. Install the client runtime to launch it.', 'client': record}
+            message = ('TAKP client imported with the verified eqw/eqgame updates and D3D8 wrapper. Install its client runtime and DirectX helpers, then Prepare client for your local TAKP server.' if self.profile == 'takp' else 'Client extracted. The temporary ZIP inside this app was deleted; your original ZIP is unchanged. Install the client runtime to launch it.')
+            return {'message': message, 'client': record}
         finally:
             if stage.exists(): shutil.rmtree(stage)
             archive.unlink(missing_ok=True)

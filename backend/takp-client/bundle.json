@@ -1,0 +1,19 @@
+{
+  "format": 1,
+  "architecture": "x86",
+  "files": {
+    "d3d8.dll": "122928cfe225c25d30decf7184a5d37e490cecf3b58256ba3206c7e1853f8ab8",
+    "eqgame.dll": "f0ca8e4bdcf3875419ecb1067a95bd6dbf8197e564f9d51ff4dec98a30f14b97",
+    "eqw.dll": "dffb97ac1f47d41f450614c8d6d4da30f3f47b7ed5046dbdbd111b3ba1fbe5ba"
+  },
+  "sources": {
+    "d3d8.dll": "https://github.com/crosire/d3d8to9/releases/tag/v1.16.0",
+    "eqgame.dll": "https://github.com/EQMacEmu/eqgame_dll_takp/releases/tag/v0.0.0.3",
+    "eqw.dll": "https://github.com/CoastalRedwood/eqw_takp/releases/tag/v1.0.2"
+  },
+  "provenance": "User-provided TAKP client update DLLs, SHA256 pinned. Game executable and assets are imported separately.",
+  "dependencies": ["Wine x86 msvcp140/vcruntime140/ucrtbase", "Microsoft June 2010 x86 d3dx9_43.dll"],
+  "launch_executable": "eqgame.exe",
+  "checksum_resource": "eqmac.exe",
+  "launch_arguments": []
+}

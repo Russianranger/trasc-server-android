@@ -117,7 +117,7 @@ public final class MainActivity extends Activity {
                         case "client_start": service();runOnUiThread(()->controller.capture(false));result=clientRuntime.start(args);break;
                         case "client_stop": clientRuntime.stop();if(!runtime.alive()&&!runtime.installing)stopService(new Intent(MainActivity.this,ServerService.class));result=clientRuntime.state();break;
                         case "client_view":
-                            if(!clientRuntime.alive()||!clientRuntime.displaySocket().exists())throw new IOException("Launch Wine desktop or ROF2 before opening its display");
+                            if(!clientRuntime.alive()||!clientRuntime.displaySocket().exists())throw new IOException("Launch Wine desktop or the game before opening its display");
                             runOnUiThread(()->startActivity(new Intent(MainActivity.this,ClientActivity.class)));result=new JSONObject();break;
                         case "runtime_install": service();runtime.installOnline();result=runtime.nativeState();break;
                         case "runtime_start": service();runtime.start();result=runtime.nativeState();break;
@@ -229,7 +229,7 @@ public final class MainActivity extends Activity {
                 }
                 name=name.replaceAll("[^a-zA-Z0-9._-]","_");if(name.length()>160)name=name.substring(name.length()-160);
                 String unique=System.currentTimeMillis()+"-"+name;
-                temp="session".equals(kind)?new File(getCacheDir(),unique):new File(runtime.work,"incoming/"+unique);
+                temp="session".equals(kind)?new File(getCacheDir(),runtime.profiles.current()+"/"+unique):new File(runtime.work,"incoming/"+unique);
                 runtime.status="Copying "+name+"…";
                 try(InputStream in=getContentResolver().openInputStream(uri)){if(in==null)throw new IOException("Cannot read file");RuntimeManager.copy(in,temp);}
                 if("session".equals(kind)){

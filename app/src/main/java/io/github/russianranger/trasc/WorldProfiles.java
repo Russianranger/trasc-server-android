@@ -17,7 +17,7 @@ final class WorldProfiles {
         try {current=read(base);} catch(IOException e){error="Cannot read the selected world profile: "+e.getMessage();}
     }
     static String valid(String id)throws IOException {
-        if(!"custom".equals(id)&&!"traditional".equals(id))throw new IOException("Unknown world profile");
+        if(!"custom".equals(id)&&!"traditional".equals(id)&&!"takp".equals(id))throw new IOException("Unknown world profile");
         return id;
     }
     static String read(File base)throws IOException {
@@ -28,10 +28,10 @@ final class WorldProfiles {
         return valid(p.getProperty("active"));
     }
     String current(){return current;}
-    static String label(String id){return "traditional".equals(id)?"Traditional EQEmu":"TRASC Custom";}
+    static String label(String id){return "takp".equals(id)?"TAKP World":"traditional".equals(id)?"Traditional EQEmu":"TRASC Custom";}
     File home(String id)throws IOException {
         valid(id);
-        File home="custom".equals(id)?base:new File(base,"profiles/traditional");
+        File home="custom".equals(id)?base:new File(base,"profiles/"+id);
         if(!"custom".equals(id)&&(Files.isSymbolicLink(new File(base,"profiles").toPath())||Files.isSymbolicLink(home.toPath())))throw new IOException("Profile home cannot be a symbolic link");
         return home;
     }

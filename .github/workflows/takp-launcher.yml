@@ -1,0 +1,184 @@
+name: Build TAKP world and client launcher
+on:
+  push:
+    branches: [codex/takp-world]
+  workflow_dispatch:
+permissions:
+  contents: read
+concurrency:
+  group: takp-launcher-${{ github.ref }}
+  cancel-in-progress: true
+jobs:
+  takp-server:
+    runs-on: ubuntu-24.04-arm
+    timeout-minutes: 65
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/checkout@v4
+        with:
+          repository: Russianranger/Servertakp
+          ref: 25bf70acb6bd24853cf09e447ddd62b96a4491a4
+          path: runtime-work/takp-source
+      - uses: actions/checkout@v4
+        with:
+          repository: Russianranger/queststakp
+          ref: f43d4fcfa89fecd76b5ac3fb5096f8d658a6c65f
+          path: runtime-work/takp-quests
+      - uses: actions/checkout@v4
+        with:
+          repository: Russianranger/Mapstakp
+          ref: 95cb9322b853e7ec2f67158b87442286315042eb
+          path: runtime-work/takp-maps
+      - name: Build the existing Bookworm dependency image for the isolated TAKP workspace
+        run: docker build --platform linux/arm64 -t trasc-takp-qualification:1 runtime/traditional
+      - name: Verify the production TAKP recipe, seed, accounts, server startup and client exports
+        run: |
+          set -o pipefail
+          mkdir -p runtime-work/takp-work dist/takp
+          docker run --rm --network none \
+            -v "$PWD/backend:/opt/trasc:ro" \
+            -v "$PWD/tests:/tests:ro" \
+            -v "$PWD/runtime-work/takp-source:/source:ro" \
+            -v "$PWD/runtime-work/takp-quests:/fixtures/quests:ro" \
+            -v "$PWD/runtime-work/takp-maps:/fixtures/maps:ro" \
+            -v "$PWD/runtime-work/takp-work:/work" \
+            -v "$PWD/dist/takp:/evidence" \
+            trasc-takp-qualification:1 bash -c '
+              python3 - <<"PY"
+          import json
+          from pathlib import Path
+          Path("/etc/trasc-runtime.json").write_text(json.dumps({"format":1,"architecture":"arm64","distribution":"debian-bookworm","profile":"takp","runtime":"takp-1.0","source_profile":"traditional","source_runtime":"traditional-1.0","build_adapter":1}) + "\n")
+          PY
+              python3 /tests/integration_takp_runtime.py --work /work --source /source --quests /fixtures/quests --maps /fixtures/maps --output /evidence/takp-runtime.json --jobs 2
+            ' 2>&1 | tee dist/takp/qualification.log
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: takp-bookworm-arm64-verification
+          path: |
+            dist/takp/
+            runtime-work/takp-work/logs/
+            runtime-work/takp-work/builds/*/CMakeCache.txt
+            runtime-work/takp-work/builds/*/compile_commands.json
+            runtime-work/takp-work/builds/*/*.ldd.txt
+            runtime-work/takp-work/server/bin*/build-info.json
+  apk:
+    runs-on: ubuntu-latest
+    timeout-minutes: 40
+    env:
+      TRASC_PREVIEW_KEYSTORE: ${{ github.workspace }}/runtime-work/signing/preview.keystore
+      ERARULES_MARIADB: '1'
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+      - uses: android-actions/setup-android@v3
+        with:
+          packages: platform-tools
+      - run: sdkmanager 'platforms;android-35' 'build-tools;35.0.0'
+      - uses: gradle/actions/setup-gradle@v4
+        with:
+          gradle-version: '8.11.1'
+      - uses: actions/cache/restore@v4
+        with:
+          path: runtime-work/signing/preview.keystore
+          key: trasc-preview-signing-v2
+      - name: Require the existing installation signing key
+        run: bash scripts/prepare-preview-signing.sh
+      - uses: actions/cache/restore@v4
+        id: baseline-cache
+        with:
+          path: runtime-work/baseline/
+          key: takp-native-baseline-0.6.15-535263ab190c91818a7fe9d6b8370829d66e73496704e99a69ebf1c8a842441f
+      - name: Fetch the immutable 0.6.15 release assets
+        if: steps.baseline-cache.outputs.cache-hit != 'true'
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          mkdir -p runtime-work/baseline dist
+          gh api repos/Russianranger/trasc-server-android/releases/assets/625888746 -H 'Accept: application/octet-stream' > runtime-work/baseline/base.apk
+          gh api repos/Russianranger/trasc-server-android/releases/assets/625888759 -H 'Accept: application/octet-stream' > runtime-work/baseline/launcher-sources.tar.gz
+      - name: Reuse the exact published 0.6.15 native launcher payload
+        run: |
+          echo 'cf63685fb68c1323b0462f70589ebe1ed0c9f5edc092562e1fffbff37885f4de  runtime-work/baseline/launcher-sources.tar.gz' | sha256sum --check
+          python3 scripts/reuse-launcher-native.py extract --apk runtime-work/baseline/base.apk --receipt dist/native-reuse.json --expected-sha 535263ab190c91818a7fe9d6b8370829d66e73496704e99a69ebf1c8a842441f --baseline-version 0.6.15 --include-camera
+      - uses: actions/cache/save@v4
+        if: steps.baseline-cache.outputs.cache-hit != 'true'
+        with:
+          path: runtime-work/baseline/
+          key: takp-native-baseline-0.6.15-535263ab190c91818a7fe9d6b8370829d66e73496704e99a69ebf1c8a842441f
+      - name: Install host regression dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y mariadb-server binutils
+          python3 -m pip install lupa
+          npm install --no-save --package-lock=false playwright@1.55.0
+          npx playwright install --with-deps chromium
+      - name: Verify all Python, management JVM and launcher browser regressions
+        run: bash scripts/check-takp-launcher.sh
+      - name: Compile the launcher APK and lint
+        run: gradle --no-daemon :app:assembleDebug :app:lintDebug
+      - name: Verify signing, native reuse and TAKP client helpers
+        run: |
+          "$ANDROID_HOME/build-tools/35.0.0/apksigner" verify --print-certs app/build/outputs/apk/debug/app-debug.apk > dist/apk-signing.txt
+          python3 scripts/reuse-launcher-native.py verify --apk app/build/outputs/apk/debug/app-debug.apk --receipt dist/native-reuse.json
+          python3 scripts/verify-takp-apk.py --apk app/build/outputs/apk/debug/app-debug.apk --signing-report dist/apk-signing.txt
+      - name: Package launcher, preserved native sources and build manifest
+        run: |
+          cp app/build/outputs/apk/debug/app-debug.apk dist/trasc-server-android-preview.apk
+          mkdir -p runtime-work/source-bundle/launcher-source
+          cp runtime-work/baseline/launcher-sources.tar.gz runtime-work/source-bundle/launcher-source/native-sources-0.6.15.tar.gz
+          git archive --format=tar.gz HEAD > runtime-work/source-bundle/launcher-source/launcher-code-0.6.16.tar.gz
+          cp dist/native-reuse.json backend-assets/traditional-camera-bundle.json THIRD_PARTY_NOTICES.md runtime-work/source-bundle/launcher-source/
+          tar -czf dist/launcher-sources.tar.gz -C runtime-work/source-bundle launcher-source
+          python3 - <<'PY'
+          import hashlib,json,os,pathlib
+          p=pathlib.Path('dist/trasc-server-android-preview.apk')
+          manifest={'commit':os.environ['GITHUB_SHA'],'sha256':hashlib.file_digest(p.open('rb'),'sha256').hexdigest(),
+            'file':p.name,'version':'0.6.16','version_code':65,'application_id':'io.github.russianranger.trasc.preview',
+            'signing_certificate_sha256':pathlib.Path('docs/preview-signing.sha256').read_text().strip(),
+            'build_run':int(os.environ['GITHUB_RUN_ID']),'native_payload_reused_from':'0.6.15',
+            'native_reuse_manifest_sha256':hashlib.sha256(pathlib.Path('dist/native-reuse.json').read_bytes()).hexdigest(),
+            'traditional_camera_adapter_sha256':hashlib.sha256(pathlib.Path('backend-assets/trasc-camera-dinput8.dll').read_bytes()).hexdigest(),
+            'source_archive_sha256':hashlib.file_digest(pathlib.Path('dist/launcher-sources.tar.gz').open('rb'),'sha256').hexdigest()}
+          pathlib.Path('dist/preview-build.json').write_text(json.dumps(manifest,indent=2)+'\n')
+          PY
+      - uses: actions/upload-artifact@v4
+        with:
+          name: takp-launcher-release
+          path: |
+            dist/trasc-server-android-preview.apk
+            dist/launcher-sources.tar.gz
+            dist/preview-build.json
+            dist/native-reuse.json
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: takp-launcher-validation-reports
+          path: |
+            app/build/reports/
+            ui-reports/
+            dist/apk-signing.txt
+  preview:
+    needs: [apk, takp-server]
+    if: github.ref == 'refs/heads/codex/takp-world'
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/download-artifact@v4
+        with:
+          name: takp-launcher-release
+          path: dist
+      - name: Publish the validated TAKP launcher preview
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          gh api --method PATCH "repos/$GITHUB_REPOSITORY/git/refs/tags/preview" -f sha="$GITHUB_SHA" -F force=true
+          gh release upload preview dist/trasc-server-android-preview.apk dist/launcher-sources.tar.gz dist/preview-build.json dist/native-reuse.json --clobber
+          gh release edit preview --notes-file docs/preview-notes.md

@@ -44,6 +44,12 @@ final class ClientRuntime {
         status="Client stopped. Install or start this profile’s client runtime.";
     }
     boolean installed(){return new File(root,"etc/trasc-client-runtime.json").isFile();}
+    private boolean takp(){return "takp".equals(server.profiles.current());}
+    private File cacheFile(String name)throws IOException {
+        File directory=new File(context.getCacheDir(),server.profiles.current()+"-client");
+        if(!directory.isDirectory()&&!directory.mkdirs())throw new IOException("Could not prepare client download directory");
+        return new File(directory,name);
+    }
     boolean alive(){return (process!=null&&process.isAlive())||(graphics!=null&&graphics.alive());}
     File frameSocket(){return new File(run,"frames.sock");}
     File displaySocket(){return new File(run,"display.sock");}
@@ -57,7 +63,8 @@ final class ClientRuntime {
         if(report.isFile())try{JSONObject info=json(report);result.put("launch",info);if(info.optBoolean("compiler"))result.put("status",info.optString("message",status));}catch(Exception ignored){}
         File options=new File(server.work,"client/launch-options.json");
         if(options.isFile())try{result.put("launch_options",json(options));}catch(Exception ignored){}
-        result.put("directx_installed",DirectXInstaller.installed(directx));
+        result.put("directx_installed",takp()?DirectXInstaller.installedTakp(directx):DirectXInstaller.installed(directx));
+        result.put("client_type",takp()?"takp":"rof2");
         result.put("display_ready",alive()&&displaySocket().exists());
         return result;
     }
@@ -68,7 +75,7 @@ final class ClientRuntime {
         }
     }
     synchronized JSONObject installOnline()throws Exception {
-        begin();File archive=new File(context.getCacheDir(),"client-runtime.tar.gz"),manifest=new File(context.getCacheDir(),"client-runtime-manifest.json");
+        File archive=cacheFile("client-runtime.tar.gz"),manifest=cacheFile("client-runtime-manifest.json");begin();
         try {
             if(alive())throw new IOException("Stop the client before changing its runtime");
             server.download(RELEASE+"client-runtime-manifest.json",manifest,text->status=text);
@@ -100,18 +107,18 @@ final class ClientRuntime {
             root.getParentFile().mkdirs();TarExtractor.remove(previous);
             if(root.exists()&&!root.renameTo(previous))throw new IOException("Could not preserve the previous client runtime");
             if(!staging.renameTo(root)){if(previous.exists())previous.renameTo(root);throw new IOException("Could not activate the client runtime");}
-            TarExtractor.remove(previous);status="Client runtime installed. Try Wine desktop, then Launch ROF2.";
+            TarExtractor.remove(previous);status="Client runtime installed. Try Wine desktop, then launch "+(takp()?"TAKP":"ROF2")+".";
         } finally {TarExtractor.remove(staging);}
     }
     synchronized JSONObject installDirectX(File offline)throws Exception {
-        begin();File archive=offline==null?new File(context.getCacheDir(),"directx_Jun2010_redist.exe"):offline;
+        File archive=offline==null?cacheFile("directx_Jun2010_redist.exe"):offline;begin();
         try {
             if(alive())throw new IOException("Stop the client before installing DirectX model helpers");
             if(offline==null)server.download(DirectXInstaller.URL,archive,text->status="DirectX helpers: "+text);
             status="Verifying and extracting DirectX model helpers…";
             File extractor=new File(context.getApplicationInfo().nativeLibraryDir,"libcabextract.so");
             DirectXInstaller.install(archive,directx,extractor,new File(server.work,"logs/client-directx.log"));
-            status="DirectX model helpers installed. Launch ROF2 with model helpers enabled.";
+            status=takp()?"TAKP DirectX D3D8 wrapper helper installed.":"DirectX model helpers installed. Launch ROF2 with model helpers enabled.";
             return state();
         } catch(Exception e){status=e.getMessage();server.recordFailure("client_directx_install",e);throw e;}
         finally {busy=false;if(offline==null)archive.delete();}
@@ -176,8 +183,14 @@ final class ClientRuntime {
                 RuntimeManager.write(new File(server.work,"run/client-dll-building.json"),new JSONObject().put("pid",android.os.Process.myPid()).toString());compilerLease=true;
             }
             File sessionPrefix=mode.equals("compiler")?new File(server.work,"client/compiler-prefix"):prefix;
-            if(mode.equals("client")&&options.optBoolean("native_d3dx",true)&&!DirectXInstaller.installed(directx))throw new IOException("Install DirectX model helpers in the Client tab first, or disable model helpers for a Wine comparison");
-            if(mode.equals("client")&&!new File(client,"trasc-client.json").isFile())throw new IOException("Import your ROF2 client ZIP first");
+            if(mode.equals("client")&&takp()&&!DirectXInstaller.installedTakp(directx))throw new IOException("Install DirectX helpers in the Client tab first. TAKP's D3D8 wrapper requires x86 D3DX9_43.");
+            if(mode.equals("client")&&!takp()&&options.optBoolean("native_d3dx",true)&&!DirectXInstaller.installed(directx))throw new IOException("Install DirectX model helpers in the Client tab first, or disable model helpers for a Wine comparison");
+            if(mode.equals("client")&&!new File(client,"trasc-client.json").isFile())throw new IOException("Import your "+(takp()?"complete TAKP":"ROF2")+" client ZIP first");
+            if(mode.equals("client")&&takp()) {
+                JSONObject metadata=json(new File(client,"trasc-client.json"));
+                if(!"takp".equals(metadata.optString("client_type")))throw new IOException("Import a complete TAKP 2.1/2.2 client ZIP into TAKP World");
+                if(!metadata.optBoolean("prepared"))throw new IOException("Prepare the TAKP client for your local login server before launching");
+            }
             String executable=mode.equals("client")?json(new File(client,"trasc-client.json")).getString("executable"):"";
             if(executable.contains("/")||executable.contains("\\"))throw new IOException("Invalid client executable path");
             if(options.optBoolean("repair_prefix",false)) {
@@ -208,11 +221,16 @@ final class ClientRuntime {
             request.put("particle_mode",mode.equals("client")?particleMode:"off");
             request.put("turnip_driver",turnipDriver).put("presentation_mode",presentation).put("display_fps",displayFps);
             File spellJournal=new File(server.work,"backups/client-spell-test/current.json");
-            if(spellJournal.exists())request.put("spell_test",json(spellJournal));
+            if(!takp()&&spellJournal.exists())request.put("spell_test",json(spellJournal));
             RuntimeManager.write(new File(run,"request.json"),request.toString());
             File backend=new File(server.home,"client-backend");backend.mkdirs();
-            for(String name:new String[]{"client_runner.py","client_mouse.py","traditional_camera.py","trasc-camera-dinput8.dll","traditional-camera-bundle.json","client_presentation.py","log_retention.py","client_display.py","client_xauthority.py","client_metrics.py","client_spells.py","client_vulkan.py","client_audio.py","libasound_module_pcm_trasc.so","audio-bundle.json","graphics_probe.py","runtime_probe.py","wined3d.dll","wined3d-patch.json","wineserver","wineserver-patch.json"})
+            for(String name:new String[]{"client_runner.py","takp_client.py","managed_content.py","client_mouse.py","traditional_camera.py","trasc-camera-dinput8.dll","traditional-camera-bundle.json","client_presentation.py","log_retention.py","client_display.py","client_xauthority.py","client_metrics.py","client_spells.py","client_vulkan.py","client_audio.py","libasound_module_pcm_trasc.so","audio-bundle.json","graphics_probe.py","runtime_probe.py","wined3d.dll","wined3d-patch.json","wineserver","wineserver-patch.json"})
                 try(InputStream in=context.getAssets().open(name)){RuntimeManager.copy(in,new File(backend,name));}
+            if(takp()) {
+                new File(backend,"takp-client").mkdirs();
+                for(String name:new String[]{"bundle.json","d3d8.dll","eqgame.dll","eqw.dll"})
+                    try(InputStream in=context.getAssets().open("takp-client/"+name)){RuntimeManager.copy(in,new File(backend,"takp-client/"+name));}
+            }
             if(!new File(backend,"wineserver").setExecutable(true,true))throw new IOException("Could not prepare bundled Wine server");
             { // The same verified helper supplies relative input in both display modes.
                 for(String name:new String[]{"x11-frame-bridge","presentation-bundle.json"})try(InputStream in=context.getAssets().open(name)){RuntimeManager.copy(in,new File(backend,name));}
@@ -310,6 +328,7 @@ final class ClientRuntime {
 
     /** Finish interrupted proxy restoration before imports, backups or profile changes. */
     private void recoverCameraAdapter()throws Exception {
+        if(takp())return;
         File journal=new File(client,".trasc-camera-adapter");
         if(!Files.exists(journal.toPath(),LinkOption.NOFOLLOW_LINKS))return;
         if(Files.isSymbolicLink(journal.toPath())||!Files.isDirectory(journal.toPath(),LinkOption.NOFOLLOW_LINKS))
