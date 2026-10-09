@@ -13,7 +13,7 @@ era documentation, EQEmuTools expansion switcher and supplied PEQ database were
 researched. PEQ's sparse era tags and upstream mechanics limit historical fidelity;
 these are compatible approximations, not a TAKP database replacement. Existing XP
 curves/rates and over-cap characters are preserved. See
-[research, exact behavior and focused acceptance](docs/traditional-eras-0613.md).
+[research, exact behavior and focused acceptance](https://github.com/Russianranger/trasc-server-android/blob/main/docs/traditional-eras-0613.md).
 
 Launcher theme choices **Default**, **Necromancer** and **Monk** persist across
 reloads and both profiles. Default preserves the current appearance; class themes
