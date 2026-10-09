@@ -123,8 +123,11 @@ def qualify(args):
         engine.start({})
         wait_for(engine, lambda output: 'ClientManager listening for RDP clients on port [6000]' in output,
                  'legacy UDP login listener')
-        wait_for(engine, lambda output: 'TAKP World on Android' in output and ('New zone server connection' in output
-                          or 'dynamic_01' in output), 'local world registration and launcher dynamic zone')
+        wait_for(engine, lambda output: 'New Zone Server connection' in output or 'dynamic_01' in output,
+                 'launcher dynamic zone connection')
+        registered = takp_runtime._rows(engine, "SELECT ServerLongName FROM tblWorldServerRegistration WHERE ServerShortName='TAKP';")
+        if registered != [['TAKP World on Android']]:
+            raise RuntimeError('The TAKP world did not register with the local login server')
         report['checks']['local_login_world_and_dynamic_zone_startup'] = True
         # Boot a real content zone in addition to the launcher's sleeping worker.
         zone_log = open(engine.work / 'logs/qeynos-probe.log', 'wb')

@@ -64,6 +64,10 @@ const server=http.createServer((req,res)=>{
   assert.equal(await page.inputValue('#maps-url'),'https://github.com/Russianranger/Mapstakp');
   assert(await page.locator('#takp-setup').isVisible());
   for(const id of ['source-git','maps-git','import-db'])assert(!(await page.locator('#'+id).isVisible()),'Generic import control is hidden for TAKP: '+id);
+  await page.locator('nav [data-tab=server]').click();
+  const endpointLabel=await page.locator('#login-endpoint-label').textContent();
+  assert(endpointLabel.includes('TAKP')&&endpointLabel.includes('UDP'),'TAKP connection copy identifies its legacy UDP endpoint');
+  assert.deepEqual(await page.locator('#client-export-files li').allTextContents(),['spells_us.txt','SkillCaps.txt'],'TAKP exports exactly its two legacy client data files');
   await page.locator('nav [data-tab=client]').click();await page.click('#client-options > summary');
   for(const id of ['client-native-dll','client-fast-spells','client-load-pauses','client-mouse-warp']){
    assert(await page.isDisabled('#'+id),'RoF2 adapter blocked for TAKP: '+id);
@@ -74,6 +78,8 @@ const server=http.createServer((req,res)=>{
   await page.locator('nav [data-tab=fixes]').click();
   assert(!(await page.locator('#ferry-service-panel').isVisible()),'RoF2 ferry controls stay hidden');
   assert(!(await page.locator('nav [data-tab=spire]').isVisible()),'PEQ Spire editing is hidden for TAKP');
+  await page.locator('nav [data-tab=gameplay]').click();
+  assert(!(await page.locator('#era-rules-panel').isVisible()),'Traditional PEQ era rules stay hidden for TAKP');
   await page.locator('nav [data-tab=setup]').click();await page.click('#runtime-open');
   await page.waitForFunction(()=>lastNative?.alive&&!polling);
   assert(await page.isDisabled('#world-profile'),'Active TAKP runtime blocks profile switching');
