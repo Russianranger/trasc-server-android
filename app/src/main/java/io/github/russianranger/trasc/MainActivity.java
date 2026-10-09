@@ -143,6 +143,7 @@ public final class MainActivity extends Activity {
                             // Serialize submission with native launch; start also checks queued/running jobs.
                             synchronized(clientRuntime) {
                                 if(clientRuntime.alive()||clientRuntime.busy)throw new IOException("Stop the embedded client before changing its files");
+                                clientRuntime.prepareFileChanges();
                                 JSONObject response=runtime.request(operation,args);
                                 if(!response.getBoolean("ok"))throw new IOException(response.optString("error"));
                                 result=response.get("result");

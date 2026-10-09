@@ -192,6 +192,7 @@ def validate_request(request):
     if not isinstance(request.get('reduce_load_pauses', False), bool): raise ValueError('Invalid model loading option')
     if not isinstance(request.get('fast_spell_parse', False), bool): raise ValueError('Invalid spell loading option')
     if not isinstance(request.get('dxvk_hud', True), bool): raise ValueError('Invalid DXVK HUD option')
+    if not isinstance(request.get('name_sky_compatibility', False), bool): raise ValueError('Invalid name/sky compatibility option')
     if not isinstance(request.get('audio', False), bool): raise ValueError('Invalid audio option')
     if not isinstance(request.get('sound_diagnostics', False), bool): raise ValueError('Invalid sound diagnostic option')
     if request.get('mode') not in ('desktop', 'client'): raise ValueError('Choose Wine desktop or ROF2 client')
@@ -347,6 +348,8 @@ class Supervisor:
         self.log_thread = None
         self.last_thread_sample = 0
         self.launch_token = secrets.token_hex(16)
+        self.camera_adapter = None
+        self.camera_adapter_report = {'mode': 'off'}
         self.started_monotonic = time.monotonic()
         self.status = {'phase': 'starting', 'mode': request['mode'], 'resolution': request['resolution'], 'fullscreen': request.get('fullscreen', False), 'display_target_fps': request.get('display_fps',30), 'presentation_requested': request.get('presentation_mode','rfb'),
                        'native_dinput8_requested': request['mode']=='client' and request.get('native_dinput8', True), 'native_loaded': False,
@@ -409,7 +412,9 @@ class Supervisor:
             client_vulkan.configure_environment(self.env, Path(__file__).parent, SESSION, PREFIX, version)
             self.env['DXVK_HUD'] = 'devinfo,fps,compiler' if request.get('dxvk_hud', True) else '0'
             self.status['dxvk_hud'] = request.get('dxvk_hud', True)
-            self.env['DXVK_CONFIG'] = client_vulkan.npc_configuration(request.get('npc_rendering', 'compatibility'))
+            self.env['DXVK_CONFIG'] = client_vulkan.npc_configuration(request.get('npc_rendering', 'compatibility'), request.get('name_sky_compatibility', False))
+            self.status['name_sky_compatibility'] = request.get('name_sky_compatibility', False)
+            self.status['dxvk_configuration'] = self.env['DXVK_CONFIG']
             self.status['npc_rendering'] = request.get('npc_rendering', 'compatibility')
             self.status['mesa_glthread_requested'] = False
         else:
@@ -524,7 +529,8 @@ class Supervisor:
         self.run(['/usr/local/bin/box64', '/opt/wine/bin/wine', 'reg', 'add', key,
                   '/v', 'MouseWarpOverride', '/t', 'REG_SZ', '/d', value, '/f'],
                  timeout=30, label='Mouse recentering setup')
-        mode = client_mouse.launch_mode(self.request, CLIENT)
+        mode = (self.camera_adapter_report['mode'] if self.request.get('profile') == 'traditional'
+                else client_mouse.launch_mode(self.request, CLIENT))
         self.env[client_mouse.MARKER] = '1' if mode == 'enabled' else '0'
         self.update(mouse_warp=value, camera_mouse=mode)
         print('Camera-only mouse recentering: ' + mode, flush=True)
@@ -588,6 +594,16 @@ class Supervisor:
         self.update(**report)
 
     def start(self):
+        # Recover before validation, including disabled/desktop launches. The
+        # profile-private journal survives forced stops and session backups.
+        if ((CLIENT / '.trasc-camera-adapter').exists() or (CLIENT / '.trasc-camera-adapter').is_symlink()
+                or (self.request.get('profile') == 'traditional' and self.request['mode'] == 'client'
+                    and self.request.get('mouse_warp', False))):
+            import traditional_camera
+            self.camera_adapter = traditional_camera.Adapter(CLIENT)
+            self.camera_adapter_report = self.camera_adapter.prepare(
+                self.request, Path(__file__).with_name('trasc-camera-dinput8.dll'))
+            self.status['traditional_camera'] = self.camera_adapter_report
         self.status['spell_test'] = validate_request(self.request)
         print(f"Client session started at {self.status['started_at']}: {self.request['mode']}", flush=True)
         for p in (SESSION, PREFIX, LOGS): p.mkdir(parents=True, exist_ok=True)
@@ -659,12 +675,15 @@ class Supervisor:
             self.update(sound_diagnostics=self.request.get('sound_diagnostics', False),
                         sound_assets=client_audio.inspect_client(CLIENT, LOGS, packed=self.request.get('sound_diagnostics', False)))
             self.update(skin_shader=client_vulkan.skin_shader_status(CLIENT))
+            self.update(render_assets=client_vulkan.render_assets_status(CLIENT))
             if 'fullscreen' in self.request:
                 self.update(display_settings=apply_display(CLIENT, PREFIX, self.request['resolution'], self.request['fullscreen']))
             args += ['D:\\' + self.request['executable'], 'patchme']
             # The imported DLL forwards DirectInput8Create to an absolute system
             # dinput8 path. Native-only blocks Wine's system DLL and breaks input.
-            override = 'n,b' if self.request.get('native_dinput8', True) else 'b'
+            managed_camera = self.request.get('profile') == 'traditional' and self.camera_adapter_report['mode'] == 'enabled'
+            override = 'n,b' if self.request.get('native_dinput8', True) or managed_camera else 'b'
+            self.status['native_dinput8_requested'] = bool(self.request.get('native_dinput8', True) or managed_camera)
             env['WINEDLLOVERRIDES'] += ';dinput8=' + override
             native_models = self.request.get('native_d3dx', False)
             if native_models:
@@ -720,6 +739,13 @@ class Supervisor:
         if self.log_thread:
             self.log_thread.join(timeout=2)
             self.status.update(self.wine_log.snapshot()[0])
+        if self.camera_adapter:
+            try:
+                self.camera_adapter.close()
+                self.status['traditional_camera_restored'] = True
+            except Exception as error:
+                self.update('error', error='Camera settings restore failed: ' + str(error))
+                print('Camera settings restore failed: ' + str(error), flush=True)
         (SESSION / 'display.sock').unlink(missing_ok=True)
         self.update(display_ready=False)
 

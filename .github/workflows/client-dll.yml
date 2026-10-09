@@ -19,3 +19,6 @@ jobs:
       - name: Compile real upstream ROF2 add-on using production recipe
         shell: pwsh
         run: python tests/integration_client_dll.py dll-upstream "$env:RUNNER_TEMP\trasc-sdk.zip"
+      - name: Validate the standalone Traditional camera proxy
+        shell: pwsh
+        run: ./scripts/test-traditional-camera.ps1

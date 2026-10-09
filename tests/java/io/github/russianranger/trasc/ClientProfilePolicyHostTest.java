@@ -16,12 +16,14 @@ public final class ClientProfilePolicyHostTest {
         for(String mode:new String[]{"client","desktop"}) {
             Map<String,Object> effective=new LinkedHashMap<>(requested);
             effective.putAll(ClientProfilePolicy.overrides("traditional",mode));
-            for(String option:new String[]{"native_dinput8","mouse_warp","reduce_load_pauses","fast_spell_parse"})
+            for(String option:new String[]{"native_dinput8","reduce_load_pauses","fast_spell_parse"})
                 check(Boolean.FALSE.equals(effective.get(option)),"Traditional ignores saved Custom hook: "+option);
+            check(effective.get("mouse_warp").equals("client".equals(mode)),"Camera-only recentering is optional for Traditional game and disabled on desktop");
             check("off".equals(effective.get("particle_mode"))&&"off".equals(effective.get("boat_mode")),"Traditional excludes Custom visual hooks");
             check("turnip".equals(effective.get("renderer"))&&"native_surface".equals(effective.get("presentation_mode"))&&effective.get("display_fps").equals(60),"Traditional retains selected renderer and native display");
         }
         check(Boolean.TRUE.equals(requested.get("native_dinput8")),"Applying a profile never changes caller settings");
+        check(!ClientProfilePolicy.overrides("traditional","client").containsKey("mouse_warp"),"Traditional does not enable camera without the user's opt-in");
         for(String mode:new String[]{"client","desktop","compiler"})
             check(ClientProfilePolicy.overrides("custom",mode).isEmpty(),"Custom launch keeps existing settings");
         try{ClientProfilePolicy.overrides("traditional","compiler");throw new AssertionError("Traditional accepted Custom DLL compilation");}

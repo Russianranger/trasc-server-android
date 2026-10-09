@@ -39,7 +39,9 @@ function syncProfileControls(){
   const activeJob=lastState?.jobs?.some(j=>['queued','running'].includes(j.status));
   $('build-server').disabled=!!(busy||sessionAction||!lastNative?.alive||lastNative?.installing||lastNative?.session_busy||!lastClientNative||lastClientNative.alive||lastClientNative.busy||activeJob||lastState?.profile!=='traditional'||!lastState?.traditional?.build?.build_allowed);
   $('traditional-tested-source').disabled=!!(busy||sessionAction||lastNative?.installing||lastNative?.session_busy||activeJob);
-  for(const id of ['client-native-dll','client-fast-spells','client-load-pauses','client-mouse-warp']){$(id).checked=false;$(id).disabled=true;}
+  for(const id of ['client-native-dll','client-fast-spells','client-load-pauses']){$(id).checked=false;$(id).disabled=true;}
+  $('client-mouse-warp').disabled=!!(busy||sessionAction||!lastClientNative||lastClientNative.alive||lastClientNative.busy);
+  $('client-camera-help').textContent='Traditional camera recentering uses a separate bundled adapter for the verified RoF2 client. Original DirectInput is restored when the client stops. Disable and relaunch to revert.';
   for(const id of ['client-boats','client-particles']){$(id).value='off';$(id).disabled=true;}
  }
  const contentBlocked=!!(busy||sessionAction||!lastNative?.alive||lastNative?.installing||lastNative?.session_busy||lastState?.running||lastState?.jobs?.some(j=>['queued','running'].includes(j.status)));
@@ -197,5 +199,5 @@ action('seed-import',async()=>{if(!seedSelections.length)throw Error('Add the se
 // Retain every tab, while keeping fork-specific repairs out of the clean world.
 for(const id of ['ferry-service-panel','boat-trial-panel','spell-fix-panel','addon-panel','dll-panel'])if($(id))$(id).dataset.customOnly='';
 $('fix-nektulos').closest('article').dataset.customOnly='';
-for(const id of ['client-native-dll','client-fast-spells','client-load-pauses','client-mouse-warp'])$(id).closest('label').dataset.customOnly='';
+for(const id of ['client-native-dll','client-fast-spells','client-load-pauses'])$(id).closest('label').dataset.customOnly='';
 for(const id of ['client-boats','client-particles'])$(id).closest('.option-field').dataset.customOnly='';

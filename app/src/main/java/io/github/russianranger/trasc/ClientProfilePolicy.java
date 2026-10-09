@@ -13,8 +13,11 @@ final class ClientProfilePolicy {
         if("compiler".equals(mode))
             throw new IOException("The custom client DLL compiler belongs to TRASC Custom. Import a clean ROF2 client for Traditional EQEmu.");
         Map<String,Object> options=new LinkedHashMap<>();
-        for(String name:new String[]{"native_dinput8","mouse_warp","reduce_load_pauses","fast_spell_parse"})
+        for(String name:new String[]{"native_dinput8","reduce_load_pauses","fast_spell_parse"})
             options.put(name,false);
+        // Traditional camera look uses its own bundled, reversible proxy.
+        // It is opt-in and never enables Custom's DLL or other client hooks.
+        if(!"client".equals(mode))options.put("mouse_warp",false);
         options.put("particle_mode","off");options.put("boat_mode","off");
         return Collections.unmodifiableMap(options);
     }

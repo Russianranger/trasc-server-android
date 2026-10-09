@@ -29,6 +29,11 @@ final class ClientRuntime {
     void releaseIdleResources()throws Exception {
         if(graphics!=null){graphics.stop();graphics=null;}
         if(audio!=null){audio.close();audio=null;}
+        recoverCameraAdapter();
+    }
+    synchronized void prepareFileChanges()throws Exception {
+        if(busy||alive())throw new IOException("Stop the client before changing its files");
+        recoverCameraAdapter();
     }
     void bindProfile(String profile) {
         process=null;graphics=null;audio=null;
@@ -120,6 +125,7 @@ final class ClientRuntime {
                 for(Map.Entry<String,Object> option:profileOptions.entrySet())options.put(option.getKey(),option.getValue());
             }
             if(alive())throw new IOException("Client is already open. View it or stop it before another launch.");
+            recoverCameraAdapter();
             File uiRecovery=new File(server.work,"run/client-ui-import.json");
             if(uiRecovery.exists()||java.nio.file.Files.isSymbolicLink(uiRecovery.toPath()))
                 throw new IOException("Open the server runtime to finish UI import recovery before launching the client.");
@@ -182,7 +188,7 @@ final class ClientRuntime {
             transientPaths.prepare();sessionPrefix.mkdirs();client.mkdirs();
             File presentationLog=new File(server.work,"logs/client-presentation.log");
             LogRetention.rotate(presentationLog);
-            JSONObject request=new JSONObject().put("mode",mode).put("resolution",resolution).put("executable",executable).put("native_dinput8",options.optBoolean("native_dinput8",true))
+            JSONObject request=new JSONObject().put("profile",server.profiles.current()).put("mode",mode).put("resolution",resolution).put("executable",executable).put("native_dinput8",options.optBoolean("native_dinput8",true))
                 .put("diagnostic_logging",options.optBoolean("diagnostic_logging",false)).put("native_d3dx",mode.equals("client")&&options.optBoolean("native_d3dx",true)).put("renderer",renderer).put("cpu_profile",cpuProfile);
             request.put("runtime_mode",runtimeMode).put("storage",new JSONObject().put("kind","app_private_internal")
                 .put("android_directory",client.getCanonicalPath()).put("windows_drive","D:").put("shared_storage",false));
@@ -197,6 +203,7 @@ final class ClientRuntime {
             request.put("mouse_warp",options.optBoolean("mouse_warp",false));
             request.put("reduce_load_pauses",options.optBoolean("reduce_load_pauses",false));
             request.put("fast_spell_parse",options.optBoolean("fast_spell_parse",false));
+            request.put("name_sky_compatibility",options.optBoolean("name_sky_compatibility",false));
             request.put("boat_mode",mode.equals("client")?boatMode:"off");
             request.put("particle_mode",mode.equals("client")?particleMode:"off");
             request.put("turnip_driver",turnipDriver).put("presentation_mode",presentation).put("display_fps",displayFps);
@@ -204,7 +211,7 @@ final class ClientRuntime {
             if(spellJournal.exists())request.put("spell_test",json(spellJournal));
             RuntimeManager.write(new File(run,"request.json"),request.toString());
             File backend=new File(server.home,"client-backend");backend.mkdirs();
-            for(String name:new String[]{"client_runner.py","client_mouse.py","client_presentation.py","log_retention.py","client_display.py","client_xauthority.py","client_metrics.py","client_spells.py","client_vulkan.py","client_audio.py","libasound_module_pcm_trasc.so","audio-bundle.json","graphics_probe.py","runtime_probe.py","wined3d.dll","wined3d-patch.json","wineserver","wineserver-patch.json"})
+            for(String name:new String[]{"client_runner.py","client_mouse.py","traditional_camera.py","trasc-camera-dinput8.dll","traditional-camera-bundle.json","client_presentation.py","log_retention.py","client_display.py","client_xauthority.py","client_metrics.py","client_spells.py","client_vulkan.py","client_audio.py","libasound_module_pcm_trasc.so","audio-bundle.json","graphics_probe.py","runtime_probe.py","wined3d.dll","wined3d-patch.json","wineserver","wineserver-patch.json"})
                 try(InputStream in=context.getAssets().open(name)){RuntimeManager.copy(in,new File(backend,name));}
             if(!new File(backend,"wineserver").setExecutable(true,true))throw new IOException("Could not prepare bundled Wine server");
             { // The same verified helper supplies relative input in both display modes.
@@ -268,7 +275,7 @@ final class ClientRuntime {
                         if(active.waitFor(1,TimeUnit.SECONDS))break;
                     }
                     active.waitFor();
-                    synchronized(ClientRuntime.this){if(bridge!=null&&graphics==bridge){bridge.stop();graphics=null;}if(playback!=null&&audio==playback){playback.close();audio=null;}}
+                    synchronized(ClientRuntime.this){if(bridge!=null&&graphics==bridge){bridge.stop();graphics=null;}if(playback!=null&&audio==playback){playback.close();audio=null;}if(process==active)recoverCameraAdapter();}
                 } catch(Exception e){RuntimeManager.recordFailure(activeWork,"client_gpu_cleanup",e);}
             },"client-graphics-lifecycle");monitor.setDaemon(true);monitor.start();
             for(int i=0;i<200;i++) {
@@ -279,7 +286,14 @@ final class ClientRuntime {
                 Thread.sleep(100);
             }
             throw new IOException("Client display startup timed out; export Logs");
-        } catch(Exception e){server.recordFailure("client_start",e);if(started&&alive())stop();else if(graphics!=null){graphics.stop();graphics=null;}if(audio!=null){audio.close();audio=null;}status=e.getMessage();if(compilerLease)new File(server.work,"run/client-dll-building.json").delete();throw e;}
+        } catch(Exception e){
+            server.recordFailure("client_start",e);
+            try {
+                if(started&&alive())stop();
+                else {if(graphics!=null){graphics.stop();graphics=null;}if(audio!=null){audio.close();audio=null;}recoverCameraAdapter();}
+            } catch(Exception cleanup){e.addSuppressed(cleanup);server.recordFailure("client_camera_restore",cleanup);}
+            status=e.getMessage();if(compilerLease)new File(server.work,"run/client-dll-building.json").delete();throw e;
+        }
         finally {busy=false;}
     }
     synchronized void stop()throws Exception {
@@ -291,6 +305,38 @@ final class ClientRuntime {
         if(graphics!=null){graphics.stop();graphics=null;}
         if(audio!=null){audio.close();audio=null;}
         new File(server.work,"run/client-dll-building.json").delete();
-        process=null;status="Client stopped. Server runtime is managed separately.";
+        process=null;recoverCameraAdapter();status="Client stopped. Server runtime is managed separately.";
+    }
+
+    /** Finish interrupted proxy restoration before imports, backups or profile changes. */
+    private void recoverCameraAdapter()throws Exception {
+        File journal=new File(client,".trasc-camera-adapter");
+        if(!Files.exists(journal.toPath(),LinkOption.NOFOLLOW_LINKS))return;
+        if(Files.isSymbolicLink(journal.toPath())||!Files.isDirectory(journal.toPath(),LinkOption.NOFOLLOW_LINKS))
+            throw new IOException("Camera adapter recovery directory needs attention");
+        if(!Files.exists(new File(journal,"current.json").toPath(),LinkOption.NOFOLLOW_LINKS)
+            &&!Files.exists(new File(journal,"original.dll").toPath(),LinkOption.NOFOLLOW_LINKS))return;
+        if(alive())throw new IOException("Stop the client before restoring its camera adapter");
+        if(!installed())throw new IOException("The installed client runtime is needed to restore the camera adapter");
+        File backend=new File(server.home,"client-backend");backend.mkdirs();tmp.mkdirs();
+        try(InputStream in=context.getAssets().open("traditional_camera.py")) {
+            RuntimeManager.copy(in,new File(backend,"traditional_camera.py"));
+        }
+        File nativeDir=new File(context.getApplicationInfo().nativeLibraryDir);
+        List<String> command=Arrays.asList(new File(nativeDir,"libproot.so").getPath(),"--kill-on-exit","-0","-r",root.getPath(),
+            "-b","/dev","-b","/proc","-b",client.getPath()+":/client","-b",backend.getPath()+":/opt/trasc",
+            "-b",tmp.getPath()+":/tmp","-w","/client","/usr/bin/python3","/opt/trasc/traditional_camera.py","restore","/client");
+        ProcessBuilder builder=new ProcessBuilder(command);Map<String,String> environment=builder.environment();environment.clear();
+        environment.put("PATH","/usr/bin:/bin");environment.put("LANG","C.UTF-8");environment.put("HOME","/root");
+        environment.put("PROOT_LOADER",new File(nativeDir,"libproot-loader.so").getPath());
+        environment.put("PROOT_TMP_DIR",tmp.getPath());environment.put("PROOT_NO_SECCOMP","1");
+        File log=new File(server.work,"logs/traditional-camera-recovery.log");log.getParentFile().mkdirs();LogRetention.rotate(log);
+        builder.redirectErrorStream(true);builder.redirectOutput(log);
+        Process recovery=builder.start();recovery.getOutputStream().close();
+        if(!recovery.waitFor(15,TimeUnit.SECONDS)) {
+            recovery.destroyForcibly();recovery.waitFor(5,TimeUnit.SECONDS);
+            throw new IOException("Camera adapter restoration timed out; see traditional-camera-recovery.log");
+        }
+        if(recovery.exitValue()!=0)throw new IOException("Camera adapter restoration needs attention; see traditional-camera-recovery.log");
     }
 }

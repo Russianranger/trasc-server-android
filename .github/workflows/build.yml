@@ -210,11 +210,12 @@ jobs:
       - name: Build packaged Android launcher
         run: |
           sudo apt-get update
-          sudo apt-get install -y meson ninja-build pkg-config
+          sudo apt-get install -y meson ninja-build pkg-config g++-mingw-w64-i686
           bash scripts/build-proot.sh
           bash scripts/build-cabextract.sh android
           bash scripts/build-virgl.sh android
           bash scripts/build-presentation.sh android
+          bash scripts/build-traditional-camera.sh
       - name: Package corresponding launcher sources
         run: bash scripts/pack-launcher-sources.sh
       - name: Compile APK and check Android lint

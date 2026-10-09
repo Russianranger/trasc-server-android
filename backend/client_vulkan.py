@@ -4,6 +4,7 @@ import json
 import os
 from pathlib import Path
 import shutil
+import stat
 import struct
 
 DEFAULT_DRIVER = '24.3.4'
@@ -25,15 +26,24 @@ def cache_paths(prefix, version):
     return prefix/'trasc-cache'/('dxvk'+suffix), prefix/'trasc-cache'/('mesa-turnip'+mesa_suffix)
 
 
-def npc_configuration(mode):
+def npc_configuration(mode, name_sky_compatibility=False):
     # Separate from CPU profile. These are supported by the pinned DXVK 2.5.3.
     # Thor testing rejected the 0.4.3 direct-mapping experiment: names still
     # glitch and NPCs regress. Restore the exact confirmed 0.4.2 baseline.
     # Keep direct mapping explicitly named for reproducing the isolated test.
-    if mode == 'standard': return ''
-    if mode not in ('compatibility', 'compatibility_042', 'direct_043'): raise ValueError('Invalid NPC rendering option')
-    direct = 'True' if mode == 'direct_043' else 'False'
-    return 'd3d9.floatEmulation = Strict; d3d9.forceSamplerTypeSpecConstants = True; d3d9.allowDirectBufferMapping = '+direct
+    if not isinstance(name_sky_compatibility, bool): raise ValueError('Invalid name / sky compatibility option')
+    if mode not in ('standard', 'compatibility', 'compatibility_042', 'direct_043'): raise ValueError('Invalid NPC rendering option')
+    if mode == 'standard': configuration = ''
+    else:
+        direct = 'True' if mode == 'direct_043' else 'False'
+        configuration = 'd3d9.floatEmulation = Strict; d3d9.forceSamplerTypeSpecConstants = True; d3d9.allowDirectBufferMapping = '+direct
+    # Isolated, opt-in shader-constant comparison. DXVK 2.5.3's compiler then
+    # copies all shader-defined constants used through relative addressing.
+    # Keep the rejected direct-mapping experiment and every other flag intact.
+    # No device fix is claimed until the character-selection screen is tested.
+    if name_sky_compatibility:
+        configuration += ('; ' if configuration else '') + 'd3d9.strictConstantCopies = True'
+    return configuration
 
 
 def skin_shader_status(client):
@@ -49,6 +59,118 @@ def skin_shader_status(client):
     size = current.stat().st_size
     return {'present': True, 'bytes': size,
             'sha256': hashlib.sha256(current.read_bytes()).hexdigest() if size <= 1024*1024 else 'oversize'}
+
+
+def render_assets_status(client):
+    """Bounded, read-only evidence for selection labels and sky rendering.
+
+    These are candidate search paths, not an inventory of every client asset.
+    Absence here does not establish a missing resource or its visual effect.
+    No INI contents beyond numeric/boolean rendering choices are exported.
+    """
+    import re
+
+    choices = {'sky', 'skytype', 'skyupdateinterval', 'hardwaretnl',
+               'vertexshaders', 'vertexshader14', 'vertexshader20',
+               'usevertexshaders', 'useshaders', 'useshaders20', 'useshaders14',
+               'pixelshaders', 'usepixelshaders', 'shownameslevel',
+               '20pixelshaders', '14pixelshaders', '1xpixelshaders', 'enable3dtext',
+               'usethreepointlighting', 'shadows', 'shadowclipplane'}
+    report = {'format': 1, 'read_only': True, 'settings': {}, 'files': {},
+              'note': 'Only selected settings and candidate asset paths are inspected. '
+                      'Absence here is not proof of a missing resource or the rendering cause.'}
+    budget = 64 * 1024 * 1024
+    directory_cache = {}
+
+    def lookup(relative):
+        current = Path(client)
+        if current.is_symlink() or not current.is_dir(): return None, 'unsafe_or_missing_client'
+        for part in relative.split('/'):
+            if not current.is_dir(): return None, 'not_directory'
+            if current not in directory_cache:
+                mapping = {}
+                # Do not enumerate an unbounded imported directory.
+                with os.scandir(current) as entries:
+                    for index, entry in enumerate(entries):
+                        if index >= 20000: return None, 'directory_limit'
+                        key = entry.name.casefold()
+                        mapping[key] = Path(entry.path) if key not in mapping else None
+                directory_cache[current] = mapping
+            mapping = directory_cache[current]
+            if part.casefold() not in mapping: return None, 'not_located'
+            current = mapping[part.casefold()]
+            if current is None: return None, 'ambiguous'
+            if current.is_symlink(): return None, 'symlink_rejected'
+        return current, None
+
+    def read_file(relative, limit, capture=False):
+        nonlocal budget
+        path, reason = lookup(relative)
+        record = report['files'][relative] = {'present': False}
+        if reason:
+            record['reason'] = reason
+            return None
+        # O_NOFOLLOW prevents a changed final entry from following a symlink.
+        # Parent lookup has separately rejected imported symlink directories.
+        try:
+            descriptor = os.open(path, os.O_RDONLY | getattr(os, 'O_NOFOLLOW', 0) | getattr(os, 'O_NONBLOCK', 0))
+            with os.fdopen(descriptor, 'rb') as stream:
+                metadata = os.fstat(stream.fileno())
+                if not stat.S_ISREG(metadata.st_mode):
+                    record['reason'] = 'not_regular'
+                    return None
+                record.update(present=True, bytes=metadata.st_size)
+                if metadata.st_size > min(limit, budget):
+                    record['reason'] = 'read_limit'
+                    return None
+                data = stream.read(metadata.st_size)
+                budget -= len(data)
+                after = os.fstat(stream.fileno())
+                if len(data) != metadata.st_size or (after.st_size, after.st_mtime_ns) != (metadata.st_size, metadata.st_mtime_ns):
+                    record['reason'] = 'changed_during_read'
+                    return None
+                record['sha256'] = hashlib.sha256(data).hexdigest()
+                return data if capture else None
+        except OSError:
+            record['reason'] = 'unreadable'
+            return None
+
+    try:
+        for relative in ('eqclient.ini', 'defaults.ini'):
+            raw = read_file(relative, 2 * 1024 * 1024, capture=True)
+            if raw is None: continue
+            if raw.startswith((b'\xff\xfe', b'\xfe\xff')):
+                report['settings'][relative] = {'status': 'unsupported_utf16'}
+                continue
+            section, values, seen, repeated = '', {}, set(), set()
+            text = raw.removeprefix(b'\xef\xbb\xbf').decode('latin-1')
+            for line in text.splitlines():
+                stripped = line.strip()
+                if stripped.startswith('[') and stripped.endswith(']'):
+                    section = stripped[1:-1].strip().casefold()
+                elif section == 'defaults' and '=' in stripped and not stripped.startswith((';', '#')):
+                    key, value = (part.strip() for part in stripped.split('=', 1))
+                    key = key.casefold()
+                    if key not in choices: continue
+                    if key in seen:
+                        values.pop(key, None); repeated.add(key)
+                    elif re.fullmatch(r'(?:TRUE|FALSE|[-+]?[0-9]+(?:\.[0-9]+)?)', value, re.I) and len(value) <= 32:
+                        values[key] = value
+                    seen.add(key)
+            report['settings'][relative] = {'values': values, 'ambiguous_keys': sorted(repeated)}
+        for relative, limit in (
+            ('eqgame.exe', 32 * 1024 * 1024),
+            ('eqgraphicsdx9.dll', 16 * 1024 * 1024),
+            ('sky.s3d', 16 * 1024 * 1024),
+            ('sky2.s3d', 16 * 1024 * 1024),
+            ('Resources/skies.ini', 1024 * 1024),
+            ('RenderEffects/SPL/SkinMeshCBS1_VSB.fxo', 1024 * 1024),
+        ):
+            read_file(relative, limit)
+    except (OSError, ValueError):
+        report['incomplete'] = True
+    report['read_bytes'] = 64 * 1024 * 1024 - budget
+    return report
 
 
 def verify_bundle(folder):

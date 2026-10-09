@@ -41,6 +41,19 @@ const server=http.createServer((req,res)=>{const name=req.url==='/'?'index.html'
   assert.equal(await page.inputValue('#source-ref'),'4aceae18b94ffaafc08e2b17bc41cd72c77f795d');
   assert.equal(await page.isChecked('#client-native-dll'),false);
   assert.equal(await page.isChecked('#client-fast-spells'),false);
+  await page.locator('nav [data-tab=client]').click();
+  assert(await page.locator('#client-mouse-warp').isVisible(),'Traditional exposes its standalone camera control');
+  assert(!(await page.isDisabled('#client-mouse-warp')),'Traditional camera is selectable while the client is stopped');
+  assert(!(await page.isChecked('#client-mouse-warp')),'Traditional camera remains opt-in');
+  for(const id of ['client-native-dll','client-fast-spells','client-load-pauses']){
+   assert(await page.isDisabled('#'+id),'Custom DLL hook remains disabled: '+id);
+   assert(!(await page.locator('#'+id).isVisible()),'Custom DLL hook remains hidden: '+id);
+  }
+  await page.check('#client-mouse-warp');
+  const cameraRequest=await page.evaluate(()=>launchOptions('client'));
+  assert.equal(cameraRequest.mouse_warp,true);assert.equal(cameraRequest.native_dinput8,false);
+  assert.equal(cameraRequest.fast_spell_parse,false);assert.equal(cameraRequest.reduce_load_pauses,false);
+  await page.locator('nav [data-tab=setup]').click();
   await page.click('#runtime-open');await page.waitForFunction(()=>lastNative?.alive);
   assert(await page.isDisabled('#world-profile'));
   assert(await page.isDisabled('#start-server'));assert(await page.isDisabled('#build-server'));
@@ -60,6 +73,7 @@ const server=http.createServer((req,res)=>{const name=req.url==='/'?'index.html'
   await page.evaluate(()=>{fixture.recovery=false;poll();});await page.waitForFunction(()=>!document.getElementById('build-server').disabled);
   await page.evaluate(()=>{fixture.tools=false;poll();});await page.waitForFunction(()=>document.getElementById('build-server').disabled);
   await page.evaluate(()=>{fixture.tools=true;fixture.client=true;poll();});await page.waitForFunction(()=>lastClientNative?.alive);assert(await page.isDisabled('#build-server'));
+  assert(await page.isDisabled('#client-mouse-warp'),'Active Traditional client blocks camera changes until relaunch');
   await page.evaluate(()=>{fixture.client=false;fixture.jobs.push({id:'busy',operation:'import_source',status:'running'});poll();});await page.waitForFunction(()=>lastState.jobs.some(j=>j.id==='busy'));assert(await page.isDisabled('#build-server'));
   await page.evaluate(()=>{fixture.jobs=[];poll();});await page.waitForFunction(()=>!document.getElementById('build-server').disabled);
   await page.locator('nav [data-tab=build]').click();await page.selectOption('#build-jobs','1');await page.click('#build-server');
@@ -110,6 +124,6 @@ const server=http.createServer((req,res)=>{const name=req.url==='/'?'index.html'
   assert.equal(await page.inputValue('#source-ref'),'main');
   await page.locator('nav [data-tab=fixes]').click();assert(await page.locator('#ferry-service-panel').isVisible());
   assert.equal(await page.locator('nav button').count(),10);assert.deepEqual(errors,[]);
-  console.log('PASS: profile isolation, qualified compilation, readiness-controlled deployment/start/client data, active-client guards, shared tabs/art and return to Custom');
+  console.log('PASS: profile isolation, opt-in Traditional camera and blocked Custom hooks, qualified compilation, readiness-controlled deployment/start/client data, active-client guards, shared tabs/art and return to Custom');
  }finally{await browser.close();server.close();}
 })().catch(e=>{console.error(e);process.exitCode=1;server.close();});

@@ -1,12 +1,12 @@
 #!/usr/bin/env python3
-"""Reuse the verified 0.6.10 native payload for the viewport-only APK update."""
+"""Reuse the verified native runtime payload for a scoped client APK update."""
 import argparse
 import hashlib
 import json
 from pathlib import Path
 import zipfile
 
-BASE_APK_SHA256 = 'ead3312ec676fd10f0940598a1f14eb8b9835f61e5678d933f5abfd6294f2488'
+BASE_APK_SHA256 = '5810b46eb34497ceda39c27568ff64ff1bcc74024b1b2021511167a12b8c1f20'
 LIBRARIES = ('libcabextract.so', 'libproot-loader.so', 'libproot.so',
              'libtrasc-presentation.so', 'libvirgl-server.so')
 ASSETS = ('audio-bundle.json', 'dxvk-d3d9.dll', 'libasound_module_pcm_trasc.so',
@@ -21,7 +21,7 @@ def digest(data):
 def extract(apk, root, expected_sha=BASE_APK_SHA256):
     apk, root = Path(apk), Path(root)
     if digest(apk.read_bytes()) != expected_sha:
-        raise ValueError('Published baseline APK does not match the verified 0.6.10 hash')
+        raise ValueError('Published baseline APK does not match the verified 0.6.11 hash')
     mappings = [(f'lib/arm64-v8a/{name}', f'app/src/main/jniLibs/arm64-v8a/{name}')
                 for name in LIBRARIES]
     mappings += [('assets/'+name, 'backend-assets/'+name) for name in ASSETS]
@@ -35,7 +35,7 @@ def extract(apk, root, expected_sha=BASE_APK_SHA256):
         destination.write_bytes(data)
         records.append({'apk_entry': source, 'path': target,
                         'sha256': digest(data), 'bytes': len(data)})
-    return {'baseline_version': '0.6.10', 'baseline_apk_sha256': expected_sha,
+    return {'baseline_version': '0.6.11', 'baseline_apk_sha256': expected_sha,
             'files': records}
 
 def verify(apk, receipt):
