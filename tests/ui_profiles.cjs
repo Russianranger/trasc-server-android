@@ -42,6 +42,7 @@ const server=http.createServer((req,res)=>{const name=req.url==='/'?'index.html'
   assert.equal(await page.isChecked('#client-native-dll'),false);
   assert.equal(await page.isChecked('#client-fast-spells'),false);
   await page.locator('nav [data-tab=client]').click();
+  await page.click('#client-options > summary');
   assert(await page.locator('#client-mouse-warp').isVisible(),'Traditional exposes its standalone camera control');
   assert(!(await page.isDisabled('#client-mouse-warp')),'Traditional camera is selectable while the client is stopped');
   assert(!(await page.isChecked('#client-mouse-warp')),'Traditional camera remains opt-in');
