@@ -31,6 +31,8 @@ A standalone Android control app for [Russianranger/Triptych-Triumvirate](https:
 
 ## Downloads and first setup
 
+**App 0.6.16 — TAKP World:** Adds a third independent world using your pinned TAKP server with playerbots, quests, maps and fresh database setup. Import a full Windows TAKP client, prepare its two matching data files and bundled compatibility DLLs, then launch `eqgame.exe` through its own client runtime. Physical Android login and gameplay remain the first device acceptance. [TAKP setup and testing guide](docs/takp-world-0616.md).
+
 **App 0.6.10 — Client UI activation:** Choose an installed skin for an existing character, optionally apply its matching window layout, and restore the previous settings from an exact backup. Both profiles include root-level `UIErrors.txt` in exported logs and label the client gear action **Return to Launcher**. [StoneUI device test](docs/client-ui-activation-0610.md).
 
 **App 0.6.9 — Traditional client startup:** Short private temporary paths let Wine and PRoot create their sockets on Android. StoneUI ZIP imports also accept the skin's packaging manifest. Keep the installed runtimes, Wine prefix, imported client, DirectX helpers and compiled server. [Client retry steps](docs/client-startup-069.md).
@@ -41,7 +43,7 @@ A standalone Android control app for [Russianranger/Triptych-Triumvirate](https:
 
 **Beta 0.6 — runtime installation repair:** expands hard links into regular files when installing server/client runtimes, avoiding the `link failed: EACCES` failure reported on Fold6/Android 16. Existing working installations need only the APK update. [Release and testing instructions](docs/beta-06-release.md).
 
-**Independent world profiles:** switch between the existing TRASC Custom world and a separate Traditional EQEmu workspace. All ten tabs cross over; Traditional has ten bundled 16-bit adventure scenes, quests/plugins/Lua/assets imports, split PEQ seed bundles and a clean-client baseline. [Profile guide and component checklist](docs/traditional-profiles.md).
+**Independent world profiles:** switch between TRASC Custom, Traditional EQEmu and TAKP World. Each owns its runtimes, database, server and client files. All ten tabs cross over; Traditional has ten bundled 16-bit adventure scenes, quests/plugins/Lua/assets imports, split PEQ seed bundles and a clean-client baseline. [Traditional profile guide](docs/traditional-profiles.md) · [TAKP profile guide](docs/takp-world-0616.md).
 
 **App 0.5.7 — Fixes and shared session controls:** the runtime panel includes server Start/Stop/Restart and separate server/client activity indicators on every tab. **Fixes** contains ferry management, retired-trial cleanup, Nektulos maps, spell compatibility and Wine prefix recovery. Each tab has a distinct offline fantasy illustration. Existing server binaries, client DLL and accepted ferry installation remain compatible. [Update and testing instructions](docs/preview-notes.md).
 
@@ -49,7 +51,7 @@ A standalone Android control app for [Russianranger/Triptych-Triumvirate](https:
 
 - [Android preview release](https://github.com/Russianranger/trasc-server-android/releases/tag/preview): install the APK once the Android workflow succeeds.
 - [ARM64 runtime release](https://github.com/Russianranger/trasc-server-android/releases/tag/runtime-v1): the app downloads this automatically, or you can transfer `runtime-arm64.tar.gz` for offline installation.
-- [Traditional ARM64 build runtime](https://github.com/Russianranger/trasc-server-android/releases/tag/traditional-runtime-v1): downloaded only in Traditional; offline archives must match the selected profile.
+- [Traditional/TAKP ARM64 build runtime image](https://github.com/Russianranger/trasc-server-android/releases/tag/traditional-runtime-v1): Traditional and TAKP install independent copies of this compatible dependency image; offline archives must match the selected profile's installer.
 - [Build status](https://github.com/Russianranger/trasc-server-android/actions).
 
 1. Install the APK on an ARM64 Android device (Android 8/API 26 or newer; primary target Android 13 Thor).

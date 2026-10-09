@@ -7,17 +7,21 @@ import java.security.MessageDigest;
 import java.util.*;
 import java.util.concurrent.TimeUnit;
 
-/** Extract only the two ROF2 model helpers from a pinned Microsoft redistributable. */
+/** Extract RoF2 model helpers and TAKP's D3D8 wrapper helper from a pinned package. */
 final class DirectXInstaller {
     static final String URL="https://download.microsoft.com/download/8/4/A/84A35BF1-DAFE-4AE8-82AF-AD2AE20B6B14/directx_Jun2010_redist.exe";
     static final String SHA256="053f76dcbb28802e23341b6a787e3b0791c0fa5c8d4d011b1044172dbf89c73b";
     static final long BYTES=100275120;
-    static final String[] DLLS={"d3dx9_30.dll","d3dx9_35.dll"};
+    static final String[] DLLS={"d3dx9_30.dll","d3dx9_35.dll","d3dx9_43.dll"};
 
     static boolean installed(File target) {
         if(!new File(target,"directx.json").isFile())return false;
-        for(String name:DLLS)if(!Files.isRegularFile(new File(target,name).toPath(),LinkOption.NOFOLLOW_LINKS))return false;
+        for(String name:new String[]{"d3dx9_30.dll","d3dx9_35.dll"})if(!Files.isRegularFile(new File(target,name).toPath(),LinkOption.NOFOLLOW_LINKS))return false;
         return true;
+    }
+    static boolean installedTakp(File target) {
+        return Files.isRegularFile(new File(target,"directx.json").toPath(),LinkOption.NOFOLLOW_LINKS)
+            &&Files.isRegularFile(new File(target,"d3dx9_43.dll").toPath(),LinkOption.NOFOLLOW_LINKS);
     }
     static String sha256(File file)throws Exception {
         MessageDigest md=MessageDigest.getInstance("SHA-256");
@@ -77,7 +81,7 @@ final class DirectXInstaller {
             try {Files.move(ready.toPath(),target.toPath());}
             catch(IOException error){recover(target);throw error;}
             try(PrintWriter out=new PrintWriter(new FileOutputStream(log,true))) {
-                out.println("Installed verified Microsoft x86 d3dx9_30.dll and d3dx9_35.dll. Imported client and existing Wine prefix retained.");
+                out.println("Installed verified Microsoft x86 d3dx9_30.dll, d3dx9_35.dll and d3dx9_43.dll. Imported client and existing Wine prefix retained.");
                 out.println(manifest);
             }
         } finally {TarExtractor.remove(stage.toFile());}

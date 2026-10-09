@@ -11,6 +11,8 @@ concurrency:
   cancel-in-progress: true
 jobs:
   display-auth:
+    # The TAKP workflow verifies this profile and reuses its existing native payload.
+    if: github.head_ref != 'codex/takp-world' && github.ref != 'refs/heads/codex/takp-world'
     runs-on: ubuntu-24.04-arm
     timeout-minutes: 15
     steps:
@@ -46,24 +48,38 @@ jobs:
             runtime-work/xauthority-test/result.json
             runtime-work/xauthority-test/manifest.json
   ferry-server:
+    # The TAKP workflow verifies this profile and reuses its existing native payload.
+    if: github.head_ref != 'codex/takp-world' && github.ref != 'refs/heads/codex/takp-world'
     uses: ./.github/workflows/ferry-server.yml
   traditional-runtime:
+    # The TAKP workflow verifies this profile and reuses its existing native payload.
+    if: github.head_ref != 'codex/takp-world' && github.ref != 'refs/heads/codex/takp-world'
     uses: ./.github/workflows/traditional-runtime.yml
     permissions:
       contents: write
   client-dll:
+    # The TAKP workflow verifies this profile and reuses its existing native payload.
+    if: github.head_ref != 'codex/takp-world' && github.ref != 'refs/heads/codex/takp-world'
     uses: ./.github/workflows/client-dll.yml
   wined3d:
+    # The TAKP workflow verifies this profile and reuses its existing native payload.
+    if: github.head_ref != 'codex/takp-world' && github.ref != 'refs/heads/codex/takp-world'
     uses: ./.github/workflows/wined3d.yml
   vulkan:
+    # The TAKP workflow verifies this profile and reuses its existing native payload.
+    if: github.head_ref != 'codex/takp-world' && github.ref != 'refs/heads/codex/takp-world'
     uses: ./.github/workflows/vulkan.yml
   client-runtime:
+    # The TAKP workflow verifies this profile and reuses its existing native payload.
+    if: github.head_ref != 'codex/takp-world' && github.ref != 'refs/heads/codex/takp-world'
     needs: [wined3d, vulkan]
     uses: ./.github/workflows/client-runtime.yml
     permissions:
       contents: write
       actions: read
   database:
+    # The TAKP workflow verifies this profile and reuses its existing native payload.
+    if: github.head_ref != 'codex/takp-world' && github.ref != 'refs/heads/codex/takp-world'
     runs-on: ubuntu-24.04-arm
     timeout-minutes: 30
     steps:
@@ -136,6 +152,8 @@ jobs:
             database-test/work/database-verification.json
             database-test/runtime-manifest.json
   apk:
+    # The TAKP workflow verifies this profile and reuses its existing native payload.
+    if: github.head_ref != 'codex/takp-world' && github.ref != 'refs/heads/codex/takp-world'
     needs: [wined3d, vulkan]
     runs-on: ubuntu-latest
     env:

@@ -18,7 +18,7 @@ function spireControls(){
  if(spireState.record){$('spire-preview').disabled=!!spireState.record.read_only;$('spire-delete').disabled=!!spireState.record.read_only;}
 }
 function spireBind(id,fn){$(id).addEventListener('click',()=>spireRun(fn));}
-function spireExportStatus(data){$('spire-export-status').textContent=(data.pending_export?data.pending_export+' saved edit(s) need client export. ':'No content edits are awaiting client export. ')+(data.compatibility===undefined?'':data.compatibility?'RoF2 spell compatibility is ON. ':'RoF2 spell compatibility is OFF. ')+'Export uses the existing four-file workflow and preserves that setting. AA definitions/effects require a server restart and a new login.';}
+function spireExportStatus(data){if(activeProfile==='takp'){$('spire-export-status').textContent=(data.pending_export?data.pending_export+' saved edit(s) need client export. ':'No content edits are awaiting client export. ')+'TAKP exports spells_us.txt and SkillCaps.txt. Content changes may require a server restart and a new login.';return;}$('spire-export-status').textContent=(data.pending_export?data.pending_export+' saved edit(s) need client export. ':'No content edits are awaiting client export. ')+(data.compatibility===undefined?'':data.compatibility?'RoF2 spell compatibility is ON. ':'RoF2 spell compatibility is OFF. ')+'Export uses the existing four-file workflow and preserves that setting. AA definitions/effects require a server restart and a new login.';}
 async function spireCatalog(){
  const data=await job('spire_catalog');const choice=$('spire-type');choice.replaceChildren();
  for(const e of data.entities){const o=spireElement('option',e.label+(e.available?'':' · unavailable'));o.value=e.table;o.disabled=!e.available;choice.append(o);}

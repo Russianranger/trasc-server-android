@@ -118,3 +118,11 @@ body[data-profile=traditional] .content-import-grid{display:grid!important}
 .ui-skin-activation h4{margin:0 0 14px;font-size:16px}
 .ui-skin-activation .hint{overflow-wrap:anywhere}
 .ui-skin-list code{white-space:pre-line}
+
+[data-takp-only]{display:none!important}
+body[data-profile=takp] [data-takp-only]{display:block!important}
+body[data-profile=takp] .takp-setup-grid{display:grid!important}
+body[data-profile=takp] [data-takp-hide],body[data-profile=takp] [data-custom-only]{display:none!important}
+body[data-profile=takp]{--gold:#b9cae8}
+
+body[data-profile=takp] [data-takp-runtime]{grid-column:1/-1}

@@ -41,6 +41,7 @@ def recover_sdk(engine):
 
 
 def import_sdk(engine,args):
+    if engine.profile == 'takp': raise ValueError('The RoF2 DLL compiler is unavailable for TAKP. Its eqw/eqgame updates are prepared from the bundled TAKP pair')
     from engine import safe_path, extract_archive, atomic_json
     recover_sdk(engine)
     source=safe_path(engine.work/'incoming',args['file'],True)
@@ -99,6 +100,7 @@ def validate_dll(path):
 
 
 def build_dll(engine,args):
+    if engine.profile == 'takp': raise ValueError('The RoF2 DLL compiler is unavailable for TAKP')
     from engine import atomic_json
     if engine.server_running(): raise ValueError('Stop the server before compiling the client DLL')
     status=compiler_status(engine)
@@ -145,6 +147,7 @@ def build_dll(engine,args):
 
 
 def deploy_dll(engine,args):
+    if engine.profile == 'takp': raise ValueError('Do not deploy RoF2 dinput8 hooks into TAKP; prepare its native client updates instead')
     from engine import atomic_json
     staged=engine.work/'builds/client-dll-staged'; record=json.loads((staged/'build.json').read_text()); dll=staged/'dinput8.dll'
     validate_dll(dll)

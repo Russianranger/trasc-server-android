@@ -18,13 +18,19 @@ final class ClientTransientPaths {
     final File data,tmp,run;
 
     ClientTransientPaths(File appFiles,String profile) {
+        this(appFiles,profile,false);
+    }
+    ClientTransientPaths(File appFiles,String profile,boolean server) {
         final String directory;
         if("custom".equals(profile))directory="c";
         else if("traditional".equals(profile))directory="t";
+        else if("takp".equals(profile))directory="k";
         else throw new IllegalArgumentException("Unknown world profile");
         data=appFiles.getAbsoluteFile().getParentFile();
         if(data==null)throw new IllegalArgumentException("Missing app-private data directory");
-        tmp=new File(data,directory);run=new File(tmp,"s");
+        // Server PRoot helpers must never share the client's disposable directory:
+        // client startup clears its own tmp while the server can still be running.
+        tmp=new File(data,(server?"s":"")+directory);run=new File(tmp,"s");
     }
     static int bytes(File path){return path.getAbsolutePath().getBytes(StandardCharsets.UTF_8).length;}
     static void validateSocket(File path)throws IOException {

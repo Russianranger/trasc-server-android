@@ -19,6 +19,7 @@ import client_vulkan
 import client_audio
 import client_spells
 import client_presentation
+import takp_client
 from client_display import RESOLUTIONS, apply_display
 from client_xauthority import write_xauthority
 
@@ -99,7 +100,12 @@ class WineLog:
         self.trace = (self.trace + text)[-128*1024:]
         observed = dll_status(text)
         models, model_evidence = model_dll_status(text)
+        takp_modules, takp_evidence = takp_client.dll_status(text)
         with self.lock:
+            modules = {**self.fields.get('takp_libraries_loaded', {}), **takp_modules}
+            self.fields['takp_libraries_loaded'] = modules
+            self.fields['takp_patch_modules_loaded'] = all(modules.get(name) == 'native' for name in takp_client.PATCHES)
+            self.fields['takp_dll_evidence'] = list(dict.fromkeys(self.fields.get('takp_dll_evidence', []) + takp_evidence))[-12:]
             for line in text.splitlines():
                 self.sound_trace.observe(line)
                 if re.search(r'Loaded L".*\\+d3d9\.dll".*: native\s*$', line, re.I):
@@ -186,7 +192,8 @@ def pe_machine(path):
 def validate_request(request):
     if request.get('boat_mode', 'off') not in ('off', 'profile'): raise ValueError('Invalid boat option')
     if request.get('particle_mode', 'off') not in ('off', 'profile', 'repair'): raise ValueError('Invalid particle option')
-    spell_test = client_spells.verify_installed_test(CLIENT, request.get('spell_test', {}))
+    spell_test = (takp_client.validate_request(request, CLIENT) if request.get('profile') == 'takp'
+                  else client_spells.verify_installed_test(CLIENT, request.get('spell_test', {})))
     if request.get('npc_rendering', 'compatibility') not in ('standard', 'compatibility', 'compatibility_042', 'direct_043'): raise ValueError('Invalid NPC rendering option')
     if not isinstance(request.get('mouse_warp', False), bool): raise ValueError('Invalid mouse recentering option')
     if not isinstance(request.get('reduce_load_pauses', False), bool): raise ValueError('Invalid model loading option')
@@ -195,7 +202,7 @@ def validate_request(request):
     if not isinstance(request.get('name_sky_compatibility', False), bool): raise ValueError('Invalid name/sky compatibility option')
     if not isinstance(request.get('audio', False), bool): raise ValueError('Invalid audio option')
     if not isinstance(request.get('sound_diagnostics', False), bool): raise ValueError('Invalid sound diagnostic option')
-    if request.get('mode') not in ('desktop', 'client'): raise ValueError('Choose Wine desktop or ROF2 client')
+    if request.get('mode') not in ('desktop', 'client'): raise ValueError('Choose Wine desktop or game client')
     if request.get('resolution') not in RESOLUTIONS: raise ValueError('Unsupported client resolution')
     if request.get('renderer', 'software') not in ('software', 'virgl', 'turnip'): raise ValueError('Unsupported graphics option')
     client_vulkan.driver_file(request.get('turnip_driver', client_vulkan.DEFAULT_DRIVER))
@@ -210,10 +217,10 @@ def validate_request(request):
         name = request.get('executable', '')
         if not name or '/' in name or '\\' in name or name in ('.', '..'): raise ValueError('Invalid client executable name')
         exe = CLIENT / name
-        if not exe.is_file() or exe.is_symlink(): raise ValueError('Import the ROF2 client first')
+        if not exe.is_file() or exe.is_symlink(): raise ValueError('Import this world profile’s client first')
         machine = pe_machine(exe)
-        if machine != 0x14c: raise ValueError('This milestone expects the 32-bit x86 ROF2 eqgame.exe')
-        if request.get('native_dinput8', True):
+        if machine != 0x14c: raise ValueError('This runtime requires the 32-bit x86 Windows eqgame.exe')
+        if request.get('profile') != 'takp' and request.get('native_dinput8', True):
             dlls = [p for p in CLIENT.iterdir() if p.name.lower() == 'dinput8.dll' and p.is_file() and not p.is_symlink()]
             if len(dlls) != 1: raise ValueError('dinput8.dll must be beside eqgame.exe; import the modified client or disable the native DLL diagnostic option')
             if pe_machine(dlls[0]) != machine: raise ValueError('dinput8.dll must be 32-bit x86 to match ROF2')
@@ -228,6 +235,11 @@ def dll_status(log):
     system = [line for line in matches if 'loaddll' in line.lower()
               and re.search(r'Loaded L"C:\\+windows\\+(?:system32|syswow64)\\+dinput8\.dll".*: builtin\s*$', line, re.I)]
     return {'native_loaded': bool(loaded), 'system_dinput8_loaded': bool(system), 'evidence': (loaded + system or matches)[-8:]}
+
+
+def client_arguments(request):
+    arguments = ['D:\\' + request['executable']]
+    return arguments if request.get('profile') == 'takp' else arguments + ['patchme']
 
 
 def fatal_launch_error(log):
@@ -342,6 +354,7 @@ def graphics_status(requested, guest, host=''):
 
 class Supervisor:
     def __init__(self, request):
+        request = takp_client.effective_request(request)
         self.request = request
         self.children = []
         self.wine_log = None
@@ -518,6 +531,9 @@ class Supervisor:
 
     def configure_mouse(self):
         if self.request['mode'] != 'client': return
+        if self.request.get('profile') == 'takp':
+            self.update(mouse_warp='default', camera_mouse='takp_eqw', rof2_camera_adapter=False)
+            return
         # Wine reads this per-process key when DirectInput creates the mouse.
         # Use its own warp bookkeeping, never an external X11 recenter which
         # could be interpreted by the game as reverse camera movement.
@@ -536,6 +552,9 @@ class Supervisor:
         print('Camera-only mouse recentering: ' + mode, flush=True)
 
     def configure_loading(self):
+        if self.request.get('profile') == 'takp':
+            self.update(spell_loading='off', display_loading='off', particle_mode='off', boat_mode='off')
+            return
         import client_mouse
         mode = client_mouse.loading_mode(self.request, CLIENT)
         self.env[client_mouse.LOADING_MARKER] = mode if mode in ('fast', 'profile') else 'off'
@@ -596,9 +615,9 @@ class Supervisor:
     def start(self):
         # Recover before validation, including disabled/desktop launches. The
         # profile-private journal survives forced stops and session backups.
-        if ((CLIENT / '.trasc-camera-adapter').exists() or (CLIENT / '.trasc-camera-adapter').is_symlink()
+        if (self.request.get('profile') != 'takp' and ((CLIENT / '.trasc-camera-adapter').exists() or (CLIENT / '.trasc-camera-adapter').is_symlink()
                 or (self.request.get('profile') == 'traditional' and self.request['mode'] == 'client'
-                    and self.request.get('mouse_warp', False))):
+                    and self.request.get('mouse_warp', False)))):
             import traditional_camera
             self.camera_adapter = traditional_camera.Adapter(CLIENT)
             self.camera_adapter_report = self.camera_adapter.prepare(
@@ -674,24 +693,31 @@ class Supervisor:
             preserve_game_log()
             self.update(sound_diagnostics=self.request.get('sound_diagnostics', False),
                         sound_assets=client_audio.inspect_client(CLIENT, LOGS, packed=self.request.get('sound_diagnostics', False)))
-            self.update(skin_shader=client_vulkan.skin_shader_status(CLIENT))
-            self.update(render_assets=client_vulkan.render_assets_status(CLIENT))
+            if self.request.get('profile') != 'takp':
+                self.update(skin_shader=client_vulkan.skin_shader_status(CLIENT))
+                self.update(render_assets=client_vulkan.render_assets_status(CLIENT))
             if 'fullscreen' in self.request:
-                self.update(display_settings=apply_display(CLIENT, PREFIX, self.request['resolution'], self.request['fullscreen']))
-            args += ['D:\\' + self.request['executable'], 'patchme']
+                self.update(display_settings=apply_display(CLIENT, PREFIX, self.request['resolution'], self.request['fullscreen'], self.request.get('profile', 'custom')))
+            args += client_arguments(self.request)
             # The imported DLL forwards DirectInput8Create to an absolute system
             # dinput8 path. Native-only blocks Wine's system DLL and breaks input.
-            managed_camera = self.request.get('profile') == 'traditional' and self.camera_adapter_report['mode'] == 'enabled'
-            override = 'n,b' if self.request.get('native_dinput8', True) or managed_camera else 'b'
-            self.status['native_dinput8_requested'] = bool(self.request.get('native_dinput8', True) or managed_camera)
-            env['WINEDLLOVERRIDES'] += ';dinput8=' + override
-            native_models = self.request.get('native_d3dx', False)
-            if native_models:
-                with self.timed('model_helpers'):
-                    self.update('preparing_models', model_library_sha256=prepare_model_libraries())
-            for name in MODEL_DLLS:
-                env['WINEDLLOVERRIDES'] += ';' + name[:-4] + ('=n,b' if native_models else '=b')
-            self.status['dinput8_override'] = override
+            if self.request.get('profile') == 'takp':
+                self.update(takp_dependencies=takp_client.runtime_dependencies(PREFIX, Path('/directx')),
+                            client_type='takp', checksum_file='eqmac.exe', launch_arguments=[],
+                            native_dinput8_requested=False, dinput8_override='b')
+                env['WINEDLLOVERRIDES'] += takp_client.wine_overrides()
+            else:
+                managed_camera = self.request.get('profile') == 'traditional' and self.camera_adapter_report['mode'] == 'enabled'
+                override = 'n,b' if self.request.get('native_dinput8', True) or managed_camera else 'b'
+                self.status['native_dinput8_requested'] = bool(self.request.get('native_dinput8', True) or managed_camera)
+                env['WINEDLLOVERRIDES'] += ';dinput8=' + override
+                native_models = self.request.get('native_d3dx', False)
+                if native_models:
+                    with self.timed('model_helpers'):
+                        self.update('preparing_models', model_library_sha256=prepare_model_libraries())
+                for name in MODEL_DLLS:
+                    env['WINEDLLOVERRIDES'] += ';' + name[:-4] + ('=n,b' if native_models else '=b')
+                self.status['dinput8_override'] = override
         launcher = self.spawn(args, 'client-wine.log', env)
         self.status['timings_seconds']['until_launch_requested'] = round(time.monotonic() - self.started_monotonic, 3)
         self.update('launch_requested', display_ready=True, launcher_pid=launcher.pid)

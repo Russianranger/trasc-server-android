@@ -82,6 +82,7 @@ final class SessionArchive {
         create(rootfs,work,archive,version,"custom",progress);
     }
     static void requireProfile(File archive,String profile)throws IOException {
+        WorldProfiles.valid(profile);
         try(ZipFile zip=new ZipFile(archive)) {
             ZipEntry entry=zip.getEntry(MANIFEST);
             if(entry==null||entry.getSize()>16384)throw new IOException("This ZIP is not a supported TRASC complete session");
@@ -91,7 +92,7 @@ final class SessionArchive {
         }
     }
     static void create(File rootfs,File work,File archive,String version,String profile,Progress progress)throws IOException {
-        if(!profile.equals("custom")&&!profile.equals("traditional"))throw new IOException("Unknown backup profile");
+        WorldProfiles.valid(profile);
         if(!Files.isRegularFile(rootfs.toPath().resolve("etc/trasc-runtime.json"),LinkOption.NOFOLLOW_LINKS))throw new IOException("Install the runtime before creating a complete session backup");
         File index=File.createTempFile("session-index-",".tsv",archive.getParentFile());
         long[] total={0}; int[] count={0};

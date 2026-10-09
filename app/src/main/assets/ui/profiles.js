@@ -2,12 +2,31 @@
 const traditionalRepository='https://github.com/Russianranger/Server';
 const traditionalRevision='4aceae18b94ffaafc08e2b17bc41cd72c77f795d';
 function traditional(){return activeProfile==='traditional';}
+const takpRepository='https://github.com/Russianranger/Servertakp';
+const takpRevision='25bf70acb6bd24853cf09e447ddd62b96a4491a4';
+function takp(){return activeProfile==='takp';}
 function renderProfile(n){
  const profile=n.profile||'custom';
  if(activeProfile&&activeProfile!==profile){if(typeof resetEraRules==='function')resetEraRules();resetClientUi();location.reload();return false;}
  if(!activeProfile){
-  activeProfile=profile;document.body.dataset.profile=profile;$('runtime-heading-label').textContent=traditional()?'Traditional EQEmu runtime':'TRASC Custom runtime';$('world-profile').value=profile;
-  document.querySelector('.eyebrow').textContent=traditional()?'TRADITIONAL EQEMU · CLASSIC ADVENTURE':'TRIPTYCH · ANDROID';
+  activeProfile=profile;document.body.dataset.profile=profile;$('runtime-heading-label').textContent=takp()?'TAKP server runtime':traditional()?'Traditional EQEmu runtime':'TRASC Custom runtime';$('world-profile').value=profile;
+  document.querySelector('.eyebrow').textContent=takp()?'TAKP · AL’KABOR ADVENTURE':traditional()?'TRADITIONAL EQEMU · CLASSIC ADVENTURE':'TRIPTYCH · ANDROID';
+  if(takp()){
+   $('source-url').value=takpRepository;$('source-ref').value=takpRevision;
+   $('maps-url').value='https://github.com/Russianranger/Mapstakp';$('maps-ref').value='95cb9322b853e7ec2f67158b87442286315042eb';
+   $('runtime-online').textContent='Download / refresh TAKP build runtime';$('build-jobs').value='1';
+   for(const option of $('build-jobs').options){option.disabled=Number(option.value)>2;if(option.value==='2')option.textContent='2 · more memory required';}
+   $('login-endpoint-label').textContent='TAKP login endpoint · UDP';
+   $('client-export-help').textContent='Generate matching TAKP spells and skill caps and copy both files to the imported client root, with backups.';
+   $('client-export-files').replaceChildren(...['spells_us.txt','SkillCaps.txt'].map(name=>{const li=document.createElement('li');li.textContent=name;return li;}));
+   $('client-preparation-help').textContent='Prepare exports and syncs TAKP’s two data files, writes its local eqhost.txt, installs the supplied client patches and applies display settings. Open the server runtime for Prepare and start the server before signing in. Android Back returns here while the client stays open. Saved controller bindings and the display Keyboard remain available. Wine prefix recovery preserves the previous prefix before opening a fresh desktop.';
+   $('client-import-title').textContent='Import your TAKP client';$('client-launch').textContent='Start TAKP';
+   $('client-directx-help').textContent='Install Microsoft’s legacy DirectX helpers, including the 32-bit D3DX9_43 required by TAKP’s D3D8 wrapper. This downloads the official June 2010 redistributable.';
+   $('client-native-models').closest('label').dataset.takpHide='';
+   $('client-import-help').textContent='Choose a complete Windows TAKP client ZIP (TAKP 2.1 recommended), including eqgame.exe, eqmain.dll, eqgfx_dx8.dll and eqmac.exe. Prepare installs the supplied TAKP patches into this separate client.';
+   $('setup-finish-help').textContent='Download the TAKP world files, initialize its fresh database and create a local account. Build and deploy in Builds, then import and prepare your separate TAKP client.';
+   $('client-ui-help').textContent='Use the UI skins included with your TAKP client through the in-game UI menu or /loadskin. Launcher skin import and character layout activation support RoF2 clients.';
+  }
   if(traditional()){
    $('source-url').value=traditionalRepository;$('source-ref').value=traditionalRevision;
    $('runtime-online').textContent='Download / refresh build runtime';
@@ -25,9 +44,9 @@ function syncProfileControls(){
  const blocked=!lastNative||!lastClientNative||!!(busy||sessionAction||lastNative.alive||lastNative.installing||lastNative.session_busy||lastClientNative.alive||lastClientNative.busy);
  $('world-profile').disabled=blocked;$('switch-profile').disabled=blocked||$('world-profile').value===activeProfile;
  $('profile-status').textContent=blocked?'Stop the client and server runtime, then finish transfers to switch.':'Each world keeps its own database, files, client and backups. Switching discards unsaved form edits.';
- if(traditional()){
-  const deployment=lastState?.traditional?.deployment;
-  const serverBlocked=!!(busy||sessionAction||!lastNative?.alive||lastNative?.installing||lastNative?.session_busy||lastState?.profile!=='traditional'||lastState?.jobs?.some(j=>['queued','running'].includes(j.status)));
+ if(traditional()||takp()){
+  const world=takp()?lastState?.takp:lastState?.traditional,deployment=world?.deployment;
+  const serverBlocked=!!(busy||sessionAction||!lastNative?.alive||lastNative?.installing||lastNative?.session_busy||lastState?.profile!==activeProfile||lastState?.jobs?.some(j=>['queued','running'].includes(j.status)));
   const clientBlocked=!!(serverBlocked||!lastClientNative||lastClientNative.alive||lastClientNative.busy);
   $('deploy-build').disabled=clientBlocked||!!lastState?.running||!deployment?.deploy_allowed;
   $('rollback-build').disabled=clientBlocked||!!lastState?.running||!deployment?.rollback_allowed;
@@ -37,17 +56,40 @@ function syncProfileControls(){
   $('client-prepare').disabled=clientBlocked||!lastState?.client?.imported||!deployment?.client_data_allowed;
   $('client-import').disabled=clientBlocked;
   const activeJob=lastState?.jobs?.some(j=>['queued','running'].includes(j.status));
-  $('build-server').disabled=!!(busy||sessionAction||!lastNative?.alive||lastNative?.installing||lastNative?.session_busy||!lastClientNative||lastClientNative.alive||lastClientNative.busy||activeJob||lastState?.profile!=='traditional'||!lastState?.traditional?.build?.build_allowed);
+  $('build-server').disabled=!!(busy||sessionAction||!lastNative?.alive||lastNative?.installing||lastNative?.session_busy||!lastClientNative||lastClientNative.alive||lastClientNative.busy||activeJob||lastState?.profile!==activeProfile||!world?.build?.build_allowed);
   $('traditional-tested-source').disabled=!!(busy||sessionAction||lastNative?.installing||lastNative?.session_busy||activeJob);
   for(const id of ['client-native-dll','client-fast-spells','client-load-pauses']){$(id).checked=false;$(id).disabled=true;}
-  $('client-mouse-warp').disabled=!!(busy||sessionAction||!lastClientNative||lastClientNative.alive||lastClientNative.busy);
-  $('client-camera-help').textContent='Traditional camera recentering uses a separate bundled adapter for the verified RoF2 client. Original DirectInput is restored when the client stops. Disable and relaunch to revert.';
+  $('client-mouse-warp').disabled=takp()||!!(busy||sessionAction||!lastClientNative||lastClientNative.alive||lastClientNative.busy);
+  $('client-camera-help').textContent=takp()?'TAKP uses its supplied EQW input wrapper. Camera recentering has not been qualified for this client.':'Traditional camera recentering uses a separate bundled adapter for the verified RoF2 client. Original DirectInput is restored when the client stops. Disable and relaunch to revert.';
+  if(takp()){
+   for(const id of ['client-mouse-warp','client-name-sky','client-native-models']){$(id).checked=false;$(id).disabled=true;}
+   $('takp-setup').disabled=clientBlocked||!!lastState?.running||!!(world?.source_ready&&world?.quests_ready&&world?.maps_ready&&world?.components?.assets?.imported);
+   $('takp-initialize').disabled=clientBlocked||!!lastState?.running||!world?.source_ready||!!world?.database_ready;
+   $('takp-create-account').disabled=serverBlocked||!world?.database_ready;
+  }
   for(const id of ['client-boats','client-particles']){$(id).value='off';$(id).disabled=true;}
  }
  const contentBlocked=!!(busy||sessionAction||!lastNative?.alive||lastNative?.installing||lastNative?.session_busy||lastState?.running||lastState?.jobs?.some(j=>['queued','running'].includes(j.status)));
  for(const id of ['content-git','content-zip',...Object.keys(contentComponents).flatMap(id=>[id+'-git',id+'-zip'])])$(id).disabled=contentBlocked;
- renderContentStatus();renderClientUi();renderTraditionalStatus();
+ renderContentStatus();renderClientUi();renderTraditionalStatus();renderTakpStatus();
 }
+function renderTakpStatus(){
+ if(!takp())return;
+ const w=lastState?.takp||{},build=w.build||{},deployment=w.deployment||{};
+ const entries=[['Server runtime',build.runtime_ready?'Build tools ready':lastNative?.installed?'Installed · open runtime':'Install in this profile'],['Server source + bots',w.source_ready?'Pinned fork ready':'Download world files'],['Quests',w.quests_ready?'Pinned fork ready':'Download world files'],['Maps',w.maps_ready?'Pinned fork ready':'Download world files'],['Al’Kabor database',w.database_ready?'Initialized':'Initialize fresh database'],['Playerbot schema',w.bot_schema_ready?'Eleven migrations verified':'Initialize fresh database'],['Local accounts',String(w.local_accounts||0)+' created'],['Compiled binaries',build.staged_valid?'Nine binaries staged':build.deployed_valid?'Nine binaries deployed':'Build required'],['Windows TAKP client',lastState?.client?.imported?'Imported separately':'Import in Client'],['Client runtime',lastClientNative?.installed?'Installed in this profile':'Install in Client'],['Local login · UDP 6000',deployment.start_allowed?'Ready to start':'Complete setup and deployment']];
+ $('takp-checklist').replaceChildren(...entries.map(([name,state])=>{const row=document.createElement('tr');for(const value of [name,state]){const cell=document.createElement('td');cell.textContent=value;row.append(cell);}return row;}));
+ $('takp-status').textContent=lastNative?.alive?w.message||deployment.message||'Checking TAKP readiness.':'Install and open the TAKP server runtime to begin.';
+ $('takp-build-readiness').textContent=lastNative?.alive?(build.build_allowed?'Ready to compile the pinned TAKP server with playerbots.':build.message||w.message||'Download world files and check build tools first.'):'Install and open the TAKP build runtime first.';
+ if(!lastNative?.alive)for(const id of ['takp-setup','takp-initialize','takp-create-account'])$(id).disabled=true;
+}
+action('takp-setup',()=>job('takp_setup'));
+action('takp-initialize',()=>job('takp_initialize_database'));
+action('takp-create-account',async()=>{
+ const username=$('takp-username').value.trim(),password=$('takp-password').value;
+ if(!username||!password)throw Error('Enter a local TAKP username and password.');
+ const pendingAccount=job('takp_create_account',{username,password});$('takp-password').value='';
+ const result=await pendingAccount;notice(result.message||'Local TAKP account created.');
+});
 function renderTraditionalStatus(){
  if(!traditional())return;
  const s=lastState,components=s?.traditional?.components||{},build=s?.traditional?.build;
@@ -124,7 +166,14 @@ function clientUiOptions(id,entries,empty){
 function renderClientUi(){
  if(clientUiProfile!==activeProfile){resetClientUi();clientUiProfile=activeProfile;}
  const ui=clientUiData(),skins=ui?.skins||[],characters=ui?.characters||[],characterErrors=ui?.character_errors?.length||0,blocked=clientUiBlocked();
- $('client-ui-import').disabled=blocked;
+ $('client-ui-import').disabled=blocked||takp();
+ if(takp()){
+  for(const id of ['client-ui-skin','client-ui-character','client-ui-layout','client-ui-activate','client-ui-restore'])$(id).disabled=true;
+  $('client-ui-skins').replaceChildren();$('client-ui-current').textContent='';
+  $('client-ui-status').textContent='Use the skins bundled with your TAKP client in the game’s UI menu or with /loadskin.';
+  $('client-ui-activation-status').textContent='RoF2 UI import and saved character layout activation are unavailable for TAKP.';
+  return;
+ }
  $('client-ui-skins').replaceChildren(...skins.map(s=>{const li=document.createElement('li'),name=document.createElement('strong'),command=document.createElement(/\s/.test(s.name)?'small':'code');name.textContent=s.name+(s.protected?' · built-in default':Number.isFinite(s.files)?' · '+s.files+' files':' · existing skin');command.textContent=/\s/.test(s.name)?'Select this skin in the game’s UI menu.':'/loadskin '+s.name+' 0 · use the skin’s XML layout\n/loadskin '+s.name+' 1 · keep saved window positions';li.append(name,command);if(s.backup){const backup=document.createElement('small');backup.textContent='Previous skin: '+s.backup;li.append(backup);}return li;}));
  $('client-ui-status').textContent=!lastNative?.alive?'Open this profile’s server runtime to import UI skins.':!lastState?.client?.imported?'Import this profile’s RoF2 client first.':lastClientNative?.alive||lastClientNative?.busy?'Stop the embedded client before importing UI skins.':ui?.message||(skins.length?'Installed skins are listed below.':'Choose a RoF2 UI ZIP to add a skin to this profile’s client.');
  if(ui&&!characters.some(c=>c.file===clientUiSelection.character_file)){clientUiSelection.character_file=characters[0]?.file||'';clientUiSelection.apply_layout=false;clientUiEditGeneration++;clientUiResultMessage=null;}

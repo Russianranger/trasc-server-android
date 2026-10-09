@@ -13,6 +13,7 @@ GRAPHICS_SHA256 = '164fc072547aab752567ba88bf6936d0e328c44a16a1480f340d27aef0ba6
 
 
 def launch_mode(request, client):
+    if request.get('profile') == 'takp': return 'off'
     if request.get('mode') != 'client' or not request.get('mouse_warp', False):
         return 'off'
     if request.get('profile') == 'traditional':
@@ -26,18 +27,19 @@ def launch_mode(request, client):
 
 
 def loading_mode(request, client):
-    if request.get('mode') != 'client' or request.get('profile') == 'traditional': return 'off'
+    if request.get('mode') != 'client' or request.get('profile') in ('traditional', 'takp'): return 'off'
     mode = adapter_mode(request, client, LOADING_MARKER)
     return ('fast' if request.get('fast_spell_parse', False) else 'profile') if mode == 'enabled' else mode
 
 
 def display_mode(request, client):
-    if request.get('mode') != 'client' or request.get('profile') == 'traditional': return 'off'
+    if request.get('mode') != 'client' or request.get('profile') in ('traditional', 'takp'): return 'off'
     mode = adapter_mode(request, client, DISPLAY_MARKER)
     return ('yield' if request.get('reduce_load_pauses', False) else 'profile') if mode == 'enabled' else mode
 
 
 def adapter_mode(request, client, marker):
+    if request.get('profile') == 'takp': return 'off'
     if not request.get('native_dinput8', True):
         return 'needs_dll'
     exe = client / request['executable']
@@ -50,14 +52,14 @@ def adapter_mode(request, client, marker):
 
 
 def boat_mode(request, client):
-    if request.get('profile') == 'traditional': return 'off'
+    if request.get('profile') in ('traditional', 'takp'): return 'off'
     if request.get('mode') != 'client' or request.get('boat_mode', 'off') != 'profile': return 'off'
     mode = adapter_mode(request, client, BOAT_MARKER)
     return 'profile' if mode == 'enabled' else mode
 
 
 def particle_mode(request, client):
-    if request.get('profile') == 'traditional': return 'off'
+    if request.get('profile') in ('traditional', 'takp'): return 'off'
     requested = request.get('particle_mode', 'off')
     if request.get('mode') != 'client' or requested not in ('profile', 'repair'):
         return 'off'

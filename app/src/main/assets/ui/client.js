@@ -7,15 +7,15 @@ function spellTestControls(){
  if(typeof addonControls==='function')addonControls();
  const active=!!spellComparison.state&&spellComparison.state!=='restored';
  const incomplete=active&&spellComparison.state!=='applied';
- $('spell-test-apply').disabled=!!(busy||clientFileBusy||active||!clientImported);
- $('spell-test-restore').disabled=!!(busy||clientFileBusy||!active);
+ $('spell-test-apply').disabled=activeProfile==='takp'||!!(busy||clientFileBusy||active||!clientImported);
+ $('spell-test-restore').disabled=activeProfile==='takp'||!!(busy||clientFileBusy||!active);
  $('client-import').disabled=!!(busy||clientFileBusy||active);
  for(const id of ['client-prepare','export-client'])$(id).disabled=!!(busy||clientFileBusy||incomplete);
  if(typeof syncProfileControls==='function')syncProfileControls();
 }
 function renderClientStatus(client){
  clientImported=!!client?.imported;spellComparison=client?.spell_test||{};
- $('client-status').textContent=clientImported?client.files+' entries · '+bytes(client.bytes)+' extracted. '+(activeProfile==='traditional'?'Clean Traditional client uses Wine’s built-in DirectInput.':client.dinput8_present?'dinput8.dll is present.':'dinput8.dll was not found beside eqgame.exe.'):'No client imported.';
+ $('client-status').textContent=clientImported?client.files+' entries · '+bytes(client.bytes)+' extracted. '+(activeProfile==='takp'?(client.prepared?'TAKP patches and local login settings prepared.':'Prepare this TAKP client to install the supplied patches and login settings.'):activeProfile==='traditional'?'Clean Traditional client uses Wine’s built-in DirectInput.':client.dinput8_present?'dinput8.dll is present.':'dinput8.dll was not found beside eqgame.exe.'):'No client imported.';
  $('spell-test-status').textContent=spellComparison.error|| (spellComparison.state==='applied'?
   'Compatibility on · '+(spellComparison.excluded_count??spellComparison.excluded_ids.length)+' IDs excluded · '+spellComparison.filtered_rows+' rows in each folder. Future exports stay filtered. Latest full table retained for Restore.':
   ['applying','restoring'].includes(spellComparison.state)?'File update incomplete. Use Restore full spell files before launching.':
@@ -125,11 +125,14 @@ async function clientRuntimeState(){
  $('client-directx-status').textContent=s.directx_installed?'DirectX model helpers installed.':'Install the DirectX helpers to enable the legacy character animation and model functions.';
  graphicsControls();
  const launch=s.launch;
- const dllState=launch?.native_loaded?'Native dinput8.dll load confirmed. '+(launch.system_dinput8_loaded?'Wine system DirectInput loaded.':'System DirectInput load not yet confirmed.'):
+ const dllState=activeProfile==='takp'?(launch?.takp_patch_modules_loaded?'TAKP eqw, eqgame and d3d8 module loads confirmed.':'TAKP patch modules requested; load not yet confirmed.'):launch?.native_loaded?'Native dinput8.dll load confirmed. '+(launch.system_dinput8_loaded?'Wine system DirectInput loaded.':'System DirectInput load not yet confirmed.'):
   launch?.native_dinput8_requested?'Native dinput8.dll requested; load not yet confirmed.':'Built-in dinput8 comparison mode.';
  $('client-launch-status').textContent=launch?.error?launch.error:s.alive?
-  (launch?.phase||'Starting').replaceAll('_',' ')+' · '+(launch?.renderer||'Checking graphics')+' · '+(launch?.turnip_driver_requested?'Turnip '+launch.turnip_driver_requested+' · ':'')+(launch?.dxvk_loaded?'DXVK loaded · ':'')+(launch?.cpu_profile||'balanced')+' CPU · '+(launch?.runtime_acceleration_observed?'accelerated runtime':launch?.runtime_acceleration==='compatibility'?'compatibility runtime':'checking runtime')+' · '+(launch?.mode==='desktop'?'Wine desktop test.':dllState)+' '+(launch?.diagnostic_logging?'Verbose diagnostics enabled; launch may be much slower.':'Normal logging.')+' '+(launch?.sound_diagnostics?'Sound diagnostics enabled. ':'')+' '+(launch?.mesa_glthread_requested?(launch?.mesa_glthread_observed?'OpenGL worker observed. ':'OpenGL worker requested; not yet observed. '):'')+' '+(launch?.native_d3dx_requested?'Native model libraries loaded: '+Object.values(launch.model_libraries_loaded||{}).filter(v=>v==='native').length+'/2.':''):
-  'Client stopped. '+(launch?.native_loaded?'Last session confirmed native dinput8.dll loading.':'');
+  (launch?.phase||'Starting').replaceAll('_',' ')+' · '+(launch?.renderer||'Checking graphics')+' · '+(launch?.turnip_driver_requested?'Turnip '+launch.turnip_driver_requested+' · ':'')+(launch?.dxvk_loaded?'DXVK loaded · ':'')+(launch?.cpu_profile||'balanced')+' CPU · '+(launch?.runtime_acceleration_observed?'accelerated runtime':launch?.runtime_acceleration==='compatibility'?'compatibility runtime':'checking runtime')+' · '+(launch?.mode==='desktop'?'Wine desktop test.':dllState)+' '+(launch?.diagnostic_logging?'Verbose diagnostics enabled; launch may be much slower.':'Normal logging.')+' '+(launch?.sound_diagnostics?'Sound diagnostics enabled. ':'')+' '+(launch?.mesa_glthread_requested?(launch?.mesa_glthread_observed?'OpenGL worker observed. ':'OpenGL worker requested; not yet observed. '):'')+' '+(launch?.native_d3dx_requested?'Native model libraries loaded: '+Object.values(launch.model_libraries_loaded||{}).filter(v=>v==='native').length+'/'+(activeProfile==='takp'?1:2)+'.':''):
+  'Client stopped. '+(activeProfile==='takp'?(launch?.takp_patch_modules_loaded?'Last session confirmed the TAKP patch modules loading.':''):launch?.native_loaded?'Last session confirmed native dinput8.dll loading.':'');
+ if(activeProfile==='takp'&&s.alive&&launch?.mode!=='desktop'){
+  $('client-launch-status').textContent+=' D3DX9_43: '+(launch?.takp_libraries_loaded?.['d3dx9_43.dll']==='native'?'native load confirmed.':'load not yet confirmed.');
+ }
  const cameraNote={enabled:activeProfile==='traditional'?'Traditional camera-only adapter enabled; original DirectInput is restored on stop. Activity is recorded in client-camera.log.':'Camera-only recentering requested; activity is recorded in client-camera.log.',needs_dll:'Camera recentering inactive: compile and deploy dinput8.dll with this app, then relaunch.',unsupported_executable:'Camera recentering inactive: this executable has not been verified. Normal mouse movement is retained.'}[launch?.camera_mouse];
  if(cameraNote)$('client-launch-status').textContent+=' '+cameraNote;
  if(launch?.boat_mode==='profile')$('client-launch-status').textContent+=' Boat diagnostics active; select the ship, test boarding and riding, then export logs.';
@@ -149,7 +152,7 @@ async function clientRuntimeState(){
 const launchOptions=mode=>({mode,name_sky_compatibility:$('client-name-sky').checked,boat_mode:$('client-boats').value,particle_mode:$('client-particles').value,reduce_load_pauses:$('client-load-pauses').checked,fast_spell_parse:$('client-fast-spells').checked,mouse_warp:$('client-mouse-warp').checked,dxvk_hud:$('client-dxvk-hud').checked,presentation_mode:$('client-presentation').value,display_fps:Number($('client-display-fps').value),turnip_driver:$('client-turnip-driver').value,sound_diagnostics:$('client-sound-diagnostics').checked,audio:$('client-audio').checked,npc_rendering:$('client-npc-rendering').value,renderer:$('client-renderer').value,cpu_affinity:$('client-cpu-affinity').value,graphics_threading:$('client-graphics-threading').value,cpu_profile:$('client-cpu-profile').value,runtime_mode:$('client-runtime-mode').value,resolution:$('client-resolution').value,fullscreen:mode==='client'&&$('client-fullscreen').checked,native_dinput8:$('client-native-dll').checked,diagnostic_logging:$('client-diagnostics').checked,native_d3dx:mode==='client'&&$('client-native-models').checked});
 action('client-runtime-online',async()=>{notice('Downloading the client runtime…');await api('client_runtime_online');await clientRuntimeState();notice('Client runtime installed. Try Wine desktop first.');});
 action('client-runtime-offline',async()=>{await api('pick',{kind:'client-runtime'});await clientRuntimeState();notice('Client runtime installed.');});
-action('client-directx-online',async()=>{notice('Downloading Microsoft DirectX model helpers…');await api('client_directx_online');await clientRuntimeState();notice('DirectX model helpers installed. Launch ROF2.');});
+action('client-directx-online',async()=>{notice('Downloading Microsoft DirectX model helpers…');await api('client_directx_online');await clientRuntimeState();notice('DirectX model helpers installed. '+(activeProfile==='takp'?'Launch TAKP.':'Launch ROF2.'));});
 action('client-directx-offline',async()=>{await api('pick',{kind:'client-directx'});await clientRuntimeState();notice('DirectX model helpers installed.');});
 action('spell-test-apply',()=>job('apply_spell_test'));
 action('spell-test-restore',()=>job('restore_spell_test'));

@@ -9,6 +9,7 @@ public final class DirectXHostTest {
         File log=new File(target.getParentFile(),"client-directx-test.log");
         DirectXInstaller.install(archive,target,extractor,log);
         if(!DirectXInstaller.installed(target))throw new AssertionError("No model helpers");
+        if(!DirectXInstaller.installedTakp(target))throw new AssertionError("No TAKP D3DX9_43 helper");
         Map<String,String> hashes=new HashMap<>();
         for(String name:DirectXInstaller.DLLS) {
             File dll=new File(target,name);DirectXInstaller.verifyPe32(dll);
