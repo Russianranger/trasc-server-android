@@ -419,6 +419,16 @@ def require_client_data(engine):
     verify_database(engine)
 
 
+def enable_spawn_logging(engine):
+    """General spawn/send diagnostics; leave higher verbosity levels intact."""
+    _require(engine)
+    try:
+        engine.mysql('UPDATE logsys_categories SET log_to_file=GREATEST(log_to_file,1) '
+                     'WHERE log_category_id IN (15,23);')
+    except Exception:
+        engine.log('TAKP spawn diagnostics unavailable; server startup continues.')
+
+
 def start(engine, args):
     _require(engine)
     if engine.server_running():
@@ -431,6 +441,7 @@ def start(engine, args):
         raise ValueError('Import TAKP quests and maps before starting')
     write_config(engine)
     engine.mysql("INSERT INTO launcher (name,dynamics) VALUES ('takp',%d) ON DUPLICATE KEY UPDATE dynamics=VALUES(dynamics);" % int(engine.config['workers']))
+    enable_spawn_logging(engine)
     try:
         runtime = engine.work / 'server'
         engine.run([runtime / 'bin/shared_memory'], cwd=runtime, timeout=600)

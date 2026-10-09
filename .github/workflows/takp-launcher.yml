@@ -111,24 +111,24 @@ jobs:
         id: baseline-cache
         with:
           path: runtime-work/baseline/
-          key: takp-native-baseline-0.6.17-93a632cfd713a64cd23a8a8d27f37ed9fea1f4acc97178c40d45c1fb071fe776
-      - name: Fetch the immutable 0.6.17 release assets
+          key: takp-native-baseline-0.6.18-223b79712fbca7187cb078c279b4c6cbaf413667aec7fc2863ed675c83e81799
+      - name: Fetch the immutable 0.6.18 release assets
         if: steps.baseline-cache.outputs.cache-hit != 'true'
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
           mkdir -p runtime-work/baseline dist
-          gh api repos/Russianranger/trasc-server-android/releases/assets/626146940 -H 'Accept: application/octet-stream' > runtime-work/baseline/base.apk
-          gh api repos/Russianranger/trasc-server-android/releases/assets/626146936 -H 'Accept: application/octet-stream' > runtime-work/baseline/launcher-sources.tar.gz
-      - name: Reuse the exact published 0.6.17 native launcher payload
+          gh api repos/Russianranger/trasc-server-android/releases/assets/626334127 -H 'Accept: application/octet-stream' > runtime-work/baseline/base.apk
+          gh api repos/Russianranger/trasc-server-android/releases/assets/626334122 -H 'Accept: application/octet-stream' > runtime-work/baseline/launcher-sources.tar.gz
+      - name: Reuse the exact published 0.6.18 native launcher payload
         run: |
-          echo 'f02f5d1d24d97906102bc79a6c7a4a41c61de11183606e9d4f2c897444bf4457  runtime-work/baseline/launcher-sources.tar.gz' | sha256sum --check
-          python3 scripts/reuse-launcher-native.py extract --apk runtime-work/baseline/base.apk --receipt dist/native-reuse.json --expected-sha 93a632cfd713a64cd23a8a8d27f37ed9fea1f4acc97178c40d45c1fb071fe776 --baseline-version 0.6.17 --include-camera
+          echo '3f1224aaea65d8cd11b2bbcb6577b8084fa90d8e91f81f86ef02e6732828fb47  runtime-work/baseline/launcher-sources.tar.gz' | sha256sum --check
+          python3 scripts/reuse-launcher-native.py extract --apk runtime-work/baseline/base.apk --receipt dist/native-reuse.json --expected-sha 223b79712fbca7187cb078c279b4c6cbaf413667aec7fc2863ed675c83e81799 --baseline-version 0.6.18 --include-camera
       - uses: actions/cache/save@v4
         if: steps.baseline-cache.outputs.cache-hit != 'true'
         with:
           path: runtime-work/baseline/
-          key: takp-native-baseline-0.6.17-93a632cfd713a64cd23a8a8d27f37ed9fea1f4acc97178c40d45c1fb071fe776
+          key: takp-native-baseline-0.6.18-223b79712fbca7187cb078c279b4c6cbaf413667aec7fc2863ed675c83e81799
       - name: Install host regression dependencies
         run: |
           sudo apt-get update
@@ -149,17 +149,17 @@ jobs:
         run: |
           cp app/build/outputs/apk/debug/app-debug.apk dist/trasc-server-android-preview.apk
           mkdir -p runtime-work/source-bundle/launcher-source
-          cp runtime-work/baseline/launcher-sources.tar.gz runtime-work/source-bundle/launcher-source/native-sources-0.6.17.tar.gz
-          git archive --format=tar.gz HEAD > runtime-work/source-bundle/launcher-source/launcher-code-0.6.18.tar.gz
+          cp runtime-work/baseline/launcher-sources.tar.gz runtime-work/source-bundle/launcher-source/native-sources-0.6.18.tar.gz
+          git archive --format=tar.gz HEAD > runtime-work/source-bundle/launcher-source/launcher-code-0.6.19.tar.gz
           cp dist/native-reuse.json backend-assets/traditional-camera-bundle.json THIRD_PARTY_NOTICES.md runtime-work/source-bundle/launcher-source/
           tar -czf dist/launcher-sources.tar.gz -C runtime-work/source-bundle launcher-source
           python3 - <<'PY'
           import hashlib,json,os,pathlib
           p=pathlib.Path('dist/trasc-server-android-preview.apk')
           manifest={'commit':os.environ['GITHUB_SHA'],'sha256':hashlib.file_digest(p.open('rb'),'sha256').hexdigest(),
-            'file':p.name,'version':'0.6.18','version_code':67,'application_id':'io.github.russianranger.trasc.preview',
+            'file':p.name,'version':'0.6.19','version_code':68,'application_id':'io.github.russianranger.trasc.preview',
             'signing_certificate_sha256':pathlib.Path('docs/preview-signing.sha256').read_text().strip(),
-            'build_run':int(os.environ['GITHUB_RUN_ID']),'native_payload_reused_from':'0.6.17',
+            'build_run':int(os.environ['GITHUB_RUN_ID']),'native_payload_reused_from':'0.6.18',
             'native_reuse_manifest_sha256':hashlib.sha256(pathlib.Path('dist/native-reuse.json').read_bytes()).hexdigest(),
             'traditional_camera_adapter_sha256':hashlib.sha256(pathlib.Path('backend-assets/trasc-camera-dinput8.dll').read_bytes()).hexdigest(),
             'source_archive_sha256':hashlib.file_digest(pathlib.Path('dist/launcher-sources.tar.gz').open('rb'),'sha256').hexdigest()}

@@ -45,6 +45,19 @@ def logs(engine):
     return '\n'.join(ANSI.sub('', path.read_text(errors='replace')) for path in paths if path.is_file())
 
 
+def npc_spawn_ids(log_root, zone):
+    """Creation events after AddNPC, rather than spawnentry database row counts."""
+    found = set()
+    # General Spawns is enabled for file logging, without changing console
+    # verbosity. File log lines have no zone suffix; their filename scopes them.
+    for path in Path(log_root).rglob(zone + '_port_*.log'):
+        for line in ANSI.sub('', path.read_text(errors='replace')).splitlines():
+            match = re.search(r'Spawn2 \[(\d+)[^]]*\].*\bspawned \[', line)
+            if match:
+                found.add(int(match[1]))
+    return found
+
+
 def wait_for(engine, predicate, description, seconds=120):
     deadline = time.monotonic() + seconds
     output = ''
@@ -82,10 +95,11 @@ def qualify(args):
         report['checks']['complete_pinned_source_and_vendored_dependencies'] = True
         name = archive_tree(args.quests, engine.work / 'incoming/quests.zip')
         engine.dispatch('import_content', {'kind': 'quests', 'file': name})
-        maps = [path for path in args.maps.iterdir() if path.name.startswith('qeynos.')
+        maps = [path for path in args.maps.iterdir() if path.name.startswith(('qeynos.', 'paineel.'))
                 or path.name.startswith(('README', 'LICENSE'))]
-        if not any(path.suffix == '.map' for path in maps):
-            raise RuntimeError('Pinned map fixture lacks Qeynos')
+        for zone_name in ('qeynos', 'paineel'):
+            if not any(path.name == zone_name + '.map' for path in maps):
+                raise RuntimeError('Pinned map fixture lacks ' + zone_name)
         name = archive_tree(args.maps, engine.work / 'incoming/maps.zip', maps)
         engine.import_maps({'file': name})
         engine.sync_content({})
@@ -141,6 +155,31 @@ def qualify(args):
         if re.search(r'(?:Error\s+(?:10\d\d|11\d\d)|Error (?:10\d\d|11\d\d):|Unknown column|Table .*doesn.t exist)', output):
             raise RuntimeError('TAKP startup encountered a database schema error')
         report['checks']['qeynos_zone_map_lua_boot_and_no_sql_schema_errors'] = True
+        zone.terminate()
+        zone.wait(timeout=30)
+        zone = None
+        zone_log.close()
+        zone_log = None
+        # Qualify the reported starting zone using actual NPC creation events.
+        # This does not establish client visibility or count entities later.
+        expected_spawns = {int(row[0]) for row in takp_runtime._rows(engine,
+            "SELECT id FROM spawn2 WHERE zone='paineel' AND enabled=1;")}
+        if len(expected_spawns) != 156:
+            raise RuntimeError('Pinned Paineel fixture does not contain 156 enabled spawn points')
+        zone_log = open(engine.work / 'logs/paineel-probe.log', 'wb')
+        zone = subprocess.Popen([str(engine.work / 'server/bin/zone'), 'paineel:7118'],
+                                cwd=engine.work / 'server', stdin=subprocess.DEVNULL,
+                                stdout=zone_log, stderr=zone_log, start_new_session=True)
+        output = wait_for(engine, lambda output: 'Zone booted successfully zone_id [75]' in output
+                         and expected_spawns <= npc_spawn_ids(engine.work / 'server/logs', 'paineel'),
+                         'Paineel boot with pinned content and creation of all 156 seeded NPCs')
+        if zone.poll() is not None:
+            raise RuntimeError('Paineel stopped after NPC creation')
+        if re.search(r'(?:Unknown column|Table .*doesn.t exist|yeilded an invalid NPC type|'
+                     r'Unable to locate spawn group|not spawning|SIGSEGV|print_trace|Fatal error)', output):
+            raise RuntimeError('Paineel encountered a schema, NPC creation or crash error')
+        report['checks']['paineel_zone_boot_with_pinned_content_and_all_156_seeded_npc_creation_events'] = True
+        report['paineel_seeded_npc_creation_count'] = len(expected_spawns)
         exported = engine.export_client({})
         with zipfile.ZipFile(engine.work / exported['file']) as archive:
             if set(archive.namelist()) != set(takp_runtime.CLIENT_FILES) | {'client-data-export.json'}:

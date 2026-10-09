@@ -10,12 +10,17 @@ final class DisplayInput {
         default boolean buttons(int buttons){return false;}
     }
     private final Sink sink;
+    private final boolean takpCamera;
+    // The December 2002 client needs less camera motion than the RoF2/menu
+    // pointer. Keep its normal cursor speed while making held RMB look usable.
+    private static final float TAKP_CAMERA_GAIN=.15f;
     private final Map<String,Integer> keys=new HashMap<>(),buttons=new HashMap<>();
     private final Map<Integer,Integer> keyCounts=new HashMap<>();
     private float x=400,y=300;
     private int width=800,height=600;
     private float remainderX,remainderY;
-    DisplayInput(Sink sink){this.sink=sink;}
+    DisplayInput(Sink sink){this(sink,"custom");}
+    DisplayInput(Sink sink,String profile){this.sink=sink;takpCamera="takp".equals(profile);}
     void size(int w,int h){width=w;height=h;x=Math.min(x,w-1);y=Math.min(y,h-1);}
     static int symbol(String action) {
         if(action.matches("Key[A-Z]"))return action.charAt(3)+32;
@@ -47,10 +52,11 @@ final class DisplayInput {
         }
     }
     private int mask(){int mask=0;for(int button:buttons.values())mask|=button;return mask;}
-    void mouse(String source,int button,boolean down){if(down)buttons.put(source,button);else buttons.remove(source);sendPointer(mask());}
+    void mouse(String source,int button,boolean down){int previous=mask();if(down)buttons.put(source,button);else buttons.remove(source);int next=mask();if(takpCamera&&((previous^next)&4)!=0)remainderX=remainderY=0;sendPointer(next);}
     void move(float dx,float dy){
-        float tx=remainderX+dx,ty=remainderY+dy;int ix=(int)tx,iy=(int)ty;
-        if(sink.relative(ix,iy,mask())){remainderX=tx-ix;remainderY=ty-iy;x=Math.max(0,Math.min(width-1,x+dx));y=Math.max(0,Math.min(height-1,y+dy));}
+        int buttons=mask();float gain=takpCamera&&(buttons&4)!=0?TAKP_CAMERA_GAIN:1;
+        float tx=remainderX+dx*gain,ty=remainderY+dy*gain;int ix=(int)tx,iy=(int)ty;
+        if(sink.relative(ix,iy,buttons)){remainderX=tx-ix;remainderY=ty-iy;x=Math.max(0,Math.min(width-1,x+dx*gain));y=Math.max(0,Math.min(height-1,y+dy*gain));}
         else{remainderX=remainderY=0;position(x+dx,y+dy);}
     }
     void position(float px,float py){x=Math.max(0,Math.min(width-1,px));y=Math.max(0,Math.min(height-1,py));sink.pointer(Math.round(x),Math.round(y),mask());}

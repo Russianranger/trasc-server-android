@@ -231,7 +231,7 @@ public final class ClientActivity extends Activity {
             public void pointer(int x,int y,int buttons){if(!sendRelative(0,x,y,buttons))send(r->r.pointer(x,y,buttons));}
             public boolean relative(int dx,int dy,int buttons){return sendRelative(1,dx,dy,buttons);}
             public boolean buttons(int buttons){return sendRelative(2,0,0,buttons);}
-        });
+        },runtime.server.profiles.current());
         interface Send {void write(RfbConnection connection)throws IOException;}
         ClientView(){super(ClientActivity.this);setFocusable(true);setFocusableInTouchMode(true);}
         void send(Send send){if(!closed)writer.execute(()->{try{RfbConnection r=connection;if(r!=null)send.write(r);}catch(IOException e){failure(e);}});}
