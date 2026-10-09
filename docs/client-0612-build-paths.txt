@@ -26,4 +26,5 @@ tests/java/io/github/russianranger/trasc/ClientProfilePolicyHostTest.java
 tests/test_client_render_assets.py
 tests/test_traditional_camera.py
 tests/traditional_camera_proxy.cpp
+tests/ui_management.cjs
 tests/ui_profiles.cjs
