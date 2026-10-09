@@ -17,7 +17,7 @@ function renderProfile(n){
    $('runtime-online').textContent='Download / refresh TAKP build runtime';$('build-jobs').value='1';
    for(const option of $('build-jobs').options){option.disabled=Number(option.value)>2;if(option.value==='2')option.textContent='2 · more memory required';}
    $('login-endpoint-label').textContent='TAKP login endpoint · UDP';
-   $('client-export-help').textContent='Generate matching TAKP spells and skill caps and copy both files to the imported client root, with backups.';
+   $('client-export-help').textContent='Copy the server’s spells_us.txt export and skill caps to the imported client root, with backups. The client’s original spells_en.txt stays unchanged for login compatibility.';
    $('client-export-files').replaceChildren(...['spells_us.txt','SkillCaps.txt'].map(name=>{const li=document.createElement('li');li.textContent=name;return li;}));
    $('client-preparation-help').textContent='Prepare exports and syncs TAKP’s two data files, writes its local eqhost.txt, installs the supplied client patches and applies display settings. Open the server runtime for Prepare and start the server before signing in. Android Back returns here while the client stays open. Saved controller bindings and the display Keyboard remain available. Wine prefix recovery preserves the previous prefix before opening a fresh desktop.';
    $('client-import-title').textContent='Import your TAKP client';$('client-launch').textContent='Start TAKP';
