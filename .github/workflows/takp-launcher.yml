@@ -51,6 +51,24 @@ jobs:
           PY
               python3 /tests/integration_takp_runtime.py --work /work --source /source --quests /fixtures/quests --maps /fixtures/maps --output /evidence/takp-runtime.json --jobs 2
             ' 2>&1 | tee dist/takp/qualification.log
+      - name: Restore runner ownership of generated qualification evidence
+        if: always()
+        run: |
+          # The disposable Docker fixture writes some logs/receipts as root with
+          # mode 0600. Retain their modes while allowing the runner to upload them.
+          task_ci_owner="$(id -u):$(id -g)"
+          for directory in dist/takp runtime-work/takp-work/logs; do
+            if [[ -d "$directory" ]]; then
+              sudo chown -R --no-dereference "$task_ci_owner" "$directory"
+            fi
+          done
+          shopt -s nullglob
+          for receipt in runtime-work/takp-work/builds/*/CMakeCache.txt \
+                         runtime-work/takp-work/builds/*/compile_commands.json \
+                         runtime-work/takp-work/builds/*/*.ldd.txt \
+                         runtime-work/takp-work/server/bin*/build-info.json; do
+            sudo chown --no-dereference "$task_ci_owner" "$receipt" "$(dirname "$receipt")"
+          done
       - uses: actions/upload-artifact@v4
         if: always()
         with:
