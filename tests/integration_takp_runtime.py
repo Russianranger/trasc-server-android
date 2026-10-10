@@ -23,6 +23,7 @@ sys.path.insert(0, str(Path(__file__).resolve().parents[1] / 'backend'))
 from engine import Engine, atomic_json
 import takp_build
 import takp_runtime
+from takp_spawn_wire import qualify_spawn_wire
 
 ANSI = re.compile(r'\x1b\[[0-?]*[ -/]*[@-~]')
 FIXTURE_USER = 'takpfixture'
@@ -106,6 +107,10 @@ def qualify(args):
         report['checks']['takp_quests_flat_maps_and_opcodes'] = True
         engine.build({'jobs': args.jobs})
         report['checks']['native_production_build_and_nine_elf_dependency_checks'] = True
+        report['spawn_wire'] = qualify_spawn_wire(
+            engine.work / ('builds/takp-' + takp_build.REVISION[:12]),
+            engine.source_root(), args.output.parent / 'spawn-wire')
+        report['checks']['native_mac_spawn_encryption_opcode_and_literal_224_byte_client_layout'] = True
         database = engine.dispatch('takp_initialize_database', {})
         active_database = database['database']
         report['database'] = active_database

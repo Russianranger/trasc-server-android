@@ -48,10 +48,11 @@ const server=http.createServer((req,res)=>{
   await waitIdle();
   assert(await page.locator('#start-server').isDisabled());
   assert(await page.locator('#client-stop').isDisabled(),'Stop client requires an active client runtime');
-  for(const id of ['start-server','stop-server','restart-server','client-launch','client-stop']){
+  for(const id of ['runtime-open','runtime-close','start-server','stop-server','restart-server','client-launch','client-stop']){
    assert.equal(await page.locator('#'+id).count(),1,'Each lifecycle control has a single handler target');
-   assert(await page.locator('.runtime-toolbar #'+id).isVisible(),'Server and client controls are available from every tab');
+   assert(await page.locator('.runtime-toolbar #'+id).isVisible(),'Runtime, server and client controls are available from every tab');
   }
+  for(const label of ['Runtime','Server','Client'])assert.equal(await page.getByRole('group',{name:label,exact:true}).count(),1,'Each lifecycle group has an accessible visible label');
   assert.equal(await page.locator('#client #client-launch, #client #client-stop').count(),0,'Client tab directs launch actions to the shared toolbar');
   await page.locator('#runtime-open').click();await page.waitForFunction(()=>!document.getElementById('start-server').disabled);
   await page.locator('nav [data-tab=fixes]').click();
@@ -110,7 +111,7 @@ const server=http.createServer((req,res)=>{
   for(const [label,width,height] of [['thor',1280,720],['small-landscape',854,480],['phone',393,852],['small-phone',360,740]]){
    await page.setViewportSize({width,height});await page.evaluate(()=>scrollTo(0,0));
    assert(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth+1));
-   const bar=await page.locator('.runtime-toolbar').boundingBox();assert(bar.height<height*.36,'Session toolbar leaves space to work');
+   const bar=await page.locator('.runtime-toolbar').boundingBox();assert(bar.height<height*(width<540?.40:.36),'Session toolbar leaves space to work');
    await page.screenshot({path:'ui-reports/fixes-session-'+label+'.png'});
   }
   for(const profile of ['custom','traditional','takp']){
@@ -118,20 +119,28 @@ const server=http.createServer((req,res)=>{
    await page.waitForFunction(profile=>document.body.dataset.profile===profile,profile);
    for(const theme of ['default','necromancer','monk']){
     await page.selectOption('#launcher-theme',theme);
-    for(const [width,height] of [[1280,720],[1024,600],[854,480],[393,852],[360,740]]){
+    for(const [width,height] of [[1280,720],[1024,600],[854,480],[680,480],[393,852],[360,740]]){
      await page.setViewportSize({width,height});await page.evaluate(()=>scrollTo(0,0));
      const layout=await page.evaluate(()=>{
       const box=selector=>{const r=document.querySelector(selector).getBoundingClientRect();return {left:r.left,right:r.right,top:r.top,bottom:r.bottom,width:r.width,height:r.height,center:r.left+r.width/2};};
-      return {bar:box('.runtime-toolbar'),launch:box('.launch-controls'),runtime:box('.runtime-controls'),buttons:['#start-server','#stop-server','#restart-server','#client-launch','#client-stop'].map(box),overflow:document.documentElement.scrollWidth>innerWidth+1};
+      const groups=['.runtime-controls','.server-controls','.client-controls'].map(selector=>{const style=getComputedStyle(document.querySelector(selector)),divider=getComputedStyle(document.querySelector(selector),'::before');return {...box(selector),borderTop:parseFloat(style.borderTopWidth),dividerWidth:parseFloat(divider.borderLeftWidth),dividerVisible:divider.display!=='none'};});
+      return {bar:box('.runtime-toolbar'),actions:box('.runtime-actions'),groups,buttons:['#runtime-open','#runtime-close','#start-server','#stop-server','#restart-server','#client-launch','#client-stop'].map(selector=>{const e=document.querySelector(selector);return {...box(selector),labelClipped:e.scrollWidth>e.clientWidth||e.scrollHeight>e.clientHeight};}),overflow:document.documentElement.scrollWidth>innerWidth+1};
      });
      assert(!layout.overflow,`${profile}/${theme}/${width}: toolbar does not overflow`);
-     assert(Math.abs(layout.launch.center-layout.bar.center)<1,`${profile}/${theme}/${width}: server and client launch controls are centered`);
+     assert(Math.abs(layout.actions.center-layout.bar.center)<1,`${profile}/${theme}/${width}: all lifecycle groups are centered together`);
      for(const b of layout.buttons){
-      assert(b.height>=44,`${profile}/${theme}/${width}: lifecycle controls have touch targets`);
+      assert(b.height>=44&&b.width>=44,`${profile}/${theme}/${width}: lifecycle controls have touch targets`);
+      assert.equal(b.height,layout.buttons[0].height,`${profile}/${theme}/${width}: all seven tiles have equal height`);
+      assert(!b.labelClipped,`${profile}/${theme}/${width}: stacked labels fit each tile`);
       assert(b.left>=layout.bar.left&&b.right<=layout.bar.right&&b.top>=layout.bar.top&&b.bottom<=layout.bar.bottom,`${profile}/${theme}/${width}: launch button remains inside the toolbar`);
      }
-     if(width>=1150)assert(layout.runtime.right<=layout.launch.left,`${profile}/${theme}: runtime controls do not overlap launch controls`);
-     if(theme==='monk'&&(width===1280||width===393))await page.screenshot({path:`ui-reports/runtime-launch-${profile}-${width}.png`});
+     if(width>=540){
+      for(const b of layout.buttons)assert(Math.abs(b.top-layout.buttons[0].top)<1,`${profile}/${theme}/${width}: all seven tiles line up in one row`);
+      for(let i=1;i<layout.groups.length;i++){assert(layout.groups[i-1].right<layout.groups[i].left,`${profile}/${theme}/${width}: lifecycle groups do not overlap`);assert(layout.groups[i].dividerVisible&&layout.groups[i].dividerWidth>=1,`${profile}/${theme}/${width}: visible dividers separate lifecycle groups`);}
+     }else{
+      for(let i=1;i<layout.groups.length;i++){assert(layout.groups[i-1].bottom<layout.groups[i].top,`${profile}/${theme}/${width}: narrow-screen groups remain separate aligned rows`);assert.equal(layout.groups[i].left,layout.groups[0].left);assert.equal(layout.groups[i].right,layout.groups[0].right);assert(layout.groups[i].borderTop>=1,`${profile}/${theme}/${width}: horizontal dividers separate narrow-screen groups`);}
+     }
+     if(theme==='monk'&&(width===1280||width===854||width===393))await page.screenshot({path:`ui-reports/runtime-launch-${profile}-${width}.png`});
     }
    }
    if(profile==='takp'){
@@ -140,6 +149,6 @@ const server=http.createServer((req,res)=>{
     for(const name of ['spells_us.txt','SkillCaps.txt','spells_en.txt','checksum'])assert(help.includes(name),'TAKP help distinguishes export names from the original checksum file');
    }
   }
-  assert.deepEqual(errors,[]);console.log('PASS: centered server/client toolbar across three worlds and themes, lifecycle guards, independent client status, game-process evidence, stale/error recovery and responsive layouts');
+  assert.deepEqual(errors,[]);console.log('PASS: seven aligned lifecycle tiles with labeled/divided groups across three worlds and themes, lifecycle guards, independent client status, game-process evidence, stale/error recovery and responsive layouts');
  }finally{await browser.close();server.close();}
 })().catch(e=>{console.error(e);server.close();process.exit(1);});
