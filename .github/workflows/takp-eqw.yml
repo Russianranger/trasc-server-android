@@ -1,0 +1,37 @@
+name: Build reviewed TAKP EQW camera repair
+
+on:
+  push:
+    branches: [codex/takp-eqw-0622]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  eqw:
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: microsoft/setup-msbuild@v2
+      - name: Fetch exact reviewed EQW source and apply camera-only patch
+        shell: pwsh
+        run: |
+          git clone https://github.com/CoastalRedwood/eqw_takp.git runtime-work/eqw
+          if ($LASTEXITCODE -ne 0) { throw 'EQW source clone failed' }
+          git -C runtime-work/eqw checkout 3b4d43562c9dacc89349185684bb0bf0b01f9d06
+          if ($LASTEXITCODE -ne 0) { throw 'EQW source checkout failed' }
+          python scripts/prepare-takp-eqw.py --source runtime-work/eqw
+          if ($LASTEXITCODE -ne 0) { throw 'EQW source patch verification failed' }
+      - name: Build reviewed x86 EQW helper
+        shell: pwsh
+        run: |
+          msbuild runtime-work/eqw/eqw_takp.sln /p:Configuration=Release /p:Platform=x86 /p:LanguageStandard=stdcpp20 /p:AdditionalLinkOptions="/Brepro"
+          if ($LASTEXITCODE -ne 0) { throw 'EQW camera build failed' }
+          python scripts/record-takp-eqw.py --source runtime-work/eqw --output dist/takp-eqw
+          if ($LASTEXITCODE -ne 0) { throw 'EQW camera receipt verification failed' }
+      - uses: actions/upload-artifact@v4
+        with:
+          name: takp-eqw-camera-0622
+          path: dist/takp-eqw/
+          retention-days: 14
