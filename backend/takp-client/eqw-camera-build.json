@@ -2,21 +2,31 @@
   "format": 1,
   "architecture": "x86",
   "helper": "eqw.dll",
-  "sha256": "b739dfe64b7f69be2ffebf13a1cf794bcfd9e37fe143a75134ca6359e60ef584",
-  "bytes": 86016,
+  "sha256": "c103e024f1cde7829603475e1532d3baabd0764280c63ca2797e7e72569554f4",
+  "bytes": 87552,
   "source_repository": "https://github.com/CoastalRedwood/eqw_takp",
   "source_commit": "3b4d43562c9dacc89349185684bb0bf0b01f9d06",
   "source_tag": "v1.0.2",
   "upstream_game_input_sha256": "52b450f9667530db3741a2b4ea481cc3b4bfe8b692e8c1fbb79f825863bab5f2",
-  "patched_game_input_sha256": "8b521e8086b3d8e8e7051eda011e5a60cae9b30bcbe2c39d285b788fe8910164",
-  "patch_files": {
-    "native\\takp_camera_recenter.h": "823167fd3c32ce86a50f8cedce7a6fb0eddc7acc8066396f3ceebd7bddf92dcc",
-    "scripts\\prepare-takp-eqw.py": "75811d98b90c20791233da0053cea0f908959f08604b9b52d48d7584d11604dc",
-    "scripts\\record-takp-eqw.py": "eed3bbacee747453c3a22b7ccca4dbce9f0eab09b162f58d67daaa47bf7a4c81"
+  "patched_game_input_sha256": "79f0fffbf4660c2b48ff6570415c851e89908806bfc6ab23ec1df3aaeebd92af",
+  "upstream_source_sha256": {
+    "game_input.cpp": "52b450f9667530db3741a2b4ea481cc3b4bfe8b692e8c1fbb79f825863bab5f2",
+    "game_input.h": "8de968691c4c4e687df6edab004669201c3a64ee0b4da48e235e0ec5cb6f2dd0",
+    "eq_game.cpp": "c853ba205558997d8c95623c2c406ad1e25b2f98193adc1f898d3ee794ada33f"
   },
-  "marker": "TRASC_TAKP_WINE_RECENTER_V1",
+  "patched_source_sha256": {
+    "game_input.cpp": "79f0fffbf4660c2b48ff6570415c851e89908806bfc6ab23ec1df3aaeebd92af",
+    "game_input.h": "4ff5c04b60fa42c8473472eea80666ae22217d7f28db365e93efc4824f46f1fb",
+    "eq_game.cpp": "ed4f3136d863e3868797842e2d9cd55c56109a47e45c2474e4a817569256f2cb"
+  },
+  "patch_files": {
+    "native\\takp_camera_recenter.h": "6180f25385af25bc6b5d097b36248e492041c7326cfd6fc94e1a2a2d16c245c4",
+    "scripts\\prepare-takp-eqw.py": "0019665d4c7080aaddd320a5064a7c2edb5a642f3c1a76fcbcea3e2dcf3f034d",
+    "scripts\\record-takp-eqw.py": "0f9667d731a7a970828bcf5a0739527a87182d3f66201f48f51c34bfcd93afad"
+  },
+  "marker": "TRASC_TAKP_WINE_RAW_LOOK_V2",
   "compiler": "Microsoft Visual C++ v143, Release x86",
-  "build_commit": "f8fb21396f1b28a21dd6d0ae1bc120b85b6619db",
-  "build_run": 38029612146,
+  "build_commit": "202ff0d995b45302d8cfb6a78e47ceea87a5b965",
+  "build_run": 38081609076,
   "license_sha256": "9d7bb2707921cd2717bab877f7dadd994f6fee7e3acc18a34e26a615c472df42"
 }

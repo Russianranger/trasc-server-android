@@ -2,7 +2,7 @@ name: Build reviewed TAKP EQW camera repair
 
 on:
   push:
-    branches: [codex/takp-eqw-0622]
+    branches: [codex/takp-eqw-0623]
   workflow_dispatch:
 
 permissions:
@@ -23,22 +23,22 @@ jobs:
           curl -fL --retry 3 -o runtime-work/wine.tar.xz https://github.com/Kron4ek/Wine-Builds/releases/download/10.0/wine-10.0-amd64-wow64.tar.xz
           echo 'aeebbbf239e548f0136f1cd72a2e109dd9a572a8f703da3c09fa40d74d5c255f  runtime-work/wine.tar.xz' | sha256sum --check
           tar -xJf runtime-work/wine.tar.xz --strip-components=1 -C runtime-work/wine
-      - name: Test cached-center race and repaired recentering under real Wine and Xvnc
+      - name: Test DirectInput direction and look clipping under real Wine and Xvnc
         run: |
           g++ -std=c++14 -O2 -Wall -Wextra -Werror tests/takp_camera_recenter.cpp -o runtime-work/camera-unit
           runtime-work/camera-unit
-          i686-w64-mingw32-g++ -std=c++14 -O2 -static -mwindows tests/takp_cursor_probe.cpp -o runtime-work/cursor-probe.exe
+          i686-w64-mingw32-g++ -std=c++14 -O2 -static -mwindows tests/takp_cursor_probe.cpp -o runtime-work/cursor-probe.exe -ldinput8 -ldxguid
           python3 tests/integration_takp_cursor.py --wine "$PWD/runtime-work/wine/bin/wine" --probe runtime-work/cursor-probe.exe --output dist/cursor
       - uses: actions/upload-artifact@v4
         if: always()
         with:
-          name: takp-eqw-cursor-proof-0622
+          name: takp-eqw-cursor-proof-0623
           path: dist/cursor/*.log
           retention-days: 14
       - uses: actions/upload-artifact@v4
         if: success()
         with:
-          name: takp-eqw-cursor-receipt-0622
+          name: takp-eqw-cursor-receipt-0623
           path: dist/cursor/cursor-verification.json
           retention-days: 14
   eqw:
@@ -69,6 +69,6 @@ jobs:
           if ($LASTEXITCODE -ne 0) { throw 'EQW camera receipt verification failed' }
       - uses: actions/upload-artifact@v4
         with:
-          name: takp-eqw-camera-0622
+          name: takp-eqw-camera-0623
           path: dist/takp-eqw/
           retention-days: 14

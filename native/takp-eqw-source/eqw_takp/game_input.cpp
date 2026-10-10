@@ -228,8 +228,52 @@ void SyncToWin32Cursor() {
   SetGameMousePosition(cursor.x, cursor.y);
 }
 
+// Wine 10's clipped path supplies true XI2 relative input. Keep the clip
+// state synchronized because EQW's game-input and window threads differ.
+static SRWLOCK camera_clip_lock = SRWLOCK_INIT;
+static trasc_takp_camera::LookClip camera_clip;
+bool IsWine() {
+  static const bool wine = ::GetProcAddress(::GetModuleHandleW(L"ntdll.dll"), "wine_get_version") != nullptr;
+  return wine;
+}
+bool GetCameraClip(trasc_takp_camera::Rect& value) {
+  RECT rect;
+  if (!::GetClipCursor(&rect)) return false;
+  value = {rect.left, rect.top, rect.right, rect.bottom};
+  return true;
+}
+bool SetCameraClip(const trasc_takp_camera::Rect& value) {
+  RECT rect = {value.left, value.top, value.right, value.bottom};
+  return ::ClipCursor(&rect) != 0;
+}
+void ReleaseCameraClip() {
+  if (!IsWine()) return;
+  ::AcquireSRWLockExclusive(&camera_clip_lock);
+  camera_clip.release(GetCameraClip, SetCameraClip);
+  ::ReleaseSRWLockExclusive(&camera_clip_lock);
+}
+bool HoldCameraClip(int x, int y) {
+  if (!IsWine()) return false;
+  ::AcquireSRWLockShared(&camera_clip_lock);
+  const unsigned long generation = camera_clip.generation();
+  ::ReleaseSRWLockShared(&camera_clip_lock);
+  // The game look flag can remain stale while dead/stunned/zoning. Do not
+  // reacquire after release. Wine's input query can pump window messages, so
+  // it must remain outside the clip lock; generation rejects an overtaken query.
+  const bool physical_down = (::GetAsyncKeyState(swap_mouse_buttons_ ? VK_LBUTTON : VK_RBUTTON) & 0x8000) != 0;
+  const trasc_takp_camera::Rect bounds = {game_rect_.left, game_rect_.top, game_rect_.right, game_rect_.bottom};
+  ::AcquireSRWLockExclusive(&camera_clip_lock);
+  const bool active = physical_down && ::GetForegroundWindow() == hwnd_ && !::IsIconic(hwnd_) && ::IsWindowVisible(hwnd_);
+  const bool held = active && camera_clip.hold_since(generation, x, y, bounds, GetCameraClip, SetCameraClip);
+  if (!active) camera_clip.release(GetCameraClip, SetCameraClip);
+  ::ReleaseSRWLockExclusive(&camera_clip_lock);
+  static bool announced = false;
+  if (held && !announced) { Logger::Info("%s", trasc_takp_camera::marker); announced = true; }
+  return held;
+}
+
 // Synchronizes the win32 cursor to the internal cursor position.
-void SetWin32CursorToClientPosition(POINT pt, bool force_wine_center = false) {
+void SetWin32CursorToClientPosition(POINT pt, bool camera_center = false) {
   if (IsScaledMode()) {
     pt.x = pt.x * (game_rect_.right - game_rect_.left) / game_width_;
     pt.y = pt.y * (game_rect_.bottom - game_rect_.top) / game_height_;
@@ -237,13 +281,7 @@ void SetWin32CursorToClientPosition(POINT pt, bool force_wine_center = false) {
   pt.x += game_rect_.left;
   pt.y += game_rect_.top;
 
-  static const bool wine = ::GetProcAddress(::GetModuleHandleW(L"ntdll.dll"), "wine_get_version") != nullptr;
-  if (force_wine_center && wine) {
-    static bool announced = false;
-    if (!announced) { Logger::Info("%s", trasc_takp_camera::marker); announced = true; }
-  }
-  trasc_takp_camera::center(pt.x, pt.y, game_rect_.left, game_rect_.right,
-      force_wine_center && wine, [](int x, int y) { return ::SetCursorPos(x, y); });
+  if (!camera_center || !HoldCameraClip(pt.x, pt.y)) ::SetCursorPos(pt.x, pt.y);
 }
 
 // Sets the internal cursor location and synchronizes the win32 cursor with it.
@@ -297,6 +335,7 @@ int __cdecl GetMouseDataRelHook() {
   }
 
   if (!internal_mode) {
+    ReleaseCameraClip();
     mouse_disabled = true;
     ResetMouseUpdateValues(false);  // Drains the buffers and moves the cursor off screen.
     return 0;
@@ -323,6 +362,7 @@ int __cdecl GetMouseDataRelHook() {
     SetGameMousePosition(saved_rmouse_pt_.x, saved_rmouse_pt_.y);
     SetWin32CursorToCenter();
   } else {
+    ReleaseCameraClip();
     SyncToWin32Cursor();  // Override the internal absolute cursor position with the win32 cursor value.
   }
 
@@ -336,7 +376,10 @@ void __fastcall RightMouseUpHook(void* this_ptr, int unused_edx, short x, short 
   // The clamp during mouse_look keeps the win32 cursor in the enter to avoid boundary glitching,
   // and the call above puts the game cursor in the the middle at the end, so we restore both to
   // the starting state when it exits mouse_look.
-  if (mouse_look_active && !*g_mouse_rmb_down_mouse_look) SetBothCursorsToClientPosition(saved_rmouse_pt_);
+  if (mouse_look_active && !*g_mouse_rmb_down_mouse_look) {
+    ReleaseCameraClip();
+    SetBothCursorsToClientPosition(saved_rmouse_pt_);
+  }
 }
 
 void __fastcall RightMouseDownHook(void* this_ptr, int unused_edx, short x, short y) {
@@ -377,7 +420,15 @@ void GameInput::HandleGainOfFocus() {
   GameInputInt::ResetKeyboardState(true);  // Flushes and ensures our modifier keys are up to date.
 }
 
+void GameInput::ReleaseCameraCursor(UINT message) {
+  // Respect EQW's existing physical button swap when input hooks are paused.
+  if ((message == WM_LBUTTONUP || message == WM_RBUTTONUP) &&
+      message != (GameInputInt::swap_mouse_buttons_ ? WM_LBUTTONUP : WM_RBUTTONUP)) return;
+  GameInputInt::ReleaseCameraClip();
+}
+
 void GameInput::HandleLossOfFocus() {
+  GameInputInt::ReleaseCameraClip();
   // The mouse handling hooks will handle the loss of focus.
   GameInputInt::ResetKeyboardState(false);  // But we want to wipe internal keyboard state.
 }

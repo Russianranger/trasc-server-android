@@ -217,6 +217,7 @@ HMODULE WINAPI Kernel32LoadLibraryAHook(LPCSTR lpLibFileName) {
   HMODULE hmod = hook_LoadLibrary_.original(Kernel32LoadLibraryAHook)(lpLibFileName);
   if (hmod) {
     if (!_stricmp(lpLibFileName, "eqmain.dll")) {
+      GameInput::ReleaseCameraCursor(0);  // Login takes ownership; game polling/window proc stops.
       EqMain::Initialize(hmod, hwnd_, ini_path_, eqmain_init_fn_);
     }
     if (!_stricmp(lpLibFileName, "eqgfx_dx8.dll")) {
@@ -320,6 +321,11 @@ void SetFullScreenMode(bool enable) {
 // a separate thread for the primary game processing loop, so this WndProc must be sensitive
 // to cross thread synchronization.
 LRESULT CALLBACK GameWndProc(HWND hwnd, UINT msg, WPARAM wParam, LPARAM lParam) {
+  // The game input hook can be skipped while dead/stunned/zoning. Release
+  // the Wine-only camera clip at physical release and window lifecycle events.
+  if (msg == WM_RBUTTONUP || msg == WM_LBUTTONUP || msg == WM_KILLFOCUS ||
+      (msg == WM_ACTIVATEAPP && !wParam) || (msg == WM_SIZE && wParam == SIZE_MINIMIZED) ||
+      msg == WM_CLOSE || msg == WM_DESTROY) GameInput::ReleaseCameraCursor(msg);
   bool execute_eqgame_wndproc = false;
   switch (msg) {
     // Implement a hard close to kill the client process immediately.

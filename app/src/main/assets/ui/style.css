@@ -135,3 +135,5 @@ body[data-profile=traditional][data-scene=bots]{--scene-image:url('classic-gamep
 @media(max-width:800px){.bots-layout{grid-template-columns:1fr}.bots-draft-fields{grid-template-columns:1fr 1fr}.bots-draft{padding:12px}.bots-draft-heading button{padding:10px;font-size:10px}.bots-social{padding:14px}}
 
 #bots-storage-panel[hidden],#bots-storage-preview[hidden],#bots-export-storage-backup[hidden]{display:none}#bots-storage-result{overflow-wrap:anywhere}
+
+.bots-command-list details{border:1px solid var(--line);border-radius:5px;padding:12px;margin:10px 0}.bots-command-list summary{cursor:pointer}.bots-command-list .check{align-items:flex-start;padding:10px 0;margin:0}.bots-command-list .check span{min-width:0;overflow-wrap:anywhere}.bots-command-list .check small{display:block;margin-top:3px}.bots-command-list .check input{flex-shrink:0}

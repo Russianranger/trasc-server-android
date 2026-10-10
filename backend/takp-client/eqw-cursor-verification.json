@@ -1,96 +1,324 @@
 {
   "wine": "wine-10.0",
+  "github_commit": "202ff0d995b45302d8cfb6a78e47ceea87a5b965",
+  "github_run_id": "38081609076",
+  "fixture_sha256": {
+    "tests/takp_cursor_probe.cpp": "19cd94e76531109464f255f51c244e7fcc0379ecf5fb185a03309fa4c41e7672",
+    "tests/integration_takp_cursor.py": "233bdc00d4a700b97865102000cf50a998d2f648e0e05b740e5e2d4350ead4fe",
+    "native/takp_camera_recenter.h": "6180f25385af25bc6b5d097b36248e492041c7326cfd6fc94e1a2a2d16c245c4"
+  },
   "legacy_offsets": [
     20,
     40,
     60,
     50
   ],
-  "repaired_motion": [
+  "v1_relative_comparison": [
     {
-      "delta": [
-        20,
-        10
-      ],
-      "before": [
-        420,
-        310
-      ],
-      "after": [
+      "injected": [
         400,
-        300
+        0
+      ],
+      "polled": [
+        3799,
+        0
+      ],
+      "buffered": [
+        3799,
+        0
       ]
     },
     {
-      "delta": [
-        -10,
-        -5
+      "injected": [
+        -200,
+        0
       ],
-      "before": [
-        390,
-        295
+      "polled": [
+        5531,
+        0
       ],
-      "after": [
-        400,
-        300
+      "buffered": [
+        5531,
+        0
       ]
     },
     {
-      "delta": [
-        20,
-        -10
+      "injected": [
+        0,
+        400
       ],
-      "before": [
-        420,
-        290
+      "polled": [
+        3582,
+        3534
       ],
-      "after": [
-        400,
-        300
+      "buffered": [
+        3582,
+        3534
       ]
     },
     {
-      "delta": [
-        -20,
-        10
+      "injected": [
+        0,
+        -200
       ],
-      "before": [
-        380,
-        310
+      "polled": [
+        3780,
+        3771
       ],
-      "after": [
-        400,
-        300
+      "buffered": [
+        3780,
+        3771
       ]
     },
     {
-      "delta": [
-        10,
-        20
-      ],
-      "before": [
-        410,
-        320
-      ],
-      "after": [
+      "injected": [
         400,
-        300
+        200
+      ],
+      "polled": [
+        6402,
+        3742
+      ],
+      "buffered": [
+        6402,
+        3742
       ]
     },
     {
-      "delta": [
-        -10,
-        -20
+      "injected": [
+        -200,
+        -400
       ],
-      "before": [
-        390,
-        280
+      "polled": [
+        5282,
+        1582
       ],
-      "after": [
-        400,
-        300
+      "buffered": [
+        5282,
+        1582
       ]
     }
   ],
-  "verification": "real Wine cursor-cache/Xvnc mechanism; open fixture, not actual client acceptance"
+  "repaired_relative": [
+    {
+      "injected": [
+        1000,
+        0
+      ],
+      "polled": [
+        1000,
+        0
+      ],
+      "buffered": [
+        1000,
+        0
+      ]
+    },
+    {
+      "injected": [
+        -500,
+        0
+      ],
+      "polled": [
+        -500,
+        0
+      ],
+      "buffered": [
+        -500,
+        0
+      ]
+    },
+    {
+      "injected": [
+        -1000,
+        0
+      ],
+      "polled": [
+        -1000,
+        0
+      ],
+      "buffered": [
+        -1000,
+        0
+      ]
+    },
+    {
+      "injected": [
+        500,
+        0
+      ],
+      "polled": [
+        500,
+        0
+      ],
+      "buffered": [
+        500,
+        0
+      ]
+    },
+    {
+      "injected": [
+        0,
+        1000
+      ],
+      "polled": [
+        0,
+        1000
+      ],
+      "buffered": [
+        0,
+        1000
+      ]
+    },
+    {
+      "injected": [
+        0,
+        -500
+      ],
+      "polled": [
+        0,
+        -500
+      ],
+      "buffered": [
+        0,
+        -500
+      ]
+    },
+    {
+      "injected": [
+        0,
+        -1000
+      ],
+      "polled": [
+        0,
+        -1000
+      ],
+      "buffered": [
+        0,
+        -1000
+      ]
+    },
+    {
+      "injected": [
+        0,
+        500
+      ],
+      "polled": [
+        0,
+        500
+      ],
+      "buffered": [
+        0,
+        500
+      ]
+    },
+    {
+      "injected": [
+        750,
+        -375
+      ],
+      "polled": [
+        750,
+        -375
+      ],
+      "buffered": [
+        750,
+        -375
+      ]
+    },
+    {
+      "injected": [
+        -375,
+        750
+      ],
+      "polled": [
+        -375,
+        750
+      ],
+      "buffered": [
+        -375,
+        750
+      ]
+    },
+    {
+      "injected": [
+        1000,
+        1000
+      ],
+      "polled": [
+        1000,
+        1000
+      ],
+      "buffered": [
+        1000,
+        1000
+      ]
+    },
+    {
+      "injected": [
+        -1000,
+        -1000
+      ],
+      "polled": [
+        -1000,
+        -1000
+      ],
+      "buffered": [
+        -1000,
+        -1000
+      ]
+    }
+  ],
+  "beyond_desktop": {
+    "injected": [
+      6400,
+      -6400
+    ],
+    "polled": [
+      6400,
+      -6400
+    ],
+    "buffered": [
+      6400,
+      -6400
+    ]
+  },
+  "idle_drift": [
+    0,
+    0
+  ],
+  "rmb_release_restores_clip": true,
+  "focus_restore_reenters_look": true,
+  "focus_loss_pointer_free": true,
+  "physical_release_no_reacquire": true,
+  "focus_restored_relative": {
+    "injected": [
+      -600,
+      300
+    ],
+    "polled": [
+      -600,
+      300
+    ],
+    "buffered": [
+      -600,
+      300
+    ]
+  },
+  "swapped_button_relative": {
+    "injected": [
+      300,
+      -200
+    ],
+    "polled": [
+      300,
+      -200
+    ],
+    "buffered": [
+      300,
+      -200
+    ]
+  },
+  "menu_pointer_free": true,
+  "verification": "real Wine10/Xvnc polled and buffered DirectInput; open fixture, not actual client acceptance"
 }
