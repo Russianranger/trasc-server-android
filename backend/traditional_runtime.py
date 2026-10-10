@@ -3,6 +3,7 @@
 Compilation manifests remain unchanged, including builds made with 0.6.5–0.6.7.
 This adapter validates them before activation and never runs Custom repairs.
 """
+import hashlib
 import json
 import os
 from pathlib import Path, PurePosixPath
@@ -17,6 +18,39 @@ import traditional_content as content
 
 DATABASE_VERSION = 9328
 BOTS_VERSION = 9055
+# Exact source-owned migration 9055 and repository columns at the qualified pin.
+# Its native planner checks every migration before executing 9046, which drops
+# expansion_bitmask after the planner already decided that 9055 was present.
+# A backed-up deployment may replay this single native migration; ordinary
+# startup only verifies the resulting repository contract.
+BOT_MIGRATION_9055_SHA256 = 'f068977fda01564eb2a2620d208f0abd369fc9cbfc5cf38d9db87b0fa652e85d'
+BOT_MIGRATION_9055_SQL = r'''
+ALTER TABLE `bot_data`
+	ADD COLUMN `expansion_bitmask` INT(11) NOT NULL DEFAULT '0' AFTER `corruption`;
+
+UPDATE bot_data bd
+SET bd.expansion_bitmask = COALESCE(
+    (SELECT bs.`value`
+     FROM bot_settings bs
+     WHERE bs.`setting_id` = 0
+     AND bs.`setting_type` = 0
+     AND bs.bot_id = bd.bot_id
+     ORDER BY bs.`value` DESC
+     LIMIT 1),
+
+    (SELECT rv.rule_value
+     FROM rule_values rv
+     WHERE rv.rule_name = 'Bots:BotExpansionSettings')
+);
+
+DELETE
+FROM bot_settings
+WHERE `setting_id` = 0
+AND `setting_type` = 0;
+'''
+BOT_DATA_COLUMNS = ('bot_id', 'owner_id', 'spells_id', 'name', 'last_name', 'title', 'suffix', 'zone_id', 'gender', 'race', 'class', 'level', 'deity', 'creation_day', 'last_spawn', 'time_spawned', 'size', 'face', 'hair_color', 'hair_style', 'beard', 'beard_color', 'eye_color_1', 'eye_color_2', 'drakkin_heritage', 'drakkin_tattoo', 'drakkin_details', 'ac', 'atk', 'hp', 'mana', 'str', 'sta', 'cha', 'dex', 'int', 'agi', 'wis', 'extra_haste', 'fire', 'cold', 'magic', 'poison', 'disease', 'corruption', 'expansion_bitmask')
+BOT_SETTINGS_COLUMNS = ('character_id','bot_id','stance','setting_id','setting_type','value','category_name','setting_name')
+
 # The exact shipped 0.6.21 adapter identity remains eligible for normal use.
 # It predates the optional offline bot utility, so it cannot create bots and
 # cannot serve as a newly staged/deployed build under the current recipe.
@@ -246,8 +280,134 @@ def write_config(engine):
         path.chmod(0o600)
 
 
-def qualify_database(engine, migrate=False, binary_root='server/bin', allow_pending=False):
+def _bot_repair_pending(engine):
+    path = _path(engine, 'run/traditional-bot-schema.json')
+    if not path.exists():
+        return
+    record = build._json(path)
+    if (record.get('format') != 1 or record.get('source_revision') != build.REVISION
+            or record.get('migration_sha256') != BOT_MIGRATION_9055_SHA256
+            or not isinstance(record.get('completed'), bool)):
+        raise ValueError('Invalid Traditional bot schema repair record; preserve this workspace for recovery')
+    # Successful database import/restore rotates this epoch. A journal belonging
+    # to the replaced database cannot block qualification of its replacement.
+    if (not record['completed'] and record.get('database') == engine.config['database']
+            and record.get('database_epoch') == engine.config.get('bot_database_epoch', '')):
+        raise ValueError('Traditional bot schema repair was interrupted. Restore the retained database backup before retrying: ' + str(record.get('backup', 'unknown')))
+
+
+def _fsync_directory(path):
+    descriptor = os.open(path, os.O_RDONLY | os.O_DIRECTORY)
+    try:
+        os.fsync(descriptor)
+    finally:
+        os.close(descriptor)
+
+
+def qualify_bot_schema(engine, versions, repair=False, database_backup=None, source_revision=None):
+    """Verify the pin's repository contract, with one reviewed native repair.
+
+    The production deployment caller first verifies its complete build receipt.
+    Native qualification also exercises this helper after verifying the actual
+    pristine source pin and making a real full database backup. The helper never
+    fabricates a version or takes a general-purpose table mutation argument.
+    """
+    from engine import atomic_json
+    from player_data import rows
+    if (not isinstance(versions, (tuple, list)) or len(versions) != 3
+            or any(type(version) is not int or version < 0 for version in versions)):
+        raise ValueError('Traditional bot schema versions are invalid')
+    versions = tuple(versions)
+    _bot_repair_pending(engine)
+    if versions[1] == 0:
+        return {'repaired': False, 'enabled': False}
+    if versions != (DATABASE_VERSION, BOTS_VERSION, 0):
+        raise ValueError('Traditional bot schema requires the exact qualified native database versions')
+    output = engine.mysql('SHOW COLUMNS FROM `bot_data`;').splitlines()[1:]
+    columns = {line.split('\t', 1)[0] for line in output}
+    missing = set(BOT_DATA_COLUMNS) - columns
+    repaired = False
+    marker = _path(engine, 'run/traditional-bot-schema.json')
+    if missing:
+        if missing != {'expansion_bitmask'}:
+            raise ValueError('Traditional bot_data schema mismatch: ' + ', '.join(sorted(missing)))
+        if not repair:
+            raise ValueError('Traditional bot_data is missing expansion_bitmask; deploy the current qualified build with a full database backup to replay native migration 9055')
+        if source_revision != build.REVISION:
+            raise ValueError('Native bot migration 9055 repair requires the exact qualified Traditional source pin')
+        if hashlib.sha256(BOT_MIGRATION_9055_SQL.encode()).hexdigest() != BOT_MIGRATION_9055_SHA256:
+            raise ValueError('The bundled native bot migration 9055 changed')
+        if not isinstance(database_backup, str):
+            raise ValueError('A completed full database backup is required before native bot migration 9055 repair')
+        backup = _path(engine, database_backup)
+        if (not backup.is_relative_to(engine.work / 'backups') or not backup.is_file()
+                or backup.stat().st_size == 0):
+            raise ValueError('The completed native bot migration 9055 backup is missing or invalid')
+        settings = {line.split('\t', 1)[0] for line in engine.mysql('SHOW COLUMNS FROM `bot_settings`;').splitlines()[1:]}
+        if not set(BOT_SETTINGS_COLUMNS) <= settings:
+            raise ValueError('Native bot migration 9055 repair requires the qualified bot_settings schema')
+        rule_count = rows(engine, "SELECT COUNT(*) FROM rule_values WHERE rule_name='Bots:BotExpansionSettings';")
+        if len(rule_count) != 1 or len(rule_count[0]) != 1 or int(rule_count[0][0]) > 1:
+            raise ValueError('Native bot migration 9055 requires an unambiguous BotExpansionSettings rule; no schema was changed')
+        # Native 9055 uses a scalar rule subquery without LIMIT, and stores its
+        # COALESCE result in a non-null signed INT. Check those exact proposed
+        # values before reaching the separately committing ADD COLUMN.
+        invalid_values = rows(engine, "SELECT COUNT(*) FROM (SELECT COALESCE("
+            "(SELECT bs.value FROM bot_settings bs WHERE bs.setting_id=0 AND bs.setting_type=0 "
+            "AND bs.bot_id=bd.bot_id ORDER BY bs.value DESC LIMIT 1),"
+            "(SELECT rv.rule_value FROM rule_values rv WHERE rv.rule_name='Bots:BotExpansionSettings')) AS bitmask "
+            "FROM bot_data bd) proposed WHERE bitmask IS NULL OR bitmask NOT REGEXP '^-?[0-9]+$' "
+            "OR CAST(bitmask AS DECIMAL(65,0)) NOT BETWEEN -2147483648 AND 2147483647;")
+        if invalid_values != [['0']]:
+            raise ValueError('Native bot migration 9055 has a missing, NULL or invalid expansion value; no schema was changed')
+        import bots
+        bots.require_stopped(engine)
+        record = {'format': 1, 'source_revision': source_revision,
+                  'migration_sha256': BOT_MIGRATION_9055_SHA256,
+                  'database': engine.config['database'],
+                  'database_epoch': engine.config.get('bot_database_epoch', ''),
+                  'backup': database_backup, 'started': time.time(), 'completed': False}
+        # A completed gzip stream and atomic rename are insufficient for power
+        # loss durability. The backup and fail-closed journal must be on disk
+        # before the native migration's separately committing DDL begins.
+        with backup.open('rb') as saved:
+            os.fsync(saved.fileno())
+        _fsync_directory(backup.parent)
+        atomic_json(marker, record)
+        _fsync_directory(marker.parent)
+        try:
+            # Byte-for-byte SQL from the pin's own manifest, including its data
+            # transfer and removal of the obsolete bot_settings rows. DDL commits
+            # separately; the durable record must survive any partial failure.
+            engine.mysql(BOT_MIGRATION_9055_SQL, timeout=300)
+            columns = {line.split('\t', 1)[0] for line in engine.mysql('SHOW COLUMNS FROM `bot_data`;').splitlines()[1:]}
+            if not set(BOT_DATA_COLUMNS) <= columns:
+                raise ValueError('Native bot migration 9055 did not restore the required repository columns')
+            engine.mysql('SELECT ' + ','.join('`' + c + '`' for c in BOT_DATA_COLUMNS) + ' FROM `bot_data` LIMIT 0;')
+        except BaseException:
+            engine.log('Native bot migration 9055 did not finish; retained full database backup: ' + database_backup)
+            raise
+        try:
+            atomic_json(marker, dict(record, completed=True, finished=time.time()))
+            _fsync_directory(marker.parent)
+        except BaseException:
+            # Keep subsequent qualification closed if completion durability was
+            # not established. The original pending journal was already synced.
+            try:
+                atomic_json(marker, record)
+                _fsync_directory(marker.parent)
+            except BaseException:
+                engine.log('Traditional bot repair completion could not be made durable; preserve the retained backup and repair journal')
+            raise
+        repaired = True
+    if not repaired:
+        engine.mysql('SELECT ' + ','.join('`' + c + '`' for c in BOT_DATA_COLUMNS) + ' FROM `bot_data` LIMIT 0;')
+    return {'repaired': repaired, 'enabled': True, 'migration_sha256': BOT_MIGRATION_9055_SHA256}
+
+
+def qualify_database(engine, migrate=False, binary_root='server/bin', allow_pending=False, database_backup=None):
     engine.ensure_db()
+    _bot_repair_pending(engine)
     tables = set(engine.mysql('SHOW TABLES;').splitlines())
     missing = sorted(set(SCHEMA) - tables)
     if missing:
@@ -272,6 +432,14 @@ def qualify_database(engine, migrate=False, binary_root='server/bin', allow_pend
         versions = tuple(int(value) for value in rows[0].split('\t')) if len(rows) == 1 else ()
     if not allow_pending and (len(versions) != 3 or versions[0] != DATABASE_VERSION or versions[1] not in (0, BOTS_VERSION) or versions[2] != 0):
         raise ValueError('Traditional database migrations did not reach the qualified version. Restore the retained database backup if needed; see operation.log.')
+    if not allow_pending:
+        revision = None
+        if migrate and versions[1] == BOTS_VERSION:
+            info = _record(engine, binary_root)
+            if info.get('recipe_identity') != build._recipe_identity():
+                raise ValueError('Native bot schema repair requires the current qualified Traditional build')
+            revision = build.REVISION
+        qualify_bot_schema(engine, versions, repair=migrate, database_backup=database_backup, source_revision=revision)
     # Never rewrite an imported password or player row. The local login server
     # creates new accounts on their first successful credential handshake.
     if migrate:
@@ -364,7 +532,7 @@ def deploy(engine, args):
     atomic_json(journal, record)
     try:
         write_config(engine)
-        schema = qualify_database(engine, migrate=True, binary_root='server/bin.staged')
+        schema = qualify_database(engine, migrate=True, binary_root='server/bin.staged', database_backup=database_backup)
         engine.check_cancel()
         manifest_path = _path(engine, 'server/bin.staged/deployment.json')
         _path(engine, 'server/bin.staged/deployment.json.new')

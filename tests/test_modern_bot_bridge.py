@@ -104,6 +104,70 @@ class ModernBotBridgeTests(unittest.TestCase):
         with self.assertRaises(ValueError):
             bridge.digest(path)
 
+    def test_repository_schema_gates_missing_native_columns(self):
+        custom = {'profile': 'custom', 'shape': {'column_names': {'bot_data': bridge.BOT_DATA_COLUMNS}}}
+        bridge._database_schema(custom)
+        traditional = dict(custom, profile='traditional')
+        with self.assertRaisesRegex(ValueError, 'expansion_bitmask'):
+            bridge._database_schema(traditional)
+        traditional['shape'] = {'column_names': {'bot_data': bridge.bot_data_columns('traditional')}}
+        bridge._database_schema(traditional)
+
+    def test_pending_traditional_repair_blocks_capability_and_creation(self):
+        ctx = {'profile': 'traditional', 'shape': {'column_names': {
+            'bot_data': bridge.bot_data_columns('traditional')}}}
+        engine = SimpleNamespace(work=self.root)
+        with patch('traditional_runtime._bot_repair_pending', side_effect=ValueError('repair was interrupted')) as pending:
+            with patch.object(bridge, '_deployed', return_value=(self.root / 'zone', {})):
+                result = bridge.capabilities(engine, ctx)
+                self.assertFalse(result['offline_create'])
+                self.assertIn('repair was interrupted', result['reason'])
+                with patch('bots.require_stopped'):
+                    with self.assertRaisesRegex(ValueError, 'repair was interrupted'):
+                        bridge.create(engine, ctx, {})
+            self.assertEqual(pending.call_count, 2)
+
+    @unittest.skipUnless(shutil.which('g++'), 'Native teardown regression requires g++')
+    def test_partially_loaded_offline_owner_does_not_announce_logout(self):
+        sources = {
+            'zone/client.h': 'class Client { public:\n'
+                'inline void SetCharacterId(uint32_t id) { character_id = id; }\n'
+                '~Client(); void UpdateWho(int); bool IsHoveringForRespawn() { return false; }\n'
+                'private: uint32_t character_id = 0;\n};\n',
+            'zone/client.cpp': 'Client::~Client() {\n\tUpdateWho(2);\n\n'
+                '\tif(IsHoveringForRespawn()) {}\n}\n',
+        }
+        for name, data in sources.items():
+            destination = self.root / name
+            destination.parent.mkdir(exist_ok=True)
+            destination.write_text(data)
+        guards = {name: hashlib.sha256(data.encode()).hexdigest() for name, data in sources.items()}
+        with patch.object(bridge, 'GUARDS', {'custom': guards}), \
+                patch.object(bridge, 'PATCHED', tuple(sources)), \
+                patch.object(bridge, 'PATCHED_GUARDS', {'custom': {}}):
+            outputs = bridge.output_files(self.root, 'custom')
+        # Reuse the real beginning of the helper, up to its first owner-field
+        # assignment, to simulate a failure before account/profile loading.
+        header = Path(bridge.__file__).with_suffix('.h').read_text()
+        beginning = 'bool Client::PrepareTrascOfflineBotOwner'
+        prepare = beginning + header.split(beginning, 1)[1].split('    character_id = owner_id;', 1)[0]
+        test = self.root / 'client-teardown.cpp'
+        test.write_text('#include <cassert>\n#include <cstdint>\n#include <memory>\n'
+                        'bool world_ready = true; int logout_announcements = 0;\n'
+                        + outputs['zone/client.h'].decode() + outputs['zone/client.cpp'].decode()
+                        + 'void Client::UpdateWho(int) { assert(world_ready); ++logout_announcements; }\n'
+                        + prepare + '    return false;\n}\n'
+                        'int main() {\n'
+                        '  auto normal = std::make_unique<Client>(); normal.reset();\n'
+                        '  assert(logout_announcements == 1); world_ready = false;\n'
+                        '  auto offline = std::make_unique<Client>();\n'
+                        '  assert(!offline->PrepareTrascOfflineBotOwner(1, 1)); offline.reset();\n'
+                        '  assert(logout_announcements == 1);\n}\n')
+        binary = self.root / 'client-teardown'
+        subprocess.run(['g++', '-std=c++17', str(test), '-o', str(binary)], check=True,
+                       stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+        subprocess.run([str(binary)], check=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+
     @unittest.skipUnless(shutil.which('g++'), 'Native teardown regression requires g++')
     def test_offline_zone_teardown_does_not_reinitialize_quests(self):
         # Exercise the production transformation as C++, including the
@@ -114,7 +178,8 @@ class ModernBotBridgeTests(unittest.TestCase):
                 '~Zone();\nprivate: int default_ruleset = 0; uint32 zoneid = 0;\n};\n',
             'zone/zone.cpp': 'Zone::Zone(uint32 in_zoneid, uint32 in_instanceid, const char* in_short_name) {\n'
                 '\tzoneid = in_zoneid;\n\tdatabase.QGlobalPurge();\n}\n'
-                'Zone::~Zone() {\n\tentity_list.Clear();\n\tparse->ReloadQuests();\n}\n',
+                'Zone::~Zone() {\n\tif (worldserver.Connected()) {\n\t\tworldserver.SetZoneData(0);\n\t}\n'
+                '\tentity_list.Clear();\n\tparse->ReloadQuests();\n}\n',
         }
         for name, data in sources.items():
             destination = self.root / name
@@ -128,6 +193,9 @@ class ModernBotBridgeTests(unittest.TestCase):
         test = self.root / 'teardown.cpp'
         test.write_text('#include <cassert>\n#include <memory>\nusing uint32 = unsigned;\n'
                         'class Zone; Zone* zone = nullptr; int reloads = 0; int purges = 0;\n'
+                        'bool world_ready = true; int connections = 0; int announcements = 0;\n'
+                        'struct World { bool Connected() { assert(world_ready); ++connections; return true; }\n'
+                        'void SetZoneData(int) { ++announcements; } } worldserver;\n'
                         'struct Database { void QGlobalPurge() { ++purges; } } database;\n'
                         'struct Entities { void Clear() { assert(zone); } } entity_list;\n'
                         'struct Parser { void ReloadQuests() { assert(zone); ++reloads; } } parser;\n'
@@ -135,10 +203,11 @@ class ModernBotBridgeTests(unittest.TestCase):
                         + outputs['zone/zone.cpp'].decode() + '\nint main() {\n'
                         '  auto normal = std::make_unique<Zone>(1, 0, "qeynos");\n'
                         '  zone = normal.get(); normal.reset(); zone = nullptr;\n'
-                        '  assert(reloads == 1 && purges == 1);\n'
+                        '  assert(reloads == 1 && purges == 1 && connections == 1 && announcements == 1);\n'
+                        '  world_ready = false;\n'
                         '  auto offline = std::make_unique<Zone>(1, 0, "qeynos", true);\n'
                         '  zone = offline.get(); offline.reset(); zone = nullptr;\n'
-                        '  assert(reloads == 1 && purges == 1);\n}\n')
+                        '  assert(reloads == 1 && purges == 1 && connections == 1 && announcements == 1);\n}\n')
         binary = self.root / 'teardown'
         subprocess.run(['g++', '-std=c++17', str(test), '-o', str(binary)], check=True,
                        stdout=subprocess.PIPE, stderr=subprocess.PIPE)

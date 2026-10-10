@@ -28,6 +28,7 @@ GUARDS = {
         'zone/bot.cpp': '60ccf8e2ccee7f8cf7920063c6335dee1c87605c84f42c3976926db6f31eee40',
         'zone/client_bot.cpp': 'eb0ffcae4b7ae21e4c5453a0eb23bb5ed1e6037174d3a8864b8320537c10185f',
         'zone/bot_database.cpp': '98d0bd7929bc32308a393cdf3a2bd86a08ea5f129689c6091e0eb7a7b9cad302',
+        'common/repositories/base/base_bot_data_repository.h': '52e38e93ea2d3b04df1cc5322170a44c4b599ce68190158faab9b20b4a3d5163',
     },
     'custom': {
         'zone/main.cpp': '6b7421f4a45a5ca8ba7f1e70d953faa94eb6be6e9a51298c10363756fabec08f',
@@ -43,9 +44,10 @@ GUARDS = {
         'zone/bot.cpp': '0e344bbc0a50ae37e42102d0420bb1611265a1668d7411831e4ec4ada25ac049',
         'zone/client_bot.cpp': '2460d9fd7d9fcaf0ff577cff2917ddc8890296bca259e730b0203a2e6c3682e6',
         'zone/bot_database.cpp': '53758d0c92d56bf6fa45fa71bebad922df5f82a995d2f9aea19370bb38adb8d3',
+        'common/repositories/base/base_bot_data_repository.h': 'be775a8da15f3e788671ef05806d74092886741fab1a46aefe8555f630ba1f8b',
     },
 }
-PATCHED = ('zone/main.cpp', 'zone/client.h', 'zone/zone.h', 'zone/zone.cpp', 'common/dbcore.h', 'common/dbcore.cpp', 'common/shareddb.h', 'common/shareddb.cpp')
+PATCHED = ('zone/main.cpp', 'zone/client.h', 'zone/client.cpp', 'zone/zone.h', 'zone/zone.cpp', 'common/dbcore.h', 'common/dbcore.cpp', 'common/shareddb.h', 'common/shareddb.cpp')
 # Reproducible outputs of the source transformations, independent of the
 # source-tree marker. The generated header is checked against this module's
 # own current template and identity below. Editing a marker cannot qualify an
@@ -53,9 +55,10 @@ PATCHED = ('zone/main.cpp', 'zone/client.h', 'zone/zone.h', 'zone/zone.cpp', 'co
 PATCHED_GUARDS = {
     'traditional': {
         'zone/main.cpp': 'ee1db78faa9c5324baa2ee1f6cf4165209e037eb8ee835de59109ee58354763b',
-        'zone/client.h': 'f2c14eda6e5c1e30d4a745c168c0e417cd382d0be3b8a75c7a21b615a45deead',
+        'zone/client.h': '13c7a6a31a824ff10877e41409c98a5cf10fd04aee5f1231f15e85ccf7cb0a24',
+        'zone/client.cpp': '02efe9f3b18af2f7b60f231457d77f600dc680cf9b5fb139d3ea36864c63b835',
         'zone/zone.h': 'c54d5c5c887172489bb45fcd3020a1946f72ffbfc13b83f9f7e16842b0bf3339',
-        'zone/zone.cpp': 'daf3f6e4c7a98d5a3570ec6825fd48bb51af92e77d5769fb3656999b4dd57efe',
+        'zone/zone.cpp': 'b6f14927e64cb5b1de3e3737c94582e917ee00a561d61fd14b9d2cc88fdb4946',
         'common/dbcore.h': '1606c289b558812e747424669c3c599a260c3bd3aa3d750ff76299af3f2e8f0f',
         'common/dbcore.cpp': 'b09f16f62b04b3403fc8e5946904be0ff88c6c78cdcd727536172a5d05c6f451',
         'common/shareddb.h': '57ff0c587e917a1e067724ed8737a685c75000dd00a330621a6bb794482b4b20',
@@ -63,9 +66,10 @@ PATCHED_GUARDS = {
     },
     'custom': {
         'zone/main.cpp': 'c959bd48e5517224600b75a4732a5f1b6f603c514bc72bf11759e82241b3b8ea',
-        'zone/client.h': '5d5b7bed4f5bdaed9ad25dfb304183ad89f2dd0829de4a32a05012c77e9cf3e3',
+        'zone/client.h': 'eaaa2b79675cc0156a2bf0bb9e170c3b6f532463cd7895324c24e529004ed338',
+        'zone/client.cpp': '36625aa5965134b1b1f4118f0044565d155ae314a7dbd21fdf7cba2a8c009c94',
         'zone/zone.h': 'f77dcc9ad5a267e06e07d770f49068c3169b6dc61327ceed7893a0a6aaf7b123',
-        'zone/zone.cpp': '28524b6875b0f139f0f879e7b546c47b87dd8f0370421cc974c5429d49eb5874',
+        'zone/zone.cpp': '67a04a3eaec1cdfa73a463ad2022407a7cf0e8c1dd6822ca5137fcedf99fc3bf',
         'common/dbcore.h': 'e1324569b29d84a651728dbbad826521ceb11970a1e28b072e794ee6502be327',
         'common/dbcore.cpp': 'c7b7de66515fa0337234d8d20b255b8a31855e82d0d3fc0c8d557d18e51be61c',
         'common/shareddb.h': '0824dabddf5b5ddd3eaeca49da66ad5ca487af1bbad70b9041489cb5c768ca57',
@@ -76,6 +80,36 @@ PATCHED_GUARDS = {
 
 class UnsupportedSource(ValueError):
     """A pristine source revision is usable, but its bot logic is unqualified."""
+
+
+BOT_DATA_COLUMNS = (
+    'bot_id', 'owner_id', 'spells_id', 'name', 'last_name', 'title', 'suffix',
+    'zone_id', 'gender', 'race', 'class', 'level', 'deity', 'creation_day', 'last_spawn',
+    'time_spawned', 'size', 'face', 'hair_color', 'hair_style', 'beard', 'beard_color',
+    'eye_color_1', 'eye_color_2', 'drakkin_heritage', 'drakkin_tattoo', 'drakkin_details',
+    'ac', 'atk', 'hp', 'mana', 'str', 'sta', 'cha', 'dex', 'int', 'agi', 'wis',
+    'extra_haste', 'fire', 'cold', 'magic', 'poison', 'disease', 'corruption')
+
+
+def bot_data_columns(profile):
+    if profile not in REVISIONS:
+        raise ValueError('Unknown modern bot profile')
+    return BOT_DATA_COLUMNS + (('expansion_bitmask',) if profile == 'traditional' else ())
+
+
+def _database_schema(ctx):
+    available = ctx.get('shape', {}).get('column_names', {}).get('bot_data', [])
+    missing = sorted(set(bot_data_columns(ctx['profile'])) - set(available))
+    if missing:
+        raise ValueError('The bot database does not match this server: missing ' + ', '.join(missing)
+                         + '. Rebuild and deploy this world before generating bots')
+
+
+def _database_ready(engine, ctx):
+    _database_schema(ctx)
+    if ctx['profile'] == 'traditional':
+        import traditional_runtime
+        traditional_runtime._bot_repair_pending(engine)
 
 
 def fingerprint(value):
@@ -196,7 +230,11 @@ def output_files(root, profile):
         elif name == 'zone/client.h':
             text = _replace(text, 'inline void SetCharacterId(uint32_t id) { character_id = id; }',
                 'inline void SetCharacterId(uint32_t id) { character_id = id; }\n'
+                'private:\n    bool m_trasc_offline_bot_owner = false;\npublic:\n'
                 '    bool PrepareTrascOfflineBotOwner(uint32_t owner_id, uint32_t owner_account_id);', name)
+        elif name == 'zone/client.cpp':
+            text = _replace(text, '\tUpdateWho(2);\n\n\tif(IsHoveringForRespawn())',
+                '\tif (!m_trasc_offline_bot_owner) UpdateWho(2);\n\n\tif(IsHoveringForRespawn())', name)
         elif name == 'zone/zone.h':
             text = _replace(text, 'Zone(uint32 in_zoneid, uint32 in_instanceid, const char *in_short_name);',
                 'Zone(uint32 in_zoneid, uint32 in_instanceid, const char *in_short_name, bool trasc_offline = false);\n'
@@ -212,6 +250,8 @@ def output_files(root, profile):
                 '\tentity_list.Clear();\n'
                 '\t// The one-shot owner context has no zone loop to reload.\n'
                 '\tif (!m_trasc_offline) parse->ReloadQuests();', name)
+            text = _replace(text, '\tif (worldserver.Connected()) {\n\t\tworldserver.SetZoneData(0);\n\t}',
+                '\tif (!m_trasc_offline && worldserver.Connected()) {\n\t\tworldserver.SetZoneData(0);\n\t}', name)
         elif name == 'common/dbcore.h':
             text = '#include <cstdint>\n#include <regex>\n#include <set>\n#include <stdexcept>\n#include <string>\n' + text
             text = _replace(text, '\tDBcore();', DB_GUARD + '\n\tDBcore();', name)
@@ -318,6 +358,7 @@ def _json_output(path):
 def capabilities(engine, ctx):
     try:
         zone, expected = _deployed(engine, ctx)
+        _database_ready(engine, ctx)
         output = engine.work / 'run' / ('bot-capabilities-' + secrets.token_hex(6) + '.json')
         try:
             engine.run([zone, '--trasc-bot-capabilities'], cwd=engine.work / 'server', output_file=output, timeout=20, private=True)
@@ -337,6 +378,7 @@ def create(engine, ctx, request):
     import bots
     bots.require_stopped(engine)
     zone, _ = _deployed(engine, ctx)
+    _database_ready(engine, ctx)
     if ctx['identity'] != bots.context(engine, {'identity': ctx['identity']}, writing=True)['identity']:
         raise ValueError('Bot deployment changed before generation; refresh Bots')
     engine.write_config()

@@ -2,6 +2,7 @@
 // This one-shot launcher adapter has no listener and never enters the zone loop.
 #include "../common/json/json.hpp"
 #include "../common/repositories/account_repository.h"
+#include "../common/repositories/base/base_bot_data_repository.h"
 #include "../common/repositories/rule_sets_repository.h"
 #include "client.h"
 #include <openssl/sha.h>
@@ -96,6 +97,7 @@ static int Create() {
     std::unique_ptr<Client> owner;
     std::unique_ptr<Zone> context;
     auto reject = [&](const std::string& message) {
+        std::cerr << "TRASC_BOT_REJECT " << message.substr(0, 512) << std::endl;
         owner.reset();
         is_zone_loaded = false;
         context.reset();
@@ -146,6 +148,8 @@ static int Create() {
             Unsigned(bot, "race", 1, 522);
             Unsigned(bot, "gender", 0, 1);
         }
+        const auto schema = database.QueryDatabase(BaseBotDataRepository::BaseSelect() + " LIMIT 0", false);
+        Require(schema.Success(), "The bot database does not match this server. Rebuild and deploy this world before generating bots.");
 
         // A single shared connection makes the normal Bot::Save, quest queries,
         // starting items and retry receipt participate in the same transaction.
@@ -274,6 +278,7 @@ static int Create() {
 } // namespace TrascBotBridge
 
 bool Client::PrepareTrascOfflineBotOwner(uint32_t owner_id, uint32_t owner_account_id) {
+    m_trasc_offline_bot_owner = true; // Also protects a partially loaded owner during rejection cleanup.
     character_id = owner_id;
     account_id = owner_account_id;
     const auto account = AccountRepository::FindOne(database, account_id);

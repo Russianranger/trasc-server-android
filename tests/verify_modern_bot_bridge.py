@@ -26,6 +26,7 @@ import bots
 import modern_bot_bridge as bridge
 import server_ferry
 import traditional_build
+import traditional_runtime
 
 PEQ_SHA256 = 'ac8649f23d2c3aea2cade138dfe10d46d1b21ad1a80d08ca95f5434fab7f218d'
 CUSTOM_SEED_SHA256 = '4ed5c2f19f7cd1553ca6bdcc1b71ee766e9eb7acc273d806d3710542c0f2442e'
@@ -80,7 +81,8 @@ def diagnose_native_failure(engine, arguments, incoming, evidence, label):
     commands = [debugger, '-nx', '--batch', '-ex', 'set pagination off',
                 '-ex', 'set print frame-arguments none', '-ex', 'set print entry-values no',
                 '-ex', 'handle SIGSEGV stop print nopass', '-ex', 'handle SIGABRT stop print nopass',
-                '-ex', 'run < ' + shlex.quote(str(incoming)), '-ex', 'bt 32', '--args',
+                '-ex', 'run ' + ' '.join(shlex.quote(str(value)) for value in arguments[1:])
+                + ' < ' + shlex.quote(str(incoming)), '-ex', 'bt 32', '--args',
                 *map(str, arguments)]
     details = {'runner': 'fixture_debugger_retry', 'original_failure_is_fatal': True,
                'frame_arguments': 'none', 'maximum_frames': 32, 'timed_out': False}
@@ -264,6 +266,48 @@ def seed(engine, source, evidence):
             'Native bot migrations did not reach their compiled version')
     require(rows(engine, "SHOW TABLES LIKE 'bot_starting_items';")
             and rows(engine, "SHOW TABLES LIKE 'bot_settings';"), 'Native bot state tables are missing')
+    if engine.profile == 'traditional':
+        # The pin's native planner checks all migrations before applying any.
+        # Its queued 9046 drops a column that its earlier check marked as
+        # already satisfying 9055. Exercise the same backed-up production
+        # repair helper, rather than replacing the missing column with fixture
+        # SQL or fabricating a complete deployed-runtime receipt.
+        manifest = (source / 'common/database/database_update_manifest_bots.h').read_text()
+        entry = manifest.split('.version = 9055,', 1)[1].split('.sql = R"(', 1)[1].split(')"', 1)[0]
+        require(entry == traditional_runtime.BOT_MIGRATION_9055_SQL,
+                'Bundled repair SQL differs from the pinned native migration 9055')
+        require(not rows(engine, "SHOW COLUMNS FROM bot_data LIKE 'expansion_bitmask';"),
+                'Traditional fixture no longer exercises the native planner mismatch')
+        require(scalar(engine, 'SELECT COUNT(*) FROM bot_data;') == '0',
+                'Migration transfer fixture requires an empty source bot roster')
+        # Fixture-only preexisting rows prove both saved overrides and native
+        # rule fallback are transferred; remove them before real bot creation.
+        legacy_ids = (890101, 890102)
+        engine.mysql("INSERT INTO bot_data(bot_id,owner_id,name) VALUES"
+                     "(890101,0,'Trascmigrationoverride'),(890102,0,'Trascmigrationdefault');"
+                     "INSERT INTO bot_settings(character_id,bot_id,setting_id,setting_type,value) "
+                     "VALUES(0,890101,0,0,7);")
+        fallback = rows(engine, "SELECT rule_value FROM rule_values WHERE rule_name='Bots:BotExpansionSettings';")
+        require(len(fallback) == 1 and re.fullmatch('-?[0-9]+', fallback[0][0]),
+                'Native expansion fallback rule must be unambiguous')
+        versions = tuple(map(int, rows(engine, 'SELECT version,bots_version,custom_version FROM db_version;')[0]))
+        backup = engine.backup_database({})['file']
+        result = traditional_runtime.qualify_bot_schema(
+            engine, versions, repair=True, database_backup=backup,
+            source_revision=traditional_build.REVISION)
+        transferred = rows(engine, 'SELECT bot_id,expansion_bitmask FROM bot_data ORDER BY bot_id;')
+        require(result.get('repaired') is True
+                and transferred == [[str(legacy_ids[0]), '7'], [str(legacy_ids[1]), str(int(fallback[0][0]))]]
+                and scalar(engine, 'SELECT COUNT(*) FROM bot_settings WHERE setting_id=0 AND setting_type=0;') == '0',
+                'Same production native 9055 repair did not transfer saved expansion values and delete obsolete overrides')
+        require(tuple(map(int, rows(engine, 'SELECT version,bots_version,custom_version FROM db_version;')[0])) == versions,
+                'Native schema repair changed recorded database versions')
+        atomic_json(evidence / 'traditional-native-schema-repair.json', {
+            **result, 'versions_before_and_after': versions, 'full_backup': backup,
+            'full_backup_sha256': sha(engine.work / backup), 'fixture_legacy_rows': transferred,
+            'obsolete_expansion_override_rows': 0,
+            'qualification_boundary': 'Same production schema helper after exact source guard validation and real full backup; full deployed-runtime receipt gate is separately unit-tested.'})
+        engine.mysql('DELETE FROM bot_data WHERE bot_id IN (890101,890102);')
     # Fixture-only transactional engines. Production refuses incompatible
     # engines and never performs this conversion for a user's database.
     for table in ('character_data', 'data_buckets'):
@@ -471,6 +515,9 @@ def qualify(args):
                     shutil.copy2(asset, destination / asset.name)
         default, zone_id, item_id, hook, version = seed(engine, source, evidence)
         report['checks']['native_migrations'] = {'bots_version': version, 'fixture_transactional_engines': ['character_data', 'data_buckets']}
+        if args.profile == 'traditional':
+            report['checks']['native_schema_repair'] = json.loads(
+                (evidence / 'traditional-native-schema-repair.json').read_text())
         # Ordinary startup reconciles these tables, including deleting unknown
         # commands and inserting missing ones. An offline request must leave
         # them untouched even when rejection happens before any bot is saved.
