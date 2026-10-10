@@ -22,7 +22,12 @@ static bool set_clip(const trasc_takp_camera::Rect& value) {
     RECT rect={value.left,value.top,value.right,value.bottom};return ClipCursor(&rect)!=0;
 }
 static void release_clip(){EnterCriticalSection(&clip_lock);clip.release(get_clip,set_clip);LeaveCriticalSection(&clip_lock);}
-static void hold_clip(){EnterCriticalSection(&clip_lock);clip.hold(400,300,{0,0,800,600},get_clip,set_clip);LeaveCriticalSection(&clip_lock);}
+static unsigned long clip_generation(){EnterCriticalSection(&clip_lock);auto generation=clip.generation();LeaveCriticalSection(&clip_lock);return generation;}
+static void hold_clip(unsigned long generation){EnterCriticalSection(&clip_lock);
+    if(GetForegroundWindow()==game_window&&!IsIconic(game_window)&&IsWindowVisible(game_window))
+        clip.hold_since(generation,400,300,{0,0,800,600},get_clip,set_clip);
+    else clip.release(get_clip,set_clip);
+    LeaveCriticalSection(&clip_lock);}
 static LRESULT CALLBACK window_proc(HWND window,UINT message,WPARAM wparam,LPARAM lparam) {
     if(message==(swap_buttons?WM_LBUTTONUP:WM_RBUTTONUP)||message==WM_KILLFOCUS||(message==WM_ACTIVATEAPP&&!wparam)||
        (message==WM_SIZE&&wparam==SIZE_MINIMIZED)||message==WM_CLOSE||message==WM_DESTROY) release_clip();
@@ -30,8 +35,8 @@ static LRESULT CALLBACK window_proc(HWND window,UINT message,WPARAM wparam,LPARA
 }
 static DWORD WINAPI input_frame(void*) {
     while(mode>=0) {
-        if(mode==2 && GetForegroundWindow()==game_window && !IsIconic(game_window) &&
-           (GetAsyncKeyState(swap_buttons?VK_LBUTTON:VK_RBUTTON)&0x8000))hold_clip();else release_clip();
+        auto generation=clip_generation();
+        if(mode==2 && (GetAsyncKeyState(swap_buttons?VK_LBUTTON:VK_RBUTTON)&0x8000))hold_clip(generation);else release_clip();
         DIMOUSESTATE2 state={};mouse->Acquire();
         if(SUCCEEDED(mouse->GetDeviceState(sizeof(state),&state))) {
             InterlockedExchangeAdd(totals,state.lX);InterlockedExchangeAdd(totals+1,state.lY);

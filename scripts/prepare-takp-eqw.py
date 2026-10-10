@@ -39,15 +39,18 @@ void ReleaseCameraClip() {
 }
 bool HoldCameraClip(int x, int y) {
   if (!IsWine()) return false;
+  ::AcquireSRWLockShared(&camera_clip_lock);
+  const unsigned long generation = camera_clip.generation();
+  ::ReleaseSRWLockShared(&camera_clip_lock);
   // The game look flag can remain stale while dead/stunned/zoning. Do not
-  // reacquire a clip after physical release before the game processes it.
-  if (!(::GetAsyncKeyState(swap_mouse_buttons_ ? VK_LBUTTON : VK_RBUTTON) & 0x8000)) {
-    ReleaseCameraClip();
-    return false;
-  }
+  // reacquire after release. Wine's input query can pump window messages, so
+  // it must remain outside the clip lock; generation rejects an overtaken query.
+  const bool physical_down = (::GetAsyncKeyState(swap_mouse_buttons_ ? VK_LBUTTON : VK_RBUTTON) & 0x8000) != 0;
   const trasc_takp_camera::Rect bounds = {game_rect_.left, game_rect_.top, game_rect_.right, game_rect_.bottom};
   ::AcquireSRWLockExclusive(&camera_clip_lock);
-  const bool held = camera_clip.hold(x, y, bounds, GetCameraClip, SetCameraClip);
+  const bool active = physical_down && ::GetForegroundWindow() == hwnd_ && !::IsIconic(hwnd_) && ::IsWindowVisible(hwnd_);
+  const bool held = active && camera_clip.hold_since(generation, x, y, bounds, GetCameraClip, SetCameraClip);
+  if (!active) camera_clip.release(GetCameraClip, SetCameraClip);
   ::ReleaseSRWLockExclusive(&camera_clip_lock);
   static bool announced = false;
   if (held && !announced) { Logger::Info("%s", trasc_takp_camera::marker); announced = true; }
@@ -91,6 +94,8 @@ void GameInput::HandleLossOfFocus() {
         ],
         'game_input.h': [('void HandleLossOfFocus();', 'void ReleaseCameraCursor(UINT message);  // Wine-only look clipping; release even if game input is paused.\nvoid HandleLossOfFocus();')],
         'eq_game.cpp': [
+            ('      EqMain::Initialize(hmod, hwnd_, ini_path_, eqmain_init_fn_);',
+             '      GameInput::ReleaseCameraCursor(0);  // Login takes ownership; game polling/window proc stops.\n      EqMain::Initialize(hmod, hwnd_, ini_path_, eqmain_init_fn_);'),
             ('  bool execute_eqgame_wndproc = false;', '''  // The game input hook can be skipped while dead/stunned/zoning. Release
   // the Wine-only camera clip at physical release and window lifecycle events.
   if (msg == WM_RBUTTONUP || msg == WM_LBUTTONUP || msg == WM_KILLFOCUS ||

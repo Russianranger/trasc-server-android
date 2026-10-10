@@ -14,9 +14,16 @@ inline bool same(const Rect& a, const Rect& b) {
 // The caller serializes this state across the game-input and window threads.
 class LookClip {
     bool held_ = false;
+    unsigned long generation_ = 0;
     Rect original_ = {}, clip_ = {};
 public:
     bool held() const { return held_; }
+    unsigned long generation() const { return generation_; }
+    // Capture only if no lifecycle release overtook the caller's input query.
+    template<class Getter, class Setter>
+    bool hold_since(unsigned long generation, int x, int y, const Rect& bounds, Getter get, Setter set) {
+        return generation == generation_ && hold(x, y, bounds, get, set);
+    }
     template<class Getter, class Setter>
     bool hold(int x, int y, const Rect& bounds, Getter get, Setter set) {
         if (x < bounds.left || x >= bounds.right || y < bounds.top || y >= bounds.bottom ||
@@ -33,6 +40,7 @@ public:
         return true;
     }
     template<class Getter, class Setter> bool release(Getter get, Setter set) {
+        ++generation_; // stamp even an already-released clip / paused look
         if (!held_) return true;
         Rect current;
         if (!get(current)) return false; // retry rather than forget the saved rectangle

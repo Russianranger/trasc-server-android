@@ -36,5 +36,13 @@ int main() {
     // A lost clip can be reacquired, retaining the new owner's rectangle for restore.
     assert(look.hold(720,400,bounds,get,set));c.current={25,35,850,650};const auto changed=c.current;
     assert(look.hold(720,400,bounds,get,set));assert(look.release(get,set)&&same(c.current,changed));
+    // A physical button/focus release between input query and clip acquisition
+    // must reject that stale hold, even if the game look flag has not updated.
+    auto generation=look.generation();count=c.calls.size();
+    assert(look.release(get,set));assert(!look.hold_since(generation,720,400,bounds,get,set));
+    assert(!look.held()&&c.calls.size()==count);
+    assert(look.hold_since(look.generation(),720,400,bounds,get,set));
+    generation=look.generation();assert(look.release(get,set));count=c.calls.size();
+    assert(!look.hold_since(generation,720,400,bounds,get,set));assert(!look.held()&&c.calls.size()==count);
     puts("PASS: Wine raw-look clip bounds, no repeated cursor warp, prior rectangle restore, focus/release retries and external clip ownership");
 }

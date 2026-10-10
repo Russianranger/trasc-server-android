@@ -39,6 +39,7 @@ def run(wine, probe, output):
     xlib.XQueryTree.argtypes=[ctypes.c_void_p,ctypes.c_ulong,ctypes.POINTER(ctypes.c_ulong),ctypes.POINTER(ctypes.c_ulong),ctypes.POINTER(ctypes.c_void_p),ctypes.POINTER(ctypes.c_uint)]
     xlib.XFree.argtypes=[ctypes.c_void_p]
     xtst.XTestFakeRelativeMotionEvent.argtypes=[ctypes.c_void_p,ctypes.c_int,ctypes.c_int,ctypes.c_ulong]
+    xtst.XTestFakeMotionEvent.argtypes=[ctypes.c_void_p,ctypes.c_int,ctypes.c_int,ctypes.c_int,ctypes.c_ulong]
     xtst.XTestFakeButtonEvent.argtypes=[ctypes.c_void_p,ctypes.c_uint,ctypes.c_int,ctypes.c_ulong]
     xlib.XQueryPointer.argtypes=[ctypes.c_void_p,ctypes.c_ulong,ctypes.POINTER(ctypes.c_ulong),ctypes.POINTER(ctypes.c_ulong),ctypes.POINTER(ctypes.c_int),ctypes.POINTER(ctypes.c_int),ctypes.POINTER(ctypes.c_int),ctypes.POINTER(ctypes.c_int),ctypes.POINTER(ctypes.c_uint)]
     display=None;child=None;diagnostics=[]
@@ -72,6 +73,14 @@ def run(wine, probe, output):
             return {'window':hex(window.value),'revert':revert.value,'ancestors':chain}
         def motion(dx,dy):
             xtst.XTestFakeRelativeMotionEvent(display,dx,dy,0);xlib.XSync(display,False)
+        def free_motion(x,y,dx,dy):
+            # X retains unconstrained coordinates while clipped. Normalize only
+            # the free UI phase, prove physical capture has ended, then measure
+            # the next signed relative input from that observed free position.
+            xtst.XTestFakeMotionEvent(display,-1,x,y,0);xlib.XSync(display,False);time.sleep(.1)
+            assert point()==(x,y),('released cursor remains physically trapped',point())
+            motion(dx,dy);time.sleep(.1)
+            assert point()==(x+dx,y+dy),('free signed movement failed',(x,y),(dx,dy),point())
         def button(down,which=3):
             xtst.XTestFakeButtonEvent(display,which,down,0);xlib.XSync(display,False)
         subprocess.run([str(wine),'wineboot','-u'],env=env,stdout=wine_log,stderr=subprocess.STDOUT,check=True,timeout=120)
@@ -155,13 +164,12 @@ def run(wine, probe, output):
         assert difference(before,after,'buffered')==[6400,-6400],(before,after)
         button(False);time.sleep(.15)
         assert sample()['clip']==original_clip,('right-button release trapped cursor',sample())
-        motion(80,40);time.sleep(.1);assert point()==(480,340),point()
+        free_motion(400,300,80,40)
         # Capture a held-button look, minimize/release, restore and re-enter.
         button(True);time.sleep(.15);assert sample()['clip']==[400,300,401,301]
         assert point()==(400,300),diagnose('held-before-blur')
         command('blur');time.sleep(.15);assert sample()['clip']==original_clip,sample()
-        blur_point=point();motion(20,-10);time.sleep(.1)
-        assert point()==(blur_point[0]+20,blur_point[1]-10),('focus loss retained physical capture',blur_point,point())
+        free_motion(440,320,20,-10)
         button(False);command('resume');time.sleep(.15);command('focus');time.sleep(.15)
         resumed=diagnose('restored-focus-ready')
         assert resumed['native']['foreground'] and resumed['native']['focused'] and resumed['native']['visible'],resumed
@@ -178,8 +186,7 @@ def run(wine, probe, output):
         # Mode remains logically active after physical release. It must not
         # reacquire the clip while the game's logical flag is stale/paused.
         time.sleep(.15);assert sample()['clip']==original_clip,sample()
-        command('free');free_point=point();motion(-60,-30);time.sleep(.1)
-        assert point()==(free_point[0]-60,free_point[1]-30),('menu relative movement failed',free_point,point())
+        command('free');free_motion(440,320,-60,-30)
         command('swap');command('raw');button(True,1);time.sleep(.15)
         assert sample()['clip']==[400,300,401,301] and point()==(400,300),diagnose('swapped-look-capture')
         before=sample()
@@ -189,8 +196,7 @@ def run(wine, probe, output):
         assert swapped_relative['polled']==[300,-200] and swapped_relative['buffered']==[300,-200],swapped_relative
         assert point()==(400,300),point()
         button(False,1);time.sleep(.3);assert sample()['clip']==original_clip,sample()
-        command('normal');command('free');free_point=point();motion(-20,10);time.sleep(.1)
-        assert point()==(free_point[0]-20,free_point[1]+10),('swapped release trapped pointer',free_point,point())
+        command('normal');command('free');free_motion(440,320,-20,10)
         command('quit');assert child.wait(timeout=15)==0
         source_root=Path(__file__).resolve().parents[1]
         proof_files=('tests/takp_cursor_probe.cpp','tests/integration_takp_cursor.py','native/takp_camera_recenter.h')
