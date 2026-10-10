@@ -1,3 +1,59 @@
+# Released: 0.6.23 camera and combined bot commands (2026-10-10 UTC)
+
+Read [release-status-0623.md](release-status-0623.md),
+[takp-camera-0623.md](takp-camera-0623.md),
+[bot-commands-0623.md](bot-commands-0623.md) and
+[device-acceptance-0623.md](device-acceptance-0623.md) first. These and the
+0.6.22 release-specific documents take precedence over the older entries below.
+
+The latest qualified/published source is
+`cf6bec71d6f3171de27851d7df625cf84da096f8`, 0.6.23/code72, on both
+`codex/takp-world` and `codex/takp-controls-socials-0623`. Preview points to that
+source. PR #29 merged at 20:10:19 UTC as
+`342efe9d93a577fc91f1a85461a12c3369962ba7`, with its exact tree. Main has a
+subsequent documentation checkpoint and restored verifier executable bit;
+the qualified APK does not need rebuilding for this checkpoint.
+
+All five jobs in [38081870434](https://github.com/Russianranger/trasc-server-android/actions/runs/38081870434)
+passed: APK, TAKP production, Custom native bots, Traditional native bots and
+preview publication. CI passed all 495 Python tests with no skips, every browser
+suite, native/JVM checks, Android build/lint/signing and integration qualification.
+Camera source `202ff0d995b45302d8cfb6a78e47ceea87a5b965` separately passed
+Windows build and real Wine10/Xvnc in run 38081609076. No duplicate app build ran.
+
+[Published APK](https://github.com/Russianranger/trasc-server-android/releases/download/preview/trasc-server-android-preview.apk):
+18,833,650 bytes, SHA-256
+`0bd0081eefeb44eeb72a2f54491355409d79eb9cbbbd8f8e24a8dd530feefe57`, uploaded
+20:08:27 UTC. Independent download verified package/version/code, signature,
+unchanged update certificate, exact camera source/proof, all 112 bundled source
+assets, all 504 archived files and all 21 native components equal to 0.6.22.
+Full public asset/CI/digest metadata is in [release-proof-0623.json](release-proof-0623.json).
+
+The recovery verified complete 0.6.22 and found no unfinished launcher edits,
+stash or local build in accessible workspaces. The related native checkout was
+clean and preserved. A previous agent's inaccessible private workspace could
+not be recovered; no unpublished build was assumed. New physical Thor evidence
+of camera veering and the requested command export justified 0.6.23.
+
+Completed changes: Wine-only stable raw mouse look with release/focus/login
+restoration; managed helper upgrade backups; 39 selectable TAKP commands;
+combined selected-name Spawn party and separate Revive party; explicit five-line
+chunking and protected character/social/hotbar export. Revive fallen companions
+out of combat after at least 60 seconds, then spawn them. It restores one HP and
+zero mana. The working TAKP server needs no rebuild. Custom/Traditional existing
+offline-generation utilities and storage/full-backup safeguards remain intact.
+
+**Next: physical AYN Thor acceptance.** Install as an update without uninstalling.
+Test both-axis reversals with controller/touch, neutral/focus/menu releases,
+gear/Look placement and visibility, selected-party buttons, persistence and
+backup/restore refusal after personal edits. Preserve existing bots, databases,
+imports, prefixes, compiled servers, runtimes, mappings, renderers, themes and
+settings. Use the full device guide; do not repeat completed implementation or
+start another build without fresh evidence. TAKP NPC visibility and Traditional
+StoneUI remain separate tracked concerns, with no speculative fixes added.
+
+---
+
 # Released: 0.6.10 client UI activation and Return to Launcher (2026-10-07 UTC)
 
 The user confirmed client startup on Thor with 0.6.9. StoneUI fallback remains

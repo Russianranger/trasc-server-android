@@ -1,0 +1,171 @@
+{
+  "schema": 1,
+  "verified_utc_date": "2026-10-10",
+  "repository": "Russianranger/trasc-server-android",
+  "version": "0.6.23",
+  "version_code": 72,
+  "qualified_source": "cf6bec71d6f3171de27851d7df625cf84da096f8",
+  "qualified_tree": "721d1b1fc68408cc8d56e42c4733d47f8d0d3701",
+  "feature_branches": [
+    "codex/takp-world",
+    "codex/takp-controls-socials-0623"
+  ],
+  "preview_tag_commit": "cf6bec71d6f3171de27851d7df625cf84da096f8",
+  "pr": {
+    "number": 29,
+    "merged": true,
+    "merged_at": "2026-10-10T20:10:19Z",
+    "merge_commit": "342efe9d93a577fc91f1a85461a12c3369962ba7"
+  },
+  "ci": {
+    "run": 38081870434,
+    "conclusion": "success",
+    "jobs": [
+      {
+        "id": 114300288544,
+        "name": "apk",
+        "conclusion": "success"
+      },
+      {
+        "id": 114300288695,
+        "name": "takp-server",
+        "conclusion": "success"
+      },
+      {
+        "id": 114300288735,
+        "name": "modern-bots (custom, Russianranger/Triptych-Triumvirate, 8f6ca0795f424a7b4eab750ff38fc6473d48375c...",
+        "conclusion": "success"
+      },
+      {
+        "id": 114300288785,
+        "name": "modern-bots (traditional, Russianranger/Server, 4aceae18b94ffaafc08e2b17bc41cd72c77f795d, .)",
+        "conclusion": "success"
+      },
+      {
+        "id": 114302276277,
+        "name": "preview",
+        "conclusion": "success"
+      }
+    ],
+    "python_tests_passed": 495,
+    "python_skips": 0,
+    "browser_suites": "all passed; phone and landscape reviewed",
+    "android_build_lint_signing": "passed; lint errors 0"
+  },
+  "camera": {
+    "source_commit": "202ff0d995b45302d8cfb6a78e47ceea87a5b965",
+    "branch": "codex/takp-eqw-0623",
+    "build_run": 38081609076,
+    "conclusion": "success",
+    "dll_sha256": "c103e024f1cde7829603475e1532d3baabd0764280c63ca2797e7e72569554f4",
+    "dll_bytes": 87552,
+    "marker": "TRASC_TAKP_WINE_RAW_LOOK_V2",
+    "physical_thor_acceptance": "outstanding"
+  },
+  "release": {
+    "id": 387770501,
+    "tag": "preview",
+    "assets": [
+      {
+        "id": 628886445,
+        "name": "launcher-sources.tar.gz",
+        "bytes": 227707998,
+        "sha256": "941374d293e92d3a31b0eccc6fdeb09143294266ab2338ea15fc049de19ceaeb",
+        "updated_at": "2026-10-10T20:08:32Z",
+        "url": "https://github.com/Russianranger/trasc-server-android/releases/download/preview/launcher-sources.tar.gz"
+      },
+      {
+        "id": 628886436,
+        "name": "native-reuse.json",
+        "bytes": 4817,
+        "sha256": "201b1d7c40864490e4eb48ce463e195cbf3effddecf262ff95f4db7bcf23241e",
+        "updated_at": "2026-10-10T20:08:26Z",
+        "url": "https://github.com/Russianranger/trasc-server-android/releases/download/preview/native-reuse.json"
+      },
+      {
+        "id": 628886446,
+        "name": "preview-build.json",
+        "bytes": 765,
+        "sha256": "8ceccfb74c20f3b441f3f5948086c850de39b6447b0189576a9da5a8dc4c0076",
+        "updated_at": "2026-10-10T20:08:26Z",
+        "url": "https://github.com/Russianranger/trasc-server-android/releases/download/preview/preview-build.json"
+      },
+      {
+        "id": 628886437,
+        "name": "trasc-server-android-preview.apk",
+        "bytes": 18833650,
+        "sha256": "0bd0081eefeb44eeb72a2f54491355409d79eb9cbbbd8f8e24a8dd530feefe57",
+        "updated_at": "2026-10-10T20:08:27Z",
+        "url": "https://github.com/Russianranger/trasc-server-android/releases/download/preview/trasc-server-android-preview.apk"
+      }
+    ]
+  },
+  "independent_verification": {
+    "source_commit": "cf6bec71d6f3171de27851d7df625cf84da096f8",
+    "build_run": 38081870434,
+    "version": "0.6.23",
+    "version_code": 72,
+    "apk_bytes": 18833650,
+    "apk_sha256": "0bd0081eefeb44eeb72a2f54491355409d79eb9cbbbd8f8e24a8dd530feefe57",
+    "exact_bundled_source_assets": 112,
+    "exact_source_archive_files": 504,
+    "preserved_0622_source_sha256": "314c2e8a161f3f5428b75c7052fd1fd337ccfee96419ebc214470bf0916ba13d",
+    "source_archive_sha256": "941374d293e92d3a31b0eccc6fdeb09143294266ab2338ea15fc049de19ceaeb",
+    "native_reuse_manifest_sha256": "201b1d7c40864490e4eb48ce463e195cbf3effddecf262ff95f4db7bcf23241e",
+    "native_components_equal_verified_0622_apk": 21,
+    "signing_certificate_sha256": "ff9c09cdc3e2404d1d7f72d61ce2f8651464f5e03dff340f70bd4df28c70e869",
+    "apk_signature_verified": true,
+    "aapt_package": "io.github.russianranger.trasc.preview",
+    "aapt_version_name": "0.6.23",
+    "aapt_version_code": 72,
+    "exact_camera_helper_sha256": "c103e024f1cde7829603475e1532d3baabd0764280c63ca2797e7e72569554f4"
+  },
+  "ci_artifacts": [
+    {
+      "id": 11681190347,
+      "name": "modern-bots-traditional-arm64-verification",
+      "bytes": 26498,
+      "digest": "sha256:49fba38977b91e81d787f8861519c7a66220e9295c1ce935098000d76589403f"
+    },
+    {
+      "id": 11681036431,
+      "name": "takp-bookworm-arm64-verification",
+      "bytes": 859818,
+      "digest": "sha256:6eb343ee76af35b406362f19c0b00e48ccc0f4ee969044804112c197c8d1df9a"
+    },
+    {
+      "id": 11681016410,
+      "name": "takp-launcher-release",
+      "bytes": 246431913,
+      "digest": "sha256:9dae8e87acb76bf5679dd400631a5bc4ca2c552591538af7b0d26f56e9906ef4"
+    },
+    {
+      "id": 11680986305,
+      "name": "takp-launcher-validation-reports",
+      "bytes": 63012362,
+      "digest": "sha256:7c2a66dcc3b92a09158378dec34ace2ac4193b05f2126f2b607d6fd1786b49a3"
+    },
+    {
+      "id": 11680985714,
+      "name": "modern-bots-custom-arm64-verification",
+      "bytes": 26946,
+      "digest": "sha256:60365d3e2fb537a6a5487034c728ce8790950f3e78eb574e097c852be27c6ab5"
+    }
+  ],
+  "preservation": {
+    "native_components_reused": 21,
+    "server_source_pins_unchanged": true,
+    "existing_signing_identity": true,
+    "databases_clients_prefixes_runtime_profiles_settings": "preserved; no device data reset",
+    "accessible_prior_launcher_work": "no unfinished edits, stash or active build found",
+    "inaccessible_previous_agent_private_workspace": "not recovered; no assumption of unpublished build"
+  },
+  "next_work": {
+    "physical_device_guide": "docs/device-acceptance-0623.md",
+    "separate_open_concerns": [
+      "TAKP NPC visibility",
+      "Traditional StoneUI"
+    ],
+    "new_build": "only if new device evidence identifies a defect"
+  }
+}
