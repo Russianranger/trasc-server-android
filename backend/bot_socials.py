@@ -26,6 +26,100 @@ SOCIAL_KEY = re.compile(r'Page(\d+)Button(\d+)(Name|Color|Line([1-5]))$', re.I)
 BUTTON_KEY = re.compile(r'Page(\d+)Button(\d+)$', re.I)
 SECTION = re.compile(r'\[([^\]\r\n]+)\][ \t]*(?:;[^\r\n]*)?$')
 BOT_NAME = re.compile(r'[A-Za-z]{4,15}$')
+SOCIAL_ID = re.compile(r'[a-z_]{1,32}\.[0-9a-f]{24}$')
+SOCIAL_LABEL = re.compile(r'[A-Za-z0-9][A-Za-z0-9 ]{0,14}$')
+MAX_SELECTED = 20
+MAX_SOCIALS = 120
+# Verified against Servertakp 25bf70acb6bd24853cf09e447ddd62b96a4491a4,
+# zone/player_bot.cpp HandlePlayerBotCommand. Each command names an explicitly
+# selected owned bot. In particular, native `revive all` is NOT supported.
+TAKP_ACTIONS = (
+    ('spawn', 'Spawn party', 'spawn {name}', 'Party', 'Spawn and group the selected companions. Server party limits still apply.'),
+    ('revive', 'Revive party', 'revive {name}', 'Party', 'Revive selected fallen companions after a 60-second wait, while the owner is out of combat. They return at 1 HP; use Spawn party afterward.'),
+    ('follow', 'Follow', 'follow {name}', 'Party', 'Follow the owner.'),
+    ('stay', 'Stay', 'stay {name}', 'Party', 'Stay in place.'),
+    ('attack', 'Attack', 'attack {name}', 'Party', 'Attack the current attackable NPC target within 200 units.'),
+    ('assist', 'Assist', 'assist {name}', 'Party', 'Enable the server assist behavior.'),
+    ('passive', 'Passive', 'passive {name}', 'Party', 'Use passive behavior.'),
+    ('summon', 'Gather party', 'summon {name}', 'Party', 'Move spawned companions to the owner and follow, out of combat.'),
+    ('dismiss', 'Dismiss party', 'dismiss {name}', 'Party', 'Save and dismiss spawned companions, out of combat.'),
+    ('sit_on', 'Sit', 'sit {name} on', 'Behavior', 'Sit and stay until Stand releases them.'),
+    ('sit_off', 'Stand', 'sit {name} off', 'Behavior', 'Stand and restore the previous follow or stay mode.'),
+    ('dps_on', 'DPS spells on', 'dps cast on {name}', 'Behavior', 'Enable direct-damage casting for spawned companions; saved per bot.'),
+    ('dps_off', 'DPS spells off', 'dps cast off {name}', 'Behavior', 'Disable direct-damage casting. DoTs, buffs and heals remain allowed.'),
+    ('taunt_on', 'Taunt on', 'taunt {name} 1', 'Behavior', 'Enable taunt; class and skill requirements still apply.'),
+    ('taunt_off', 'Taunt off', 'taunt {name} 0', 'Behavior', 'Disable taunt.'),
+    ('ranged_on', 'Ranged on', 'ranged {name} 1', 'Behavior', 'Enable ranged attacks when available.'),
+    ('ranged_off', 'Ranged off', 'ranged {name} 0', 'Behavior', 'Disable ranged attacks.'),
+    ('petenabled_on', 'Pets on', 'petenabled {name} 1', 'Behavior', 'Enable pets when the companion can summon one.'),
+    ('petenabled_off', 'Pets off', 'petenabled {name} 0', 'Behavior', 'Disable pets.'),
+    ('suspend', 'Suspend AI', 'suspend {name}', 'Behavior', 'Suspend the companion AI behavior.'),
+    ('release', 'Resume AI', 'release {name}', 'Behavior', 'Release suspended AI behavior.'),
+    ('pet', 'Summon pets', 'pet {name}', 'Magic', 'Ask eligible companions to cast their pet utility.'),
+    ('petdismiss', 'Dismiss pets', 'petdismiss {name}', 'Magic', 'Dismiss pets and disable them, out of combat.'),
+    ('cure', 'Cure', 'cure {name}', 'Magic', 'Use a cure on the current target, or owner if no target.'),
+    ('resurrect', 'Resurrect', 'resurrect {name}', 'Magic', 'Cast resurrection on the targeted player corpse, out of combat; this is separate from reviving a fallen bot.'),
+    ('mez', 'Mez', 'mez {name}', 'Magic', 'Use mesmerize on the current target.'),
+    ('charm', 'Charm', 'charm {name}', 'Magic', 'Use charm on the current target.'),
+    ('fear', 'Fear', 'fear {name}', 'Magic', 'Use fear on the current target.'),
+    ('lull', 'Lull', 'lull {name}', 'Magic', 'Use lull on the current target.'),
+    ('invisibility', 'Invisibility', 'invisibility {name}', 'Magic', 'Cast invisibility on the current target, or owner if no target.'),
+    ('invisundead', 'Invis undead', 'invisundead {name}', 'Magic', 'Cast invisibility versus undead when available.'),
+    ('levitate', 'Levitate', 'levitate {name}', 'Magic', 'Cast levitation on the current target, or owner if no target.'),
+    ('waterbreathing', 'Water breathing', 'waterbreathing {name}', 'Magic', 'Cast water breathing when available.'),
+    ('report', 'Report party', 'report {name}', 'Reports', 'Report HP, mana, pets, direct-damage casting and taunt.'),
+    ('inventory', 'Inventory', 'inventory {name}', 'Reports', 'List the selected companions’ saved equipment.'),
+    ('supplies', 'Supplies', 'supplies {name}', 'Reports', 'List saved supply quantities.'),
+    ('spells', 'Spells', 'spells {name}', 'Reports', 'List spells for spawned companions.'),
+    ('abilities', 'Abilities', 'abilities {name}', 'Reports', 'List available abilities for spawned companions.'),
+    ('departures', 'Departures', 'departures {name}', 'Reports', 'List available departure spells.'),
+)
+
+
+def catalogue(profile):
+    return [{'id': key, 'label': label, 'group': group, 'description': description}
+            for key, label, _, group, description in TAKP_ACTIONS] if profile == 'takp' else []
+
+
+def _actions(profile, args):
+    value = args.get('actions')
+    if value is None:
+        return None  # Original per-bot format and receipts remain compatible.
+    known = {entry[0] for entry in TAKP_ACTIONS}
+    if (profile != 'takp' or not isinstance(value, list) or not value or
+            any(not isinstance(key, str) or key not in known for key in value) or len(value) != len(set(value))):
+        raise ValueError('Choose distinct supported commands for this world')
+    return [entry for entry in TAKP_ACTIONS if entry[0] in value]
+
+
+def _social_key(social):
+    return social.get('social_id', social.get('bot_id'))
+
+
+def _valid_social(social):
+    if not isinstance(social, dict):
+        return False
+    legacy = ('social_id' not in social and type(social.get('bot_id')) is int and social['bot_id'] > 0 and
+              isinstance(social.get('name'), str) and BOT_NAME.fullmatch(social['name']) and
+              isinstance(social.get('label'), str) and BOT_NAME.fullmatch(social['label']))
+    grouped = ('bot_id' not in social and isinstance(social.get('social_id'), str) and SOCIAL_ID.fullmatch(social['social_id']) and
+               isinstance(social.get('label'), str) and SOCIAL_LABEL.fullmatch(social['label']) and
+               isinstance(social.get('bot_ids'), list) and 1 <= len(social['bot_ids']) <= 5 and
+               all(type(value) is int and value > 0 for value in social['bot_ids']) and
+               len(set(social['bot_ids'])) == len(social['bot_ids']) and
+               isinstance(social.get('names'), list) and len(social['names']) == len(social['bot_ids']) and
+               all(isinstance(value, str) and BOT_NAME.fullmatch(value) for value in social['names']) and
+               social.get('action') in {entry[0] for entry in TAKP_ACTIONS})
+    if grouped:
+        chunk = [{'id': identity, 'name': name} for identity, name in zip(social['bot_ids'], social['names'])]
+        template = next(entry[2] for entry in TAKP_ACTIONS if entry[0] == social['action'])
+        grouped = (social['social_id'] == social['action'] + '.' + _digest(chunk)[:24] and
+                   social.get('lines') == ['/say #bot ' + template.format(name=bot['name']) for bot in chunk])
+    return bool((legacy or grouped) and
+                type(social.get('page')) is int and 1 <= social['page'] <= 10 and
+                type(social.get('button')) is int and 1 <= social['button'] <= 12 and
+                isinstance(social.get('lines'), list) and 1 <= len(social['lines']) <= 5 and
+                all(isinstance(line, str) and len(line) <= 255 and not any(c in line for c in '\r\n\0') for line in social['lines']))
 
 
 def _sha(raw):
@@ -143,9 +237,9 @@ def _owner_key(owner):
     return {key: owner[key] for key in ('id', 'account_id', 'name')}
 
 
-def _selected(bots):
-    if not isinstance(bots, list) or not 1 <= len(bots) <= 5:
-        raise ValueError('Select one to five owned bots for summon buttons')
+def _selected(bots, limit=5):
+    if not isinstance(bots, list) or not 1 <= len(bots) <= limit:
+        raise ValueError(f'Select one to {limit} owned bots for buttons')
     result, seen = [], set()
     for bot in bots:
         if (not isinstance(bot, dict) or type(bot.get('id')) is not int or bot['id'] <= 0 or
@@ -245,7 +339,7 @@ def _records(engine, context, character_file):
         if directory.is_symlink() or not directory.is_dir() or not re.fullmatch('[0-9a-f]{24}', directory.name):
             continue
         try:
-            record = json.loads(_read(directory / 'record.json', 65536))
+            record = json.loads(_read(directory / 'record.json', 256 * 1024))
             if (not isinstance(record, dict) or record.get('format') != 1 or record.get('id') != directory.name or
                     record.get('context') != context or record.get('character_file') != character_file or
                     record.get('state') not in ('prepared', 'installed') or
@@ -254,17 +348,10 @@ def _records(engine, context, character_file):
                 continue
             socials, placements = record.get('socials'), record.get('placements')
             if (record.get('operation') not in ('install', 'restore') or
-                    not isinstance(socials, list) or len(socials) > 5 or
+                    not isinstance(socials, list) or len(socials) > MAX_SOCIALS or
                     not isinstance(placements, list) or len(placements) > len(socials)):
                 continue
-            valid_socials = all(isinstance(social, dict) and type(social.get('bot_id')) is int and social['bot_id'] > 0 and
-                                isinstance(social.get('name'), str) and BOT_NAME.fullmatch(social['name']) and
-                                isinstance(social.get('label'), str) and BOT_NAME.fullmatch(social['label']) and
-                                type(social.get('page')) is int and 1 <= social['page'] <= 10 and
-                                type(social.get('button')) is int and 1 <= social['button'] <= 12 and
-                                isinstance(social.get('lines'), list) and 1 <= len(social['lines']) <= 5 and
-                                all(isinstance(line, str) and len(line) <= 255 and not any(c in line for c in '\r\n\0') for line in social['lines'])
-                                for social in socials)
+            valid_socials = all(_valid_social(social) for social in socials)
             if not valid_socials:
                 continue
             _placements(placements, socials, engine.profile)
@@ -322,12 +409,17 @@ def _hotbar(section, key):
 
 def _plan(engine, owner, bots, args):
     context = _identity(engine, owner, args)
-    selected = _selected(bots)
+    actions = _actions(engine.profile, args)
+    selected = _selected(bots, MAX_SELECTED if actions else 5)
     client, files, path, raw, ini, reason = _character(engine, owner, args)
     result = {'supported': reason is None, 'reason': reason, 'character_files': files,
               'character_file': path.name if path else None, 'file_revision': _sha(raw) if raw else None,
               'socials': [], 'empty_hotbar_slots': [], 'backups': [], 'preview_token': None,
               'spawn_pause': args.get('spawn_pause', 20)}
+    if actions:
+        result['actions'] = [entry[0] for entry in actions]
+        result['message'] = ('One button per selected command. More than five names are split into numbered buttons; '
+                             'each button runs its displayed names. Revival requires a 60-second wait after falling and the owner out of combat; bots return at 1 HP; spawn afterward.')
     if reason:
         return result, None
     records = _records(engine, context, path.name)
@@ -336,8 +428,7 @@ def _plan(engine, owner, bots, args):
     owned = {}
     for record in records:
         for social in record.get('socials', []) if record.get('operation') == 'install' else []:
-            if isinstance(social, dict) and type(social.get('bot_id')) is int:
-                owned.setdefault(social['bot_id'], social)
+            owned.setdefault(_social_key(social), social)
     reserved = set()
     for (section, key), (_, value) in ini.entries.items():
         if _hotbar(section, key):
@@ -350,12 +441,28 @@ def _plan(engine, owner, bots, args):
             values = _social_values(ini, page, button)
             if not values[0].strip() and not any(value.strip() for value in values[2:]) and (page - 1) * 12 + button - 1 not in reserved:
                 free.append((page, button))
+    requested = []
+    if actions:
+        chunks = [selected[start:start + 5] for start in range(0, len(selected), 5)]
+        for action, label, template, _, _ in actions:
+            for index, chunk in enumerate(chunks, 1):
+                # Stable identity includes the exact action and displayed names,
+                # rather than one arbitrary bot ID shared by several buttons.
+                identity = action + '.' + _digest(chunk)[:24]
+                numbered = label if len(chunks) == 1 else label[:13] + ' ' + str(index)
+                requested.append({'social_id': identity, 'action': action, 'bot_ids': [bot['id'] for bot in chunk],
+                                  'names': [bot['name'] for bot in chunk], 'label': numbered,
+                                  'lines': ['/say #bot ' + template.format(name=bot['name']) for bot in chunk]})
+    else:
+        requested = [{'bot_id': bot['id'], 'name': bot['name'], 'label': bot['name'],
+                      'lines': _commands(engine.profile, bot['name'], args, owner['name'])} for bot in selected]
+    if len(requested) > MAX_SOCIALS:
+        raise ValueError('These commands need more than 120 social slots. Select fewer commands or companions')
     used = set()
-    for bot in selected:
-        label = bot['name']  # At most fifteen ASCII bytes, native social limit.
-        commands = _commands(engine.profile, bot['name'], args, owner['name'])
-        previous = owned.get(bot['id'])
-        reuse = bool(previous and previous.get('name') == bot['name'] and previous.get('label') == label and
+    for social in requested:
+        label, commands = social['label'], social['lines']
+        previous = owned.get(_social_key(social))
+        reuse = bool(previous and previous.get('label') == label and
                      previous.get('lines') == commands and type(previous.get('page')) is int and type(previous.get('button')) is int and
                      1 <= previous['page'] <= 10 and 1 <= previous['button'] <= 12 and
                      _social_values(ini, previous['page'], previous['button']) == [label, '0', *commands, *[''] * (5 - len(commands))])
@@ -364,12 +471,11 @@ def _plan(engine, owner, bots, args):
         elif free:
             page, button = free.pop(0)
         else:
-            raise ValueError('There are not enough empty social slots for these bots')
+            raise ValueError('There are not enough empty social slots for these commands')
         if (page, button) in used:
             raise ValueError('Recorded bot social slots are ambiguous')
         used.add((page, button))
-        result['socials'].append({'bot_id': bot['id'], 'name': bot['name'], 'label': label,
-                                  'page': page, 'button': button, 'lines': commands, 'existing': reuse})
+        result['socials'].append(dict(social, page=page, button=button, existing=reuse))
     bars, buttons = (1, 10) if engine.profile == 'takp' else (10, 12)
     for bar in range(1, bars + 1):
         section = 'HotButtons' + (str(bar) if bar > 1 else '')
@@ -466,27 +572,34 @@ def _replace(engine, owner, client, path, original, updated, context, record):
 
 def _placements(value, socials, profile):
     if not isinstance(value, list) or len(value) > len(socials):
-        raise ValueError('Choose at most one hotbar placement per bot')
-    known = {social['bot_id'] for social in socials}
+        raise ValueError('Choose at most one hotbar placement per social')
+    known = {_social_key(social) for social in socials}
     result, bots, slots = [], set(), set()
     for placement in value:
-        if not isinstance(placement, dict) or set(placement) != {'bot_id', 'bar', 'page', 'button'}:
+        if not isinstance(placement, dict):
             raise ValueError('Choose a valid bot hotbar placement')
-        if any(type(placement[key]) is not int for key in placement):
+        key = 'social_id' if 'social_id' in placement else 'bot_id'
+        if set(placement) != {key, 'bar', 'page', 'button'}:
+            raise ValueError('Choose a valid bot hotbar placement')
+        if any(type(placement[field]) is not int for field in ('bar', 'page', 'button')):
             raise ValueError('Hotbar positions must be ordinary integers')
-        bot, bar, page, button = (placement[key] for key in ('bot_id', 'bar', 'page', 'button'))
+        if (key == 'bot_id' and type(placement[key]) is not int) or (key == 'social_id' and
+                (not isinstance(placement[key], str) or not SOCIAL_ID.fullmatch(placement[key]))):
+            raise ValueError('Choose a valid social identity')
+        bot, bar, page, button = (placement[field] for field in (key, 'bar', 'page', 'button'))
         if bot not in known or bot in bots or (bar, page, button) in slots or not 1 <= bar <= (1 if profile == 'takp' else 10) or not 1 <= page <= 10 or not 1 <= button <= (10 if profile == 'takp' else 12):
             raise ValueError('Choose distinct hotbar positions supported by this client')
         bots.add(bot)
         slots.add((bar, page, button))
         result.append(dict(placement))
-    return sorted(result, key=lambda item: item['bot_id'])
+    return sorted(result, key=lambda item: (1, item['social_id']) if 'social_id' in item else (0, item['bot_id']))
 
 
 def install(engine, owner, bots, args):
     _require_stopped(engine)
     context = _identity(engine, owner, args)
-    selected = _selected(bots)
+    actions = _actions(engine.profile, args)
+    selected = _selected(bots, MAX_SELECTED if actions else 5)
     client, _, path, raw, _, reason = _character(engine, owner, args)
     if reason:
         raise ValueError(reason)
@@ -494,6 +607,8 @@ def install(engine, owner, bots, args):
     request = {'context': context, 'bots': selected, 'file': path.name,
                'revision': args.get('file_revision'), 'token': args.get('preview_token'),
                'placements': args.get('placements', []), 'spawn_pause': args.get('spawn_pause', 20)}
+    if actions:
+        request['actions'] = [entry[0] for entry in actions]
     request_sha = _digest(request)
     records = _records(engine, context, path.name)
     for record in records:
@@ -513,14 +628,14 @@ def install(engine, owner, bots, args):
         changes[('Socials', prefix + 'Color')] = '0'
         for line in range(1, 6):
             changes[('Socials', prefix + 'Line' + str(line))] = social['lines'][line - 1] if line <= len(social['lines']) else ''
-    social_by_id = {social['bot_id']: social for social in result['socials']}
-    owned_bindings = {(p.get('bar'), p.get('page'), p.get('button'), p.get('bot_id')) for record in records for p in record.get('placements', []) if isinstance(p, dict)}
+    social_by_id = {_social_key(social): social for social in result['socials']}
+    owned_bindings = {(p.get('bar'), p.get('page'), p.get('button'), _social_key(p)) for record in records for p in record.get('placements', []) if isinstance(p, dict)}
     for placement in placements:
         section = 'HotButtons' + (str(placement['bar']) if placement['bar'] > 1 else '')
         key = f'Page{placement["page"]}Button{placement["button"]}'
-        binding = _binding(engine.profile, social_by_id[placement['bot_id']])
+        binding = _binding(engine.profile, social_by_id[_social_key(placement)])
         existing = ini.get(section, key)
-        slot = tuple(placement[key] for key in ('bar', 'page', 'button', 'bot_id'))
+        slot = (placement['bar'], placement['page'], placement['button'], _social_key(placement))
         if existing.strip() and not (slot in owned_bindings and existing == binding):
             raise ValueError('That hotbar position is occupied. Choose a free position')
         changes[(section, key)] = binding
@@ -532,7 +647,7 @@ def install(engine, owner, bots, args):
     record = _replace(engine, owner, client, path, raw, updated, context,
                       {'operation': 'install', 'request_sha256': request_sha,
                        'socials': result['socials'], 'placements': placements})
-    return {'message': 'Bot summon socials installed. Start the client and use the chosen buttons.',
+    return {'message': 'Bot command socials installed. Start the client and use the chosen buttons.',
             'installed': True, 'reused': False, 'character_file': path.name, 'file_revision': _sha(updated),
             'backup_id': record['id'], 'backup': BACKUPS + '/' + record['id'] + '/' + path.name,
             'socials': result['socials'], 'placements': placements}

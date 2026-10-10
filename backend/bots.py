@@ -207,7 +207,8 @@ def status(engine,args):
     except (ValueError,OSError) as error:
         return dict(profile=engine.profile,identity=None,available=False,reason=str(error),creation={'available':False,'reason':str(error)},races=[],genders=[{'id':0,'name':'Male'},{'id':1,'name':'Female'}])
     races=[dict(id=race,name=RACES[race],classes=[{'id':cls,'name':CLASSES[cls]} for r,cls in ctx['combinations'] if r==race]) for race in sorted({r for r,c in ctx['combinations']})]
-    return dict(profile=ctx['profile'],identity=ctx['identity'],available=True,reason='',creation=_creation(ctx),races=races,genders=[{'id':0,'name':'Male'},{'id':1,'name':'Female'}],limits={'batch':MAX_BATCH,'summon':5},rules=ctx['rules'],storage=storage_status(ctx))
+    import bot_socials
+    return dict(profile=ctx['profile'],identity=ctx['identity'],available=True,reason='',creation=_creation(ctx),races=races,genders=[{'id':0,'name':'Male'},{'id':1,'name':'Female'}],limits={'batch':MAX_BATCH,'summon':5,'social_selection':20 if ctx['profile']=='takp' else 5},social_commands=bot_socials.catalogue(ctx['profile']),rules=ctx['rules'],storage=storage_status(ctx))
 
 
 def _storage_snapshot(ctx):
@@ -541,7 +542,8 @@ def dispatch(engine,operation,args):
         ctx=context(engine,args,writing=operation!='bots_socials_preview'); selected=owner(ctx,args.get('owner_id'))
         if operation=='bots_socials_restore': return bot_socials.restore(engine,dict(args,_owner=selected))
         ids=args.get('bot_ids')
-        if not isinstance(ids,list) or not 1<=len(ids)<=5: raise ValueError('Select between one and five distinct owned bots')
+        limit=bot_socials.MAX_SELECTED if engine.profile=='takp' and args.get('actions') is not None else 5
+        if not isinstance(ids,list) or not 1<=len(ids)<=limit: raise ValueError(f'Select between one and {limit} distinct owned bots')
         for bot_id in ids: positive(bot_id,'bot ID')
         if len(ids)!=len(set(ids)): raise ValueError('Select distinct owned bots')
         owned={b['id']:b for b in roster(ctx,selected['id'])}

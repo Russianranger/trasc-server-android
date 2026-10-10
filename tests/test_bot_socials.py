@@ -70,6 +70,8 @@ class BotSocialTests(unittest.TestCase):
     def install_args(self, preview, **changes):
         args = self.args(character_file=preview['character_file'], file_revision=preview['file_revision'],
                          preview_token=preview['preview_token'], placements=[])
+        if 'actions' in preview:
+            args['actions'] = preview['actions']
         args.update(changes)
         return args
 
@@ -360,6 +362,140 @@ class BotSocialTests(unittest.TestCase):
         record_path.write_text(json.dumps(record))
         self.assertTrue(self.install(preview)['reused'])
         self.assertEqual(len(list((self.root / bot_socials.BACKUPS).iterdir())), 1)
+
+    def test_combined_spawn_and_separate_revive_use_selected_names_without_native_all(self):
+        preview = self.preview(actions=['spawn', 'revive', 'follow'])
+        self.assertEqual([s['label'] for s in preview['socials']], ['Spawn party', 'Revive party', 'Follow'])
+        self.assertEqual(preview['socials'][0]['lines'], ['/say #bot spawn Ninnaflalzm', '/say #bot spawn Tormentedsoul'])
+        self.assertEqual(preview['socials'][1]['lines'], ['/say #bot revive Ninnaflalzm', '/say #bot revive Tormentedsoul'])
+        self.assertEqual(len({s['social_id'] for s in preview['socials']}), 3)
+        self.assertTrue(all(' all' not in line for s in preview['socials'] for line in s['lines']))
+        self.assertIn('60-second wait', preview['message'])
+        self.assertIn('1 HP', preview['message'])
+        placements = [{'social_id': s['social_id'], 'bar': 1, 'page': 1, 'button': i + 3}
+                      for i, s in enumerate(preview['socials'])]
+        installed = self.install(preview, placements=placements)
+        ini = bot_socials.Ini(self.path.read_bytes())
+        for i, s in enumerate(preview['socials']):
+            self.assertEqual(ini.get('HotButtons', f'Page1Button{i + 3}'), bot_socials._binding('takp', s))
+        self.assertEqual((self.root / installed['backup']).read_bytes(), TAKP)
+        self.assertTrue(self.install(preview, placements=placements)['reused'])
+        newer = self.preview(actions=['follow', 'revive', 'spawn'])
+        self.assertEqual(newer['actions'], ['spawn', 'revive', 'follow'])
+        self.assertTrue(all(s['existing'] for s in newer['socials']))
+        self.assertEqual([s['social_id'] for s in preview['socials']], [s['social_id'] for s in newer['socials']])
+        restored = bot_socials.restore(self.engine, self.args(_owner=OWNER, character_file=self.path.name,
+                                      file_revision=installed['file_revision'], backup_id=installed['backup_id']))
+        self.assertTrue(restored['restored'])
+        self.assertEqual(self.path.read_bytes(), TAKP)
+
+    def test_twenty_selected_names_are_explicit_five_line_chunks_without_truncation(self):
+        bots = [{'id': n + 1, 'name': 'Named' + chr(65 + n)} for n in range(20)]
+        preview = self.preview(bots=bots, actions=['spawn', 'revive'])
+        self.assertEqual(len(preview['socials']), 8)
+        for action in ('spawn', 'revive'):
+            socials = [s for s in preview['socials'] if s['action'] == action]
+            self.assertEqual([name for s in socials for name in s['names']], [b['name'] for b in bots])
+            self.assertEqual([len(s['lines']) for s in socials], [5] * 4)
+            self.assertEqual([s['label'] for s in socials], [action.title() + ' party ' + str(i) for i in range(1, 5)])
+            self.assertTrue(all(len(s['label'].encode('ascii')) <= 15 for s in socials))
+        installed = self.install(preview, bots=bots)
+        self.assertEqual(len(self.preview(bots=bots, actions=['spawn', 'revive'])['backups']), 1,
+                         'More than five socials remain readable and restorable')
+        self.assertTrue(all(s['existing'] for s in self.preview(bots=bots, actions=['spawn', 'revive'])['socials']))
+        self.assertTrue(bot_socials.restore(self.engine, self.args(_owner=OWNER, character_file=self.path.name,
+                                             file_revision=installed['file_revision'], backup_id=installed['backup_id']))['restored'])
+
+    def test_command_catalogue_orders_dps_arguments_and_distinguishes_resurrection(self):
+        commands = bot_socials.catalogue('takp')
+        self.assertIn('fallen', next(c['description'] for c in commands if c['id'] == 'revive'))
+        self.assertIn('player corpse', next(c['description'] for c in commands if c['id'] == 'resurrect'))
+        self.assertEqual(bot_socials.catalogue('traditional'), [])
+        preview = self.preview(actions=['dps_off', 'sit_on', 'taunt_on', 'resurrect'])
+        expected = {'dps_off': '/say #bot dps cast off Ninnaflalzm', 'sit_on': '/say #bot sit Ninnaflalzm on',
+                    'taunt_on': '/say #bot taunt Ninnaflalzm 1', 'resurrect': '/say #bot resurrect Ninnaflalzm'}
+        self.assertEqual({s['action']: s['lines'][0] for s in preview['socials']}, expected)
+
+    def test_unknown_duplicate_injected_commands_and_explicit_actions_in_modern_are_refused(self):
+        for actions in ([], ['spawn', 'spawn'], ['revive_all'], ['spawn\n/say injected'], 'spawn', [True]):
+            with self.subTest(actions=actions), self.assertRaises(ValueError):
+                self.preview(actions=actions)
+        self.engine.profile = 'traditional'
+        self.path.write_bytes(ROF2)
+        with self.assertRaises(ValueError):
+            self.preview(actions=['spawn'])
+        self.assertEqual(len(self.preview()['socials']), 2)
+        self.assertEqual(self.path.read_bytes(), ROF2)
+
+    def test_changed_command_selection_cannot_replay_a_preview(self):
+        preview = self.preview(actions=['spawn'])
+        with self.assertRaisesRegex(ValueError, 'changed'):
+            self.install(preview, actions=['revive'])
+        self.assertEqual(self.path.read_bytes(), TAKP)
+        self.assertFalse((self.root / bot_socials.BACKUPS).exists())
+
+    def test_grouped_hotbar_slots_cannot_overwrite_or_alias_existing_buttons(self):
+        preview = self.preview(actions=['spawn', 'revive'])
+        keys = [s['social_id'] for s in preview['socials']]
+        for placements in ([{'social_id': keys[0], 'bar': 1, 'page': 1, 'button': 2}],
+                           [{'social_id': key, 'bar': 1, 'page': 1, 'button': 3} for key in keys],
+                           [{'social_id': keys[0], 'bot_id': 81, 'bar': 1, 'page': 1, 'button': 3}],
+                           [{'bot_id': 81, 'bar': 1, 'page': 1, 'button': 3}],
+                           [{'social_id': 'spawn.' + '0' * 24, 'bar': 1, 'page': 1, 'button': 3}]):
+            with self.subTest(placements=placements), self.assertRaises(ValueError):
+                self.install(preview, placements=placements)
+            self.assertEqual(self.path.read_bytes(), TAKP)
+
+    def test_grouped_receipts_validate_exact_action_names_and_ids_and_keep_legacy_backups(self):
+        legacy = self.install()
+        self.assertTrue(self.preview(actions=['spawn', 'revive'])['backups'][0]['restorable'])
+        bot_socials.restore(self.engine, self.args(_owner=OWNER, character_file=self.path.name,
+                            file_revision=legacy['file_revision'], backup_id=legacy['backup_id']))
+        preview = self.preview(actions=['spawn'])
+        installed = self.install(preview)
+        record_path = self.root / bot_socials.BACKUPS / installed['backup_id'] / 'record.json'
+        record = json.loads(record_path.read_text())
+        record['socials'][0]['action'] = 'revive'
+        record_path.write_text(json.dumps(record))
+        self.assertNotIn(installed['backup_id'], [b['id'] for b in self.preview(actions=['spawn'])['backups']])
+        with self.assertRaises(ValueError):
+            bot_socials.restore(self.engine, self.args(_owner=OWNER, character_file=self.path.name,
+                                file_revision=installed['file_revision'], backup_id=installed['backup_id']))
+
+    def test_too_many_buttons_and_companions_are_refused_before_any_file_write(self):
+        bots = [{'id': n + 1, 'name': 'Named' + chr(65 + n)} for n in range(21)]
+        with self.assertRaises(ValueError):
+            self.preview(bots=bots, actions=['spawn'])
+        with self.assertRaisesRegex(ValueError, '120 social slots'):
+            self.preview(bots=bots[:20], actions=[c['id'] for c in bot_socials.catalogue('takp')])
+        self.assertEqual(self.path.read_bytes(), TAKP)
+        self.assertFalse((self.root / bot_socials.BACKUPS).exists())
+
+    def test_native_social_boundary_at_one_five_and_six_selected_names(self):
+        bots = [{'id': n + 1, 'name': 'Named' + chr(65 + n)} for n in range(6)]
+        for count, expected in [(1, [1]), (5, [5]), (6, [5, 1])]:
+            with self.subTest(count=count):
+                preview = self.preview(bots=bots[:count], actions=['spawn'])
+                self.assertEqual([len(s['lines']) for s in preview['socials']], expected)
+                self.assertEqual([identity for s in preview['socials'] for identity in s['bot_ids']],
+                                 [b['id'] for b in bots[:count]])
+
+    def test_personal_edit_of_grouped_social_is_preserved_and_allocates_a_free_slot(self):
+        preview = self.preview(actions=['spawn', 'revive'])
+        self.install(preview)
+        first, second = preview['socials']
+        before = self.path.read_bytes()
+        changed = before.replace(b'Line1=/say #bot spawn Ninnaflalzm', b'Line1=/say Personal command')
+        self.path.write_bytes(changed)
+        newer = self.preview(actions=['spawn', 'revive'])
+        self.assertFalse(newer['socials'][0]['existing'])
+        self.assertNotEqual((first['page'], first['button']),
+                            (newer['socials'][0]['page'], newer['socials'][0]['button']))
+        self.assertTrue(newer['socials'][1]['existing'])
+        self.install(newer)
+        ini = bot_socials.Ini(self.path.read_bytes())
+        self.assertEqual(ini.get('Socials', f'Page{first["page"]}Button{first["button"]}Line1'), '/say Personal command')
+        self.assertIn(b'Text=Keep caf\xe9', self.path.read_bytes())
 
 
 if __name__ == '__main__':
