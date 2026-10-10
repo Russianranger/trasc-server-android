@@ -64,7 +64,7 @@ public final class MainActivity extends Activity {
         web.loadUrl("https://app.trasc.local/index.html");
         if(android.os.Build.VERSION.SDK_INT>=33)requestPermissions(new String[]{Manifest.permission.POST_NOTIFICATIONS},20);
     }
-    private ControllerManager createController(){controllerProfile=runtime.profiles.current();return new ControllerManager(this,runtime.work,event->runOnUiThread(()->{
+    private ControllerManager createController(){controllerProfile=runtime.profiles.current();return new ControllerManager(this,runtime.work,controllerProfile,event->runOnUiThread(()->{
         if(!isDestroyed()&&web!=null)web.evaluateJavascript("window.clientInputEvent && window.clientInputEvent("+event+")",null);
     }));}
     interface UiResult {Object run()throws Exception;}

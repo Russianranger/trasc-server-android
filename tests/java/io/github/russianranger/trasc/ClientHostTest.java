@@ -16,7 +16,7 @@ public final class ClientHostTest {
         return data.toByteArray();
     }
     public static void main(String[] args)throws Exception {
-        relativeInput();takpCameraInput();frameMeasurements();reusedPixels();controllerLayers();namedLayers();
+        relativeInput();takpCameraInput();mouseLookLatch();mouseLookControllerEdges();frameMeasurements();reusedPixels();controllerLayers();namedLayers();
         int[] pixels=new int[6];ByteArrayOutputStream wire=new ByteArrayOutputStream();
         RfbConnection.Screen screen=new RfbConnection.Screen(){public void resize(int w,int h){check(w==3&&h==2,"Display dimensions");}public void pixels(int x,int y,int w,int h,int[] colors){System.arraycopy(colors,0,pixels,0,6);}public void copy(int x,int y,int w,int h,int sx,int sy){}public void updated(){}};
         RfbConnection r=new RfbConnection(new ByteArrayInputStream(server(false)),wire,screen);r.handshake();r.readUpdate();
@@ -106,6 +106,82 @@ public final class ClientHostTest {
         events.clear();input.value("A",Float.NaN);check(events.isEmpty(),"Invalid analog value is ignored");
         for(String name:Arrays.asList("legacy","adventure","spells","inventory"))input.configure(ControllerInput.preset(name,false),ControllerInput.preset(name,true),name.equals("legacy")?"None":"L1",.2f,700);
         events.clear();input.activate(true);input.value("Start",1);check(events.equals(Arrays.asList("ClientMenu:true")),"Preset opens app controls without sending a game key");
+    }
+    static final class LookEvents implements DisplayInput.Sink {
+        final List<String> keys=new ArrayList<>();final List<Boolean> changes=new ArrayList<>();
+        final List<Integer> absoluteMasks=new ArrayList<>();boolean available=true;int dx,dy,mask,absolute;
+        public void key(int symbol,boolean down){keys.add(symbol+":"+down);}
+        public void pointer(int x,int y,int buttons){absolute++;mask=buttons;absoluteMasks.add(buttons);}
+        public boolean relative(int x,int y,int buttons){if(!available)return false;dx+=x;dy+=y;mask=buttons;return true;}
+        public boolean buttons(int buttons){if(!available)return false;mask=buttons;return true;}
+        public void mouseLook(boolean enabled){changes.add(enabled);}
+    }
+    static void mouseLookLatch(){
+        for(String profile:Arrays.asList("custom","traditional","takp")){
+            LookEvents events=new LookEvents();DisplayInput input=new DisplayInput(events,profile);
+            check(!input.mouseLookEnabled()&&events.mask==0,"Mouse look defaults off in each new session");
+            input.action("MouseLookToggle",true);check(input.mouseLookEnabled()==profile.equals("takp"),"Only TAKP accepts the mouse-look latch");
+            check(events.mask==(profile.equals("takp")?4:0),"Toggle action is handled before generic Mouse actions and never sends middle click");
+            input.action("MouseLookToggle",false);check(input.mouseLookEnabled()==profile.equals("takp"),"Releasing the binding leaves toggled look enabled");
+            input.action("MouseLookToggle",true);check(!input.mouseLookEnabled()&&events.mask==0,"The second press disables look");
+            check(ControllerInput.actions(profile).contains("MouseLookToggle")==profile.equals("takp"),"TAKP alone advertises the saved controller action");
+        }
+        LookEvents events=new LookEvents();DisplayInput input=new DisplayInput(events,"takp");
+        input.key("physical-w",'w',true);input.mouse("physical-right",4,true);input.action("MouseRight",true);input.setMouseLook(true);
+        input.setMouseLook(false);check(events.mask==4&&!events.keys.contains("119:false"),"Latch release retains independent physical/controller RMB and movement key");
+        input.mouse("physical-right",4,false);check(events.mask==4,"Independent controller RMB survives physical release");
+        input.action("MouseRight",false);check(events.mask==0,"Last independent RMB source releases normally");
+        input.mouse("touch",1,true);input.setMouseLook(true);check(events.mask==4,"Enabling touch look removes an existing touch left-click");
+        input.lookTouchDown(200,100);for(int i=1;i<=200;i++)input.lookTouchMove(200+i*.5f,100-i*.5f);
+        check(Math.abs(events.dx-15)<=1&&Math.abs(events.dy+15)<=1&&events.absolute==0&&events.mask==4,"Look touch emits signed fractional relative deltas at TAKP camera gain without absolute motion or left click");
+        input.lookTouchUp();int prior=events.dx;input.lookTouchMove(700,500);check(events.dx==prior,"A new touch origin never jumps the camera");
+        input.setMouseLook(false);input.setMouseLook(true);input.lookTouchMove(0,0);check(events.dx==prior,"Disabling and re-enabling discards the prior touch origin");
+        input.key("escape",0xff1b,true);check(!input.mouseLookEnabled()&&events.keys.contains("65307:true")&&!events.keys.contains("119:false"),"Escape clears only look and still reaches the client");input.key("escape",0,false);
+        input.setMouseLook(true);input.key("enter",0xff0d,true);check(!input.mouseLookEnabled()&&events.keys.contains("65293:true"),"Enter disables look before native chat receives the key");input.key("enter",0,false);
+        input.setMouseLook(true);input.releaseAll();check(!input.mouseLookEnabled()&&events.mask==0&&events.keys.contains("119:false")&&!events.changes.get(events.changes.size()-1),"Lifecycle release clears the latch, held input and visible state");
+        input.setMouseLook(true);events.available=false;prior=events.absolute;input.move(100,100);
+        check(!input.mouseLookEnabled()&&events.dx<100&&events.absolute==prior+1&&!events.absoluteMasks.contains(4),"Relative-channel loss disables look and sends only release through absolute fallback");
+        input.setMouseLook(true);check(!input.mouseLookEnabled()&&events.mask==0&&!events.absoluteMasks.contains(4),"An unavailable relative channel cannot latch or reassert RMB on fallback");
+        System.out.println("PASS: TAKP-only transient mouse-look latch, independent RMB sources, relative touch, Escape/Enter/lifecycle release and failed-channel fallback");
+    }
+    static final class LookController {
+        final LookEvents events=new LookEvents();final DisplayInput display=new DisplayInput(events,"takp");
+        final List<String> edges=new ArrayList<>();
+        final ControllerInput pad=new ControllerInput(new ControllerInput.Sink(){
+            public void button(String action,boolean down){edges.add(action+":"+down);display.action(action,down);}
+            public void pointer(float x,float y){display.move(x,y);}public void wheel(int amount){display.wheel(amount);}
+            public void layer(int index,String name){display.setMouseLook(false);}
+        });
+        int presses(){int count=0;for(String edge:edges)if(edge.equals("MouseLookToggle:true"))count++;return count;}
+    }
+    static void mouseLookControllerEdges(){
+        Map<String,String> main=ControllerInput.defaults();main.put("A","MouseLookToggle");main.put("B","MouseLookToggle");main.put("R2","MouseLookToggle");
+        LookController test=new LookController();test.pad.configure(main,.2f,700);test.pad.activate(true);
+        test.pad.physicalValue("A",1,true);test.pad.value("A",1);test.pad.value("A",.6f);
+        check(test.presses()==1&&test.display.mouseLookEnabled(),"One physical press toggles once despite repeated key/axis samples");
+        test.pad.value("A",0);check(test.display.mouseLookEnabled(),"Binding release does not unlatch look");
+        test.pad.physicalValue("A",1,true);check(test.presses()==2&&!test.display.mouseLookEnabled(),"A second true edge disables look");
+        test.pad.physicalValue("B",1,true);check(test.presses()==3&&test.display.mouseLookEnabled(),"Another independently pressed binding has its own edge while A is held");
+        test.pad.value("B",0);test.pad.activate(false);test.display.setMouseLook(false);test.pad.activate(true);
+        test.pad.value("A",1);check(test.presses()==3&&!test.display.mouseLookEnabled(),"Recapture cannot synthesize a toggle from a still-held source");
+        test.pad.value("A",0);test.pad.value("A",1);check(test.presses()==4&&test.display.mouseLookEnabled(),"Observed neutral rearms the next analog press");
+        test.pad.configure(main,.2f,700);test.pad.value("A",1);check(test.presses()==4&&!test.display.mouseLookEnabled(),"Active rebind clears look and disarms held sources until neutral");
+        test.pad.value("A",0);test.pad.value("A",1);check(test.presses()==5&&test.display.mouseLookEnabled(),"A neutral sample after rebind permits a new edge");
+        test.pad.activate(false);test.display.setMouseLook(false);test.pad.activate(true);test.pad.value("R2",1);
+        check(test.presses()==5&&!test.display.mouseLookEnabled(),"An analog trigger held before capture requires neutral even without known prior state");
+        test.pad.value("R2",.1f);test.pad.value("R2",.8f);test.pad.value("R2",.7f);check(test.presses()==6&&test.display.mouseLookEnabled(),"Analog neutral then threshold crossing toggles exactly once");
+        test.pad.activate(false);test.display.setMouseLook(false);test.pad.activate(true);test.pad.physicalValue("A",1,true);
+        check(test.presses()==7&&test.display.mouseLookEnabled(),"A genuine fresh digital keydown is immediately usable after capture");
+        main=ControllerInput.defaults();main.put("A","KeyW");main.put("B","MouseLookToggle");main.put("L2","LayerNext");
+        Map<String,String> alternate=ControllerInput.inherited();alternate.put("A","MouseLookToggle");
+        test.pad.configure(Arrays.asList(new ControllerInput.Layer("Main",main),new ControllerInput.Layer("Look",alternate)),.2f,700);
+        test.pad.activate(true);test.pad.physicalValue("A",1,true);int presses=test.presses();test.pad.physicalValue("L2",1,true);
+        check(test.pad.currentLayer()==1&&test.presses()==presses&&!test.display.mouseLookEnabled(),"Layer reconciliation never synthesizes a toggle from a held ordinary binding");
+        test.pad.value("A",0);test.pad.physicalValue("A",1,true);check(test.presses()==presses+1&&test.display.mouseLookEnabled(),"Releasing then pressing the newly bound source enables look");
+        test.pad.value("L2",0);test.pad.physicalValue("L2",1,true);check(test.pad.currentLayer()==0&&!test.display.mouseLookEnabled(),"Layer change clears the latch even while its original toggle source remains held");
+        test.pad.value("A",1);test.pad.value("A",.7f);check(test.presses()==presses+1&&!test.display.mouseLookEnabled(),"Held toggle remains a control action across layers without synthetic retrigger");
+        check(test.edges.stream().noneMatch(edge->edge.startsWith("MouseMiddle")),"Controller toggle never becomes a middle-button action");
+        System.out.println("PASS: mouse-look physical edge/repeat/overlap, neutral rearming after capture/rebind, analog trigger capture and synthetic layer reconciliation");
     }
     static void namedLayers(){
         List<String> events=new ArrayList<>(),names=new ArrayList<>();
