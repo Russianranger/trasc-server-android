@@ -24,11 +24,16 @@ server's existing Spawns/Netcode logging, recording actual spawn creations and
 coordinates plus packet errors where reported. Live NPC counts and
 nearby-distance snapshots are unavailable.
 
-ARM64 server qualification now exercises the pinned server's native NPC spawn
-encoder with bulk packets containing 1, 56 and 100 NPCs, plus 156 individual
-`NewSpawn` packets. This checks architecture-specific packet construction;
-it does not establish delivery or model rendering on the Thor. The deployed
-server and client renderer remain unchanged.
+ARM64 server qualification passed checks of the pinned server's native NPC
+spawn encoder with bulk packets containing 1, 56 and 100 NPCs, plus 156
+individual `NewSpawn` packets. This verifies architecture-specific packet
+construction; it does not establish delivery or model rendering on the Thor.
+The deployed server and client renderer remain unchanged.
+
+For the next NPC check, stand near the Paineel gate and enter the native command
+`/target Tormented`. Report whether the Target window shows a name and HP while
+the model remains invisible, then camp and export fresh logs. This command is
+supported by the original TAKP client and requires no additional client mod.
 
 On 0.6.18, the user confirmed Android login, character creation, entry into
 Paineel, four stable minutes in the world and camp. Both the executable and
@@ -69,12 +74,14 @@ signing certificate and all 21 verified native launcher components from 0.6.19.
 Existing Custom and Traditional profile files stay in their own locations.
 The pinned server binaries and runtimes remain unchanged.
 
-Version 0.6.20 qualification is pending. Full Python, browser, management/native
-input, DirectX, Android assembly/lint, signing/native reuse and ARM64 server
-qualification remain required before publication. The verified 0.6.19 baseline
-passed 408 Python tests without skips, all thirteen browser programs and all
-twelve ARM64 checks, including creation events for all 156 seeded Paineel NPCs.
-See [0.6.19 release verification](release-status-0619.md). Camera behavior, NPC
+Version 0.6.20 passed all three main CI jobs, 408 Python tests without skips,
+all thirteen browser programs, management/native input and real DirectX checks,
+Android assembly/lint, signing and all 21 native reuse checks. Toolbar checks
+cover 54 world/theme/viewport combinations. ARM64 qualification passed all
+thirteen checks, including all nine production binaries, 156 Paineel NPC
+creation events and the native spawn encoding checks. The published APK,
+source archive, receipt and manifest hashes match the downloaded artifacts.
+See [0.6.20 release verification](https://github.com/Russianranger/trasc-server-android/blob/main/docs/release-status-0620.md). Camera behavior, NPC
 visibility, graphics/audio, zoning and bots require further device testing.
 TAKP uses its EQW input wrapper;
 RoF2 DLL hooks, launcher skin activation, Spire editing and PEQ era presets are
