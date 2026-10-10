@@ -1,0 +1,366 @@
+"""Literal-preserving bot social edits, stale previews and owner-scoped recovery.
+
+Format excerpts are reduced fixtures from primary client tools:
+TAKP: CoastalRedwood/Zeal 50dc9a41738034a56f3de3d34902e20000c34072
+      Zeal/page10_binds.cpp, game_structures.h and game_functions.cpp;
+      davehess/QuarmBossTracker c96db65aff3496cf3c4da18dfa6267d15f65311d
+      test/buff-blocks.test.js (Aldenmar_pq.proj.ini, E18 binding).
+RoF2: pronym-inc/eq-config-generator 5954f357bd9d92ad9b94cd571c1c95f54cfc6eef
+      ini.py create_configs_for_class (E-index and comma fields).
+"""
+import hashlib
+import json
+import os
+from pathlib import Path
+import sys
+import tempfile
+import unittest
+from unittest.mock import patch
+
+sys.path.insert(0, str(Path(__file__).resolve().parents[1] / 'backend'))
+import bot_socials
+
+
+OWNER = {'id': 12, 'account_id': 7, 'name': 'Aldenmar', 'account': 'local', 'level': 10}
+BOTS = [{'id': 81, 'name': 'Ninnaflalzm', 'race': 1, 'class': 2, 'gender': 1},
+        {'id': 82, 'name': 'Tormentedsoul', 'race': 3, 'class': 1, 'gender': 0}]
+IDENTITY = 'a' * 64
+# The actual native TAKP fixture uses Socials PageNButtonMName/Color/LineN,
+# a single HotButtons section, bare E18 and a character + host-tag filename.
+TAKP = (b'[Friends]\r\nFriend0=Bob\r\n[Socials]\r\n'
+        b'Page1Button1Name=Assist\r\nPage1Button1Color=5\r\n'
+        b'Page1Button1Line1=/say #existing ; literal\r\n'
+        b'Page2Button1Name=Mine\r\nPage2Button1Color=5\r\n'
+        b'Page2Button1Line1=/rs hello\r\n[HotButtons]\r\n'
+        b'Page1Button1=E18\r\nPage1Button2=H2\r\n'
+        b'[InspectText]\r\nText=Keep caf\xe9\r\n')
+ROF2 = TAKP.replace(b'Page1Button1=E18', b'Page1Button1=E18,@-1,0000000000000000,0,')
+
+
+class FakeEngine:
+    def __init__(self, root, profile='takp'):
+        self.work, self.profile = root, profile
+        self.processes = {}
+        self.client = root / 'client/current'
+        self.client.mkdir(parents=True)
+        self.cancel_hook = lambda: None
+
+    def _local_client(self, required=True):
+        return self.client
+
+    def check_cancel(self):
+        self.cancel_hook()
+
+
+class BotSocialTests(unittest.TestCase):
+    def setUp(self):
+        temp = tempfile.TemporaryDirectory()
+        self.addCleanup(temp.cleanup)
+        self.root = Path(temp.name)
+        self.engine = FakeEngine(self.root)
+        self.path = self.engine.client / 'Aldenmar_takp.ini'
+        self.path.write_bytes(TAKP)
+
+    def args(self, **changes):
+        return dict({'identity': IDENTITY, 'owner_id': OWNER['id']}, **changes)
+
+    def preview(self, bots=None, **changes):
+        return bot_socials.preview(self.engine, OWNER, BOTS if bots is None else bots, self.args(**changes))
+
+    def install_args(self, preview, **changes):
+        args = self.args(character_file=preview['character_file'], file_revision=preview['file_revision'],
+                         preview_token=preview['preview_token'], placements=[])
+        args.update(changes)
+        return args
+
+    def install(self, preview=None, bots=None, **changes):
+        preview = preview or self.preview(bots)
+        return bot_socials.install(self.engine, OWNER, BOTS if bots is None else bots,
+                                  self.install_args(preview, **changes))
+
+    def test_native_takp_and_rof2_fixtures_select_actual_owner_file_and_format(self):
+        for profile in ('takp', 'custom', 'traditional'):
+            with self.subTest(profile=profile):
+                self.engine.profile = profile
+                self.path.write_bytes(TAKP if profile == 'takp' else ROF2)
+                before = self.path.read_bytes()
+                preview = self.preview()
+                self.assertTrue(preview['supported'])
+                self.assertEqual(preview['character_file'], self.path.name)
+                self.assertEqual(len(preview['socials']), 2)
+                self.assertEqual(len(preview['empty_hotbar_slots']), 98 if profile == 'takp' else 1198)
+                placement = {'bot_id': 81, 'bar': 1, 'page': 1, 'button': 3}
+                result = self.install(preview, placements=[placement])
+                after = self.path.read_bytes()
+                self.assertIn(b'Friend0=Bob\r\n', after)
+                self.assertIn(b'Text=Keep caf\xe9\r\n', after)
+                self.assertIn(b'Page1Button1Line1=/say #existing ; literal\r\n', after)
+                self.assertIn(b'Page1Button2=H2\r\n', after)
+                self.assertNotIn(b'\n', after.replace(b'\r\n', b''))
+                if profile == 'takp':
+                    self.assertIn(b'/say #bot spawn Ninnaflalzm', after)
+                    self.assertIn(b'Page1Button3=E1\r\n', after)
+                    self.assertNotIn(b'/invite', after)
+                else:
+                    self.assertIn(b'/pause 20, /say ^botspawn Ninnaflalzm', after)
+                    self.assertIn(b'/pause 5, /target Ninnaflalzm', after)
+                    self.assertIn(b'Line2=/target Aldenmar', after)
+                    self.assertIn(b'Line4=/invite', after)
+                    self.assertIn(b'Page1Button3=E1,@-1,0000000000000000,0,Ninnaflalzm\r\n', after)
+                self.assertEqual((self.engine.work / result['backup']).read_bytes(), before)
+                # Clear history between isolated profile examples.
+                import shutil
+                shutil.rmtree(self.root / 'backups')
+
+    def test_latin1_utf8_bom_and_mixed_newline_bytes_are_preserved(self):
+        original = b'\xef\xbb\xbf[Friends]\r\nFriend0=Ren\xc3\xa9\n[Socials]\r\n; note\nUnknown=literal # untouched\r\n[InspectText]\nText=tail'
+        self.path.write_bytes(original)
+        self.install()
+        after = self.path.read_bytes()
+        self.assertTrue(after.startswith(b'\xef\xbb\xbf[Friends]\r\nFriend0=Ren\xc3\xa9\n'))
+        self.assertIn(b'; note\nUnknown=literal # untouched\r\n', after)
+        self.assertTrue(after.endswith(b'[InspectText]\nText=tail'))
+
+    def test_ini_merge_keeps_original_key_spelling_order_and_unrelated_bytes(self):
+        raw = b'[Socials]\n page1button1name =\nPage1Button1Color=4\nPage1Button1Line1=\n[Other]\nSame=keep\n'
+        ini = bot_socials.Ini(raw)
+        updated = ini.merge({('Socials', 'Page1Button1Name'): 'Named', ('Socials', 'Page1Button1Line1'): '/say #bot spawn Named'})
+        self.assertEqual(updated, raw.replace(b' page1button1name =\n', b' page1button1name =Named\n').replace(b'Page1Button1Line1=\n', b'Page1Button1Line1=/say #bot spawn Named\n'))
+
+    def test_new_socials_section_does_not_capture_keys_for_existing_last_hotbar_section(self):
+        self.path.write_bytes(b'[Friends]\nFriend0=Bob\n[HotButtons]\nPage1Button1=H2\n')
+        preview = self.preview()
+        self.install(preview, placements=[{'bot_id': 81, 'bar': 1, 'page': 1, 'button': 2}])
+        ini = bot_socials.Ini(self.path.read_bytes())
+        self.assertEqual(ini.get('HotButtons', 'Page1Button2'), 'E0')
+        self.assertEqual(ini.get('Socials', 'Page1Button1Name'), 'Ninnaflalzm')
+        self.assertEqual(ini.get('Socials', 'Page1Button2'), '')
+
+    def test_duplicate_native_keys_or_sections_and_unsupported_keys_are_blocked(self):
+        for addition in (b'[SOCIALS]\n', b'[Socials]\nPage1Button1Name=Again\nPage1Button1Name=Again\n',
+                         b'[Socials]\nPage11Button1Name=Beyond\n', b'[HotButtons2]\nPage1Button1=E1\n'):
+            with self.subTest(addition=addition):
+                self.path.write_bytes(TAKP + addition)
+                preview = self.preview()
+                self.assertFalse(preview['supported'])
+                self.assertFalse(preview['preview_token'])
+                with self.assertRaises(ValueError):
+                    self.install(preview)
+
+    def test_missing_import_or_character_file_is_actionable_without_fabricating_ini(self):
+        self.path.unlink()
+        preview = self.preview()
+        self.assertFalse(preview['supported'])
+        self.assertIn('camp', preview['reason'])
+        self.assertEqual(list(self.engine.client.iterdir()), [])
+        self.engine._local_client = lambda required=True: None
+        self.assertFalse(self.preview()['supported'])
+
+    def test_owner_file_match_excludes_ui_settings_and_other_character_prefixes(self):
+        (self.engine.client / 'UI_Aldenmar_takp.ini').write_bytes(TAKP)
+        (self.engine.client / 'Aldenmarx_takp.ini').write_bytes(TAKP)
+        (self.engine.client / 'eqclient.ini').write_bytes(TAKP)
+        preview = self.preview()
+        self.assertEqual([entry['file'] for entry in preview['character_files']], [self.path.name])
+        self.assertFalse(self.preview(character_file='../eqclient.ini')['supported'])
+        self.assertFalse(self.preview(character_file='UI_Aldenmar_takp.ini')['supported'])
+
+    def test_ambiguous_server_suffix_needs_explicit_selection_and_windows_case_collisions_block(self):
+        second = self.engine.client / 'Aldenmar_other.ini'
+        second.write_bytes(TAKP)
+        self.assertFalse(self.preview()['supported'])
+        self.assertTrue(self.preview(character_file=second.name)['supported'])
+        (self.engine.client / 'aldenmar_OTHER.INI').write_bytes(TAKP)
+        self.assertFalse(self.preview(character_file=second.name)['supported'])
+
+    def test_symlink_and_oversized_character_files_are_never_edited(self):
+        outside = self.root / 'outside.ini'
+        outside.write_bytes(TAKP)
+        self.path.unlink()
+        self.path.symlink_to(outside)
+        self.assertFalse(self.preview()['supported'])
+        self.assertEqual(outside.read_bytes(), TAKP)
+        self.path.unlink()
+        self.path.write_bytes(b'a' * (bot_socials.MAX_INI_BYTES + 1))
+        self.assertFalse(self.preview()['supported'])
+
+    def test_stale_preview_and_changed_bot_selection_preserve_file_without_backup(self):
+        preview = self.preview()
+        self.path.write_bytes(TAKP + b'; changed\r\n')
+        with self.assertRaisesRegex(ValueError, 'changed'):
+            self.install(preview)
+        self.assertEqual(self.path.read_bytes(), TAKP + b'; changed\r\n')
+        self.assertFalse((self.root / bot_socials.BACKUPS).exists())
+        self.path.write_bytes(TAKP)
+        with self.assertRaisesRegex(ValueError, 'changed'):
+            self.install(preview, bots=BOTS[:1])
+
+    def test_occupied_hotbars_and_duplicate_placements_are_rejected(self):
+        preview = self.preview()
+        for placements in ([{'bot_id': 81, 'bar': 1, 'page': 1, 'button': 2}],
+                           [{'bot_id': 81, 'bar': 2, 'page': 1, 'button': 1}],
+                           [{'bot_id': 81, 'bar': 1, 'page': 1, 'button': 11}],
+                           [{'bot_id': 81, 'bar': 1, 'page': 1, 'button': 3}, {'bot_id': 82, 'bar': 1, 'page': 1, 'button': 3}],
+                           [{'bot_id': 81, 'bar': True, 'page': 1, 'button': 3}]):
+            with self.subTest(placements=placements), self.assertRaises(ValueError):
+                self.install(preview, placements=placements)
+            self.assertEqual(self.path.read_bytes(), TAKP)
+
+    def test_empty_social_referenced_by_existing_hotbar_is_reserved(self):
+        self.path.write_bytes(b'[HotButtons]\nPage1Button1=E0\n[Socials]\n')
+        preview = self.preview()
+        self.assertEqual((preview['socials'][0]['page'], preview['socials'][0]['button']), (1, 2))
+
+    def test_blank_name_with_nonempty_fifth_line_is_occupied(self):
+        self.path.write_bytes(b'[Socials]\nPage1Button1Name=\nPage1Button1Line5=/say keep\n')
+        self.assertEqual(self.preview()['socials'][0]['button'], 2)
+
+    def test_retry_and_new_preview_reuse_only_recorded_identical_socials(self):
+        preview = self.preview()
+        placements = [{'bot_id': 81, 'bar': 1, 'page': 1, 'button': 3}]
+        installed = self.install(preview, placements=placements)
+        after = self.path.read_bytes()
+        retried = self.install(preview, placements=placements)
+        self.assertTrue(retried['reused'])
+        self.assertEqual(retried['backup_id'], installed['backup_id'])
+        self.assertEqual(self.path.read_bytes(), after)
+        self.assertEqual(len(list((self.root / bot_socials.BACKUPS).iterdir())), 1)
+        newer = self.preview()
+        self.assertTrue(all(social['existing'] for social in newer['socials']))
+        self.assertEqual([(s['page'], s['button']) for s in newer['socials']], [(s['page'], s['button']) for s in preview['socials']])
+        self.assertTrue(self.install(newer, placements=placements)['reused'])
+        self.assertEqual(self.path.read_bytes(), after)
+
+    def test_identical_unrecorded_personal_social_is_preserved_and_not_adopted(self):
+        self.path.write_bytes(b'[Socials]\nPage1Button1Name=Ninnaflalzm\nPage1Button1Color=0\nPage1Button1Line1=/say #bot spawn Ninnaflalzm\n')
+        self.assertEqual(self.preview()['socials'][0]['button'], 2)
+
+    def test_restore_matches_owner_account_deployment_and_exact_after_revision(self):
+        installed = self.install()
+        args = self.args(_owner=OWNER, character_file=self.path.name,
+                         file_revision=installed['file_revision'], backup_id=installed['backup_id'])
+        for identity, owner in [('b' * 64, OWNER), (IDENTITY, dict(OWNER, id=13)), (IDENTITY, dict(OWNER, account_id=8))]:
+            with self.subTest(identity=identity, owner=owner), self.assertRaises(ValueError):
+                bot_socials.restore(self.engine, dict(args, identity=identity, _owner=owner))
+        result = bot_socials.restore(self.engine, args)
+        self.assertTrue(result['restored'])
+        self.assertEqual(self.path.read_bytes(), TAKP)
+
+    def test_restore_refuses_later_personal_changes_even_with_fresh_revision(self):
+        installed = self.install()
+        self.path.write_bytes(self.path.read_bytes() + b'; personal later change\r\n')
+        with self.assertRaisesRegex(ValueError, 'later changes'):
+            bot_socials.restore(self.engine, self.args(_owner=OWNER, character_file=self.path.name,
+                                file_revision=hashlib.sha256(self.path.read_bytes()).hexdigest(), backup_id=installed['backup_id']))
+
+    def test_restore_retry_and_prepared_receipt_reuse_exact_owned_transition(self):
+        installed = self.install()
+        args = self.args(_owner=OWNER, character_file=self.path.name,
+                         file_revision=installed['file_revision'], backup_id=installed['backup_id'])
+        restored = bot_socials.restore(self.engine, args)
+        receipt = self.root / bot_socials.BACKUPS / restored['backup_id'] / 'record.json'
+        record = json.loads(receipt.read_text())
+        record['state'] = 'prepared'
+        receipt.write_text(json.dumps(record))
+        retried = bot_socials.restore(self.engine, args)
+        self.assertTrue(retried['reused'])
+        self.assertEqual(retried['backup_id'], restored['backup_id'])
+        self.assertEqual(self.path.read_bytes(), TAKP)
+        self.assertEqual(len(list((self.root / bot_socials.BACKUPS).iterdir())), 2)
+        with self.assertRaises(ValueError):
+            bot_socials.restore(self.engine, dict(args, identity='b' * 64))
+        self.path.write_bytes(TAKP + b'; personal afterwards\r\n')
+        with self.assertRaises(ValueError):
+            bot_socials.restore(self.engine, args)
+
+    def test_restore_file_failure_is_atomic_and_retryable(self):
+        installed = self.install()
+        args = self.args(_owner=OWNER, character_file=self.path.name,
+                         file_revision=installed['file_revision'], backup_id=installed['backup_id'])
+        after = self.path.read_bytes()
+        with patch('bot_socials.os.replace', side_effect=OSError('restore disk unavailable')):
+            with self.assertRaisesRegex(OSError, 'restore disk unavailable'):
+                bot_socials.restore(self.engine, args)
+        self.assertEqual(self.path.read_bytes(), after)
+        self.assertEqual(len(list((self.root / bot_socials.BACKUPS).iterdir())), 1)
+        self.assertTrue(bot_socials.restore(self.engine, args)['restored'])
+        self.assertEqual(self.path.read_bytes(), TAKP)
+
+    def test_backup_tamper_and_linked_backup_root_are_rejected(self):
+        installed = self.install()
+        backup = self.root / installed['backup']
+        backup.write_bytes(b'tampered')
+        self.assertEqual(self.preview()['backups'], [])
+        with self.assertRaises(ValueError):
+            bot_socials.restore(self.engine, self.args(_owner=OWNER, character_file=self.path.name,
+                                file_revision=installed['file_revision'], backup_id=installed['backup_id']))
+
+    def test_malformed_backup_receipt_is_ignored_and_fifo_candidate_cannot_block_scan(self):
+        installed = self.install()
+        record_path = self.root / bot_socials.BACKUPS / installed['backup_id'] / 'record.json'
+        record = json.loads(record_path.read_text())
+        record['socials'] = None
+        record_path.write_text(json.dumps(record))
+        self.assertEqual(self.preview()['backups'], [])
+        for malformed in ([], None, 'not a receipt', 42):
+            with self.subTest(malformed=malformed):
+                record_path.write_text(json.dumps(malformed))
+                self.assertEqual(self.preview()['backups'], [])
+        fifo = self.engine.client / 'Aldenmar_fifo.ini'
+        os.mkfifo(fifo)
+        preview = self.preview(character_file=self.path.name)
+        rejected = next(entry for entry in preview['character_files'] if entry['file'] == fifo.name)
+        self.assertFalse(rejected['supported'])
+
+    def test_atomic_replace_failure_keeps_original_and_cleans_staged_backup(self):
+        with patch('bot_socials.os.replace', side_effect=OSError('disk unavailable')):
+            with self.assertRaisesRegex(OSError, 'disk unavailable'):
+                self.install()
+        self.assertEqual(self.path.read_bytes(), TAKP)
+        self.assertEqual(list((self.root / bot_socials.BACKUPS).iterdir()), [])
+        self.assertFalse(any(path.name.startswith('.trasc-bot-socials') for path in self.engine.client.iterdir()))
+
+    def test_change_between_stage_and_commit_is_detected(self):
+        calls = []
+        def hook():
+            calls.append(1)
+            if len(calls) == 2:
+                self.path.write_bytes(TAKP + b'; concurrent\r\n')
+        self.engine.cancel_hook = hook
+        with self.assertRaisesRegex(ValueError, 'changed'):
+            self.install()
+        self.assertEqual(self.path.read_bytes(), TAKP + b'; concurrent\r\n')
+        self.assertEqual(list((self.root / bot_socials.BACKUPS).iterdir()), [])
+
+    def test_running_client_is_independently_guarded(self):
+        class Running:
+            def poll(self):
+                return None
+        self.engine.processes['client'] = Running()
+        with self.assertRaisesRegex(ValueError, 'Stop the embedded client'):
+            self.install()
+        self.assertEqual(self.path.read_bytes(), TAKP)
+
+    def test_malformed_names_ids_limits_and_pause_are_rejected(self):
+        for bots in ([], BOTS * 3, [{'id': True, 'name': 'Named'}], [{'id': 1, 'name': 'Bad\n/say injected'}], BOTS[:1] * 2):
+            with self.subTest(bots=bots), self.assertRaises(ValueError):
+                self.preview(bots)
+        self.engine.profile = 'custom'
+        self.path.write_bytes(ROF2)
+        for pause in (True, 0, 101, '20'):
+            with self.subTest(pause=pause), self.assertRaises(ValueError):
+                self.preview(spawn_pause=pause)
+
+    def test_prepared_crash_receipt_recognizes_committed_file_retry(self):
+        preview = self.preview()
+        installed = self.install(preview)
+        record_path = self.root / bot_socials.BACKUPS / installed['backup_id'] / 'record.json'
+        record = json.loads(record_path.read_text())
+        record['state'] = 'prepared'
+        record_path.write_text(json.dumps(record))
+        self.assertTrue(self.install(preview)['reused'])
+        self.assertEqual(len(list((self.root / bot_socials.BACKUPS).iterdir())), 1)
+
+
+if __name__ == '__main__':
+    unittest.main()

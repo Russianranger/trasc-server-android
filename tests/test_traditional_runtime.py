@@ -19,6 +19,7 @@ import traditional_build as build
 import traditional_content as content
 import traditional_runtime as runtime
 import traditional_verify as verify
+import modern_bot_bridge
 from test_traditional_build import arm_elf, loader_command
 
 
@@ -201,6 +202,55 @@ class TraditionalRuntimeTests(unittest.TestCase):
             self.engine.dispatch('export_client', {})
         with patch('traditional_build._runtime', return_value={'ready': True, 'identity': 'b' * 64}):
             self.assertFalse(runtime.status(self.engine, {})['start_allowed'])
+
+    def legacy_deployed(self):
+        self.deployed()
+        path=self.engine.work/'server/bin/build-info.json'
+        info=json.loads(path.read_text())
+        info['recipe_identity']=runtime.LEGACY_0621_RECIPE_IDENTITY
+        info.pop('bot_creation_bridge',None)
+        atomic_json(path,info)
+        return path,info
+
+    def test_exact_0621_deployed_recipe_keeps_normal_start_without_offline_bots(self):
+        _,info=self.legacy_deployed()
+        self.assertEqual(runtime._record(self.engine)['recipe_identity'],runtime.LEGACY_0621_RECIPE_IDENTITY)
+        state=runtime.status(self.engine,{})
+        self.assertTrue(state['deployed_valid'])
+        self.assertTrue(state['start_allowed'])
+        with self.assertRaisesRegex(ValueError,'Rebuild and deploy'):
+            modern_bot_bridge._deployed(self.engine,{'profile':'traditional','deployment':info})
+
+    def test_legacy_recipe_never_qualifies_a_new_staged_deployment(self):
+        path=self.engine.work/'server/bin.staged/build-info.json'
+        info=json.loads(path.read_text()); info['recipe_identity']=runtime.LEGACY_0621_RECIPE_IDENTITY
+        atomic_json(path,info)
+        with self.assertRaisesRegex(ValueError,'qualified runtime and build recipe'):
+            self.deployed()
+        self.assertFalse((self.engine.work/'server/bin').exists())
+        self.assertFalse(self.backups)
+
+    def test_legacy_acceptance_still_checks_verifier_runtime_manifest_report_and_binaries(self):
+        path,info=self.legacy_deployed()
+        original_sha=build._sha
+        def changed_verifier(value,*args,**kwargs):
+            return '0'*64 if Path(value).name=='traditional_verify.py' else original_sha(value,*args,**kwargs)
+        with patch('traditional_build._sha',side_effect=changed_verifier):
+            self.assertFalse(runtime.status(self.engine,{})['start_allowed'])
+        with patch('traditional_build._runtime',return_value={'ready':True,'identity':'b'*64}):
+            self.assertFalse(runtime.status(self.engine,{})['start_allowed'])
+        atomic_json(path,dict(info,recipe_identity='0'*64))
+        self.assertFalse(runtime.status(self.engine,{})['start_allowed'])
+        atomic_json(path,dict(info,bot_creation_bridge={'format':1,'profile':'traditional'}))
+        self.assertFalse(runtime.status(self.engine,{})['start_allowed'])
+        atomic_json(path,info)
+        binary=self.engine.work/'server/bin/zone'
+        original=binary.read_bytes(); binary.write_bytes(original+b'changed')
+        self.assertFalse(runtime.status(self.engine,{})['start_allowed'])
+        binary.write_bytes(original)
+        report=self.engine.work/'server/bin/verification.json'
+        data=json.loads(report.read_text()); data['architecture']='other'; atomic_json(report,data)
+        self.assertFalse(runtime.status(self.engine,{})['start_allowed'])
 
     def test_recovery_rejects_traversal_or_symlink_without_touching_other_world(self):
         other = self.custom.work / 'keep.json'

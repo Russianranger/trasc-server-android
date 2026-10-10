@@ -47,9 +47,11 @@ import takp_runtime
 import peq_database
 import era_rules
 import client_ui
+import bots
+import modern_bot_bridge
 from log_retention import rotate
 
-VERSION = '0.6.20'
+VERSION = '0.6.22'
 DEFAULT_REPO = 'https://github.com/Russianranger/Triptych-Triumvirate'
 BINARIES = ('world', 'zone', 'loginserver', 'shared_memory', 'ucs', 'eqlaunch', 'queryserv', 'export_client_files')
 CLIENT_FILES = ('spells_us.txt', 'dbstr_us.txt', 'SkillCaps.txt', 'BaseData.txt')
@@ -635,7 +637,8 @@ class Engine(ManagedContent):
             required = ('account', 'character_data', 'rule_values', 'rule_sets', 'variables', 'launcher')
             if any(t not in tables.splitlines() for t in required):
                 raise ValueError('Import finished but required server tables are missing. Choose the full database seed.')
-            self.config.update(database_imported=True, database_source=selection, database_sources=selections)
+            self.config.update(database_imported=True, database_source=selection, database_sources=selections,
+                               bot_database_epoch=secrets.token_hex(16))
             self.save()
             return {'imported': selection, 'player_backup':player_backup, 'message':'Database imported.' + (' Player/account snapshot retained at '+player_backup+'. Restore it from Database → Player data when ready.' if player_backup else '')}
         finally:
@@ -665,6 +668,14 @@ class Engine(ManagedContent):
             self.save()
         return result
 
+    def restore_player_data(self, args):
+        result = player_data.restore_players(self, args)
+        # A restored roster must not reuse a pending creation/social preview
+        # from the newer database, even when its character IDs match again.
+        self.config['bot_database_epoch'] = secrets.token_hex(16)
+        self.save()
+        return result
+
     def build(self, args):
         if self.profile == 'takp': return takp_build.build(self, args)
         if self.profile == 'traditional': return traditional_build.build(self, args)
@@ -675,6 +686,16 @@ class Engine(ManagedContent):
         for needed in ('libs/luabind/CMakeLists.txt', 'submodules/fmt/CMakeLists.txt', 'submodules/libuv/CMakeLists.txt'):
             if not (server / needed).exists(): raise ValueError('Source lacks bundled dependencies: ' + needed + '. Import a complete source ZIP including submodules.')
         ferry_support = server_ferry.prepare(server)
+        bot_creation_bridge, bot_creation_bridge_unavailable = None, None
+        try:
+            bot_creation_bridge = modern_bot_bridge.prepare(server, 'custom')
+        except modern_bot_bridge.UnsupportedSource as error:
+            # A pristine, otherwise supported Custom server may still compile
+            # without this optional capability. Already patched/tampered source
+            # is never treated as an unsupported pristine revision.
+            if (server / 'zone/trasc-bot-bridge.json').exists(): raise
+            bot_creation_bridge_unavailable = str(error)
+            self.log('Offline bot generation unavailable for this source: ' + str(error))
         self.config['jobs'] = jobs
         self.save()
         build = self.work / 'builds' / 'current'
@@ -698,8 +719,12 @@ class Engine(ManagedContent):
             (stage / name).chmod(0o755)
         source_info = json.loads((root / 'trasc-source.json').read_text())
         atomic_json(stage / 'build-info.json', {'source': source_info, 'built': time.time(), 'app': VERSION,
-            'ferry_support': ferry_support, 'zone_sha256': server_ferry.digest(stage / 'zone')})
-        return {'message': 'Build passed. Stop the server, then select Deploy build.', 'staged': True}
+            'ferry_support': ferry_support, 'bot_creation_bridge': bot_creation_bridge,
+            'bot_creation_bridge_unavailable': bot_creation_bridge_unavailable,
+            'zone_sha256': server_ferry.digest(stage / 'zone')})
+        return {'message': 'Build passed. Stop the server, then select Deploy build.' +
+                (' Offline bot generation is unavailable for this source: ' + bot_creation_bridge_unavailable if bot_creation_bridge_unavailable else ''),
+                'staged': True, 'bot_creation_bridge_unavailable': bot_creation_bridge_unavailable}
 
     def deploy(self, args):
         if self.profile == 'takp': return takp_runtime.deploy(self, args)
@@ -1195,6 +1220,8 @@ class Engine(ManagedContent):
         if op == 'traditional_status': return traditional_content.status(self)
         if op in ('era_status', 'era_preview', 'era_apply', 'era_restore'):
             return era_rules.dispatch(self,op,args)
+        if op.startswith('bots_'):
+            return bots.dispatch(self,op,args)
         if op=='ferry_diagnostics':return ferry_service.diagnostics(self,args)
         if op in ('boat_trial_status','boat_trial_preview','boat_trial_apply'):
             return boat_trial.dispatch(self,op,args)
@@ -1211,7 +1238,7 @@ class Engine(ManagedContent):
             'client_dll_download':lambda a:client_toolchain.download(self,a),
             'client_dll_deploy':lambda a:client_dll.deploy_dll(self,a),
             'player_export':lambda a:player_data.export_players(self,a),'player_preview':lambda a:player_data.preview_players(self,a),
-            'player_restore':lambda a:player_data.restore_players(self,a),
+            'player_restore':self.restore_player_data,
             'import_source':self.import_source,'import_maps':self.import_maps,'import_database':self.import_database,
             'build':self.build,'deploy':self.deploy,'rollback':self.rollback,'start':self.start,'stop':self.stop,
             'backup_database':self.backup_database,'restore_database':self.restore_database,'export_client':self.export_client,
@@ -1247,7 +1274,7 @@ def serve(work, port, token, profile='custom'):
                     threading.Thread(target=server.shutdown,daemon=True).start()
                     result={'message':'Stopping all processes and database'}
                 elif op=='cancel': engine.cancel.set(); result={'message':'Cancellation requested'}
-                elif op in ('state','files','logs','databases','client_dll_status','client_dll_download_info','ferry_diagnostics','traditional_status','takp_status','era_status'): result=engine.dispatch(op,args)
+                elif op in ('state','files','logs','databases','client_dll_status','client_dll_download_info','ferry_diagnostics','traditional_status','takp_status','era_status','bots_status','bots_characters','bots_roster'): result=engine.dispatch(op,args)
                 else: result=engine.enqueue(op,args)
                 payload=json.dumps({'ok':True,'result':result}).encode()
             except Exception as e:

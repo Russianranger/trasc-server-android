@@ -80,6 +80,72 @@ jobs:
             runtime-work/takp-work/builds/*/compile_commands.json
             runtime-work/takp-work/builds/*/*.ldd.txt
             runtime-work/takp-work/server/bin*/build-info.json
+  modern-bots:
+    runs-on: ubuntu-24.04-arm
+    timeout-minutes: 150
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - profile: traditional
+            repository: Russianranger/Server
+            revision: 4aceae18b94ffaafc08e2b17bc41cd72c77f795d
+            source_dir: .
+          - profile: custom
+            repository: Russianranger/Triptych-Triumvirate
+            revision: 8f6ca0795f424a7b4eab750ff38fc6473d48375c
+            source_dir: Release-NMS-Server
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/checkout@v4
+        with:
+          repository: ${{ matrix.repository }}
+          ref: ${{ matrix.revision }}
+          path: runtime-work/bots-source
+      - name: Fetch the exact Traditional websocket headers
+        if: matrix.profile == 'traditional'
+        run: git -C runtime-work/bots-source submodule update --init submodules/websocketpp
+      - name: Build isolated native qualification dependencies
+        run: |
+          docker build --platform linux/arm64 -t trasc-bots-bookworm:1 runtime/traditional
+          docker build --platform linux/arm64 -t trasc-bots-qualification:1 - <<'DOCKERFILE'
+          FROM trasc-bots-bookworm:1
+          RUN apt-get update && apt-get install -y --no-install-recommends liblua5.1-0-dev && apt-get clean && rm -rf /var/lib/apt/lists/*
+          DOCKERFILE
+      - name: Fetch immutable PEQ fixture
+        run: |
+          mkdir -p runtime-work/bots-fixtures runtime-work/bots-work dist/bots
+          curl --fail --location --retry 3 --max-time 120 https://db.eqemu.dev/api/v1/dump/archive/peq-1759046415.zip -o runtime-work/bots-fixtures/peq.zip
+          echo 'ac8649f23d2c3aea2cade138dfe10d46d1b21ad1a80d08ca95f5434fab7f218d  runtime-work/bots-fixtures/peq.zip' | sha256sum --check
+      - name: Compile and exercise actual native creation, hooks, limits, rollback and retry
+        run: |
+          set -o pipefail
+          docker run --rm --network none \
+            -v "$PWD/backend:/opt/trasc:ro" \
+            -v "$PWD/tests:/tests:ro" \
+            -v "$PWD/runtime-work/bots-source:/source:ro" \
+            -v "$PWD/runtime-work/bots-fixtures:/fixtures:ro" \
+            -v "$PWD/runtime-work/bots-work:/work" \
+            -v "$PWD/dist/bots:/evidence" \
+            trasc-bots-qualification:1 \
+            python3 /tests/verify_modern_bot_bridge.py --source "/source/${{ matrix.source_dir }}" --profile "${{ matrix.profile }}" --work /work --database-zip /fixtures/peq.zip --output /evidence/native-bots.json --jobs 4 \
+            2>&1 | tee dist/bots/qualification.log
+      - name: Make disposable qualification evidence readable
+        if: always()
+        run: |
+          task_ci_owner="$(id -u):$(id -g)"
+          for directory in dist/bots runtime-work/bots-work/logs; do
+            if [[ -d "$directory" ]]; then
+              sudo chown -R --no-dereference "$task_ci_owner" "$directory"
+            fi
+          done
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: modern-bots-${{ matrix.profile }}-arm64-verification
+          path: |
+            dist/bots/
+            runtime-work/bots-work/logs/
   apk:
     runs-on: ubuntu-latest
     timeout-minutes: 40
@@ -111,24 +177,24 @@ jobs:
         id: baseline-cache
         with:
           path: runtime-work/baseline/
-          key: takp-native-baseline-0.6.20-391a145377731a5819ee280a320269a0664dc28e29e4d43dbf5e94d5bc491034
-      - name: Fetch the immutable 0.6.20 release assets
+          key: takp-native-baseline-0.6.21-0047f5091b92b7417efc738ed056f221bb6c1d2cf9d63d4f3da00e7966c00b55
+      - name: Fetch the immutable 0.6.21 release assets
         if: steps.baseline-cache.outputs.cache-hit != 'true'
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
           mkdir -p runtime-work/baseline dist
-          gh api repos/Russianranger/trasc-server-android/releases/assets/626984091 -H 'Accept: application/octet-stream' > runtime-work/baseline/base.apk
-          gh api repos/Russianranger/trasc-server-android/releases/assets/626984090 -H 'Accept: application/octet-stream' > runtime-work/baseline/launcher-sources.tar.gz
-      - name: Reuse the exact published 0.6.20 native launcher payload
+          gh api repos/Russianranger/trasc-server-android/releases/assets/627090614 -H 'Accept: application/octet-stream' > runtime-work/baseline/base.apk
+          gh api repos/Russianranger/trasc-server-android/releases/assets/627090617 -H 'Accept: application/octet-stream' > runtime-work/baseline/launcher-sources.tar.gz
+      - name: Reuse the exact published 0.6.21 native launcher payload
         run: |
-          echo 'c4c61cff60aa4c73222ceb7c2964e1462c68892dc5d1511804bdfd9e6f533deb  runtime-work/baseline/launcher-sources.tar.gz' | sha256sum --check
-          python3 scripts/reuse-launcher-native.py extract --apk runtime-work/baseline/base.apk --receipt dist/native-reuse.json --expected-sha 391a145377731a5819ee280a320269a0664dc28e29e4d43dbf5e94d5bc491034 --baseline-version 0.6.20 --include-camera
+          echo '76124578972ccf56159ad963fd52c48922fb42c29ef4618725802c6568375077  runtime-work/baseline/launcher-sources.tar.gz' | sha256sum --check
+          python3 scripts/reuse-launcher-native.py extract --apk runtime-work/baseline/base.apk --receipt dist/native-reuse.json --expected-sha 0047f5091b92b7417efc738ed056f221bb6c1d2cf9d63d4f3da00e7966c00b55 --baseline-version 0.6.21 --include-camera
       - uses: actions/cache/save@v4
         if: steps.baseline-cache.outputs.cache-hit != 'true'
         with:
           path: runtime-work/baseline/
-          key: takp-native-baseline-0.6.20-391a145377731a5819ee280a320269a0664dc28e29e4d43dbf5e94d5bc491034
+          key: takp-native-baseline-0.6.21-0047f5091b92b7417efc738ed056f221bb6c1d2cf9d63d4f3da00e7966c00b55
       - name: Install host regression dependencies
         run: |
           sudo apt-get update
@@ -149,17 +215,17 @@ jobs:
         run: |
           cp app/build/outputs/apk/debug/app-debug.apk dist/trasc-server-android-preview.apk
           mkdir -p runtime-work/source-bundle/launcher-source
-          cp runtime-work/baseline/launcher-sources.tar.gz runtime-work/source-bundle/launcher-source/native-sources-0.6.20.tar.gz
-          git archive --format=tar.gz HEAD > runtime-work/source-bundle/launcher-source/launcher-code-0.6.21.tar.gz
+          cp runtime-work/baseline/launcher-sources.tar.gz runtime-work/source-bundle/launcher-source/native-sources-0.6.21.tar.gz
+          git archive --format=tar.gz HEAD > runtime-work/source-bundle/launcher-source/launcher-code-0.6.22.tar.gz
           cp dist/native-reuse.json backend-assets/traditional-camera-bundle.json THIRD_PARTY_NOTICES.md runtime-work/source-bundle/launcher-source/
           tar -czf dist/launcher-sources.tar.gz -C runtime-work/source-bundle launcher-source
           python3 - <<'PY'
           import hashlib,json,os,pathlib
           p=pathlib.Path('dist/trasc-server-android-preview.apk')
           manifest={'commit':os.environ['GITHUB_SHA'],'sha256':hashlib.file_digest(p.open('rb'),'sha256').hexdigest(),
-            'file':p.name,'version':'0.6.21','version_code':70,'application_id':'io.github.russianranger.trasc.preview',
+            'file':p.name,'version':'0.6.22','version_code':71,'application_id':'io.github.russianranger.trasc.preview',
             'signing_certificate_sha256':pathlib.Path('docs/preview-signing.sha256').read_text().strip(),
-            'build_run':int(os.environ['GITHUB_RUN_ID']),'native_payload_reused_from':'0.6.20',
+            'build_run':int(os.environ['GITHUB_RUN_ID']),'native_payload_reused_from':'0.6.21',
             'native_reuse_manifest_sha256':hashlib.sha256(pathlib.Path('dist/native-reuse.json').read_bytes()).hexdigest(),
             'traditional_camera_adapter_sha256':hashlib.sha256(pathlib.Path('backend-assets/trasc-camera-dinput8.dll').read_bytes()).hexdigest(),
             'source_archive_sha256':hashlib.file_digest(pathlib.Path('dist/launcher-sources.tar.gz').open('rb'),'sha256').hexdigest()}
@@ -182,7 +248,7 @@ jobs:
             ui-reports/
             dist/apk-signing.txt
   preview:
-    needs: [apk, takp-server]
+    needs: [apk, takp-server, modern-bots]
     if: github.ref == 'refs/heads/codex/takp-world'
     runs-on: ubuntu-latest
     permissions:

@@ -6,6 +6,8 @@ cc -std=c11 -Wall -Wextra -Werror tests/frame_transfer.c -o /tmp/trasc-transfer-
 /tmp/trasc-transfer-test
 g++ -std=c++14 -O2 -Wall -Wextra -Werror tests/fast_decimal.cpp -o /tmp/trasc-decimal-test
 /tmp/trasc-decimal-test
+g++ -std=c++14 -O2 -Wall -Wextra -Werror tests/takp_camera_recenter.cpp -o /tmp/trasc-takp-camera-test
+/tmp/trasc-takp-camera-test
 classes=$(mktemp -d)
 trap 'rm -rf "$classes"' EXIT
 python3 tests/build_checksum_fixture.py "$classes/checksum.cpp"
@@ -40,6 +42,8 @@ if ! command -v javac >/dev/null; then compiler=(java -m jdk.compiler/com.sun.to
     tests/java/io/github/russianranger/trasc/ClientProfilePolicyHostTest.java \
     app/src/main/java/io/github/russianranger/trasc/ClientTransientPaths.java \
     tests/java/io/github/russianranger/trasc/ClientTransientPathsHostTest.java \
+    app/src/main/java/io/github/russianranger/trasc/ClientOverlayPosition.java \
+    tests/java/io/github/russianranger/trasc/ClientOverlayPositionHostTest.java \
     app/src/main/java/io/github/russianranger/trasc/RfbConnection.java \
     app/src/main/java/io/github/russianranger/trasc/ClientFrameStats.java \
     app/src/main/java/io/github/russianranger/trasc/ProotAcceleration.java \
@@ -58,6 +62,7 @@ java -cp "$classes" io.github.russianranger.trasc.StorageFilesTest
 java -cp "$classes" io.github.russianranger.trasc.ClientHostTest
 java -cp "$classes" io.github.russianranger.trasc.ClientProfilePolicyHostTest
 java -cp "$classes" io.github.russianranger.trasc.ClientTransientPathsHostTest
+java -cp "$classes" io.github.russianranger.trasc.ClientOverlayPositionHostTest
 java -cp "$classes" io.github.russianranger.trasc.ProotAccelerationHostTest
 if [[ $# -gt 0 ]]; then
     java -Xmx512m -cp "$classes" io.github.russianranger.trasc.RuntimeSessionHostTest "$1"

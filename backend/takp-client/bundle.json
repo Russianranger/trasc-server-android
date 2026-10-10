@@ -4,16 +4,22 @@
   "files": {
     "d3d8.dll": "122928cfe225c25d30decf7184a5d37e490cecf3b58256ba3206c7e1853f8ab8",
     "eqgame.dll": "f0ca8e4bdcf3875419ecb1067a95bd6dbf8197e564f9d51ff4dec98a30f14b97",
-    "eqw.dll": "dffb97ac1f47d41f450614c8d6d4da30f3f47b7ed5046dbdbd111b3ba1fbe5ba"
+    "eqw.dll": "b739dfe64b7f69be2ffebf13a1cf794bcfd9e37fe143a75134ca6359e60ef584"
   },
   "sources": {
     "d3d8.dll": "https://github.com/crosire/d3d8to9/releases/tag/v1.16.0",
     "eqgame.dll": "https://github.com/EQMacEmu/eqgame_dll_takp/releases/tag/v0.0.0.3",
-    "eqw.dll": "https://github.com/CoastalRedwood/eqw_takp/releases/tag/v1.0.2"
+    "eqw.dll": "https://github.com/CoastalRedwood/eqw_takp/tree/3b4d43562c9dacc89349185684bb0bf0b01f9d06"
   },
-  "provenance": "User-provided TAKP client update DLLs, SHA256 pinned. Game executable and assets are imported separately.",
-  "dependencies": ["Wine x86 msvcp140/vcruntime140/ucrtbase", "Microsoft June 2010 x86 d3dx9_43.dll"],
+  "provenance": "Pinned user-provided eqgame/d3d8 helpers; EQW 1.0.2 rebuilt from exact upstream with the reviewed Wine-only recenter patch. Game executable/assets imported separately.",
+  "dependencies": [
+    "Wine x86 msvcp140/vcruntime140/ucrtbase",
+    "Microsoft June 2010 x86 d3dx9_43.dll"
+  ],
   "launch_executable": "eqgame.exe",
   "checksum_resource": "eqmac.exe",
-  "launch_arguments": []
+  "launch_arguments": [],
+  "eqw_camera_build": "eqw-camera-build.json",
+  "eqw_cursor_verification": "eqw-cursor-verification.json",
+  "eqw_source": "native/takp-eqw-source"
 }

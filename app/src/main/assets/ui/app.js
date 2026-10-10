@@ -8,12 +8,13 @@ function api(op,args={},timeoutMs=0){return new Promise((resolve,reject)=>{const
 function notice(text,error=false){$('notice').hidden=false;$('notice').classList.toggle('error',error);$('notice').textContent=text;}
 function bytes(n){if(n==null)return '—';return n>=1073741824?(n/1073741824).toFixed(1)+' GB':n>=1048576?(n/1048576).toFixed(1)+' MB':(n/1024).toFixed(0)+' KB';}
 function ready(id,ok){$(id).textContent=ok?'Ready':'Required';$(id).classList.toggle('done',ok);}
-function tab(name){if(currentTab==='client'&&name!=='client')api('controller_capture',{active:false}).catch(()=>{});currentTab=name;document.body.dataset.scene=name;renderOverview();document.querySelectorAll('.tab').forEach(e=>e.classList.toggle('active',e.id===name));document.querySelectorAll('nav button').forEach(e=>e.classList.toggle('active',e.dataset.tab===name));if(name==='client'&&typeof loadController==='function')loadController().catch(e=>notice(e.message,true));if(name==='gameplay'&&typeof refreshEraStatus==='function')refreshEraStatus().catch(e=>notice(e.message,true));if(name==='spire'&&typeof loadSpire==='function')loadSpire().catch(e=>notice(e.message,true));if(name==='files')browse().catch(e=>notice(e.message,true));if(name==='logs'){logs().catch(()=>{});loadLogRetention().catch(e=>notice(e.message,true));}}
+function tab(name){if(currentTab==='client'&&name!=='client')api('controller_capture',{active:false}).catch(()=>{});currentTab=name;document.body.dataset.scene=name;renderOverview();document.querySelectorAll('.tab').forEach(e=>e.classList.toggle('active',e.id===name));document.querySelectorAll('nav button').forEach(e=>e.classList.toggle('active',e.dataset.tab===name));if(name==='client'&&typeof loadController==='function')loadController().catch(e=>notice(e.message,true));if(name==='gameplay'&&typeof refreshEraStatus==='function')refreshEraStatus().catch(e=>notice(e.message,true));if(name==='spire'&&typeof loadSpire==='function')loadSpire().catch(e=>notice(e.message,true));if(name==='bots'&&typeof loadBots==='function')loadBots().catch(e=>notice(e.message,true));if(name==='files')browse().catch(e=>notice(e.message,true));if(name==='logs'){logs().catch(()=>{});loadLogRetention().catch(e=>notice(e.message,true));}}
 window.appBack=()=>tab('server');
 document.querySelectorAll('[data-tab]').forEach(b=>b.addEventListener('click',()=>tab(b.dataset.tab)));
 function action(id,fn){$(id).addEventListener('click',async()=>{const b=$(id);b.disabled=true;busy++;activeUiActions.add(id);renderSessionControls();try{await fn();}catch(e){notice(e.message,true);}finally{activeUiActions.delete(id);busy--;b.disabled=false;renderSessionControls();poll().catch(()=>{});}});}
 const operationLabels={import_content:'Importing world content',import_client_ui:'Importing client UI skin',client_dll_download:'Preparing Microsoft toolchain',ferry_service_status:'Checking Qeynos–Erudin route',ferry_service_preview:'Previewing route changes',ferry_service_apply:'Saving route changes',boat_trial_status:'Checking ferry',boat_trial_preview:'Previewing ferry changes',boat_trial_apply:'Saving ferry changes',start:'Starting server',stop:'Stopping server',spire_catalog:'Loading Spire',spire_search:'Searching content',spire_detail:'Loading record',spire_preview:'Validating changes',spire_apply:'Saving content',spire_history:'Loading change history'};
 Object.assign(operationLabels,{activate_client_ui:'Saving client UI skin',restore_client_ui:'Restoring client UI settings',era_preview:'Reviewing era rules',era_apply:'Applying era rules',era_restore:'Restoring database default'});
+Object.assign(operationLabels,{bots_storage_preview:'Reviewing bot storage',bots_storage_enable:'Backing up and enabling bot storage',bots_preview:'Reviewing companions',bots_generate:'Generating companions',bots_socials_preview:'Reviewing summon buttons',bots_socials_install:'Saving summon buttons',bots_socials_restore:'Restoring character buttons'});
 Object.assign(operationLabels,{takp_setup:'Downloading TAKP world files',takp_initialize_database:'Initializing TAKP database and playerbots',takp_create_account:'Creating local TAKP account'});
 function operationLabel(operation){return operationLabels[operation]||operation.replaceAll('_',' ');}
 // Keep scrolled/focused controls clear of the sticky runtime panel in either orientation.
@@ -28,6 +29,7 @@ const tabStories={
  server:['Your realm awaits.','Launch your world, manage connections and preserve your adventures.'],
  gameplay:['Shape the adventure.','Tune the rules and bring your world to life.'],
  build:['At the forge.','Prepare your source, build your server and deploy when ready.'],
+ bots:['Gather your companions.','Create your character’s roster and prepare summon buttons for the journey.'],
  spire:['Discover your world.','Explore items, creatures, merchants and the treasures they hold.'],
  fixes:['Restore the journey.','Find world repairs and client recovery tools in one place.'],
  database:['The world’s memory.','Preserve characters, explore records and manage your database.'],
@@ -51,6 +53,7 @@ function renderClientActivity(s){
  }else if(s.busy){label='Client · Preparing';state='busy';}
  statusBadge('client-badge',label,state);
  $('client-stop').disabled=clientStopBlocked(s);
+ if(typeof renderBotsControls==='function')renderBotsControls();
 }
 function renderSessionControls(){
  const n=lastNative,s=lastState,active=s?.jobs?.find(j=>['queued','running'].includes(j.status));
@@ -70,6 +73,7 @@ function renderSessionControls(){
  if(typeof dllControls==='function')dllControls();
  if(typeof cleanupControls==='function')cleanupControls();
  if(typeof renderEraRules==='function')renderEraRules();
+ if(typeof renderBotsControls==='function')renderBotsControls();
  renderDatabaseSelection();
 }
 function render(s){lastState=s;renderSessionControls();renderOverview();if(typeof renderBoatTrial==='function')renderBoatTrial();if(typeof renderFerryService==='function')renderFerryService();$('free').textContent=bytes(s.free_bytes);

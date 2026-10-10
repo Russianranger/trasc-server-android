@@ -18,6 +18,7 @@ import sys
 import tarfile
 import time
 import urllib.request
+import modern_bot_bridge
 
 REPOSITORY = "https://github.com/Russianranger/Server"
 REVISION = "4aceae18b94ffaafc08e2b17bc41cd72c77f795d"
@@ -94,6 +95,7 @@ SOURCE_HASHES.update({
     'libs/luabind/CMakeLists.txt': '0824c3210c4b3ace6c79c9dac0382ea3878a147fc5805fb9df8215a163092b19',
     'libs/perlbind/CMakeLists.txt': 'aba3ea21f15f76bdd58b0c348490d20ad25e680c89aea0b63c9678fb385f8680',
 })
+SOURCE_HASHES.update(modern_bot_bridge.GUARDS['traditional'])
 
 # Exact, context-bound edits qualified by the native Bookworm trial.
 SOURCE_PATCHES = {'CMakeLists.txt': [['et(CMAKE_MODULE_PATH "${CMAKE_SOURCE_DIR}/cmake/" ${CMAKE_MODULE_PATH})\n'
@@ -956,7 +958,8 @@ def _atomic_json(path, value):
 def _recipe_identity():
     helper = Path(__file__).with_name('traditional_verify.py')
     return _digest({'recipe': RECIPE, 'adapter': _sha(Path(__file__)), 'verifier': _sha(helper),
-                    'websocket': WEBSOCKET_TREE_SHA256})
+                    'websocket': WEBSOCKET_TREE_SHA256,
+                    'bot_creation_bridge': modern_bot_bridge.metadata('traditional')})
 
 
 def _guard_source(engine):
@@ -1074,6 +1077,7 @@ def _patch_outputs(root):
                 raise ValueError('Traditional source patch anchor changed: ' + name)
             text = text.replace(before, after, 1)
         outputs[name] = text
+    outputs.update({name: data.decode('utf-8') for name, data in modern_bot_bridge.output_files(root, 'traditional').items()})
     return outputs
 
 
@@ -1585,7 +1589,9 @@ def build(engine, args):
         _atomic_json(stage / 'build-info.json', {'format': 1, 'recipe': RECIPE, 'recipe_identity': _recipe_identity(),
                      'source': provenance, 'source_identity': source_identity, 'input_sha256': input_sha,
                      'build_identity': build_identity, 'runtime_identity': runtime['identity'], 'built': time.time(),
-                     'verification_sha256': _digest(report), 'compile_only': True})
+                     'verification_sha256': _digest(report), 'compile_only': True,
+                     'bot_creation_bridge': modern_bot_bridge.metadata('traditional'),
+                     'zone_sha256': _sha(stage / 'zone')})
         engine.check_cancel()
         _promote_stage(engine, stage)
         engine.config['jobs'] = jobs

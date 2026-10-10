@@ -1,0 +1,96 @@
+{
+  "wine": "wine-10.0",
+  "legacy_offsets": [
+    20,
+    40,
+    60,
+    50
+  ],
+  "repaired_motion": [
+    {
+      "delta": [
+        20,
+        10
+      ],
+      "before": [
+        420,
+        310
+      ],
+      "after": [
+        400,
+        300
+      ]
+    },
+    {
+      "delta": [
+        -10,
+        -5
+      ],
+      "before": [
+        390,
+        295
+      ],
+      "after": [
+        400,
+        300
+      ]
+    },
+    {
+      "delta": [
+        20,
+        -10
+      ],
+      "before": [
+        420,
+        290
+      ],
+      "after": [
+        400,
+        300
+      ]
+    },
+    {
+      "delta": [
+        -20,
+        10
+      ],
+      "before": [
+        380,
+        310
+      ],
+      "after": [
+        400,
+        300
+      ]
+    },
+    {
+      "delta": [
+        10,
+        20
+      ],
+      "before": [
+        410,
+        320
+      ],
+      "after": [
+        400,
+        300
+      ]
+    },
+    {
+      "delta": [
+        -10,
+        -20
+      ],
+      "before": [
+        390,
+        280
+      ],
+      "after": [
+        400,
+        300
+      ]
+    }
+  ],
+  "verification": "real Wine cursor-cache/Xvnc mechanism; open fixture, not actual client acceptance"
+}

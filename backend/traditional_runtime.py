@@ -5,7 +5,7 @@ This adapter validates them before activation and never runs Custom repairs.
 """
 import json
 import os
-from pathlib import PurePosixPath
+from pathlib import Path, PurePosixPath
 import re
 import secrets
 import shutil
@@ -17,6 +17,11 @@ import traditional_content as content
 
 DATABASE_VERSION = 9328
 BOTS_VERSION = 9055
+# The exact shipped 0.6.21 adapter identity remains eligible for normal use.
+# It predates the optional offline bot utility, so it cannot create bots and
+# cannot serve as a newly staged/deployed build under the current recipe.
+LEGACY_0621_RECIPE_IDENTITY = '4f1cba3e5b190421df979b039bc1f4924c9f1f2d9480dc7af661bdac52624f88'
+LEGACY_0621_VERIFIER_SHA256 = 'e0f8688c459ade67d9a231f6368ce9e6634890a9c65a434b32bf89e084200c96'
 REQUIRED_ASSETS = ('patches/patch_RoF2.conf', 'opcodes/opcodes.conf',
                    'opcodes/mail_opcodes.conf', 'opcodes/login_opcodes.conf',
                    'opcodes/login_opcodes_sod.conf', 'opcodes/login_opcodes_larion.conf')
@@ -64,8 +69,13 @@ def _record(engine, name='server/bin'):
     report_path = _path(engine, name + '/verification.json')
     info, report = build._json(info_path), build._json(report_path)
     runtime = build._runtime(engine)
+    current_recipe = info.get('recipe_identity') == build._recipe_identity()
+    legacy_recipe = (name in ('server/bin', 'server/bin.previous', 'server/bin.swap')
+                     and info.get('recipe_identity') == LEGACY_0621_RECIPE_IDENTITY
+                     and info.get('bot_creation_bridge') is None
+                     and build._sha(Path(__file__).with_name('traditional_verify.py')) == LEGACY_0621_VERIFIER_SHA256)
     if (not runtime['ready'] or info.get('format') != 1 or info.get('recipe') != build.RECIPE
-            or info.get('recipe_identity') != build._recipe_identity()
+            or not (current_recipe or legacy_recipe)
             or info.get('runtime_identity') != runtime['identity']
             or info.get('verification_sha256') != build._digest(report)):
         raise ValueError('Traditional binaries do not match the qualified runtime and build recipe')

@@ -634,6 +634,8 @@ class Supervisor:
             self.camera_adapter_report = self.camera_adapter.prepare(
                 self.request, Path(__file__).with_name('trasc-camera-dinput8.dll'))
             self.status['traditional_camera'] = self.camera_adapter_report
+        if self.request.get('profile') == 'takp' and self.request['mode'] == 'client':
+            self.status['takp_camera_helper'] = takp_client.upgrade_camera_helper(CLIENT, PREFIX)
         self.status['spell_test'] = validate_request(self.request)
         print(f"Client session started at {self.status['started_at']}: {self.request['mode']}", flush=True)
         for p in (SESSION, PREFIX, LOGS): p.mkdir(parents=True, exist_ok=True)
