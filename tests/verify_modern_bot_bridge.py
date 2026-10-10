@@ -27,6 +27,8 @@ import server_ferry
 import traditional_build
 
 PEQ_SHA256 = 'ac8649f23d2c3aea2cade138dfe10d46d1b21ad1a80d08ca95f5434fab7f218d'
+CUSTOM_SEED_SHA256 = '4ed5c2f19f7cd1553ca6bdcc1b71ee766e9eb7acc273d806d3710542c0f2442e'
+CUSTOM_SEED_PATH = 'database/release-peq.zip'
 OWNER_ID = 890001
 ANSI = re.compile(r'\x1b\[[0-?]*[ -/]*[@-~]')
 
@@ -59,6 +61,28 @@ def command(arguments, cwd, log, seconds=3600, environment=None):
     require(completed.returncode == 0, 'Native command failed; see ' + log.name)
 
 
+def normalize_source_timestamps(source):
+    """Keep a freshly validated source copy older than keyed native objects.
+
+    This changes only regular-file timestamps in the disposable source tree.
+    It never follows symlinks or changes source bytes, and CMake still
+    reconfigures and builds every time. CI caches only native-build using an
+    exact source, adapter, compiler, dependency and build-recipe key.
+    """
+    epoch = 1_600_000_000
+    count = 0
+    for directory, directories, files in os.walk(source, followlinks=False):
+        directories[:] = sorted(name for name in directories
+                                if not (Path(directory) / name).is_symlink())
+        for name in files:
+            path = Path(directory) / name
+            if path.is_symlink() or not path.is_file():
+                continue
+            os.utime(path, (epoch, epoch), follow_symlinks=False)
+            count += 1
+    return {'epoch': epoch, 'regular_files': count, 'symlinks_followed': False}
+
+
 def build(args, evidence):
     source = args.work / 'native-source'
     require(not source.exists(), 'Use a fresh qualification workspace')
@@ -87,6 +111,9 @@ def build(args, evidence):
         bridge.prepare(source, 'custom')
         flags = ['-DEQEMU_PREFER_LUA=ON', '-DLUA_INCLUDE_DIR=/usr/include/lua5.1',
                  '-DLUA_LIBRARY=/usr/lib/aarch64-linux-gnu/liblua5.1.so']
+    timestamps = normalize_source_timestamps(source)
+    timestamps.update(profile=args.profile, source_revision=bridge.REVISIONS[args.profile])
+    atomic_json(evidence / 'native-source-timestamps.json', timestamps)
     objects = args.work / 'native-build'
     command(['cmake', '-S', source, '-B', objects, '-G', 'Ninja',
              '-DCMAKE_BUILD_TYPE=Release', '-DCMAKE_EXPORT_COMPILE_COMMANDS=ON',
@@ -159,8 +186,9 @@ def seed(engine, source, evidence):
     # must load these actual items without rewriting the player's records.
     engine.mysql('INSERT INTO inventory(character_id,slot_id,item_id,charges,guid) VALUES('
                  + str(OWNER_ID) + ',2,' + str(item_id) + ',1,0);'
-                 'INSERT INTO sharedbank(account_id,slot_id,item_id,charges,guid) VALUES('
-                 + str(OWNER_ID) + ',2500,' + str(item_id) + ',1,0);')
+                 'INSERT INTO sharedbank(account_id,slot_id,item_id,charges,guid,'
+                 'ornament_icon,ornament_idfile,ornament_hero_model) VALUES('
+                 + str(OWNER_ID) + ',2500,' + str(item_id) + ',1,0,0,0,0);')
     bots.ensure_receipts(engine)
     bots._instance(engine)
     config = json.loads((engine.work / 'server/eqemu_config.json').read_text())['server']
@@ -246,34 +274,69 @@ def draft(name, cls=1, race=1, gender=0):
 
 def qualify(args):
     require(platform.machine() in ('aarch64', 'arm64'), 'Native modern bot qualification requires ARM64')
-    require(sha(args.database_zip) == PEQ_SHA256, 'Immutable PEQ fixture hash mismatch')
+    if args.profile == 'traditional':
+        require(sha(args.database_zip) == PEQ_SHA256, 'Immutable PEQ fixture hash mismatch')
+        seed_evidence = {'kind': 'immutable_five_part_peq', 'sha256': PEQ_SHA256}
+    else:
+        custom_seed = args.source / CUSTOM_SEED_PATH
+        require(custom_seed.is_file() and not custom_seed.is_symlink()
+                and sha(custom_seed) == CUSTOM_SEED_SHA256,
+                'Pinned Custom source database fixture hash mismatch')
+        seed_evidence = {'kind': 'pinned_custom_source', 'path': CUSTOM_SEED_PATH,
+                         'sha256': CUSTOM_SEED_SHA256}
     require(not (args.work / 'settings.json').exists(), 'Use a fresh qualification workspace')
     args.work.mkdir(parents=True, exist_ok=True)
     args.output.parent.mkdir(parents=True, exist_ok=True)
     evidence = args.output.parent
     report = {'format': 1, 'profile': args.profile, 'architecture': platform.machine(),
-              'source_revision': bridge.REVISIONS[args.profile], 'peq_sha256': PEQ_SHA256,
+              'source_revision': bridge.REVISIONS[args.profile], 'database_seed': seed_evidence,
               'result': 'running', 'checks': {}}
     engine = None
     started = time.monotonic()
     try:
         source, binaries = build(args, evidence)
         report['checks']['native_compilation'] = {name: sha(path) for name, path in binaries.items()}
-        # PEQ's five-part validated bundle is imported using its production
-        # Traditional importer. The isolated fixture then adopts the matrix
-        # profile; it never touches an existing Custom or Traditional world.
-        engine = Engine(args.work / 'fixture', 'traditional')
-        shutil.copy2(args.database_zip, engine.work / 'incoming/peq.zip')
-        bundles = [value for value in engine.database_candidates() if value['kind'] == 'peq_bundle']
-        require(len(bundles) == 1 and len(bundles[0]['selections']) == 5, 'PEQ bundle order is not qualified')
-        engine.dispatch('import_database', {'selection': bundles[0]['id']})
+        # Each profile imports its real qualified seed through the production
+        # importer. Custom's compiled content migrations require its pinned
+        # source's own database, rather than an unrelated raw PEQ snapshot.
+        # No version is fabricated and the unchanged full native migrator runs.
+        engine = Engine(args.work / 'fixture', args.profile)
+        if args.profile == 'traditional':
+            shutil.copy2(args.database_zip, engine.work / 'incoming/peq.zip')
+            bundles = [value for value in engine.database_candidates() if value['kind'] == 'peq_bundle']
+            require(len(bundles) == 1 and len(bundles[0]['selections']) == 5, 'PEQ bundle order is not qualified')
+            selection = bundles[0]['id']
+        else:
+            copied_seed = source / CUSTOM_SEED_PATH
+            require(sha(copied_seed) == CUSTOM_SEED_SHA256, 'Copied Custom source seed changed')
+            shutil.copy2(copied_seed, engine.work / 'incoming/release-peq.zip')
+            candidates = engine.database_candidates()
+            require(len(candidates) == 1 and candidates[0]['kind'] == 'sql'
+                    and candidates[0]['id'] == 'incoming/release-peq.zip!release-peq.sql',
+                    'Pinned Custom standalone database dump is not qualified')
+            selection = candidates[0]['id']
+        engine.dispatch('import_database', {'selection': selection})
         counts = {table: int(scalar(engine, 'SELECT COUNT(*) FROM ' + table + ';'))
                   for table in ('items', 'spells_new')}
-        require(all(count > 10000 for count in counts.values()), 'Full PEQ content was not imported')
-        report['checks']['full_peq_seed'] = counts
-        engine.profile = args.profile
-        engine.config['profile'] = args.profile
-        engine.save()
+        require(all(count > 10000 for count in counts.values()), 'Full native database content was not imported')
+        report['checks']['full_database_seed'] = counts
+        if args.profile == 'custom':
+            versions = list(map(int, rows(engine, 'SELECT version,bots_version,custom_version FROM db_version;')[0]))
+            version_text = (source / 'common/version.h').read_text()
+            native_versions = [int(re.search(r'#define ' + name + r'\s+(\d+)', version_text)[1])
+                               for name in ('CURRENT_BINARY_DATABASE_VERSION', 'CUSTOM_BINARY_DATABASE_VERSION')]
+            require(versions == [native_versions[0], 0, native_versions[1]],
+                    'Pinned Custom seed must contain actual matching native schema versions and unmigrated bots')
+            require(rows(engine, "SHOW COLUMNS FROM inventory LIKE 'item_unique_id';"),
+                    'Pinned Custom seed is missing its native inventory schema')
+            empty_player_tables = {table: int(scalar(engine, 'SELECT COUNT(*) FROM ' + table + ';'))
+                                   for table in ('account', 'character_data', 'inventory', 'sharedbank')}
+            require(not any(empty_player_tables.values())
+                    and not rows(engine, "SHOW TABLES LIKE 'bot_data';"),
+                    'Pinned Custom source seed must have no existing players or bots; preserve seed data')
+            report['checks']['pinned_custom_schema_before_bot_migrations'] = {
+                'version': versions[0], 'bots_version': versions[1], 'custom_version': versions[2],
+                'empty_player_tables': empty_player_tables, 'existing_bot_tables': False}
         target = engine.work / 'server/bin'
         target.mkdir(exist_ok=True)
         for name, binary in binaries.items():
