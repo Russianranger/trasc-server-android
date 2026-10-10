@@ -39,6 +39,12 @@ void ReleaseCameraClip() {
 }
 bool HoldCameraClip(int x, int y) {
   if (!IsWine()) return false;
+  // The game look flag can remain stale while dead/stunned/zoning. Do not
+  // reacquire a clip after physical release before the game processes it.
+  if (!(::GetAsyncKeyState(swap_mouse_buttons_ ? VK_LBUTTON : VK_RBUTTON) & 0x8000)) {
+    ReleaseCameraClip();
+    return false;
+  }
   const trasc_takp_camera::Rect bounds = {game_rect_.left, game_rect_.top, game_rect_.right, game_rect_.bottom};
   ::AcquireSRWLockExclusive(&camera_clip_lock);
   const bool held = camera_clip.hold(x, y, bounds, GetCameraClip, SetCameraClip);
@@ -73,15 +79,23 @@ def prepare(source, root):
             ('  } else {\n    SyncToWin32Cursor();', '  } else {\n    ReleaseCameraClip();\n    SyncToWin32Cursor();'),
             ('  if (mouse_look_active && !*g_mouse_rmb_down_mouse_look) SetBothCursorsToClientPosition(saved_rmouse_pt_);',
              '  if (mouse_look_active && !*g_mouse_rmb_down_mouse_look) {\n    ReleaseCameraClip();\n    SetBothCursorsToClientPosition(saved_rmouse_pt_);\n  }'),
-            ('void GameInput::HandleLossOfFocus() {', 'void GameInput::ReleaseCameraCursor() { GameInputInt::ReleaseCameraClip(); }\n\nvoid GameInput::HandleLossOfFocus() {\n  GameInputInt::ReleaseCameraClip();'),
+            ('void GameInput::HandleLossOfFocus() {', '''void GameInput::ReleaseCameraCursor(UINT message) {
+  // Respect EQW's existing physical button swap when input hooks are paused.
+  if ((message == WM_LBUTTONUP || message == WM_RBUTTONUP) &&
+      message != (GameInputInt::swap_mouse_buttons_ ? WM_LBUTTONUP : WM_RBUTTONUP)) return;
+  GameInputInt::ReleaseCameraClip();
+}
+
+void GameInput::HandleLossOfFocus() {
+  GameInputInt::ReleaseCameraClip();'''),
         ],
-        'game_input.h': [('void HandleLossOfFocus();', 'void ReleaseCameraCursor();  // Wine-only look clipping; release even if game input is paused.\nvoid HandleLossOfFocus();')],
+        'game_input.h': [('void HandleLossOfFocus();', 'void ReleaseCameraCursor(UINT message);  // Wine-only look clipping; release even if game input is paused.\nvoid HandleLossOfFocus();')],
         'eq_game.cpp': [
             ('  bool execute_eqgame_wndproc = false;', '''  // The game input hook can be skipped while dead/stunned/zoning. Release
   // the Wine-only camera clip at physical release and window lifecycle events.
-  if (msg == WM_RBUTTONUP || msg == WM_KILLFOCUS ||
+  if (msg == WM_RBUTTONUP || msg == WM_LBUTTONUP || msg == WM_KILLFOCUS ||
       (msg == WM_ACTIVATEAPP && !wParam) || (msg == WM_SIZE && wParam == SIZE_MINIMIZED) ||
-      msg == WM_CLOSE || msg == WM_DESTROY) GameInput::ReleaseCameraCursor();
+      msg == WM_CLOSE || msg == WM_DESTROY) GameInput::ReleaseCameraCursor(msg);
   bool execute_eqgame_wndproc = false;'''),
         ],
     }

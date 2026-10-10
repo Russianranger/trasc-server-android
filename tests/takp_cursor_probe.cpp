@@ -10,6 +10,7 @@
 static IDirectInputDevice8A* mouse;
 static HWND game_window;
 static volatile LONG mode=0; // free=0, v1 warp=1, v2 clip=2, exit=-1
+static volatile LONG swap_buttons=0;
 static LONG totals[4],buttons;
 static CRITICAL_SECTION clip_lock;
 static trasc_takp_camera::LookClip clip;
@@ -23,13 +24,14 @@ static bool set_clip(const trasc_takp_camera::Rect& value) {
 static void release_clip(){EnterCriticalSection(&clip_lock);clip.release(get_clip,set_clip);LeaveCriticalSection(&clip_lock);}
 static void hold_clip(){EnterCriticalSection(&clip_lock);clip.hold(400,300,{0,0,800,600},get_clip,set_clip);LeaveCriticalSection(&clip_lock);}
 static LRESULT CALLBACK window_proc(HWND window,UINT message,WPARAM wparam,LPARAM lparam) {
-    if(message==WM_RBUTTONUP||message==WM_KILLFOCUS||(message==WM_ACTIVATEAPP&&!wparam)||
+    if(message==(swap_buttons?WM_LBUTTONUP:WM_RBUTTONUP)||message==WM_KILLFOCUS||(message==WM_ACTIVATEAPP&&!wparam)||
        (message==WM_SIZE&&wparam==SIZE_MINIMIZED)||message==WM_CLOSE||message==WM_DESTROY) release_clip();
     return DefWindowProcA(window,message,wparam,lparam);
 }
 static DWORD WINAPI input_frame(void*) {
     while(mode>=0) {
-        if(mode==2 && GetForegroundWindow()==game_window && !IsIconic(game_window) && (GetAsyncKeyState(VK_RBUTTON)&0x8000))hold_clip();else release_clip();
+        if(mode==2 && GetForegroundWindow()==game_window && !IsIconic(game_window) &&
+           (GetAsyncKeyState(swap_buttons?VK_LBUTTON:VK_RBUTTON)&0x8000))hold_clip();else release_clip();
         DIMOUSESTATE2 state={};mouse->Acquire();
         if(SUCCEEDED(mouse->GetDeviceState(sizeof(state),&state))) {
             InterlockedExchangeAdd(totals,state.lX);InterlockedExchangeAdd(totals+1,state.lY);
@@ -89,6 +91,8 @@ int WINAPI WinMain(HINSTANCE instance,HINSTANCE,LPSTR,int) {
         else if(!std::strncmp(command,"warp",4))mode=1;
         else if(!std::strncmp(command,"raw",3))mode=2;
         else if(!std::strncmp(command,"free",4)) {mode=0;release_clip();}
+        else if(!std::strncmp(command,"swap",4))InterlockedExchange(&swap_buttons,1);
+        else if(!std::strncmp(command,"normal",6))InterlockedExchange(&swap_buttons,0);
         else if(!std::strncmp(command,"focus",5)){SetForegroundWindow(window);SetFocus(window);}
         else if(!std::strncmp(command,"blur",4)){ShowWindow(window,SW_MINIMIZE);release_clip();}
         else if(!std::strncmp(command,"resume",6)){ShowWindow(window,SW_RESTORE);SetForegroundWindow(window);SetFocus(window);}

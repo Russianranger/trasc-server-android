@@ -72,8 +72,8 @@ def run(wine, probe, output):
             return {'window':hex(window.value),'revert':revert.value,'ancestors':chain}
         def motion(dx,dy):
             xtst.XTestFakeRelativeMotionEvent(display,dx,dy,0);xlib.XSync(display,False)
-        def button(down):
-            xtst.XTestFakeButtonEvent(display,3,down,0);xlib.XSync(display,False)
+        def button(down,which=3):
+            xtst.XTestFakeButtonEvent(display,which,down,0);xlib.XSync(display,False)
         subprocess.run([str(wine),'wineboot','-u'],env=env,stdout=wine_log,stderr=subprocess.STDOUT,check=True,timeout=120)
         drives=prefix/'dosdevices';(drives/'d:').unlink(missing_ok=True);(drives/'d:').symlink_to(output)
         (output/'command.txt').unlink(missing_ok=True);(output/'reply.txt').unlink(missing_ok=True)
@@ -158,11 +158,39 @@ def run(wine, probe, output):
         motion(80,40);time.sleep(.1);assert point()==(480,340),point()
         # Capture a held-button look, minimize/release, restore and re-enter.
         button(True);time.sleep(.15);assert sample()['clip']==[400,300,401,301]
+        assert point()==(400,300),diagnose('held-before-blur')
         command('blur');time.sleep(.15);assert sample()['clip']==original_clip,sample()
-        button(False);command('resume');command('focus');time.sleep(.15)
+        blur_point=point();motion(20,-10);time.sleep(.1)
+        assert point()==(blur_point[0]+20,blur_point[1]-10),('focus loss retained physical capture',blur_point,point())
+        button(False);command('resume');time.sleep(.15);command('focus');time.sleep(.15)
+        resumed=diagnose('restored-focus-ready')
+        assert resumed['native']['foreground'] and resumed['native']['focused'] and resumed['native']['visible'],resumed
+        assert any(row['title']=='TAKP relative camera fixture' for row in resumed['x_focus']['ancestors']),resumed
         button(True);time.sleep(.15);assert sample()['clip']==[400,300,401,301],sample()
+        assert point()==(400,300),diagnose('restored-raw-capture')
+        before=sample()
+        for _ in range(20):motion(-30,15);time.sleep(.005)
+        time.sleep(.15);after=sample()
+        restored_relative={'injected':[-600,300],'polled':difference(before,after,'state'),'buffered':difference(before,after,'buffered')}
+        assert restored_relative['polled']==[-600,300] and restored_relative['buffered']==[-600,300],restored_relative
+        assert point()==(400,300),point()
         button(False);time.sleep(.15);assert sample()['clip']==original_clip,sample()
-        command('free');motion(-60,-30);time.sleep(.1);assert point()==(340,270),point()
+        # Mode remains logically active after physical release. It must not
+        # reacquire the clip while the game's logical flag is stale/paused.
+        time.sleep(.15);assert sample()['clip']==original_clip,sample()
+        command('free');free_point=point();motion(-60,-30);time.sleep(.1)
+        assert point()==(free_point[0]-60,free_point[1]-30),('menu relative movement failed',free_point,point())
+        command('swap');command('raw');button(True,1);time.sleep(.15)
+        assert sample()['clip']==[400,300,401,301] and point()==(400,300),diagnose('swapped-look-capture')
+        before=sample()
+        for _ in range(20):motion(15,-10);time.sleep(.005)
+        time.sleep(.15);after=sample()
+        swapped_relative={'injected':[300,-200],'polled':difference(before,after,'state'),'buffered':difference(before,after,'buffered')}
+        assert swapped_relative['polled']==[300,-200] and swapped_relative['buffered']==[300,-200],swapped_relative
+        assert point()==(400,300),point()
+        button(False,1);time.sleep(.3);assert sample()['clip']==original_clip,sample()
+        command('normal');command('free');free_point=point();motion(-20,10);time.sleep(.1)
+        assert point()==(free_point[0]-20,free_point[1]+10),('swapped release trapped pointer',free_point,point())
         command('quit');assert child.wait(timeout=15)==0
         source_root=Path(__file__).resolve().parents[1]
         proof_files=('tests/takp_cursor_probe.cpp','tests/integration_takp_cursor.py','native/takp_camera_recenter.h')
@@ -172,6 +200,8 @@ def run(wine, probe, output):
                  'legacy_offsets':old,'v1_relative_comparison':v1,'repaired_relative':repaired,
                  'beyond_desktop':{'injected':[6400,-6400],'polled':[6400,-6400],'buffered':[6400,-6400]},
                  'idle_drift':[0,0],'rmb_release_restores_clip':True,'focus_restore_reenters_look':True,
+                 'focus_loss_pointer_free':True,'physical_release_no_reacquire':True,
+                 'focus_restored_relative':restored_relative,'swapped_button_relative':swapped_relative,
                  'menu_pointer_free':True,'verification':'real Wine10/Xvnc polled and buffered DirectInput; open fixture, not actual client acceptance'}
         (output/'cursor-verification.json').write_text(json.dumps(receipt,indent=2)+'\n')
         print(json.dumps(receipt,indent=2))
