@@ -1,0 +1,69 @@
+name: Qualify Custom offline bots on the pinned seed
+on:
+  push:
+    branches: [codex/bots-seed-qualify-0622]
+permissions:
+  contents: read
+jobs:
+  modern-bots:
+    runs-on: ubuntu-24.04-arm
+    timeout-minutes: 150
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - profile: custom
+            repository: Russianranger/Triptych-Triumvirate
+            revision: 8f6ca0795f424a7b4eab750ff38fc6473d48375c
+            source_dir: Release-NMS-Server
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/checkout@v4
+        with:
+          repository: ${{ matrix.repository }}
+          ref: ${{ matrix.revision }}
+          path: runtime-work/bots-source
+      - name: Fetch the exact Traditional websocket headers
+        if: matrix.profile == 'traditional'
+        run: git -C runtime-work/bots-source submodule update --init submodules/websocketpp
+      - name: Build isolated native qualification dependencies
+        run: |
+          docker build --platform linux/arm64 -t trasc-bots-bookworm:1 runtime/traditional
+          docker build --platform linux/arm64 -t trasc-bots-qualification:1 - <<'DOCKERFILE'
+          FROM trasc-bots-bookworm:1
+          RUN apt-get update && apt-get install -y --no-install-recommends liblua5.1-0-dev && apt-get clean && rm -rf /var/lib/apt/lists/*
+          DOCKERFILE
+      - name: Fetch immutable PEQ fixture
+        run: |
+          mkdir -p runtime-work/bots-fixtures runtime-work/bots-work dist/bots
+          curl --fail --location --retry 3 --max-time 120 https://db.eqemu.dev/api/v1/dump/archive/peq-1759046415.zip -o runtime-work/bots-fixtures/peq.zip
+          echo 'ac8649f23d2c3aea2cade138dfe10d46d1b21ad1a80d08ca95f5434fab7f218d  runtime-work/bots-fixtures/peq.zip' | sha256sum --check
+      - name: Compile and exercise actual native creation, hooks, limits, rollback and retry
+        run: |
+          set -o pipefail
+          docker run --rm --network none \
+            -v "$PWD/backend:/opt/trasc:ro" \
+            -v "$PWD/tests:/tests:ro" \
+            -v "$PWD/runtime-work/bots-source:/source:ro" \
+            -v "$PWD/runtime-work/bots-fixtures:/fixtures:ro" \
+            -v "$PWD/runtime-work/bots-work:/work" \
+            -v "$PWD/dist/bots:/evidence" \
+            trasc-bots-qualification:1 \
+            python3 /tests/verify_modern_bot_bridge.py --source "/source/${{ matrix.source_dir }}" --profile "${{ matrix.profile }}" --work /work --database-zip /fixtures/peq.zip --output /evidence/native-bots.json --jobs 4 \
+            2>&1 | tee dist/bots/qualification.log
+      - name: Make disposable qualification evidence readable
+        if: always()
+        run: |
+          task_ci_owner="$(id -u):$(id -g)"
+          for directory in dist/bots runtime-work/bots-work/logs; do
+            if [[ -d "$directory" ]]; then
+              sudo chown -R --no-dereference "$task_ci_owner" "$directory"
+            fi
+          done
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: modern-bots-${{ matrix.profile }}-arm64-verification
+          path: |
+            dist/bots/
+            runtime-work/bots-work/logs/
