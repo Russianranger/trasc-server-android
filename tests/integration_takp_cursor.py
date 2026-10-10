@@ -7,6 +7,7 @@ import hashlib
 import json
 import os
 from pathlib import Path
+import shutil
 import subprocess
 import time
 
@@ -76,7 +77,12 @@ def run(wine, probe, output):
         subprocess.run([str(wine),'wineboot','-u'],env=env,stdout=wine_log,stderr=subprocess.STDOUT,check=True,timeout=120)
         drives=prefix/'dosdevices';(drives/'d:').unlink(missing_ok=True);(drives/'d:').symlink_to(output)
         (output/'command.txt').unlink(missing_ok=True);(output/'reply.txt').unlink(missing_ok=True)
-        child=subprocess.Popen([str(wine),str(Path(probe).resolve())],env=env,stdout=wine_log,stderr=subprocess.STDOUT)
+        shutil.copyfile(probe,output/'cursor-probe.exe')
+        # Match Supervisor.desktop: real launcher input runs in Wine's virtual
+        # desktop, which uses unmanaged child windows and establishes X focus.
+        # A standalone managed popup without a window manager leaves X focus on
+        # PointerRoot even when Wine's foreground/focus caches report success.
+        child=subprocess.Popen([str(wine),'explorer','/desktop=TRASC,800x600',r'D:\cursor-probe.exe'],env=env,stdout=wine_log,stderr=subprocess.STDOUT)
         wait_file(output/'reply.txt','ready',child)
         assert point()==(400,300),point()
         sequence=0
