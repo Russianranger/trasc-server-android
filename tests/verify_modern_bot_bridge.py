@@ -578,8 +578,11 @@ def qualify(args):
         settings_rows = int(scalar(engine, 'SELECT COUNT(*) FROM bot_settings WHERE bot_id IN ('
                                    + ','.join(map(str, ids)) + ');'))
         for bot in value['bots']:
+            # Compare the exact synthetic key bytes independently of the
+            # source seed's column collation and the CLI connection default.
+            hook_key = ('trasc_native_' + bot['name']).encode('utf-8').hex()
             require(rows(engine, 'SELECT value FROM data_buckets WHERE character_id=' + str(OWNER_ID)
-                         + ' AND `key`=' + bots.literal('trasc_native_' + bot['name']) + ';') == [[str(bot['id'])]],
+                         + " AND BINARY `key`=X'" + hook_key + "';") == [[str(bot['id'])]],
                     'Actual EVENT_BOT_CREATE player quest did not receive the native bot ID')
         report['checks']['production_preview_generate_normal_state_items_hooks'] = {
             'ids': ids, 'state': saved, 'starting_item': item_id,
@@ -667,8 +670,9 @@ def qualify(args):
                     for table, before in inventory_before.items()),
                 'Empty-owner creation modified inventory, sharedbank or evolving items')
         empty_bot_id = empty_result['bots'][0]['id']
+        empty_hook_key = 'trasc_native_Trascempty'.encode('utf-8').hex()
         require(rows(engine, 'SELECT value FROM data_buckets WHERE character_id=' + str(empty_owner)
-                     + " AND `key`='trasc_native_Trascempty';") == [[str(empty_bot_id)]],
+                     + " AND BINARY `key`=X'" + empty_hook_key + "';") == [[str(empty_bot_id)]],
                 'The empty-owner hook did not execute with its actual shared bank')
         before = snapshot(engine)
         empty_retry = native(engine, empty_payload, evidence, 'empty-owner-retry')
