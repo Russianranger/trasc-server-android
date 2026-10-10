@@ -114,7 +114,7 @@ const server=http.createServer((req,res)=>{const name=req.url==='/'?'index.html'
     if(['setup','client','fixes'].includes(tab))await page.screenshot({path:`ui-reports/profiles-${tab}-${viewport.width}.png`,fullPage:true});
    }
   }
-  assert.equal(scenes.size,10);assert.equal(await page.locator('nav button').count(),10);
+  assert.equal(scenes.size,10);assert.equal(await page.locator('nav button').count(),11);
   await page.locator('nav [data-tab=fixes]').click();assert(await page.locator('#prefix-fix-panel').isVisible());assert(!(await page.locator('#ferry-service-panel').isVisible()));
   await page.click('#runtime-close');await page.waitForFunction(()=>!lastNative?.alive);
   await page.evaluate(()=>{fixture.client=true;poll();});await page.waitForFunction(()=>lastClientNative?.alive);assert(await page.isDisabled('#world-profile'));
@@ -123,7 +123,7 @@ const server=http.createServer((req,res)=>{const name=req.url==='/'?'index.html'
   assert.equal(await page.inputValue('#source-url'),'https://github.com/Russianranger/Triptych-Triumvirate');
   assert.equal(await page.inputValue('#source-ref'),'main');
   await page.locator('nav [data-tab=fixes]').click();assert(await page.locator('#ferry-service-panel').isVisible());
-  assert.equal(await page.locator('nav button').count(),10);assert.deepEqual(errors,[]);
+  assert.equal(await page.locator('nav button').count(),11);assert.deepEqual(errors,[]);
   console.log('PASS: profile isolation, opt-in Traditional camera and blocked Custom hooks, qualified compilation, readiness-controlled deployment/start/client data, active-client guards, shared tabs/art and return to Custom');
  }finally{await browser.close();server.close();}
 })().catch(e=>{console.error(e);process.exitCode=1;server.close();});

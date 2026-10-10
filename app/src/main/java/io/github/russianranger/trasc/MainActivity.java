@@ -144,6 +144,14 @@ public final class MainActivity extends Activity {
                                 result=response.get("result");
                             }
                             break;
+                        case "bots_generate": case "bots_socials_install": case "bots_socials_restore": case "bots_storage_enable":
+                            synchronized(clientRuntime) {
+                                if(clientRuntime.alive()||clientRuntime.busy)throw new IOException("Stop the client before changing bots, social buttons or bot storage");
+                                JSONObject response=runtime.request(operation,args);
+                                if(!response.getBoolean("ok"))throw new IOException(response.optString("error"));
+                                result=response.get("result");
+                            }
+                            break;
                         case "client_settings_save":
                         case "import_client_zip": case "import_client_ui": case "activate_client_ui": case "restore_client_ui": case "prepare_client": case "export_client":
                         case "apply_spell_test": case "restore_spell_test":

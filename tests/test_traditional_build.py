@@ -207,6 +207,9 @@ class TraditionalBuildTests(unittest.TestCase):
         self.save_provenance()
         self.guards = self.enter(patch.object(build, 'SOURCE_HASHES', {
             name: sha(data) for name, data in self.pristine.items() if name != 'ordinary.cpp'}))
+        # Tiny filesystem fixtures do not represent an executable EQEmu tree;
+        # the separate modern bridge suite and native CI qualify its outputs.
+        self.enter(patch.object(build.modern_bot_bridge, 'output_files', return_value={}))
         self.runtime = self.enter(patch.object(build, '_runtime', return_value={
             'ready': True, 'message': 'Fixture ARM64 toolchain', 'identity': 'b' * 64}))
         self.websocket_files = {

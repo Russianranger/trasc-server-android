@@ -94,7 +94,7 @@ public final class RuntimeManager {
         File proot=new File(nativeDir,"libproot.so"), loader=new File(nativeDir,"libproot-loader.so");
         if (!proot.canExecute() || !loader.exists()) throw new IOException("This APK is missing its ARM64 runtime launcher");
         File backend=new File(home,"backend"); backend.mkdirs();
-        for(String name:new String[]{"engine.py","era_rules.py","era_presets.json","peq_database.py","client_ui.py","traditional_content.py","traditional_build.py","traditional_verify.py","traditional_runtime.py","takp_build.py","takp_runtime.py","takp_client.py","takp-client/bundle.json","takp-client/d3d8.dll","takp-client/eqgame.dll","takp-client/eqw.dll","boat_trial.py","ferry_service.py","ferry_service.lua","ferry_route.py","server_ferry.py","eq_server_ferry.h","spire.py","spire_catalog.py","log_retention.py","rule_catalog.py","managed_content.py","client_display.py","client_xauthority.py","client_settings.py","client_spells.py","client_addons.py","client_dll.py","client_toolchain.py","pack-client-sdk.py","client_mouse.py","eq_camera_mouse.h","eq_client_loading.h","eq_fast_decimal.h","eq_spell_checksum.h","eq_display_loading.h","eq_first_person_particles.h","eq_boat_diagnostics.h","player_data.py","player_tables.py","client_compile_runner.py"})
+        for(String name:new String[]{"engine.py","bots.py","bot_socials.py","modern_bot_bridge.py","modern_bot_bridge.h","era_rules.py","era_presets.json","peq_database.py","client_ui.py","traditional_content.py","traditional_build.py","traditional_verify.py","traditional_runtime.py","takp_build.py","takp_runtime.py","takp_client.py","takp-client/bundle.json","takp-client/eqw-camera-build.json","takp-client/eqw-cursor-verification.json","takp-client/d3d8.dll","takp-client/eqgame.dll","takp-client/eqw.dll","boat_trial.py","ferry_service.py","ferry_service.lua","ferry_route.py","server_ferry.py","eq_server_ferry.h","spire.py","spire_catalog.py","log_retention.py","rule_catalog.py","managed_content.py","client_display.py","client_xauthority.py","client_settings.py","client_spells.py","client_addons.py","client_dll.py","client_toolchain.py","pack-client-sdk.py","client_mouse.py","eq_camera_mouse.h","eq_client_loading.h","eq_fast_decimal.h","eq_spell_checksum.h","eq_display_loading.h","eq_first_person_particles.h","eq_boat_diagnostics.h","player_data.py","player_tables.py","client_compile_runner.py"})
             try(InputStream in=context.getAssets().open(name)) { copy(in,new File(backend,name)); }
         for(String name:new String[]{"takp-client/eqw-LICENSE.txt","takp-client/d3d8to9-LICENSE.txt"})
             try(InputStream in=context.getAssets().open(name)) { copy(in,new File(backend,name)); }
@@ -354,6 +354,10 @@ public final class RuntimeManager {
             if(!settings.optString("profile","custom").equals(profiles.current()))throw new IOException("Session settings belong to a different world profile");
             if(!settings.getString("database").matches("[A-Za-z0-9_]+"))throw new IOException("Invalid database name in session");
             for(String key:new String[]{"db_password","root_password"})if(!settings.getString(key).matches("[0-9a-f]{40}"))throw new IOException("Invalid database credentials in session");
+            // A restored database is a new owner/roster snapshot. Old previews
+            // and idempotency tokens must not target it even when IDs repeat.
+            settings.put("bot_database_epoch",java.util.UUID.randomUUID().toString().replace("-",""));
+            write(new File(staging,"work/settings.json"),settings.toString(2));
             Properties journal=new Properties();
             for(String name:new String[]{"rootfs","work"}) {
                 journal.setProperty(name,String.valueOf(new File(home,name).exists()));

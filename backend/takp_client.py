@@ -13,8 +13,9 @@ WINDOWS_FILES = ('eqgame.exe', 'eqmain.dll', 'eqgfx_dx8.dll')
 PATCHES = {
     'd3d8.dll': '122928cfe225c25d30decf7184a5d37e490cecf3b58256ba3206c7e1853f8ab8',
     'eqgame.dll': 'f0ca8e4bdcf3875419ecb1067a95bd6dbf8197e564f9d51ff4dec98a30f14b97',
-    'eqw.dll': 'dffb97ac1f47d41f450614c8d6d4da30f3f47b7ed5046dbdbd111b3ba1fbe5ba',
+    'eqw.dll': 'b739dfe64b7f69be2ffebf13a1cf794bcfd9e37fe143a75134ca6359e60ef584',
 }
+LEGACY_EQW_SHA = 'dffb97ac1f47d41f450614c8d6d4da30f3f47b7ed5046dbdbd111b3ba1fbe5ba'
 DISABLED = ('native_dinput8', 'native_d3dx', 'mouse_warp', 'reduce_load_pauses', 'fast_spell_parse',
             'name_sky_compatibility')
 RUNTIME_LIBRARIES = ('msvcp140.dll', 'vcruntime140.dll', 'ucrtbase.dll')
@@ -102,6 +103,49 @@ def verify_bundle(folder=None):
 def bundle_changes(client, folder=None):
     folder = verify_bundle(folder)
     return {file_at(client, name): folder / name for name in PATCHES}
+
+
+def upgrade_camera_helper(client, prefix, folder=None):
+    """Upgrade only the known previous managed EQW helper before Wine starts.
+
+    Preserve its exact original once; changed/custom DLLs require an explicit
+    Prepare transaction instead of being silently replaced at launch.
+    """
+    from client_display import atomic_bytes
+    client, prefix = Path(client), Path(prefix)
+    if client.is_symlink() or not client.is_dir() or prefix.is_symlink():
+        raise ValueError('TAKP camera repair requires ordinary client/prefix directories')
+    target = file_at(client, 'eqw.dll', True)
+    pe32(target)
+    original = target.read_bytes()
+    current = hashlib.sha256(original).hexdigest()
+    expected = PATCHES['eqw.dll']
+    if current == expected:
+        return {'state':'current', 'sha256':expected, 'changed':False}
+    if current != LEGACY_EQW_SHA:
+        raise ValueError('TAKP EQW helper changed; Prepare the client to install the reviewed camera repair')
+    folder = verify_bundle(folder)
+    replacement = (folder/'eqw.dll').read_bytes()
+    # Complete other-file validation before creating backups or writing a DLL.
+    validate_client(client)
+    for name, digest in PATCHES.items():
+        if name != 'eqw.dll' and hashlib.sha256(file_at(client, name, True).read_bytes()).hexdigest() != digest:
+            raise ValueError('TAKP client update changed: ' + name + '. Prepare this client again')
+    backup = prefix/'trasc-takp-camera-originals'
+    if backup.is_symlink() or (backup.exists() and not backup.is_dir()):
+        raise ValueError('TAKP camera backup must be an ordinary directory')
+    backup.mkdir(parents=True, exist_ok=True)
+    first = backup/'eqw.original.dll'
+    if first.is_symlink() or (first.exists() and not first.is_file()):
+        raise ValueError('TAKP camera backup must be an ordinary file')
+    if first.exists():
+        if hashlib.sha256(first.read_bytes()).hexdigest() != LEGACY_EQW_SHA:
+            raise ValueError('TAKP camera original backup changed; client helper was not replaced')
+    else:
+        atomic_bytes(first, original)
+    atomic_bytes(target, replacement)
+    return {'state':'upgraded', 'sha256':expected, 'previous_sha256':current,
+            'changed':True, 'backup':'client/prefix/trasc-takp-camera-originals/eqw.original.dll'}
 
 
 def effective_request(request):

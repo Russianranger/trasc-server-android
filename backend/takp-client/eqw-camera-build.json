@@ -1,0 +1,22 @@
+{
+  "format": 1,
+  "architecture": "x86",
+  "helper": "eqw.dll",
+  "sha256": "b739dfe64b7f69be2ffebf13a1cf794bcfd9e37fe143a75134ca6359e60ef584",
+  "bytes": 86016,
+  "source_repository": "https://github.com/CoastalRedwood/eqw_takp",
+  "source_commit": "3b4d43562c9dacc89349185684bb0bf0b01f9d06",
+  "source_tag": "v1.0.2",
+  "upstream_game_input_sha256": "52b450f9667530db3741a2b4ea481cc3b4bfe8b692e8c1fbb79f825863bab5f2",
+  "patched_game_input_sha256": "8b521e8086b3d8e8e7051eda011e5a60cae9b30bcbe2c39d285b788fe8910164",
+  "patch_files": {
+    "native\\takp_camera_recenter.h": "823167fd3c32ce86a50f8cedce7a6fb0eddc7acc8066396f3ceebd7bddf92dcc",
+    "scripts\\prepare-takp-eqw.py": "75811d98b90c20791233da0053cea0f908959f08604b9b52d48d7584d11604dc",
+    "scripts\\record-takp-eqw.py": "eed3bbacee747453c3a22b7ccca4dbce9f0eab09b162f58d67daaa47bf7a4c81"
+  },
+  "marker": "TRASC_TAKP_WINE_RECENTER_V1",
+  "compiler": "Microsoft Visual C++ v143, Release x86",
+  "build_commit": "f8fb21396f1b28a21dd6d0ae1bc120b85b6619db",
+  "build_run": 38029612146,
+  "license_sha256": "9d7bb2707921cd2717bab877f7dadd994f6fee7e3acc18a34e26a615c472df42"
+}

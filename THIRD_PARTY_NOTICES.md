@@ -20,17 +20,19 @@ The APK release includes `launcher-sources.tar.gz` with the pinned PRoot/talloc 
 
 The Android RFB client is implemented in this repository from the public protocol specification. The Windows integration-test EXE/DLL are built from `tests/client_probe*.c`; they contain no proprietary client code. The TAKP compatibility DLLs listed below are bundled separately. No EverQuest executables, copyrighted game assets or Winlator binaries are redistributed.
 
-## TAKP client compatibility files (0.6.16)
+## TAKP client compatibility files (0.6.22)
 
-The APK includes the following unchanged, user-provided 32-bit compatibility DLLs. Their versions and SHA-256 checksums are recorded in `backend/takp-client/bundle.json`. The launcher verifies them before copying them into this world's user-imported client; the original files are retained in that client's preparation backup.
+The APK includes the following 32-bit compatibility DLLs. The eqgame and D3D8 helpers remain unchanged, user-provided files. EQW is rebuilt from the exact upstream 1.0.2 source with a narrow Wine-only cursor recenter repair. Versions and SHA-256 checksums are recorded in `backend/takp-client/bundle.json`; `eqw-camera-build.json` records its actual compiler output and source/patch hashes. The launcher verifies the helpers before copying them into the imported client and preserves original files.
 
 | File | Upstream release | License / notices |
 | --- | --- | --- |
 | `eqgame.dll` | [EQMacEmu/eqgame_dll_takp v0.0.0.3](https://github.com/EQMacEmu/eqgame_dll_takp/releases/tag/v0.0.0.3) | The upstream repository does not declare a license. This project records its provenance and does not assign it an MIT or other license. |
-| `eqw.dll` | [CoastalRedwood/eqw_takp v1.0.2](https://github.com/CoastalRedwood/eqw_takp/releases/tag/v1.0.2) | MIT, copyright 2025 CoastalRedwood. Complete upstream notice is retained in `backend/takp-client/eqw-LICENSE.txt`. |
+| `eqw.dll` | [CoastalRedwood/eqw_takp 1.0.2 source](https://github.com/CoastalRedwood/eqw_takp/tree/3b4d43562c9dacc89349185684bb0bf0b01f9d06), rebuilt with TRASC camera patch | MIT, copyright 2025 CoastalRedwood. Complete notice retained in `backend/takp-client/eqw-LICENSE.txt`; complete patched source and license in `native/takp-eqw-source/`. |
 | `d3d8.dll` | [crosire/d3d8to9 v1.16.0](https://github.com/crosire/d3d8to9/releases/tag/v1.16.0) | BSD-2-Clause. Complete upstream notice is retained in `backend/takp-client/d3d8to9-LICENSE.txt`. |
 
-The APK's `takp-client/` assets retain those license files and bundle manifest. The compatibility files supply the TAKP Windows modifications, window/input handling, and conversion from Direct3D 8 to Direct3D 9. They do not include the game's executable, `eqmac.exe` checksum resource, zone/model archives, textures, audio, or other game content. The uploaded `eqw.pdb` is a debug symbol file and is not included in the APK. Players import their own complete supported TAKP client installation.
+The APK's `takp-client/` assets retain those licenses, bundle manifest, EQW build provenance and real Wine cursor fixture receipt. The published source archive includes the complete patched EQW source, `native/takp_camera_recenter.h`, build/receipt scripts and cursor fixtures. It records actual compiled bytes; the Windows build is not claimed deterministic. The compatibility files supply TAKP modifications, window/input handling and D3D8-to-D3D9 conversion. No game executable, `eqmac.exe` checksum resource, model archives, textures or audio are included. Debug symbols are omitted. Players import their own complete supported TAKP installation.
+
+`backend/modern_bot_bridge.h` and its generated server adapter are GPL-3.0-or-later additions to the existing EQEmu server. The adapter's exact pinned input guards and full template accompany the launcher source; no proprietary game client source is used.
 
 ## DirectX model helper installer
 

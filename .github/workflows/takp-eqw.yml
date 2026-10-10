@@ -1,0 +1,74 @@
+name: Build reviewed TAKP EQW camera repair
+
+on:
+  push:
+    branches: [codex/takp-eqw-0622]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  cursor:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+      - name: Install open cursor fixture dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y --no-install-recommends tigervnc-standalone-server g++-mingw-w64-i686 g++ libx11-6 libxtst6 libxext6 libxrender1 libxrandr2 libxi6 libxfixes3 libxcursor1 libxinerama1 libxxf86vm1 libfontconfig1 libfreetype6 libasound2t64 libpulse0 libvulkan1
+      - name: Fetch the same pinned Wine 10 WoW64 build used by the client runtime
+        run: |
+          mkdir -p runtime-work/wine dist/cursor
+          curl -fL --retry 3 -o runtime-work/wine.tar.xz https://github.com/Kron4ek/Wine-Builds/releases/download/10.0/wine-10.0-amd64-wow64.tar.xz
+          echo 'aeebbbf239e548f0136f1cd72a2e109dd9a572a8f703da3c09fa40d74d5c255f  runtime-work/wine.tar.xz' | sha256sum --check
+          tar -xJf runtime-work/wine.tar.xz --strip-components=1 -C runtime-work/wine
+      - name: Test cached-center race and repaired recentering under real Wine and Xvnc
+        run: |
+          g++ -std=c++14 -O2 -Wall -Wextra -Werror tests/takp_camera_recenter.cpp -o runtime-work/camera-unit
+          runtime-work/camera-unit
+          i686-w64-mingw32-g++ -std=c++14 -O2 -static -mwindows tests/takp_cursor_probe.cpp -o runtime-work/cursor-probe.exe
+          python3 tests/integration_takp_cursor.py --wine "$PWD/runtime-work/wine/bin/wine" --probe runtime-work/cursor-probe.exe --output dist/cursor
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: takp-eqw-cursor-proof-0622
+          path: dist/cursor/*.log
+          retention-days: 14
+      - uses: actions/upload-artifact@v4
+        if: success()
+        with:
+          name: takp-eqw-cursor-receipt-0622
+          path: dist/cursor/cursor-verification.json
+          retention-days: 14
+  eqw:
+    runs-on: windows-latest
+    steps:
+      - name: Preserve exact reviewed source and patch bytes
+        shell: pwsh
+        run: |
+          git config --global core.autocrlf false
+          git config --global core.eol lf
+      - uses: actions/checkout@v4
+      - uses: microsoft/setup-msbuild@v2
+      - name: Fetch exact reviewed EQW source and apply camera-only patch
+        shell: pwsh
+        run: |
+          git clone --config core.autocrlf=false --config core.eol=lf https://github.com/CoastalRedwood/eqw_takp.git runtime-work/eqw
+          if ($LASTEXITCODE -ne 0) { throw 'EQW source clone failed' }
+          git -C runtime-work/eqw checkout 3b4d43562c9dacc89349185684bb0bf0b01f9d06
+          if ($LASTEXITCODE -ne 0) { throw 'EQW source checkout failed' }
+          python scripts/prepare-takp-eqw.py --source runtime-work/eqw
+          if ($LASTEXITCODE -ne 0) { throw 'EQW source patch verification failed' }
+      - name: Build reviewed x86 EQW helper
+        shell: pwsh
+        run: |
+          msbuild runtime-work/eqw/eqw_takp.sln /p:Configuration=Release /p:Platform=x86 /p:LanguageStandard=stdcpp20 /p:AdditionalLinkOptions="/Brepro"
+          if ($LASTEXITCODE -ne 0) { throw 'EQW camera build failed' }
+          python scripts/record-takp-eqw.py --source runtime-work/eqw --output dist/takp-eqw
+          if ($LASTEXITCODE -ne 0) { throw 'EQW camera receipt verification failed' }
+      - uses: actions/upload-artifact@v4
+        with:
+          name: takp-eqw-camera-0622
+          path: dist/takp-eqw/
+          retention-days: 14

@@ -127,3 +127,11 @@ body[data-profile=takp] [data-takp-hide],body[data-profile=takp] [data-custom-on
 body[data-profile=takp]{--gold:#b9cae8}
 
 body[data-profile=takp] [data-takp-runtime]{grid-column:1/-1}
+
+/* Companion editor uses the same offline fantasy palette and touch targets. */
+body[data-scene=bots]{--scene-image:url('fantasy-gameplay.webp')}
+body[data-profile=traditional][data-scene=bots]{--scene-image:url('classic-gameplay.webp')}
+.bots-layout{display:grid;grid-template-columns:minmax(0,.85fr) minmax(0,1.15fr);gap:18px}.bots-layout>.card{min-width:0}.bots-roster{display:grid;gap:8px}.bots-roster .check{border:1px solid var(--line);border-radius:5px;padding:12px;margin:0;min-height:56px}.bots-roster .check span{min-width:0;overflow-wrap:anywhere}.bots-roster .check small{margin:3px 0 0}.bots-draft{border:1px solid var(--line);border-radius:5px;padding:16px;margin-bottom:12px}.bots-draft-heading{display:flex;justify-content:space-between;align-items:center;gap:12px}.bots-draft-heading h4{margin:0;font-size:14px}.bots-draft-fields{display:grid;grid-template-columns:1fr 1fr;gap:0 12px}.bots-draft-fields .bots-name-field{grid-column:1/-1}.bots-draft-fields label{margin-top:12px}.bots-preview{border-top:1px solid var(--line);margin-top:20px;padding-top:16px}.bots-review-row{padding:10px 0;border-bottom:1px solid var(--line);overflow-wrap:anywhere}.bots-review-row small{margin:3px 0}.bots-socials-list{display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,260px),1fr));gap:14px}.bots-social{border:1px solid var(--line);border-radius:5px;padding:16px;min-width:0}.bots-social h4{margin:0}.bots-social pre{max-height:none;margin:12px 0;font-size:12px}.bots-social label{margin-top:8px}#bots-generation-result,#bots-socials-status,#bots-status{overflow-wrap:anywhere}.bots-preview[hidden]{display:none}#bots-build-link[hidden]{display:none}
+@media(max-width:800px){.bots-layout{grid-template-columns:1fr}.bots-draft-fields{grid-template-columns:1fr 1fr}.bots-draft{padding:12px}.bots-draft-heading button{padding:10px;font-size:10px}.bots-social{padding:14px}}
+
+#bots-storage-panel[hidden],#bots-storage-preview[hidden],#bots-export-storage-backup[hidden]{display:none}#bots-storage-result{overflow-wrap:anywhere}

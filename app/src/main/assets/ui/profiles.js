@@ -7,7 +7,7 @@ const takpRevision='25bf70acb6bd24853cf09e447ddd62b96a4491a4';
 function takp(){return activeProfile==='takp';}
 function renderProfile(n){
  const profile=n.profile||'custom';
- if(activeProfile&&activeProfile!==profile){if(typeof resetEraRules==='function')resetEraRules();resetClientUi();location.reload();return false;}
+ if(activeProfile&&activeProfile!==profile){if(typeof resetEraRules==='function')resetEraRules();resetClientUi();if(typeof resetBots==='function')resetBots();location.reload();return false;}
  if(!activeProfile){
   activeProfile=profile;document.body.dataset.profile=profile;$('runtime-heading-label').textContent=takp()?'TAKP server runtime':traditional()?'Traditional EQEmu runtime':'TRASC Custom runtime';$('world-profile').value=profile;
   document.querySelector('.eyebrow').textContent=takp()?'TAKP · AL’KABOR ADVENTURE':traditional()?'TRADITIONAL EQEMU · CLASSIC ADVENTURE':'TRIPTYCH · ANDROID';
@@ -107,7 +107,7 @@ function renderTraditionalStatus(){
 }
 action('traditional-tested-source',async()=>{$('source-url').value=traditionalRepository;$('source-ref').value=traditionalRevision;notice('Tested source selected. Choose Import from GitHub to download it.');});
 $('world-profile').addEventListener('change',syncProfileControls);
-action('switch-profile',async()=>{await api('profile_switch',{profile:$('world-profile').value});location.reload();});
+action('switch-profile',async()=>{await api('profile_switch',{profile:$('world-profile').value});if(typeof resetBots==='function')resetBots();location.reload();});
 const questContentRepository='https://github.com/ProjectEQ/projecteqquests';
 const serverAssetsRepository='https://github.com/EQEmu/EQEmu';
 const contentComponents={assets:{kind:'assets',name:'Server assets'}};
