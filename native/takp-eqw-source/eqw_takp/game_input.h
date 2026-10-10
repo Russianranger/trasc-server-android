@@ -9,6 +9,7 @@ namespace GameInput {
 // Resets state and installs client hooks.
 void Initialize(HWND hwnd, bool swap_mouse_buttons, bool disable_keydown_clear);
 
+void ReleaseCameraCursor(UINT message);  // Wine-only look clipping; release even if game input is paused.
 void HandleLossOfFocus();  // Resets state when the client loses focus.
 void HandleGainOfFocus();  // Updates state when the client regains focus.
 

@@ -250,6 +250,48 @@ class TakpClientTests(unittest.TestCase):
             with self.assertRaisesRegex(ValueError,'ordinary file'):takp_client.upgrade_camera_helper(self.client,prefix)
             self.assertEqual(target.read_bytes(),original)
 
+    def test_camera_v2_upgrade_from_official_v1_keeps_first_original_and_separate_0622_backup(self):
+        self.import_zip(self.content(self.root/'source'))
+        target=self.client/'eqw.dll';old_v1=target.read_bytes();old_original=pe32()+b'original pre0622'
+        replacement=pe32()+b'v2 raw look helper';folder=self.root/'v2';folder.mkdir();(folder/'eqw.dll').write_bytes(replacement)
+        patches=dict(takp_client.PATCHES);patches['eqw.dll']=hashlib.sha256(replacement).hexdigest()
+        prefix=self.engine.work/'client/prefix';backup=prefix/'trasc-takp-camera-originals';backup.mkdir(parents=True)
+        first=backup/'eqw.original.dll';first.write_bytes(old_original)
+        with patch.object(takp_client,'PATCHES',patches), patch.object(takp_client,'LEGACY_EQW_SHA',hashlib.sha256(old_original).hexdigest()), patch.object(takp_client,'PREVIOUS_EQW_SHA',hashlib.sha256(old_v1).hexdigest()), patch.object(takp_client,'verify_bundle',return_value=folder):
+            result=takp_client.upgrade_camera_helper(self.client,prefix)
+            self.assertTrue(result['changed']);self.assertEqual(result['previous_sha256'],hashlib.sha256(old_v1).hexdigest())
+            self.assertEqual(target.read_bytes(),replacement);self.assertEqual(first.read_bytes(),old_original)
+            self.assertEqual((backup/'eqw.0622.dll').read_bytes(),old_v1)
+            self.assertFalse(takp_client.upgrade_camera_helper(self.client,prefix)['changed'])
+            self.assertEqual(first.read_bytes(),old_original);self.assertEqual((backup/'eqw.0622.dll').read_bytes(),old_v1)
+
+    def test_camera_v2_upgrade_from_official_v1_without_older_backup_saves_first_available_helper(self):
+        self.import_zip(self.content(self.root/'source'))
+        target=self.client/'eqw.dll';old_v1=target.read_bytes()
+        replacement=pe32()+b'v2 raw look helper';folder=self.root/'v2';folder.mkdir();(folder/'eqw.dll').write_bytes(replacement)
+        patches=dict(takp_client.PATCHES);patches['eqw.dll']=hashlib.sha256(replacement).hexdigest()
+        prefix=self.engine.work/'client/prefix'
+        with patch.object(takp_client,'PATCHES',patches), patch.object(takp_client,'PREVIOUS_EQW_SHA',hashlib.sha256(old_v1).hexdigest()), patch.object(takp_client,'verify_bundle',return_value=folder):
+            takp_client.upgrade_camera_helper(self.client,prefix)
+            backup=prefix/'trasc-takp-camera-originals'
+            self.assertEqual((backup/'eqw.original.dll').read_bytes(),old_v1)
+            self.assertEqual((backup/'eqw.0622.dll').read_bytes(),old_v1)
+            self.assertEqual(target.read_bytes(),replacement)
+
+    def test_camera_v2_rejects_changed_or_linked_previous_backup_before_writing_anything(self):
+        self.import_zip(self.content(self.root/'source'))
+        target=self.client/'eqw.dll';old_v1=target.read_bytes()
+        replacement=pe32()+b'v2 raw look helper';folder=self.root/'v2';folder.mkdir();(folder/'eqw.dll').write_bytes(replacement)
+        patches=dict(takp_client.PATCHES);patches['eqw.dll']=hashlib.sha256(replacement).hexdigest()
+        prefix=self.engine.work/'client/prefix';backup=prefix/'trasc-takp-camera-originals';backup.mkdir(parents=True)
+        previous=backup/'eqw.0622.dll';previous.write_bytes(b'changed prior helper')
+        with patch.object(takp_client,'PATCHES',patches), patch.object(takp_client,'PREVIOUS_EQW_SHA',hashlib.sha256(old_v1).hexdigest()), patch.object(takp_client,'verify_bundle',return_value=folder):
+            with self.assertRaisesRegex(ValueError,'previous backup changed'):takp_client.upgrade_camera_helper(self.client,prefix)
+            self.assertEqual(target.read_bytes(),old_v1);self.assertFalse((backup/'eqw.original.dll').exists())
+            previous.unlink();previous.symlink_to(target)
+            with self.assertRaisesRegex(ValueError,'ordinary file'):takp_client.upgrade_camera_helper(self.client,prefix)
+            self.assertEqual(target.read_bytes(),old_v1);self.assertFalse((backup/'eqw.original.dll').exists())
+
     def test_launch_profile_suppresses_every_rof2_hook_and_preserves_graphics_choice(self):
         requested = {'profile':'takp','mode':'client','resolution':'800x600','executable':'eqgame.exe',
                      'renderer':'software', 'native_dinput8':True,'mouse_warp':True,'fast_spell_parse':True,
