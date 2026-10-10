@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Prove the legacy cache-equality failure and patched warp in real Wine/Xvnc."""
+"""Measure actual Wine/Xvnc polled+buffered relative input during camera look."""
 import argparse
 import ctypes
 import ctypes.util
@@ -10,12 +10,14 @@ import subprocess
 import time
 
 
-def wait_file(path, expected, child, timeout=30):
+def wait_file(path, expected, child, timeout=30, prefix=False):
     until=time.monotonic()+timeout
     while time.monotonic()<until:
-        if path.is_file() and path.read_text()==expected:return
-        if child.poll() is not None:raise RuntimeError('Wine cursor fixture exited early')
-        time.sleep(.02)
+        if path.is_file():
+            value=path.read_text()
+            if (value.startswith(expected+' ') if prefix else value==expected):return value
+        if child.poll() is not None:raise RuntimeError('Wine cursor fixture exited early: '+str(child.returncode))
+        time.sleep(.01)
     raise RuntimeError('Wine cursor fixture did not reply: '+expected)
 
 
@@ -31,6 +33,7 @@ def run(wine, probe, output):
     xlib.XSync.argtypes=[ctypes.c_void_p,ctypes.c_int]
     xlib.XCloseDisplay.argtypes=[ctypes.c_void_p]
     xtst.XTestFakeRelativeMotionEvent.argtypes=[ctypes.c_void_p,ctypes.c_int,ctypes.c_int,ctypes.c_ulong]
+    xtst.XTestFakeButtonEvent.argtypes=[ctypes.c_void_p,ctypes.c_uint,ctypes.c_int,ctypes.c_ulong]
     xlib.XQueryPointer.argtypes=[ctypes.c_void_p,ctypes.c_ulong,ctypes.POINTER(ctypes.c_ulong),ctypes.POINTER(ctypes.c_ulong),ctypes.POINTER(ctypes.c_int),ctypes.POINTER(ctypes.c_int),ctypes.POINTER(ctypes.c_int),ctypes.POINTER(ctypes.c_int),ctypes.POINTER(ctypes.c_uint)]
     display=None;child=None
     try:
@@ -45,6 +48,10 @@ def run(wine, probe, output):
             r,c=ctypes.c_ulong(),ctypes.c_ulong();x,y,wx,wy=ctypes.c_int(),ctypes.c_int(),ctypes.c_int(),ctypes.c_int();mask=ctypes.c_uint()
             if not xlib.XQueryPointer(display,root,ctypes.byref(r),ctypes.byref(c),ctypes.byref(x),ctypes.byref(y),ctypes.byref(wx),ctypes.byref(wy),ctypes.byref(mask)):raise RuntimeError('X pointer unavailable')
             return x.value,y.value
+        def motion(dx,dy):
+            xtst.XTestFakeRelativeMotionEvent(display,dx,dy,0);xlib.XSync(display,False)
+        def button(down):
+            xtst.XTestFakeButtonEvent(display,3,down,0);xlib.XSync(display,False)
         subprocess.run([str(wine),'wineboot','-u'],env=env,stdout=wine_log,stderr=subprocess.STDOUT,check=True,timeout=120)
         drives=prefix/'dosdevices';(drives/'d:').unlink(missing_ok=True);(drives/'d:').symlink_to(output)
         (output/'command.txt').unlink(missing_ok=True);(output/'reply.txt').unlink(missing_ok=True)
@@ -52,29 +59,76 @@ def run(wine, probe, output):
         wait_file(output/'reply.txt','ready',child)
         assert point()==(400,300),point()
         sequence=0
-        def center(mode):
+        def command(mode):
             nonlocal sequence
-            sequence+=1;command=f'{mode} {sequence}'
-            temporary=output/'command.new';temporary.write_text(command);temporary.replace(output/'command.txt')
-            wait_file(output/'reply.txt',command,child)
+            sequence+=1;value=f'{mode} {sequence}'
+            temporary=output/'command.new';temporary.write_text(value);temporary.replace(output/'command.txt')
+            return wait_file(output/'reply.txt',value,child,prefix=mode=='sample')
+        def sample():
+            values=list(map(int,command('sample').split()[2:]))
+            assert len(values)==11,values
+            return {'state':values[:2],'buffered':values[2:4],'rmb':values[4],
+                    'cursor':values[5:7],'clip':values[7:11]}
+        def difference(before,after,kind):return [after[kind][i]-before[kind][i] for i in range(2)]
         old=[]
         for dx in (20,20,20,-10):
-            xtst.XTestFakeRelativeMotionEvent(display,dx,0,0);xlib.XSync(display,False)
-            center('legacy');old.append(point()[0]-400)
+            motion(dx,0);command('legacy');old.append(point()[0]-400)
         assert old==[20,40,60,50],('cached-center no-op failure not reproduced',old)
-        center('fixed');assert point()==(400,300),point()
-        after=[]
-        for dx,dy in ((20,10),(-10,-5),(20,-10),(-20,10),(10,20),(-10,-20)):
-            xtst.XTestFakeRelativeMotionEvent(display,dx,dy,0);xlib.XSync(display,False)
-            before=point();assert before==(400+dx,300+dy),before
-            center('fixed');after.append({'delta':[dx,dy],'before':list(before),'after':list(point())})
+        command('fixed');assert point()==(400,300),point()
+        command('input');time.sleep(.15)
+        original_clip=sample()['clip'];v1=[]
+        button(True);command('warp');time.sleep(.15)
+        # Record the prior helper with real DirectInput. Exact loss/drift depends
+        # on the two threads' schedule; this is evidence, not a timing assertion.
+        for dx,dy in ((20,0),(-10,0),(0,20),(0,-10),(20,10),(-10,-20)):
+            before=sample()
+            for _ in range(20):motion(dx,dy);time.sleep(.005)
+            time.sleep(.15);after=sample()
+            v1.append({'injected':[20*dx,20*dy],'polled':difference(before,after,'state'),
+                       'buffered':difference(before,after,'buffered')})
+        command('raw');time.sleep(.2)
+        assert sample()['clip']==[400,300,401,301],sample()
+        before=sample();time.sleep(.2);after=sample()
+        assert difference(before,after,'state')==[0,0],('idle camera drift',before,after)
+        assert difference(before,after,'buffered')==[0,0],('idle buffered drift',before,after)
+        repaired=[]
+        # Cardinal, diagonal and fast reversals: every signed wire delta must
+        # arrive once in BOTH native DirectInput APIs, even past desktop edges.
+        for dx,dy in ((40,0),(-20,0),(-40,0),(20,0),(0,40),(0,-20),(0,-40),(0,20),
+                      (30,-15),(-15,30),(40,40),(-40,-40)):
+            before=sample()
+            for _ in range(25):motion(dx,dy);time.sleep(.005)
+            time.sleep(.15);after=sample();expected=[25*dx,25*dy]
+            polled=difference(before,after,'state');buffered=difference(before,after,'buffered')
+            assert polled==expected,('polled signed input differs',expected,polled,before,after)
+            assert buffered==expected,('buffered signed input differs',expected,buffered,before,after)
             assert point()==(400,300),point()
-        center('quit');assert child.wait(timeout=15)==0
+            repaired.append({'injected':expected,'polled':polled,'buffered':buffered})
+        # Repeated 6400px excursion cannot be capped by the 800px desktop.
+        before=sample()
+        for _ in range(160):motion(40,-40);time.sleep(.002)
+        time.sleep(.2);after=sample()
+        assert difference(before,after,'state')==[6400,-6400],(before,after)
+        assert difference(before,after,'buffered')==[6400,-6400],(before,after)
+        button(False);time.sleep(.15)
+        assert sample()['clip']==original_clip,('right-button release trapped cursor',sample())
+        motion(80,40);time.sleep(.1);assert point()==(480,340),point()
+        # Capture a held-button look, minimize/release, restore and re-enter.
+        button(True);time.sleep(.15);assert sample()['clip']==[400,300,401,301]
+        command('blur');time.sleep(.15);assert sample()['clip']==original_clip,sample()
+        button(False);command('resume');command('focus');time.sleep(.15)
+        button(True);time.sleep(.15);assert sample()['clip']==[400,300,401,301],sample()
+        button(False);time.sleep(.15);assert sample()['clip']==original_clip,sample()
+        command('free');motion(-60,-30);time.sleep(.1);assert point()==(340,270),point()
+        command('quit');assert child.wait(timeout=15)==0
         receipt={'wine':subprocess.check_output([str(wine),'--version'],env=env,text=True).strip(),
-                 'legacy_offsets':old,'repaired_motion':after,'verification':'real Wine cursor-cache/Xvnc mechanism; open fixture, not actual client acceptance'}
+                 'legacy_offsets':old,'v1_relative_comparison':v1,'repaired_relative':repaired,
+                 'beyond_desktop':{'injected':[6400,-6400],'polled':[6400,-6400],'buffered':[6400,-6400]},
+                 'idle_drift':[0,0],'rmb_release_restores_clip':True,'focus_restore_reenters_look':True,
+                 'menu_pointer_free':True,'verification':'real Wine10/Xvnc polled and buffered DirectInput; open fixture, not actual client acceptance'}
         (output/'cursor-verification.json').write_text(json.dumps(receipt,indent=2)+'\n')
         print(json.dumps(receipt,indent=2))
-        print('PASS: real Wine/Xvnc cached-center failure and forced recenter on both axes')
+        print('PASS: real Wine10/Xvnc signed raw camera input, both axes/APIs, edge travel, zero idle drift and look/focus release')
     finally:
         if child and child.poll() is None:child.kill();child.wait()
         if display:xlib.XCloseDisplay(display)
