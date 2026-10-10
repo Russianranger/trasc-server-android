@@ -112,6 +112,32 @@ jobs:
           FROM trasc-bots-bookworm:1
           RUN apt-get update && apt-get install -y --no-install-recommends liblua5.1-0-dev && apt-get clean && rm -rf /var/lib/apt/lists/*
           DOCKERFILE
+      - name: Add the debugger and verify original packages and tool bytes remain unchanged
+        run: |
+          docker build --platform linux/arm64 -t trasc-bots-diagnostics:1 - <<'DOCKERFILE'
+          FROM trasc-bots-qualification:1
+          RUN dpkg-query -W > /tmp/trasc-debugger-base-packages.txt && \
+              sha256sum /usr/bin/gcc /usr/bin/g++ /usr/bin/cmake /usr/bin/ninja /usr/bin/perl > /tmp/trasc-debugger-base-tools.txt && \
+              apt-get update && apt-get install -y --no-install-recommends --no-upgrade gdb && \
+              sha256sum --check /tmp/trasc-debugger-base-tools.txt && \
+              apt-get clean && rm -rf /var/lib/apt/lists/*
+          RUN python3 - <<'PY'
+          import hashlib, json, subprocess
+          from pathlib import Path
+          before_text = Path('/tmp/trasc-debugger-base-packages.txt').read_text()
+          after_text = subprocess.check_output(['dpkg-query', '-W']).decode()
+          before = dict(line.split('\t', 1) for line in before_text.splitlines())
+          after = dict(line.split('\t', 1) for line in after_text.splitlines())
+          assert all(after.get(name) == version for name, version in before.items()), 'Debugger changed an existing package'
+          proof = {'format': 1, 'existing_packages_unchanged': True,
+                   'existing_tool_bytes_unchanged': True,
+                   'base_packages_sha256': hashlib.sha256(before_text.encode()).hexdigest(),
+                   'tools': Path('/tmp/trasc-debugger-base-tools.txt').read_text().splitlines(),
+                   'debugger_version': subprocess.check_output(['gdb', '--version']).decode().splitlines()[0],
+                   'added_packages': {name: version for name, version in after.items() if name not in before}}
+          Path('/opt/trasc-debugger-layer.json').write_text(json.dumps(proof, indent=2) + '\n')
+          PY
+          DOCKERFILE
       - name: Fingerprint the actual native toolchain and qualified build recipe
         id: native-fingerprint
         run: |
@@ -146,14 +172,17 @@ jobs:
       - name: Compile and exercise actual native creation, hooks, limits, rollback and retry
         run: |
           set -o pipefail
-          docker run --rm --network none \
+          # The debugger layer verifies every base package and compiler/tool byte
+          # above. It adds diagnostics without changing the keyed build recipe.
+          docker run --rm --network none --cap-add SYS_PTRACE --security-opt seccomp=unconfined \
+            -e TRASC_NATIVE_GDB_DIAGNOSTICS=1 \
             -v "$PWD/backend:/opt/trasc:ro" \
             -v "$PWD/tests:/tests:ro" \
             -v "$PWD/runtime-work/bots-source:/source:ro" \
             -v "$PWD/runtime-work/bots-fixtures:/fixtures:ro" \
             -v "$PWD/runtime-work/bots-work:/work" \
             -v "$PWD/dist/bots:/evidence" \
-            trasc-bots-qualification:1 \
+            trasc-bots-diagnostics:1 \
             python3 /tests/verify_modern_bot_bridge.py --source "/source/${{ matrix.source_dir }}" --profile "${{ matrix.profile }}" --work /work --database-zip /fixtures/peq.zip --output /evidence/native-bots.json --jobs 4 \
             2>&1 | tee dist/bots/qualification.log
       - name: Make disposable qualification evidence readable

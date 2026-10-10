@@ -13,6 +13,7 @@ from pathlib import Path
 import platform
 import re
 import secrets
+import shlex
 import shutil
 import subprocess
 import sys
@@ -72,6 +73,29 @@ def capture_output(source, destination, offset=0, limit=128 * 1024):
     return {'bytes': size, 'truncated': size > limit, 'capture_limit': limit}
 
 
+def diagnose_native_failure(engine, arguments, incoming, evidence, label):
+    debugger = shutil.which('gdb')
+    require(debugger is not None, 'Native debugger diagnostics require gdb in the isolated fixture image')
+    output = evidence / (label + '.gdb.log')
+    commands = [debugger, '-nx', '--batch', '-ex', 'set pagination off',
+                '-ex', 'set print frame-arguments none', '-ex', 'set print entry-values no',
+                '-ex', 'handle SIGSEGV stop print nopass', '-ex', 'handle SIGABRT stop print nopass',
+                '-ex', 'run < ' + shlex.quote(str(incoming)), '-ex', 'bt 32', '--args',
+                *map(str, arguments)]
+    details = {'runner': 'fixture_debugger_retry', 'original_failure_is_fatal': True,
+               'frame_arguments': 'none', 'maximum_frames': 32, 'timed_out': False}
+    with output.open('wb') as target:
+        try:
+            completed = subprocess.run(commands, cwd=engine.work / 'server',
+                                       stdin=subprocess.DEVNULL, stdout=target,
+                                       stderr=subprocess.STDOUT, timeout=180)
+            details['returncode'] = completed.returncode
+        except subprocess.TimeoutExpired:
+            details.update(returncode=None, timed_out=True)
+    details['combined_output'] = capture_output(output, output)
+    atomic_json(evidence / (label + '.gdb.json'), details)
+
+
 class EvidenceEngine(Engine):
     """Observe the production runner before its private output is removed."""
     def __init__(self, work, profile, evidence):
@@ -112,6 +136,17 @@ class EvidenceEngine(Engine):
                         'stdout': capture_output(output_file, self._native_evidence / (label + '.stdout.log')),
                         'stderr': capture_output(operation, self._native_evidence / (label + '.stderr.log'), offset)}
             atomic_json(self._native_evidence / (label + '.json'), metadata)
+            if (os.environ.get('TRASC_NATIVE_GDB_DIAGNOSTICS') == '1'
+                    and self._native_capture_count == 1 and process is not None and process.returncode):
+                try:
+                    bridge._json_output(output_file)
+                except (ValueError, OSError):
+                    diagnose_native_failure(self, args, input_file, self._native_evidence, label)
+                    # A diagnostic retry could commit even after the original
+                    # command crashed. It must never make a failed gate pass
+                    # through the production receipt recovery mechanism.
+                    raise RuntimeError('The original production utility failed without a response; see '
+                                       + label + '.gdb.log for its diagnostic retry') from None
 
 
 def command(arguments, cwd, log, seconds=3600, environment=None):
@@ -359,6 +394,24 @@ def qualify(args):
     engine = None
     started = time.monotonic()
     try:
+        if os.environ.get('TRASC_NATIVE_GDB_DIAGNOSTICS') == '1':
+            proof_path = Path('/opt/trasc-debugger-layer.json')
+            require(proof_path.is_file() and not proof_path.is_symlink()
+                    and proof_path.stat().st_size <= 65536, 'Verified debugger layer proof is missing')
+            proof = json.loads(proof_path.read_text())
+            require(proof.get('format') == 1 and proof.get('existing_packages_unchanged') is True
+                    and proof.get('existing_tool_bytes_unchanged') is True,
+                    'Debugger layer changed the native build base')
+            tools = dict(line.split(None, 1)[::-1] for line in proof.get('tools', []))
+            require(set(tools) == {'/usr/bin/gcc', '/usr/bin/g++', '/usr/bin/cmake',
+                                   '/usr/bin/ninja', '/usr/bin/perl'}
+                    and all(re.fullmatch('[a-f0-9]{64}', digest) and sha(path) == digest
+                            for path, digest in tools.items()), 'Debugger layer tool bytes changed at runtime')
+            require(proof.get('debugger_version')
+                    == subprocess.check_output(['gdb', '--version']).decode().splitlines()[0],
+                    'Debugger version does not match the verified layer')
+            atomic_json(evidence / 'native-debugger-layer.json', proof)
+            report['checks']['debugger_layer'] = proof
         source, binaries = build(args, evidence)
         report['checks']['native_compilation'] = {name: sha(path) for name, path in binaries.items()}
         # Each profile imports its real qualified seed through the production
