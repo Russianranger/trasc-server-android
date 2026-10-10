@@ -44,12 +44,15 @@ jobs:
   eqw:
     runs-on: windows-latest
     steps:
+      - name: Preserve exact reviewed source and patch bytes
+        shell: pwsh
+        run: git config --global core.autocrlf false
       - uses: actions/checkout@v4
       - uses: microsoft/setup-msbuild@v2
       - name: Fetch exact reviewed EQW source and apply camera-only patch
         shell: pwsh
         run: |
-          git -c core.autocrlf=false clone https://github.com/CoastalRedwood/eqw_takp.git runtime-work/eqw
+          git clone --config core.autocrlf=false https://github.com/CoastalRedwood/eqw_takp.git runtime-work/eqw
           if ($LASTEXITCODE -ne 0) { throw 'EQW source clone failed' }
           git -C runtime-work/eqw checkout 3b4d43562c9dacc89349185684bb0bf0b01f9d06
           if ($LASTEXITCODE -ne 0) { throw 'EQW source checkout failed' }
