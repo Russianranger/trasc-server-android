@@ -53,12 +53,95 @@ def scalar(engine, query):
     return result[0][0]
 
 
+def capture_output(source, destination, offset=0, limit=128 * 1024):
+    """Keep bounded native output without retaining the private input request."""
+    source = Path(source)
+    size = max(0, source.stat().st_size - offset) if source.is_file() else 0
+    data = b''
+    if size:
+        with source.open('rb') as stream:
+            stream.seek(offset)
+            if size <= limit:
+                data = stream.read(size)
+            else:
+                half = limit // 2
+                data = stream.read(half)
+                stream.seek(offset + size - half)
+                data += b'\n[fixture capture truncated]\n' + stream.read(half)
+    destination.write_bytes(data)
+    return {'bytes': size, 'truncated': size > limit, 'capture_limit': limit}
+
+
+class EvidenceEngine(Engine):
+    """Observe the production runner before its private output is removed."""
+    def __init__(self, work, profile, evidence):
+        self._native_evidence = evidence
+        self._native_capture_count = 0
+        self._native_capture_active = False
+        self._native_capture_process = None
+        super().__init__(work, profile)
+
+    @property
+    def command(self):
+        return self._command
+
+    @command.setter
+    def command(self, process):
+        self._command = process
+        if self._native_capture_active and process is not None:
+            self._native_capture_process = process
+
+    def run(self, args, cwd=None, timeout=7200, input_file=None, output_file=None, private=False):
+        capture = (len(args) == 2 and str(args[1]) == '--trasc-bot-create'
+                   and output_file is not None)
+        if not capture:
+            return super().run(args, cwd, timeout, input_file, output_file, private)
+        self._native_capture_count += 1
+        label = 'production-create-' + str(self._native_capture_count)
+        operation = self.work / 'logs/operation.log'
+        offset = operation.stat().st_size if operation.is_file() else 0
+        self._native_capture_process = None
+        self._native_capture_active = True
+        try:
+            return super().run(args, cwd, timeout, input_file, output_file, private)
+        finally:
+            self._native_capture_active = False
+            process = self._native_capture_process
+            metadata = {'runner': 'production_engine_run',
+                        'returncode': process.returncode if process is not None else None,
+                        'stdout': capture_output(output_file, self._native_evidence / (label + '.stdout.log')),
+                        'stderr': capture_output(operation, self._native_evidence / (label + '.stderr.log'), offset)}
+            atomic_json(self._native_evidence / (label + '.json'), metadata)
+
+
 def command(arguments, cwd, log, seconds=3600, environment=None):
     with log.open('wb') as output:
         completed = subprocess.run([str(value) for value in arguments], cwd=cwd,
                                    stdin=subprocess.DEVNULL, stdout=output,
                                    stderr=subprocess.STDOUT, timeout=seconds, env=environment)
     require(completed.returncode == 0, 'Native command failed; see ' + log.name)
+
+
+def normalize_source_timestamps(source):
+    """Keep a freshly validated source copy older than keyed native objects.
+
+    This changes only regular-file timestamps in the disposable source tree.
+    It never follows symlinks or changes source bytes, and CMake still
+    reconfigures and builds every time. CI caches only native-build using an
+    exact source, adapter, compiler, dependency and build-recipe key.
+    """
+    epoch = 1_600_000_000
+    count = 0
+    for directory, directories, files in os.walk(source, followlinks=False):
+        directories[:] = sorted(name for name in directories
+                                if not (Path(directory) / name).is_symlink())
+        for name in files:
+            path = Path(directory) / name
+            if path.is_symlink() or not path.is_file():
+                continue
+            os.utime(path, (epoch, epoch), follow_symlinks=False)
+            count += 1
+    return {'epoch': epoch, 'regular_files': count, 'symlinks_followed': False}
 
 
 def build(args, evidence):
@@ -89,6 +172,9 @@ def build(args, evidence):
         bridge.prepare(source, 'custom')
         flags = ['-DEQEMU_PREFER_LUA=ON', '-DLUA_INCLUDE_DIR=/usr/include/lua5.1',
                  '-DLUA_LIBRARY=/usr/lib/aarch64-linux-gnu/liblua5.1.so']
+    timestamps = normalize_source_timestamps(source)
+    timestamps.update(profile=args.profile, source_revision=bridge.REVISIONS[args.profile])
+    atomic_json(evidence / 'native-source-timestamps.json', timestamps)
     objects = args.work / 'native-build'
     command(['cmake', '-S', source, '-B', objects, '-G', 'Ninja',
              '-DCMAKE_BUILD_TYPE=Release', '-DCMAKE_EXPORT_COMPILE_COMMANDS=ON',
@@ -161,8 +247,9 @@ def seed(engine, source, evidence):
     # must load these actual items without rewriting the player's records.
     engine.mysql('INSERT INTO inventory(character_id,slot_id,item_id,charges,guid) VALUES('
                  + str(OWNER_ID) + ',2,' + str(item_id) + ',1,0);'
-                 'INSERT INTO sharedbank(account_id,slot_id,item_id,charges,guid) VALUES('
-                 + str(OWNER_ID) + ',2500,' + str(item_id) + ',1,0);')
+                 'INSERT INTO sharedbank(account_id,slot_id,item_id,charges,guid,'
+                 'ornament_icon,ornament_idfile,ornament_hero_model) VALUES('
+                 + str(OWNER_ID) + ',2500,' + str(item_id) + ',1,0,0,0,0);')
     bots.ensure_receipts(engine)
     bots._instance(engine)
     config = json.loads((engine.work / 'server/eqemu_config.json').read_text())['server']
@@ -224,6 +311,10 @@ def native(engine, payload, evidence, label, succeed=True):
                                    cwd=engine.work / 'server', stdin=source, stdout=target,
                                    stderr=subprocess.STDOUT, timeout=180)
     incoming.unlink(missing_ok=True)
+    details = capture_output(output, output)
+    atomic_json(evidence / ('create-' + label + '.json'),
+                {'runner': 'direct_native_fixture', 'returncode': completed.returncode,
+                 'combined_output': details})
     response = bridge._json_output(output)
     require(response.get('ok') is succeed, label + ': unexpected native result')
     require((completed.returncode == 0) is succeed, label + ': unexpected native exit status')
@@ -274,7 +365,7 @@ def qualify(args):
         # importer. Custom's compiled content migrations require its pinned
         # source's own database, rather than an unrelated raw PEQ snapshot.
         # No version is fabricated and the unchanged full native migrator runs.
-        engine = Engine(args.work / 'fixture', args.profile)
+        engine = EvidenceEngine(args.work / 'fixture', args.profile, evidence)
         if args.profile == 'traditional':
             shutil.copy2(args.database_zip, engine.work / 'incoming/peq.zip')
             bundles = [value for value in engine.database_candidates() if value['kind'] == 'peq_bundle']
@@ -382,13 +473,17 @@ def qualify(args):
                      + ' AND slot_id=2;') == [[str(item_id)]], 'Configured native starting item was not saved')
         require(int(scalar(engine, 'SELECT COUNT(*) FROM bot_stances WHERE bot_id IN (' + ','.join(map(str, ids)) + ');')) == 2,
                 'Normal bot stance saves are missing')
-        require(int(scalar(engine, 'SELECT COUNT(*) FROM bot_settings WHERE bot_id IN (' + ','.join(map(str, ids)) + ');')) > 0,
-                'Normal bot settings saves are missing')
+        # The actual native saver stores only overrides; fresh defaults can
+        # legitimately produce no rows and are reconstructed by Bot::LoadBot.
+        settings_rows = int(scalar(engine, 'SELECT COUNT(*) FROM bot_settings WHERE bot_id IN ('
+                                   + ','.join(map(str, ids)) + ');'))
         for bot in value['bots']:
             require(rows(engine, 'SELECT value FROM data_buckets WHERE character_id=' + str(OWNER_ID)
                          + ' AND `key`=' + bots.literal('trasc_native_' + bot['name']) + ';') == [[str(bot['id'])]],
                     'Actual EVENT_BOT_CREATE player quest did not receive the native bot ID')
-        report['checks']['production_preview_generate_normal_state_items_hooks'] = {'ids': ids, 'state': saved, 'starting_item': item_id}
+        report['checks']['production_preview_generate_normal_state_items_hooks'] = {
+            'ids': ids, 'state': saved, 'starting_item': item_id,
+            'settings_override_rows': settings_rows, 'settings_initialization': 'native_server_helper'}
         payload = request(engine, drafts)
         payload.update(request_id=token, draft_hash=preview['preview_hash'], identity_hash=ctx['identity'])
         before = snapshot(engine)
@@ -427,11 +522,16 @@ def qualify(args):
                      "('bot_creation_limit_warrior','1'," + str(OWNER_ID) + ');')
         rejected(engine, request(engine, [draft('Trascclass')]), evidence, 'class-creation-limit', checks)
         engine.mysql("DELETE FROM data_buckets WHERE `key`='bot_creation_limit_warrior' AND character_id=" + str(OWNER_ID) + ';')
-        engine.mysql("INSERT INTO rule_sets(ruleset_id,name) VALUES(999,'trascfixturezone');")
-        rule(engine, 'Bots:Enabled', 'true', 999)
-        rule(engine, 'Bots:BotCharacterLevel', '0', 999)
-        rule(engine, 'Bots:CreationLimit', '3', 999)
-        engine.mysql('UPDATE zone SET ruleset=999 WHERE zoneidnumber=' + str(zone_id) + ';')
+        fixture_ruleset = 250  # The native schema uses TINYINT UNSIGNED IDs.
+        require(scalar(engine, 'SELECT COUNT(*) FROM rule_sets WHERE ruleset_id='
+                       + str(fixture_ruleset) + ';') == '0', 'Fixture zone ruleset ID is already in use')
+        engine.mysql("INSERT INTO rule_sets(ruleset_id,name) VALUES(" + str(fixture_ruleset)
+                     + ",'trascfixturezone');")
+        rule(engine, 'Bots:Enabled', 'true', fixture_ruleset)
+        rule(engine, 'Bots:BotCharacterLevel', '0', fixture_ruleset)
+        rule(engine, 'Bots:CreationLimit', '3', fixture_ruleset)
+        engine.mysql('UPDATE zone SET ruleset=' + str(fixture_ruleset)
+                     + ' WHERE zoneidnumber=' + str(zone_id) + ';')
         rejected(engine, request(engine, [draft('Trasczoneone'), draft('Trasczonetwo')]), evidence, 'owner-zone-rules-limit-rollback', checks)
         engine.mysql('UPDATE zone SET ruleset=' + str(default) + ' WHERE zoneidnumber=' + str(zone_id) + ';')
 

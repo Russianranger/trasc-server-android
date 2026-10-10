@@ -1,9 +1,12 @@
-name: Qualify Custom offline bots on the pinned seed
+name: Qualify Custom native bot creation diagnostics
 on:
   push:
     branches: [codex/bots-seed-qualify-0622]
 permissions:
   contents: read
+concurrency:
+  group: custom-bots-diagnostics-${{ github.ref }}
+  cancel-in-progress: true
 jobs:
   modern-bots:
     runs-on: ubuntu-24.04-arm
@@ -33,6 +36,32 @@ jobs:
           FROM trasc-bots-bookworm:1
           RUN apt-get update && apt-get install -y --no-install-recommends liblua5.1-0-dev && apt-get clean && rm -rf /var/lib/apt/lists/*
           DOCKERFILE
+      - name: Fingerprint the actual native toolchain and qualified build recipe
+        id: native-fingerprint
+        run: |
+          mkdir -p runtime-work
+          docker run --rm --network none -i trasc-bots-qualification:1 python3 - > runtime-work/bots-toolchain.sha256 <<'PY'
+          import hashlib, json, subprocess
+          commands = [['dpkg-query', '-W'], ['gcc', '--version'], ['g++', '--version'],
+                      ['cmake', '--version'], ['ninja', '--version'], ['perl', '-V']]
+          values = [subprocess.check_output(command) for command in commands]
+          print(hashlib.sha256(b'\0'.join(values)).hexdigest())
+          PY
+          python3 - <<'PY' >> "$GITHUB_OUTPUT"
+          import ast, hashlib
+          from pathlib import Path
+          tree = ast.parse(Path('tests/verify_modern_bot_bridge.py').read_text())
+          names = {'build', 'command', 'sha', 'require', 'normalize_source_timestamps'}
+          recipe = '\n'.join(ast.dump(node, include_attributes=False) for node in tree.body
+                             if isinstance(node, ast.FunctionDef) and node.name in names)
+          toolchain = Path('runtime-work/bots-toolchain.sha256').read_text().strip()
+          print('sha=' + hashlib.sha256((toolchain + '\n' + recipe).encode()).hexdigest())
+          PY
+      - uses: actions/cache/restore@v4
+        id: native-cache
+        with:
+          path: runtime-work/bots-work/native-build
+          key: native-bots-build-v1-${{ matrix.profile }}-${{ matrix.revision }}-${{ steps.native-fingerprint.outputs.sha }}-${{ hashFiles('backend/modern_bot_bridge.py', 'backend/modern_bot_bridge.h', 'backend/server_ferry.py', 'backend/eq_server_ferry.h', 'backend/traditional_build.py', 'runtime/traditional/Dockerfile') }}
       - name: Fetch immutable PEQ fixture
         run: |
           mkdir -p runtime-work/bots-fixtures runtime-work/bots-work dist/bots
@@ -55,11 +84,16 @@ jobs:
         if: always()
         run: |
           task_ci_owner="$(id -u):$(id -g)"
-          for directory in dist/bots runtime-work/bots-work/logs; do
+          for directory in dist/bots runtime-work/bots-work/logs runtime-work/bots-work/fixture/logs runtime-work/bots-work/native-build; do
             if [[ -d "$directory" ]]; then
               sudo chown -R --no-dereference "$task_ci_owner" "$directory"
             fi
           done
+      - uses: actions/cache/save@v4
+        if: always() && steps.native-cache.outputs.cache-hit != 'true'
+        with:
+          path: runtime-work/bots-work/native-build
+          key: native-bots-build-v1-${{ matrix.profile }}-${{ matrix.revision }}-${{ steps.native-fingerprint.outputs.sha }}-${{ hashFiles('backend/modern_bot_bridge.py', 'backend/modern_bot_bridge.h', 'backend/server_ferry.py', 'backend/eq_server_ferry.h', 'backend/traditional_build.py', 'runtime/traditional/Dockerfile') }}
       - uses: actions/upload-artifact@v4
         if: always()
         with:
@@ -67,3 +101,4 @@ jobs:
           path: |
             dist/bots/
             runtime-work/bots-work/logs/
+            runtime-work/bots-work/fixture/logs/
