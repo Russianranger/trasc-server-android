@@ -1,28 +1,40 @@
-# TRASC Android 0.6.19 / code 68
+# TRASC Android 0.6.20 / code 69
 
-Server Start/Stop/Restart and client Start/Stop now share a centered top toolbar
-on every tab, in all three worlds and every launcher theme. Stop client stays
-available while a server operation is busy.
+All seven launch buttons align in one row on landscape/wide screens and compact
+grouped rows on narrow phones, on every tab in all three worlds and every
+launcher theme. Stacked labels keep a shared button height;
+Runtime, Server and Client headings and dividers distinguish each group.
+Stop client stays available while a server operation is busy.
 
-TAKP relative camera movement uses a 0.15 gain while the right mouse button is
-held. Signed fractional motion is retained, so slow movement still reaches the
-client. A configured 700-pixel/second controller rate becomes 105 pixels/second
-during camera look; menu movement and other worlds keep their previous rates.
-This adjustment still needs a Thor test. Cursor-warp feedback has not been
-established as the cause of the reported fast camera.
+The 0.6.19 TAKP camera adjustment remains included: relative movement uses a
+0.15 gain while the right mouse button is held. Signed fractional motion is
+retained, so slow movement still reaches the client. A configured
+700-pixel/second controller rate becomes 105 pixels/second during camera look;
+menu movement and other worlds keep their previous rates. The latest device
+report did not reassess camera behavior, so this adjustment still needs a
+Thor test. Cursor-warp feedback has not been established as the cause of the
+reported fast camera.
 
-TAKP enables the server's existing Spawns/Netcode logging. Fresh logs record
-actual spawn creations and coordinates, plus packet errors where reported.
-Start the server after updating, visit the area where NPCs appeared absent,
-then camp and export logs. These records provide evidence for the visibility
-investigation; live NPC counts and nearby-distance snapshots are unavailable.
-NPC visibility remains unresolved, and this release does not claim an NPC fix.
+The latest Thor logs record all 156 Paineel NPC creations. The user also reports
+NPC dialogue and doors opening while NPC models remain invisible. Server-side
+NPC activity is established. Speech and door interactions do not prove that
+NPC spawn packets reached the client; visibility remains unresolved, and this
+release does not claim an NPC fix. TAKP retains the
+server's existing Spawns/Netcode logging, recording actual spawn creations and
+coordinates plus packet errors where reported. Live NPC counts and
+nearby-distance snapshots are unavailable.
+
+ARM64 server qualification now exercises the pinned server's native NPC spawn
+encoder with bulk packets containing 1, 56 and 100 NPCs, plus 156 individual
+`NewSpawn` packets. This checks architecture-specific packet construction;
+it does not establish delivery or model rendering on the Thor. The deployed
+server and client renderer remain unchanged.
 
 On 0.6.18, the user confirmed Android login, character creation, entry into
 Paineel, four stable minutes in the world and camp. Both the executable and
 original spell-file checksums were accepted by the server. A host probe using
-the same database seed recorded 156 NPC creation events in Paineel with clean zone startup.
-NPC visibility on the Thor remains unresolved.
+the same database seed also recorded 156 NPC creation events in Paineel with
+clean zone startup.
 
 Install this APK as an update, open the TAKP runtime, and start the server and
 client. Keep the existing client, Wine prefix, database and server build; no
@@ -53,16 +65,17 @@ Launch uses Windows eqgame.exe; eqmac.exe remains its checksum resource.
 Proprietary game assets must come from your own complete client ZIP.
 
 Install this APK as an update. This build preserves the existing preview
-signing certificate and all 21 verified native launcher components from 0.6.18.
+signing certificate and all 21 verified native launcher components from 0.6.19.
 Existing Custom and Traditional profile files stay in their own locations.
-The pinned server binaries, runtimes and renderer remain unchanged.
+The pinned server binaries and runtimes remain unchanged.
 
-Version 0.6.19 passed 408 Python tests without skips, all thirteen browser programs,
-management/native and DirectX checks, Android assembly/lint and signing checks.
-ARM64 qualification passed all twelve checks, including creation events for all
-156 seeded Paineel NPCs. See [release verification](release-status-0619.md).
-Camera behavior,
-NPC visibility, graphics/audio, zoning and bots require further device testing.
+Version 0.6.20 qualification is pending. Full Python, browser, management/native
+input, DirectX, Android assembly/lint, signing/native reuse and ARM64 server
+qualification remain required before publication. The verified 0.6.19 baseline
+passed 408 Python tests without skips, all thirteen browser programs and all
+twelve ARM64 checks, including creation events for all 156 seeded Paineel NPCs.
+See [0.6.19 release verification](release-status-0619.md). Camera behavior, NPC
+visibility, graphics/audio, zoning and bots require further device testing.
 TAKP uses its EQW input wrapper;
 RoF2 DLL hooks, launcher skin activation, Spire editing and PEQ era presets are
 unavailable in the TAKP profile. Use the in-game UI menu for TAKP skins.
