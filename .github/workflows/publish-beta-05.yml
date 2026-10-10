@@ -1,0 +1,117 @@
+name: Publish verified Beta 0.5
+
+on:
+  push:
+    branches: [codex/publish-beta-05]
+    paths: [.github/workflows/publish-beta-05.yml]
+
+permissions:
+  contents: write
+  actions: read
+
+concurrency:
+  group: publish-beta-05
+  cancel-in-progress: false
+
+jobs:
+  publish:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    env:
+      GH_REPO: Russianranger/trasc-server-android
+      SOURCE_COMMIT: 095fcc9137f2d671986b90718dde975cd7c58a51
+      SOURCE_RUN: '35410359686'
+    steps:
+      - uses: actions/checkout@v4
+      - name: Require the successful, approved source build
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          gh api "repos/$GH_REPO/actions/runs/$SOURCE_RUN" > source-run.json
+          python3 - <<'PY'
+          import json, os
+          run = json.load(open('source-run.json'))
+          assert run['head_sha'] == os.environ['SOURCE_COMMIT']
+          assert run['head_branch'] == 'main' and run['event'] == 'push'
+          assert run['status'] == 'completed' and run['conclusion'] == 'success'
+          PY
+      - uses: actions/download-artifact@v4
+        with:
+          artifact-ids: '10574102684'
+          path: candidate
+          merge-multiple: true
+          run-id: '35410359686'
+          github-token: ${{ github.token }}
+      - name: Verify and stage the original signed APK and matching sources
+        run: |
+          python3 - <<'PY'
+          import hashlib, json, os, pathlib, shutil
+          root = pathlib.Path('candidate')
+          output = pathlib.Path('release')
+          output.mkdir()
+          assets = {
+              'trasc-server-android-beta-0.5.apk': (
+                  root / 'app/build/outputs/apk/debug/app-debug.apk',
+                  10538843,
+                  'f6c27a924033d435dae5c88eff0436508d8bb1357486e5ec8ebf681b3bcc1c9f'),
+              'launcher-sources.tar.gz': (
+                  root / 'dist/launcher-sources.tar.gz',
+                  114558375,
+                  '21f985bdea5b8b55213d805f8d1acdbb61b6b448b87a3361d81200d4de714d78'),
+          }
+          certificate = 'ff9c09cdc3e2404d1d7f72d61ce2f8651464f5e03dff340f70bd4df28c70e869'
+          assert (root / 'dist/preview-signing.sha256').read_text().strip() == certificate
+          for name, (source, size, digest) in assets.items():
+              assert source.stat().st_size == size, name
+              with source.open('rb') as stream:
+                  assert hashlib.file_digest(stream, 'sha256').hexdigest() == digest, name
+              shutil.copyfile(source, output / name)
+          manifest = {
+              'release': 'Beta version 0.5',
+              'tag': 'v0.5',
+              'commit': os.environ['SOURCE_COMMIT'],
+              'source_run': int(os.environ['SOURCE_RUN']),
+              'source_artifact': 10574102684,
+              'file': 'trasc-server-android-beta-0.5.apk',
+              'sha256': assets['trasc-server-android-beta-0.5.apk'][2],
+              'version': '0.4.23',
+              'version_code': 40,
+              'application_id': 'io.github.russianranger.trasc.preview',
+              'signing_certificate_sha256': certificate,
+              'sources_file': 'launcher-sources.tar.gz',
+              'sources_sha256': assets['launcher-sources.tar.gz'][2],
+          }
+          (output / 'beta-build.json').write_text(json.dumps(manifest, indent=2) + '\n')
+          PY
+      - name: Publish the complete official release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          gh api "repos/$GH_REPO/git/matching-refs/tags/v0.5" > existing-tags.json
+          python3 - <<'PY'
+          import json
+          assert not any(ref['ref'] == 'refs/tags/v0.5' for ref in json.load(open('existing-tags.json'))), 'v0.5 already exists; inspect it before retrying'
+          PY
+          gh release create v0.5 --target "$SOURCE_COMMIT" --draft \
+            --title 'Beta version 0.5' --notes-file docs/beta-05-release.md
+          gh release upload v0.5 release/trasc-server-android-beta-0.5.apk \
+            release/launcher-sources.tar.gz release/beta-build.json
+          gh release edit v0.5 --draft=false --prerelease=false --latest
+          gh api "repos/$GH_REPO/releases/tags/v0.5" > published-release.json
+          gh api "repos/$GH_REPO/git/ref/tags/v0.5" > published-tag.json
+          python3 - <<'PY'
+          import hashlib, json, os, pathlib
+          release = json.load(open('published-release.json'))
+          assert release['name'] == 'Beta version 0.5'
+          assert release['draft'] is False and release['prerelease'] is False
+          assert json.load(open('published-tag.json'))['object']['sha'] == os.environ['SOURCE_COMMIT']
+          actual = {asset['name']: asset for asset in release['assets']}
+          expected = list(pathlib.Path('release').iterdir())
+          assert set(actual) == {path.name for path in expected}
+          for path in expected:
+              asset = actual[path.name]
+              assert asset['state'] == 'uploaded' and asset['size'] == path.stat().st_size
+              with path.open('rb') as stream:
+                  assert asset['digest'] == 'sha256:' + hashlib.file_digest(stream, 'sha256').hexdigest()
+          print(release['html_url'])
+          PY
