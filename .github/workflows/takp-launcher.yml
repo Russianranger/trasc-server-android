@@ -160,7 +160,7 @@ jobs:
         if: always()
         run: |
           task_ci_owner="$(id -u):$(id -g)"
-          for directory in dist/bots runtime-work/bots-work/logs runtime-work/bots-work/native-build; do
+          for directory in dist/bots runtime-work/bots-work/logs runtime-work/bots-work/fixture/logs runtime-work/bots-work/native-build; do
             if [[ -d "$directory" ]]; then
               sudo chown -R --no-dereference "$task_ci_owner" "$directory"
             fi
@@ -177,6 +177,7 @@ jobs:
           path: |
             dist/bots/
             runtime-work/bots-work/logs/
+            runtime-work/bots-work/fixture/logs/
   apk:
     runs-on: ubuntu-latest
     timeout-minutes: 40

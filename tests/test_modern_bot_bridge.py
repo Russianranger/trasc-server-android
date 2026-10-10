@@ -1,6 +1,8 @@
 import hashlib
 import json
 from pathlib import Path
+import shutil
+import subprocess
 import sys
 import tempfile
 from types import SimpleNamespace
@@ -101,6 +103,46 @@ class ModernBotBridgeTests(unittest.TestCase):
         path.symlink_to(target)
         with self.assertRaises(ValueError):
             bridge.digest(path)
+
+    @unittest.skipUnless(shutil.which('g++'), 'Native teardown regression requires g++')
+    def test_offline_zone_teardown_does_not_reinitialize_quests(self):
+        # Exercise the production transformation as C++, including the
+        # unchanged default constructor argument for ordinary zone contexts.
+        sources = {
+            'zone/zone.h': 'class Zone { public:\n'
+                'Zone(uint32 in_zoneid, uint32 in_instanceid, const char *in_short_name);\n'
+                '~Zone();\nprivate: int default_ruleset = 0; uint32 zoneid = 0;\n};\n',
+            'zone/zone.cpp': 'Zone::Zone(uint32 in_zoneid, uint32 in_instanceid, const char* in_short_name) {\n'
+                '\tzoneid = in_zoneid;\n\tdatabase.QGlobalPurge();\n}\n'
+                'Zone::~Zone() {\n\tentity_list.Clear();\n\tparse->ReloadQuests();\n}\n',
+        }
+        for name, data in sources.items():
+            destination = self.root / name
+            destination.parent.mkdir(exist_ok=True)
+            destination.write_text(data)
+        guards = {name: hashlib.sha256(data.encode()).hexdigest() for name, data in sources.items()}
+        with patch.object(bridge, 'GUARDS', {'custom': guards}), \
+                patch.object(bridge, 'PATCHED', tuple(sources)), \
+                patch.object(bridge, 'PATCHED_GUARDS', {'custom': {}}):
+            outputs = bridge.output_files(self.root, 'custom')
+        test = self.root / 'teardown.cpp'
+        test.write_text('#include <cassert>\n#include <memory>\nusing uint32 = unsigned;\n'
+                        'class Zone; Zone* zone = nullptr; int reloads = 0; int purges = 0;\n'
+                        'struct Database { void QGlobalPurge() { ++purges; } } database;\n'
+                        'struct Entities { void Clear() { assert(zone); } } entity_list;\n'
+                        'struct Parser { void ReloadQuests() { assert(zone); ++reloads; } } parser;\n'
+                        'Parser* parse = &parser;\n' + outputs['zone/zone.h'].decode()
+                        + outputs['zone/zone.cpp'].decode() + '\nint main() {\n'
+                        '  auto normal = std::make_unique<Zone>(1, 0, "qeynos");\n'
+                        '  zone = normal.get(); normal.reset(); zone = nullptr;\n'
+                        '  assert(reloads == 1 && purges == 1);\n'
+                        '  auto offline = std::make_unique<Zone>(1, 0, "qeynos", true);\n'
+                        '  zone = offline.get(); offline.reset(); zone = nullptr;\n'
+                        '  assert(reloads == 1 && purges == 1);\n}\n')
+        binary = self.root / 'teardown'
+        subprocess.run(['g++', '-std=c++17', str(test), '-o', str(binary)], check=True,
+                       stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+        subprocess.run([str(binary)], check=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
 
 
 if __name__ == '__main__':

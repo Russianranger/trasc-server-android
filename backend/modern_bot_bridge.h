@@ -95,6 +95,17 @@ static int Create() {
     bool transaction = false;
     std::unique_ptr<Client> owner;
     std::unique_ptr<Zone> context;
+    auto reject = [&](const std::string& message) {
+        owner.reset();
+        is_zone_loaded = false;
+        context.reset();
+        zone = nullptr;
+        database.SetTrascAtomicBatch(false);
+        content_db.SetTrascAtomicBatch(false);
+        if (transaction) database.QueryDatabase(std::string("ROLLBACK"), false);
+        std::cout << "TRASC_BOT_RESULT " << Json({{"format", 1}, {"ok", false}, {"error", message}}).dump() << std::endl;
+        return 1;
+    };
     try {
         EQEmuLogSys::Instance()->SilenceConsoleLogging();
         const auto request = Json::parse(ReadRequest());
@@ -194,8 +205,8 @@ static int Create() {
             ValidateReceiptBots(result, owner_id);
             Require(database.GetTrascQueryFailures() + content_db.GetTrascQueryFailures() == failures_before,
                 "The saved bot state could not be reloaded; no bots were committed.");
-            zone = nullptr;
             context.reset();
+            zone = nullptr;
             database.SetTrascAtomicBatch(false);
             content_db.SetTrascAtomicBatch(false);
             Query("COMMIT");
@@ -238,8 +249,8 @@ static int Create() {
         // failures are also part of the atomic batch, and it cannot save a PP.
         owner.reset();
         is_zone_loaded = false;
-        zone = nullptr;
         context.reset();
+        zone = nullptr;
         Require(database.GetTrascQueryFailures() + content_db.GetTrascQueryFailures() == failures_before,
             "A bot creation cleanup operation failed; the batch was rolled back.");
         database.SetTrascAtomicBatch(false);
@@ -253,15 +264,11 @@ static int Create() {
         std::cout << "TRASC_BOT_RESULT " << result.dump() << std::endl;
         return 0;
     } catch (const std::exception& error) {
-        owner.reset();
-        is_zone_loaded = false;
-        zone = nullptr;
-        context.reset();
-        database.SetTrascAtomicBatch(false);
-        content_db.SetTrascAtomicBatch(false);
-        if (transaction) database.QueryDatabase(std::string("ROLLBACK"), false);
-        std::cout << "TRASC_BOT_RESULT " << Json({{"format", 1}, {"ok", false}, {"error", error.what()}}).dump() << std::endl;
-        return 1;
+        return reject(error.what());
+    } catch (...) {
+        // The native Perl parser can throw a string or a dangling const char*
+        // during initialization. Do not dereference or expose that payload.
+        return reject("The server could not initialize or create bots; no bots were committed. Check this world's quest parser dependencies and server logs.");
     }
 }
 } // namespace TrascBotBridge

@@ -54,8 +54,8 @@ PATCHED_GUARDS = {
     'traditional': {
         'zone/main.cpp': 'ee1db78faa9c5324baa2ee1f6cf4165209e037eb8ee835de59109ee58354763b',
         'zone/client.h': 'f2c14eda6e5c1e30d4a745c168c0e417cd382d0be3b8a75c7a21b615a45deead',
-        'zone/zone.h': 'c6458c2ce5e5d22801b7e40b6f4d79ca6ea14b465a96435859836956a9849be5',
-        'zone/zone.cpp': 'eb7d6aa9d0896bbe5eb6011144dcc83cee125e99ee3c0fe9db8a693351814321',
+        'zone/zone.h': 'c54d5c5c887172489bb45fcd3020a1946f72ffbfc13b83f9f7e16842b0bf3339',
+        'zone/zone.cpp': 'daf3f6e4c7a98d5a3570ec6825fd48bb51af92e77d5769fb3656999b4dd57efe',
         'common/dbcore.h': '1606c289b558812e747424669c3c599a260c3bd3aa3d750ff76299af3f2e8f0f',
         'common/dbcore.cpp': 'b09f16f62b04b3403fc8e5946904be0ff88c6c78cdcd727536172a5d05c6f451',
         'common/shareddb.h': '57ff0c587e917a1e067724ed8737a685c75000dd00a330621a6bb794482b4b20',
@@ -64,8 +64,8 @@ PATCHED_GUARDS = {
     'custom': {
         'zone/main.cpp': 'c959bd48e5517224600b75a4732a5f1b6f603c514bc72bf11759e82241b3b8ea',
         'zone/client.h': '5d5b7bed4f5bdaed9ad25dfb304183ad89f2dd0829de4a32a05012c77e9cf3e3',
-        'zone/zone.h': '4a829464628954a73b86f4c1e4d7ce69f99c4dcb9de85cbc845373b52db736f9',
-        'zone/zone.cpp': '39e20555d29d8f0ae5a5e1ccacab22c0fb37297d1bc0ab2e85047e19756cccb7',
+        'zone/zone.h': 'f77dcc9ad5a267e06e07d770f49068c3169b6dc61327ceed7893a0a6aaf7b123',
+        'zone/zone.cpp': '28524b6875b0f139f0f879e7b546c47b87dd8f0370421cc974c5429d49eb5874',
         'common/dbcore.h': 'e1324569b29d84a651728dbbad826521ceb11970a1e28b072e794ee6502be327',
         'common/dbcore.cpp': 'c7b7de66515fa0337234d8d20b255b8a31855e82d0d3fc0c8d557d18e51be61c',
         'common/shareddb.h': '0824dabddf5b5ddd3eaeca49da66ad5ca487af1bbad70b9041489cb5c768ca57',
@@ -200,11 +200,18 @@ def output_files(root, profile):
         elif name == 'zone/zone.h':
             text = _replace(text, 'Zone(uint32 in_zoneid, uint32 in_instanceid, const char *in_short_name);',
                 'Zone(uint32 in_zoneid, uint32 in_instanceid, const char *in_short_name, bool trasc_offline = false);\n'
-                '    int GetTrascOfflineRuleset() const { return default_ruleset; }', name)
+                '    int GetTrascOfflineRuleset() const { return default_ruleset; }\n'
+                'private:\n    bool m_trasc_offline = false;\npublic:', name)
         elif name == 'zone/zone.cpp':
             text = _replace(text, 'Zone::Zone(uint32 in_zoneid, uint32 in_instanceid, const char* in_short_name)',
                 'Zone::Zone(uint32 in_zoneid, uint32 in_instanceid, const char* in_short_name, bool trasc_offline)', name)
+            text = _replace(text, '\tzoneid = in_zoneid;',
+                '\tm_trasc_offline = trasc_offline;\n\tzoneid = in_zoneid;', name)
             text = _replace(text, '\tdatabase.QGlobalPurge();', '\tif (!trasc_offline) database.QGlobalPurge();', name)
+            text = _replace(text, '\tentity_list.Clear();\n\tparse->ReloadQuests();',
+                '\tentity_list.Clear();\n'
+                '\t// The one-shot owner context has no zone loop to reload.\n'
+                '\tif (!m_trasc_offline) parse->ReloadQuests();', name)
         elif name == 'common/dbcore.h':
             text = '#include <cstdint>\n#include <regex>\n#include <set>\n#include <stdexcept>\n#include <string>\n' + text
             text = _replace(text, '\tDBcore();', DB_GUARD + '\n\tDBcore();', name)
