@@ -128,6 +128,38 @@ class ModernBotBridgeTests(unittest.TestCase):
             self.assertEqual(pending.call_count, 2)
 
     @unittest.skipUnless(shutil.which('g++'), 'Native teardown regression requires g++')
+    def test_native_transaction_guard_accepts_replaces_and_rejects_wider_writes(self):
+        test = self.root / 'native-sql-guard.cpp'
+        test.write_text('#include <cassert>\n#include <cstdint>\n#include <regex>\n'
+                        '#include <set>\n#include <stdexcept>\n#include <string>\n'
+                        'using uint32 = uint32_t;\nstruct Guard {\n' + bridge.DB_GUARD
+                        + '\nvoid Check(const std::string& sql) { TrascGuardQuery(sql.data(), sql.size()); }\n};\n'
+                        'int main() { Guard guard; guard.SetTrascWritableTables({"bot_stances"});\n'
+                        'guard.SetTrascAtomicBatch(true);\n'
+                        'for (const auto& sql : {\n'
+                        ' "REPLACE INTO bot_stances (bot_id,stance_id) VALUES (1,2)",\n'
+                        ' "REPLACE bot_stances (bot_id,stance_id) VALUES (1,2)",\n'
+                        ' "REPLACE INTO `bot_stances`(bot_id,stance_id) VALUES (1,2)",\n'
+                        ' "INSERT INTO bot_stances (bot_id,stance_id) VALUES (1,2)",\n'
+                        ' "INSERT IGNORE INTO bot_stances (bot_id,stance_id) VALUES (1,2)",\n'
+                        ' "UPDATE bot_stances SET stance_id=2 WHERE bot_id=1",\n'
+                        ' "DELETE FROM bot_stances WHERE bot_id=1"\n'
+                        '}) guard.Check(sql);\n'
+                        'assert(guard.GetTrascQueryFailures() == 0);\n'
+                        'for (const auto& sql : {\n'
+                        ' "REPLACE INTO inventory (character_id,item_id) VALUES (1,2)",\n'
+                        ' "REPLACE inventory (character_id,item_id) VALUES (1,2)",\n'
+                        ' "UPDATE bot_stances JOIN inventory ON bot_stances.bot_id=inventory.character_id SET inventory.item_id=2",\n'
+                        ' "UPDATE bot_stances, inventory SET inventory.item_id=2",\n'
+                        ' "DELETE FROM bot_stances USING bot_stances JOIN inventory ON bot_stances.bot_id=inventory.character_id"\n'
+                        '}) { bool rejected=false; try {guard.Check(sql);} catch(const std::runtime_error&) {rejected=true;} assert(rejected); }\n'
+                        'assert(guard.GetTrascQueryFailures() == 5);\n}\n')
+        binary = self.root / 'native-sql-guard'
+        subprocess.run(['g++', '-std=c++17', str(test), '-o', str(binary)], check=True,
+                       capture_output=True, text=True)
+        subprocess.run([str(binary)], check=True, capture_output=True, text=True)
+
+    @unittest.skipUnless(shutil.which('g++'), 'Native teardown regression requires g++')
     def test_partially_loaded_offline_owner_does_not_announce_logout(self):
         sources = {
             'zone/client.h': 'class Client { public:\n'

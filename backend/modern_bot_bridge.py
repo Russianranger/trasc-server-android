@@ -59,7 +59,7 @@ PATCHED_GUARDS = {
         'zone/client.cpp': '02efe9f3b18af2f7b60f231457d77f600dc680cf9b5fb139d3ea36864c63b835',
         'zone/zone.h': 'c54d5c5c887172489bb45fcd3020a1946f72ffbfc13b83f9f7e16842b0bf3339',
         'zone/zone.cpp': 'b6f14927e64cb5b1de3e3737c94582e917ee00a561d61fd14b9d2cc88fdb4946',
-        'common/dbcore.h': '1606c289b558812e747424669c3c599a260c3bd3aa3d750ff76299af3f2e8f0f',
+        'common/dbcore.h': 'bd0efaf8185d233ccf2b4a054acb1b9e1b5df7e57c38dd702f516e798c42ac63',
         'common/dbcore.cpp': 'b09f16f62b04b3403fc8e5946904be0ff88c6c78cdcd727536172a5d05c6f451',
         'common/shareddb.h': '57ff0c587e917a1e067724ed8737a685c75000dd00a330621a6bb794482b4b20',
         'common/shareddb.cpp': 'c267bbb78095e48aeae728c03bfedac99fb19e2316c65db0feb2b76c909c216c',
@@ -70,7 +70,7 @@ PATCHED_GUARDS = {
         'zone/client.cpp': '36625aa5965134b1b1f4118f0044565d155ae314a7dbd21fdf7cba2a8c009c94',
         'zone/zone.h': 'f77dcc9ad5a267e06e07d770f49068c3169b6dc61327ceed7893a0a6aaf7b123',
         'zone/zone.cpp': '67a04a3eaec1cdfa73a463ad2022407a7cf0e8c1dd6822ca5137fcedf99fc3bf',
-        'common/dbcore.h': 'e1324569b29d84a651728dbbad826521ceb11970a1e28b072e794ee6502be327',
+        'common/dbcore.h': '4030587c5bc68444b59ce48099653cddd66c389be0ecb32e4f56ddd1265d67b1',
         'common/dbcore.cpp': 'c7b7de66515fa0337234d8d20b255b8a31855e82d0d3fc0c8d557d18e51be61c',
         'common/shareddb.h': '0824dabddf5b5ddd3eaeca49da66ad5ca487af1bbad70b9041489cb5c768ca57',
         'common/shareddb.cpp': '114b71e8e4248ca1ca7f9cb4e7783442cb83e20c352a3ae238efb134eb536a5f',
@@ -170,7 +170,7 @@ private:
         std::string sql(query, length);
         const std::regex read(R"(^\s*(SELECT|SHOW|DESCRIBE)\s)", std::regex::icase);
         if (std::regex_search(sql, read)) return;
-        const std::regex write(R"(^\s*(?:INSERT\s+(?:IGNORE\s+)?INTO|REPLACE\s+(?:INTO\s+)?|UPDATE|DELETE\s+FROM)\s+`?([A-Za-z0-9_]+)`?(?:\s|\())", std::regex::icase);
+        const std::regex write(R"(^\s*(?:INSERT\s+(?:IGNORE\s+)?INTO|REPLACE(?:\s+INTO)?|UPDATE|DELETE\s+FROM)\s+`?([A-Za-z0-9_]+)`?(?:\s|\())", std::regex::icase);
         std::smatch match;
         // Multi-table UPDATE/DELETE can write another non-transactional table.
         // Normal bot saves are single-table statements; reject wider targets.
