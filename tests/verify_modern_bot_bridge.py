@@ -467,5 +467,5 @@ if __name__ == '__main__':
     parser.add_argument('--work', required=True, type=Path)
     parser.add_argument('--database-zip', required=True, type=Path)
     parser.add_argument('--output', required=True, type=Path)
-    parser.add_argument('--jobs', type=int, choices=(1, 2), default=2)
+    parser.add_argument('--jobs', type=int, choices=(1, 2, 4), default=2)
     qualify(parser.parse_args())
