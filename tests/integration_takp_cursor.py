@@ -3,6 +3,7 @@
 import argparse
 import ctypes
 import ctypes.util
+import hashlib
 import json
 import os
 from pathlib import Path
@@ -24,7 +25,7 @@ def wait_file(path, expected, child, timeout=30, prefix=False):
 def run(wine, probe, output):
     output=Path(output).resolve();output.mkdir(parents=True,exist_ok=True)
     prefix=output/'prefix';prefix.mkdir(exist_ok=True)
-    env=dict(os.environ,DISPLAY=':33',WINEPREFIX=str(prefix),WINEARCH='win64',WINEDEBUG='-all',WINEDLLOVERRIDES='winemenubuilder,mscoree,mshtml=')
+    env=dict(os.environ,DISPLAY=':33',WINEPREFIX=str(prefix),WINEARCH='win64',WINEDEBUG='-all,+cursor,+event,+dinput',WINEDLLOVERRIDES='winemenubuilder,mscoree,mshtml=')
     display_log=(output/'display.log').open('wb');wine_log=(output/'wine.log').open('wb')
     server=subprocess.Popen(['Xtigervnc',':33','-geometry','800x600','-depth','24','-rfbport','-1','-nolisten','tcp','-nolock','-ac','-SecurityTypes','None'],stdout=display_log,stderr=subprocess.STDOUT)
     xlib=ctypes.CDLL(ctypes.util.find_library('X11'));xtst=ctypes.CDLL(ctypes.util.find_library('Xtst'))
@@ -32,10 +33,14 @@ def run(wine, probe, output):
     xlib.XDefaultRootWindow.argtypes=[ctypes.c_void_p];xlib.XDefaultRootWindow.restype=ctypes.c_ulong
     xlib.XSync.argtypes=[ctypes.c_void_p,ctypes.c_int]
     xlib.XCloseDisplay.argtypes=[ctypes.c_void_p]
+    xlib.XGetInputFocus.argtypes=[ctypes.c_void_p,ctypes.POINTER(ctypes.c_ulong),ctypes.POINTER(ctypes.c_int)]
+    xlib.XFetchName.argtypes=[ctypes.c_void_p,ctypes.c_ulong,ctypes.POINTER(ctypes.c_void_p)]
+    xlib.XQueryTree.argtypes=[ctypes.c_void_p,ctypes.c_ulong,ctypes.POINTER(ctypes.c_ulong),ctypes.POINTER(ctypes.c_ulong),ctypes.POINTER(ctypes.c_void_p),ctypes.POINTER(ctypes.c_uint)]
+    xlib.XFree.argtypes=[ctypes.c_void_p]
     xtst.XTestFakeRelativeMotionEvent.argtypes=[ctypes.c_void_p,ctypes.c_int,ctypes.c_int,ctypes.c_ulong]
     xtst.XTestFakeButtonEvent.argtypes=[ctypes.c_void_p,ctypes.c_uint,ctypes.c_int,ctypes.c_ulong]
     xlib.XQueryPointer.argtypes=[ctypes.c_void_p,ctypes.c_ulong,ctypes.POINTER(ctypes.c_ulong),ctypes.POINTER(ctypes.c_ulong),ctypes.POINTER(ctypes.c_int),ctypes.POINTER(ctypes.c_int),ctypes.POINTER(ctypes.c_int),ctypes.POINTER(ctypes.c_int),ctypes.POINTER(ctypes.c_uint)]
-    display=None;child=None
+    display=None;child=None;diagnostics=[]
     try:
         for _ in range(100):
             display=xlib.XOpenDisplay(b':33')
@@ -48,6 +53,22 @@ def run(wine, probe, output):
             r,c=ctypes.c_ulong(),ctypes.c_ulong();x,y,wx,wy=ctypes.c_int(),ctypes.c_int(),ctypes.c_int(),ctypes.c_int();mask=ctypes.c_uint()
             if not xlib.XQueryPointer(display,root,ctypes.byref(r),ctypes.byref(c),ctypes.byref(x),ctypes.byref(y),ctypes.byref(wx),ctypes.byref(wy),ctypes.byref(mask)):raise RuntimeError('X pointer unavailable')
             return x.value,y.value
+        def focus():
+            window=ctypes.c_ulong();revert=ctypes.c_int()
+            xlib.XGetInputFocus(display,ctypes.byref(window),ctypes.byref(revert))
+            value=window.value;chain=[]
+            while value>1:
+                name=ctypes.c_void_p()
+                title=None
+                if xlib.XFetchName(display,value,ctypes.byref(name)) and name.value:
+                    title=ctypes.string_at(name.value).decode('utf-8','replace');xlib.XFree(name)
+                chain.append({'window':hex(value),'title':title})
+                tree_root,parent=ctypes.c_ulong(),ctypes.c_ulong();children=ctypes.c_void_p();count=ctypes.c_uint()
+                if not xlib.XQueryTree(display,value,ctypes.byref(tree_root),ctypes.byref(parent),ctypes.byref(children),ctypes.byref(count)):break
+                if children.value:xlib.XFree(children)
+                if parent.value==value:break
+                value=parent.value
+            return {'window':hex(window.value),'revert':revert.value,'ancestors':chain}
         def motion(dx,dy):
             xtst.XTestFakeRelativeMotionEvent(display,dx,dy,0);xlib.XSync(display,False)
         def button(down):
@@ -66,9 +87,16 @@ def run(wine, probe, output):
             return wait_file(output/'reply.txt',value,child,prefix=mode=='sample')
         def sample():
             values=list(map(int,command('sample').split()[2:]))
-            assert len(values)==11,values
+            assert len(values)==14,values
             return {'state':values[:2],'buffered':values[2:4],'rmb':values[4],
-                    'cursor':values[5:7],'clip':values[7:11]}
+                    'cursor':values[5:7],'clip':values[7:11],
+                    'foreground':bool(values[11]),'focused':bool(values[12]),'visible':bool(values[13])}
+        def diagnose(stage):
+            row={'stage':stage,'native':sample(),'x_pointer':point(),'x_focus':focus()}
+            diagnostics.append(row)
+            (output/'cursor-diagnostics.log').write_text(json.dumps(diagnostics,indent=2)+'\n')
+            print(json.dumps(row),flush=True)
+            return row
         def difference(before,after,kind):return [after[kind][i]-before[kind][i] for i in range(2)]
         old=[]
         for dx in (20,20,20,-10):
@@ -76,6 +104,13 @@ def run(wine, probe, output):
         assert old==[20,40,60,50],('cached-center no-op failure not reproduced',old)
         command('fixed');assert point()==(400,300),point()
         command('input');time.sleep(.15)
+        # The initial cached-cursor reproduction deliberately paused the window
+        # pump. Renew focus after map/input readiness: Wine's clip driver checks
+        # actual X focus, independently of GetForegroundWindow's server cache.
+        command('focus');time.sleep(.15)
+        ready=diagnose('input-focus-ready')
+        assert ready['native']['foreground'] and ready['native']['focused'] and ready['native']['visible'],ready
+        assert any(row['title']=='TAKP relative camera fixture' for row in ready['x_focus']['ancestors']),ready
         original_clip=sample()['clip'];v1=[]
         button(True);command('warp');time.sleep(.15)
         # Record the prior helper with real DirectInput. Exact loss/drift depends
@@ -87,7 +122,9 @@ def run(wine, probe, output):
             v1.append({'injected':[20*dx,20*dy],'polled':difference(before,after,'state'),
                        'buffered':difference(before,after,'buffered')})
         command('raw');time.sleep(.2)
-        assert sample()['clip']==[400,300,401,301],sample()
+        capture=diagnose('raw-capture-ready')
+        assert capture['native']['clip']==[400,300,401,301],capture
+        assert capture['x_pointer']==(400,300),('Wine cached clip has not confined the actual X cursor',capture)
         before=sample();time.sleep(.2);after=sample()
         assert difference(before,after,'state')==[0,0],('idle camera drift',before,after)
         assert difference(before,after,'buffered')==[0,0],('idle buffered drift',before,after)
@@ -121,7 +158,11 @@ def run(wine, probe, output):
         button(False);time.sleep(.15);assert sample()['clip']==original_clip,sample()
         command('free');motion(-60,-30);time.sleep(.1);assert point()==(340,270),point()
         command('quit');assert child.wait(timeout=15)==0
+        source_root=Path(__file__).resolve().parents[1]
+        proof_files=('tests/takp_cursor_probe.cpp','tests/integration_takp_cursor.py','native/takp_camera_recenter.h')
         receipt={'wine':subprocess.check_output([str(wine),'--version'],env=env,text=True).strip(),
+                 'github_commit':os.environ.get('GITHUB_SHA'),'github_run_id':os.environ.get('GITHUB_RUN_ID'),
+                 'fixture_sha256':{name:hashlib.sha256((source_root/name).read_bytes()).hexdigest() for name in proof_files},
                  'legacy_offsets':old,'v1_relative_comparison':v1,'repaired_relative':repaired,
                  'beyond_desktop':{'injected':[6400,-6400],'polled':[6400,-6400],'buffered':[6400,-6400]},
                  'idle_drift':[0,0],'rmb_release_restores_clip':True,'focus_restore_reenters_look':True,

@@ -37,7 +37,8 @@ static DWORD WINAPI input_frame(void*) {
         }
         DIDEVICEOBJECTDATA events[256];DWORD count=256;
         HRESULT hr=mouse->GetDeviceData(sizeof(events[0]),events,&count,0);
-        if(FAILED(hr)||hr==DI_BUFFEROVERFLOW)ExitProcess(21);
+        if(hr==DIERR_NOTACQUIRED||hr==DIERR_INPUTLOST)count=0; // expected foreground loss
+        else if(FAILED(hr)||hr==DI_BUFFEROVERFLOW)ExitProcess(21);
         for(DWORD i=0;i<count;i++) {
             if(events[i].dwOfs==DIMOFS_X)InterlockedExchangeAdd(totals+2,(LONG)events[i].dwData);
             if(events[i].dwOfs==DIMOFS_Y)InterlockedExchangeAdd(totals+3,(LONG)events[i].dwData);
@@ -93,8 +94,9 @@ int WINAPI WinMain(HINSTANCE instance,HINSTANCE,LPSTR,int) {
         else if(!std::strncmp(command,"resume",6)){ShowWindow(window,SW_RESTORE);SetForegroundWindow(window);SetFocus(window);}
         else if(!std::strncmp(command,"sample",6)) {
             POINT point;RECT current;GetCursorPos(&point);GetClipCursor(&current);
-            char reply[320];std::sprintf(reply,"%s %ld %ld %ld %ld %ld %ld %ld %ld %ld %ld %ld",command,
-                totals[0],totals[1],totals[2],totals[3],buttons,point.x,point.y,current.left,current.top,current.right,current.bottom);
+            char reply[320];std::sprintf(reply,"%s %ld %ld %ld %ld %ld %ld %ld %ld %ld %ld %ld %d %d %d",command,
+                totals[0],totals[1],totals[2],totals[3],buttons,point.x,point.y,current.left,current.top,current.right,current.bottom,
+                GetForegroundWindow()==window,GetFocus()==window,!IsIconic(window));
             result(reply);continue;
         }
         else return 14;
