@@ -16,7 +16,7 @@ final class ControllerInput {
         "RightUp","RightDown","RightLeft","RightRight"));
     static final List<String> ACTIONS;
     static {
-        List<String> list=new ArrayList<>(Arrays.asList("None","MouseLeft","MouseRight","MouseMiddle","PointerUp","PointerDown","PointerLeft","PointerRight","WheelUp","WheelDown"));
+        List<String> list=new ArrayList<>(Arrays.asList("None","MouseLeft","MouseRight","MouseMiddle","MouseLookToggle","PointerUp","PointerDown","PointerLeft","PointerRight","WheelUp","WheelDown"));
         for(char c='A';c<='Z';c++)list.add("Key"+c);
         for(int i=0;i<=9;i++)list.add("Digit"+i);
         for(int i=1;i<=12;i++)list.add("F"+i);
@@ -28,6 +28,7 @@ final class ControllerInput {
         for(int i=1;i<=MAX_LAYERS;i++){list.add("Layer"+i);list.add("HoldLayer"+i);}
         ACTIONS=Collections.unmodifiableList(list);
     }
+    static List<String> actions(String profile){List<String> result=new ArrayList<>(ACTIONS);if(!"takp".equals(profile))result.remove("MouseLookToggle");return result;}
     static Map<String,String> legacyDefaults() {
         Map<String,String> m=new LinkedHashMap<>();for(String s:SOURCES)m.put(s,"None");
         m.put("A","Space");m.put("B","Escape");m.put("X","KeyE");m.put("Y","Tab");
@@ -92,6 +93,8 @@ final class ControllerInput {
     // Latch control actions on press, so their release is independent of the new layer's bindings.
     private final Map<String,String> controls=new LinkedHashMap<>();
     private final Map<String,Integer> temporary=new LinkedHashMap<>(),counts=new HashMap<>();
+    // A capture/rebind must not turn an already held analog source into a new toggle press.
+    private final Set<String> toggleNeedsNeutral=new HashSet<>();
     private int selected;
     private boolean active;
     float deadzone=.20f,sensitivity=700;
@@ -117,7 +120,7 @@ final class ControllerInput {
     int currentLayer(){int result=selected;for(int target:temporary.values())result=target;return result;}
     String layerName(){return layers.get(currentLayer()).name;}
     int layerCount(){return layers.size();}
-    void activate(boolean enabled){if(!enabled)releaseAll();active=enabled;}
+    void activate(boolean enabled){if(!enabled)releaseAll();else if(!active)toggleNeedsNeutral.addAll(SOURCES);active=enabled;}
     boolean active(){return active;}
     private String action(String source){String value=layers.get(currentLayer()).bindings.get(source);return value.equals("Inherit")?layers.get(0).bindings.get(source):value;}
     private static boolean isModifier(String action){return action.equals("ShiftLeft")||action.equals("ControlLeft")||action.equals("AltLeft");}
@@ -130,7 +133,7 @@ final class ControllerInput {
         for(String source:held.keySet()){
             if(controls.containsKey(source))continue;
             String action=action(source);
-            if(action.equals("None")||action.startsWith("Pointer")||action.startsWith("Wheel")||action.equals("ClientMenu")||isLayerAction(action))continue;
+            if(action.equals("None")||action.startsWith("Pointer")||action.startsWith("Wheel")||action.equals("ClientMenu")||action.equals("MouseLookToggle")||isLayerAction(action))continue;
             for(String atom:action.split("\\+"))next.put(atom,next.getOrDefault(atom,0)+1);
         }
         List<String> old=new ArrayList<>(counts.keySet());old.sort(Comparator.comparing(ControllerInput::isModifier));
@@ -144,14 +147,16 @@ final class ControllerInput {
         else reconcile();
     }
     void value(String source,float magnitude){
-        if(!active||!SOURCES.contains(source)||!Float.isFinite(magnitude))return;
+        if(!SOURCES.contains(source)||!Float.isFinite(magnitude))return;
+        if(magnitude<=.20f)toggleNeedsNeutral.remove(source);
+        if(!active)return;
         magnitude=Math.max(0,Math.min(1,magnitude));boolean before=held.containsKey(source);
         String command=controls.getOrDefault(source,action(source));
         boolean down=command.startsWith("Pointer")?magnitude>0:magnitude>(before?.20f:.45f);
         if(down)held.put(source,magnitude);else held.remove(source);
         if(down==before)return;
         int previous=currentLayer();
-        if(!down){controls.remove(source);temporary.remove(source);changedLayer(previous);return;}
+        if(!down){String released=controls.remove(source);if("MouseLookToggle".equals(released))sink.button(released,false);temporary.remove(source);changedLayer(previous);return;}
         if(isLayerAction(command)){
             controls.put(source,command);
             if(command.equals("LayerNext"))selected=(selected+1)%layers.size();
@@ -160,10 +165,16 @@ final class ControllerInput {
             else selected=layerTarget(command);
             changedLayer(previous);return;
         }
+        if(command.equals("MouseLookToggle")){
+            controls.put(source,toggleNeedsNeutral.contains(source)?"None":command);
+            if(!toggleNeedsNeutral.contains(source))sink.button(command,true);
+            return;
+        }
         reconcile();
         if(command.startsWith("Wheel"))sink.wheel(command.equals("WheelUp")?1:-1);
         if(command.equals("ClientMenu"))sink.button(command,true);
     }
+    void physicalValue(String source,float magnitude,boolean freshDown){if(freshDown)toggleNeedsNeutral.remove(source);value(source,magnitude);}
     void axis(String negative,String positive,float value){float amount=Math.abs(value)<=deadzone?0:(Math.abs(value)-deadzone)/(1-deadzone);value(negative,value<0?amount:0);value(positive,value>0?amount:0);}
     void tick(float seconds){
         if(!active)return;float dx=0,dy=0;
@@ -172,5 +183,5 @@ final class ControllerInput {
         }
         if(dx!=0||dy!=0)sink.pointer(dx*sensitivity*Math.min(seconds,.05f),dy*sensitivity*Math.min(seconds,.05f));
     }
-    void releaseAll(){int before=currentLayer();releaseOutputs();held.clear();controls.clear();temporary.clear();if(before!=currentLayer())sink.layer(currentLayer(),layerName());}
+    void releaseAll(){int before=currentLayer();toggleNeedsNeutral.addAll(held.keySet());releaseOutputs();for(String command:controls.values())if(command.equals("MouseLookToggle"))sink.button(command,false);held.clear();controls.clear();temporary.clear();if(before!=currentLayer())sink.layer(currentLayer(),layerName());}
 }

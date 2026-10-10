@@ -151,7 +151,7 @@ final class ClientRuntime {
                 }
             }
             String mode=options.optString("mode","client"),resolution=options.optString("resolution","800x600"),renderer=options.optString("renderer","software");
-            String cpuProfile=options.optString("cpu_profile","balanced");
+            String cpuProfile=options.optString("cpu_profile",server.profiles.current().equals("takp")?"accurate":"balanced");
             String npcRendering=options.optString("npc_rendering","compatibility");
             String boatMode=options.optString("boat_mode","off");
             if(!Arrays.asList("off","profile").contains(boatMode))throw new IOException("Unsupported boat option");

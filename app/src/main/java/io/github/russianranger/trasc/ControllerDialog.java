@@ -59,11 +59,12 @@ final class ControllerDialog {
         int target=ControllerInput.layerTarget(action);
         if(target>=0)return (action.startsWith("Hold")?"Hold: ":"Go to: ")+layers().optJSONObject(target).optString("name");
         if(action.equals("LayerNext"))return "Next layer";if(action.equals("LayerPrevious"))return "Previous layer";
+        if(action.equals("MouseLookToggle"))return "Toggle mouse look";
         return action.replace("ShiftLeft+","Shift + ").replace("ControlLeft+","Ctrl + ").replace("AltLeft+","Alt + ").replace("Digit","Number ").replace("Key","Key ");
     }
     private void render(){
         if(rows==null||layerName==null)return;rows.removeAllViews();JSONObject selected=layers().optJSONObject(editing);if(selected==null)return;layerName.setText(selected.optString("name"));JSONObject map=selected.optJSONObject("bindings");
-        List<String> choices=new ArrayList<>();if(editing>0)choices.add("Inherit");for(String a:ControllerInput.ACTIONS)if(ControllerInput.layerTarget(a)<layers().length())choices.add(a);
+        List<String> choices=new ArrayList<>();if(editing>0)choices.add("Inherit");for(String a:controller.actions())if(ControllerInput.layerTarget(a)<layers().length())choices.add(a);
         List<String> labels=new ArrayList<>();for(String a:choices)labels.add(actionLabel(a));
         for(String source:ControllerInput.SOURCES){TextView label=new TextView(activity);label.setText(ControllerInput.sourceLabel(source));rows.addView(label);
             Spinner s=new Spinner(activity);s.setContentDescription(source+" layer "+(editing+1)+" binding");s.setAdapter(new ArrayAdapter<>(activity,android.R.layout.simple_spinner_dropdown_item,labels));s.setSelection(Math.max(0,choices.indexOf(map.optString(source))));rows.addView(s);

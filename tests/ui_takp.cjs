@@ -24,7 +24,7 @@ const server=http.createServer((req,res)=>{
    window.Trasc={call(id,op,input){setTimeout(()=>{const a=JSON.parse(input);f.calls.push({op,a});let result={};try{
     if(op!=='native_state'&&a.__profile&&a.__profile!==f.profile)throw Error('World profile changed');
     if(op==='native_state')result={profile:f.profile,installed:true,alive:f.alive,installing:false,session_busy:false,status:'Runtime stopped',free_bytes:50e9};
-    else if(op==='client_native_state')result={profile:f.profile,installed:true,alive:f.client,busy:f.busy,status:'Client stopped',launch_options:{native_dinput8:true,native_d3dx:true,mouse_warp:true,fast_spell_parse:true,reduce_load_pauses:true,name_sky_compatibility:true}};
+    else if(op==='client_native_state')result={profile:f.profile,installed:true,alive:f.client,busy:f.busy,status:'Client stopped',launch_options:{...(localStorage.takpCpu?{cpu_profile:localStorage.takpCpu}:{}),native_dinput8:true,native_d3dx:true,mouse_warp:true,fast_spell_parse:true,reduce_load_pauses:true,name_sky_compatibility:true}};
     else if(op==='profile_switch'){if(f.alive||f.client||f.busy)throw Error('Stop runtime and client before switching');localStorage.takpWorld=a.profile;f.profile=a.profile;result={profile:f.profile};}
     else if(op==='runtime_start'){f.alive=true;result={};}
     else if(op==='runtime_stop'){f.alive=false;result={};}
@@ -74,6 +74,8 @@ const server=http.createServer((req,res)=>{
    assert(!(await page.isChecked('#'+id)),'RoF2 adapter forced off for TAKP: '+id);
   }
   const options=await page.evaluate(()=>launchOptions('client'));
+  assert.equal(options.cpu_profile,'accurate','Fresh TAKP settings use the device-confirmed math mode');
+  assert((await page.textContent('#client-cpu-help')).includes('restored visible TAKP NPC models'));
   for(const key of ['native_dinput8','fast_spell_parse','reduce_load_pauses','mouse_warp'])assert.equal(options[key],false);
   await page.locator('nav [data-tab=fixes]').click();
   assert(!(await page.locator('#ferry-service-panel').isVisible()),'RoF2 ferry controls stay hidden');
@@ -135,6 +137,10 @@ const server=http.createServer((req,res)=>{
   await page.waitForFunction(()=>activeProfile==='custom'&&!polling);
   assert.equal(await page.inputValue('#source-url'),'https://github.com/Russianranger/Triptych-Triumvirate');
   assert(!(await page.locator('#takp-setup').isVisible()),'TAKP controls are scoped to TAKP');
+  assert.equal(await page.inputValue('#client-cpu-profile'),'balanced','Custom retains its existing default');
+  await page.evaluate(()=>{localStorage.takpWorld='takp';localStorage.takpCpu='balanced';});
+  await page.reload();await page.waitForFunction(()=>activeProfile==='takp'&&!polling&&launchOptionsLoaded);
+  assert.equal(await page.inputValue('#client-cpu-profile'),'balanced','Explicit saved TAKP comparison choices are retained');
   assert.deepEqual(errors,[]);
   console.log('PASS: TAKP third profile, pinned forks, blocked RoF2 hooks, staged/seed/account/deploy readiness, password clearing, busy guards and all launcher themes at Thor/phone sizes');
  }finally{await browser.close();server.close();}

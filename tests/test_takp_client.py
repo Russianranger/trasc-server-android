@@ -234,6 +234,22 @@ class TakpClientTests(unittest.TestCase):
         self.assertFalse(supervisor.status['native_dinput8_requested'])
         with self.assertRaises(ValueError): takp_client.effective_request({**requested,'mode':'compiler'})
 
+    def test_accurate_default_is_takp_only_and_retains_explicit_cpu_choices(self):
+        request = {'profile':'takp','mode':'client','resolution':'800x600'}
+        supervisor = client_runner.Supervisor(request)
+        self.assertEqual(supervisor.status['cpu_profile'], 'accurate')
+        self.assertEqual(supervisor.env['BOX64_DYNAREC_X87DOUBLE'], '1')
+        self.assertEqual(supervisor.env['BOX64_DYNAREC_FASTNAN'], '0')
+        self.assertEqual(supervisor.env['BOX64_DYNAREC_FASTROUND'], '0')
+        self.assertEqual(supervisor.env['BOX64_SYNC_ROUNDING'], '1')
+        self.assertNotIn('cpu_profile', request)
+        for selection in ('balanced', 'compatibility', 'accurate'):
+            self.assertEqual(takp_client.effective_request(dict(request,cpu_profile=selection))['cpu_profile'], selection)
+        for profile in ('custom', 'traditional'):
+            other = dict(request,profile=profile)
+            self.assertNotIn('cpu_profile', takp_client.effective_request(other))
+            self.assertEqual(client_runner.Supervisor(other).status['cpu_profile'], 'balanced')
+
     def test_loader_status_requires_actual_native_module_traces(self):
         log = client_runner.WineLog(self.root/'wine.log')
         log.observe(b'WINEDLLOVERRIDES=eqw=n;eqgame=n;d3d8=n\n')

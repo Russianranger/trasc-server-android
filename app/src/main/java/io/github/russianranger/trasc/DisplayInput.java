@@ -8,6 +8,7 @@ final class DisplayInput {
         void key(int symbol,boolean down);void pointer(int x,int y,int buttons);
         default boolean relative(int dx,int dy,int buttons){return false;}
         default boolean buttons(int buttons){return false;}
+        default void mouseLook(boolean enabled){}
     }
     private final Sink sink;
     private final boolean takpCamera;
@@ -19,6 +20,9 @@ final class DisplayInput {
     private float x=400,y=300;
     private int width=800,height=600;
     private float remainderX,remainderY;
+    private boolean lookTouch;
+    private float lookTouchX,lookTouchY;
+    private static final String LOOK_SOURCE="mouse-look";
     DisplayInput(Sink sink){this(sink,"custom");}
     DisplayInput(Sink sink,String profile){this.sink=sink;takpCamera="takp".equals(profile);}
     void size(int w,int h){width=w;height=h;x=Math.min(x,w-1);y=Math.min(y,h-1);}
@@ -36,12 +40,14 @@ final class DisplayInput {
         }
     }
     void action(String action,boolean down) {
+        if(action.equals("MouseLookToggle")){if(down)toggleMouseLook();return;}
         if(action.startsWith("Mouse")){mouse("pad:"+action,action.equals("MouseLeft")?1:action.equals("MouseRight")?4:2,down);return;}
         int sym=symbol(action);
         if(sym>='a'&&sym<='z'&&keyCounts.containsKey(0xffe1))sym-=32;
         key("pad:"+action,sym,down);
     }
     void key(String source,int symbol,boolean down) {
+        if(down&&(symbol==0xff1b||symbol==0xff0d))setMouseLook(false);
         if(down) {
             if(symbol==0||keys.containsKey(source))return;
             keys.put(source,symbol);int count=keyCounts.getOrDefault(symbol,0)+1;keyCounts.put(symbol,count);if(count==1)sink.key(symbol,true);
@@ -52,19 +58,29 @@ final class DisplayInput {
         }
     }
     private int mask(){int mask=0;for(int button:buttons.values())mask|=button;return mask;}
+    boolean mouseLookEnabled(){return buttons.containsKey(LOOK_SOURCE);}
+    void toggleMouseLook(){setMouseLook(!mouseLookEnabled());}
+    void setMouseLook(boolean enabled){
+        enabled=enabled&&takpCamera;if(enabled==mouseLookEnabled())return;
+        lookTouch=false;if(enabled)mouse("touch",1,false);
+        mouse(LOOK_SOURCE,4,enabled);if(enabled==mouseLookEnabled())sink.mouseLook(enabled);
+    }
+    void lookTouchDown(float px,float py){lookTouch=mouseLookEnabled();lookTouchX=px;lookTouchY=py;}
+    void lookTouchMove(float px,float py){if(!mouseLookEnabled()){lookTouch=false;return;}if(lookTouch)move(px-lookTouchX,py-lookTouchY);lookTouch=true;lookTouchX=px;lookTouchY=py;}
+    void lookTouchUp(){lookTouch=false;}
     void mouse(String source,int button,boolean down){int previous=mask();if(down)buttons.put(source,button);else buttons.remove(source);int next=mask();if(takpCamera&&((previous^next)&4)!=0)remainderX=remainderY=0;sendPointer(next);}
     void move(float dx,float dy){
         int buttons=mask();float gain=takpCamera&&(buttons&4)!=0?TAKP_CAMERA_GAIN:1;
         float tx=remainderX+dx*gain,ty=remainderY+dy*gain;int ix=(int)tx,iy=(int)ty;
         if(sink.relative(ix,iy,buttons)){remainderX=tx-ix;remainderY=ty-iy;x=Math.max(0,Math.min(width-1,x+dx*gain));y=Math.max(0,Math.min(height-1,y+dy*gain));}
-        else{remainderX=remainderY=0;position(x+dx,y+dy);}
+        else{remainderX=remainderY=0;if(mouseLookEnabled()){setMouseLook(false);return;}position(x+dx,y+dy);}
     }
     void position(float px,float py){x=Math.max(0,Math.min(width-1,px));y=Math.max(0,Math.min(height-1,py));sink.pointer(Math.round(x),Math.round(y),mask());}
-    private void sendPointer(int mask){if(!sink.buttons(mask))sink.pointer(Math.round(x),Math.round(y),mask);}
+    private void sendPointer(int mask){if(!sink.buttons(mask)){if(mouseLookEnabled()){setMouseLook(false);return;}sink.pointer(Math.round(x),Math.round(y),mask);}}
     void wheel(int amount){for(int i=0;i<Math.min(10,Math.abs(amount));i++){sendPointer(mask()|(amount>0?8:16));sendPointer(mask());}}
     void text(String value,boolean enter) {
         value.codePoints().forEach(cp->{int sym=cp=='\n'?0xff0d:cp=='\t'?0xff09:cp<=255?cp:0x01000000|cp;sink.key(sym,true);sink.key(sym,false);});
         if(enter){sink.key(0xff0d,true);sink.key(0xff0d,false);}
     }
-    void releaseAll(){for(int sym:new ArrayList<>(keyCounts.keySet()))sink.key(sym,false);keys.clear();keyCounts.clear();buttons.clear();remainderX=remainderY=0;sendPointer(0);}
+    void releaseAll(){boolean looked=mouseLookEnabled();for(int sym:new ArrayList<>(keyCounts.keySet()))sink.key(sym,false);keys.clear();keyCounts.clear();buttons.clear();lookTouch=false;remainderX=remainderY=0;sendPointer(0);if(looked)sink.mouseLook(false);}
 }

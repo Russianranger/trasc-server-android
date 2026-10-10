@@ -112,6 +112,9 @@ def effective_request(request):
         raise ValueError('The RoF2 client DLL compiler belongs to TRASC Custom')
     for name in DISABLED:
         result[name] = False
+    # Accurate legacy math restored NPC models in the Thor device comparison.
+    # Explicit saved choices remain available for subsequent comparisons.
+    result.setdefault('cpu_profile', 'accurate')
     result.update(boat_mode='off', particle_mode='off', npc_rendering='standard', spell_test={})
     return result
 

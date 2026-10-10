@@ -27,6 +27,8 @@ public final class ClientActivity extends Activity {
     private FrameLayout menuLayer;
     private LinearLayout menu;
     private ImageButton gear;
+    private Button lookButton,lookMenuButton;
+    private boolean takpWorld;
     private boolean menuOpen, keyboardOpen, mappingsOpen;
     private String displayError;
     private boolean failureShown;
@@ -37,7 +39,8 @@ public final class ClientActivity extends Activity {
         try {
             JSONObject state=runtime.state(),launch=state.optJSONObject("launch");
             String phase=launch==null?runtime.status:launch.optString("phase").replace('_',' ');
-            if(!runtime.alive())phase="Client stopped · return to Client tab to launch again";
+            boolean alive=runtime.alive();if(!alive){phase="Client stopped · return to Client tab to launch again";display.input.setMouseLook(false);}
+            updateLookControls();
             if(launch!=null&&launch.has("error"))phase=launch.optString("error");
             if(displayError!=null&&(launch==null||!launch.has("error")))phase=displayError;
             status.setText(phase+(launch!=null&&launch.optBoolean("native_loaded")?" · native dinput8 loaded":"")+
@@ -52,7 +55,7 @@ public final class ClientActivity extends Activity {
     }};
     @Override public void onCreate(Bundle saved) {
         super.onCreate(saved);setVolumeControlStream(android.media.AudioManager.STREAM_MUSIC);runtime=ClientRuntime.get(this);
-        try{profileLease=runtime.server.profiles.enter(runtime.server.profiles.current());profileWork=runtime.server.work;profileRun=runtime.run;}catch(IOException e){finish();return;}
+        try{profileLease=runtime.server.profiles.enter(runtime.server.profiles.current());profileWork=runtime.server.work;profileRun=runtime.run;takpWorld=runtime.server.profiles.current().equals("takp");}catch(IOException e){finish();return;}
         getWindow().addFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON);
         FrameLayout layout=new FrameLayout(this);layout.setBackgroundColor(Color.BLACK);
         display=new ClientView();
@@ -74,6 +77,7 @@ public final class ClientActivity extends Activity {
         addMenuButton("Return to Launcher",v->finish());
         addMenuButton("Keyboard",v->textDialog());
         addMenuButton("Controller mappings",v->controllerDialog());
+        if(takpWorld){lookMenuButton=addMenuButton("Enable mouse look",v->{setMenuOpen(false);changeMouseLook(true);});lookMenuButton.setEnabled(false);}
         addMenuButton("Toggle classic NPC models (#tim)",v->classicNpcs());
         addMenuButton("Apply StoneUI viewport",v->viewport(false));
         addMenuButton("Restore full viewport",v->viewport(true));
@@ -89,34 +93,52 @@ public final class ClientActivity extends Activity {
         gear.setOnClickListener(v->setMenuOpen(!menuOpen));
         FrameLayout.LayoutParams gearPosition=new FrameLayout.LayoutParams(dp(48),dp(48),Gravity.TOP|Gravity.RIGHT);
         gearPosition.setMargins(dp(12),dp(12),dp(12),0);layout.addView(gear,gearPosition);
+        FrameLayout.LayoutParams lookPosition=new FrameLayout.LayoutParams(dp(80),dp(48),Gravity.TOP|Gravity.RIGHT);
+        if(takpWorld){
+            lookButton=new Button(this);lookButton.setText("Look off");lookButton.setAllCaps(false);lookButton.setTextSize(12);lookButton.setTextColor(Color.WHITE);lookButton.setPadding(dp(4),0,dp(4),0);lookButton.setMinWidth(0);lookButton.setMinHeight(dp(48));lookButton.setEnabled(false);
+            lookButton.setBackground(new RippleDrawable(ColorStateList.valueOf(0x55ffffff),panelBackground(0x8010191c),null));lookButton.setContentDescription("Mouse look off. Tap to enable mouse look.");
+            lookButton.setOnClickListener(v->{boolean enabled=!display.input.mouseLookEnabled();if(menuOpen)setMenuOpen(false);changeMouseLook(enabled);});
+            lookPosition.setMargins(0,dp(12),dp(72),0);layout.addView(lookButton,lookPosition);
+        }
         layerBanner=new TextView(this);layerBanner.setTextColor(0xb3ffffff);layerBanner.setTextSize(16);layerBanner.setGravity(Gravity.CENTER);layerBanner.setPadding(dp(12),dp(6),dp(12),dp(6));
         layerBanner.setBackground(panelBackground(0x28081010));layerBanner.setShadowLayer(dp(2),0,dp(1),0x66000000);layerBanner.setAlpha(0f);layerBanner.setMaxLines(1);layerBanner.setEllipsize(android.text.TextUtils.TruncateAt.END);
         layerBanner.setClickable(false);layerBanner.setFocusable(false);
-        FrameLayout.LayoutParams layerPosition=new FrameLayout.LayoutParams(-2,-2,Gravity.TOP|Gravity.CENTER_HORIZONTAL);layerPosition.topMargin=dp(12);layout.addView(layerBanner,layerPosition);
+        FrameLayout.LayoutParams layerPosition=new FrameLayout.LayoutParams(-2,-2,Gravity.TOP|(takpWorld?Gravity.LEFT:Gravity.CENTER_HORIZONTAL));layerPosition.topMargin=dp(12);if(takpWorld)layerPosition.leftMargin=dp(12);layout.addView(layerBanner,layerPosition);
         // Keep controls clear of display cutouts and temporarily revealed bars.
         layout.setOnApplyWindowInsetsListener((view,insets)->{
             int left=insets.getSystemWindowInsetLeft(),top=insets.getSystemWindowInsetTop(),right=insets.getSystemWindowInsetRight(),bottom=insets.getSystemWindowInsetBottom();
             if(Build.VERSION.SDK_INT>=28&&insets.getDisplayCutout()!=null){DisplayCutout cutout=insets.getDisplayCutout();left=Math.max(left,cutout.getSafeInsetLeft());top=Math.max(top,cutout.getSafeInsetTop());right=Math.max(right,cutout.getSafeInsetRight());bottom=Math.max(bottom,cutout.getSafeInsetBottom());}
             gearPosition.setMargins(dp(12)+left,dp(12)+top,dp(12)+right,0);gear.setLayoutParams(gearPosition);
+            if(lookButton!=null){lookPosition.setMargins(0,dp(12)+top,dp(72)+right,0);lookButton.setLayoutParams(lookPosition);}
             panel.setMargins(dp(12)+left,dp(68)+top,dp(12)+right,dp(12)+bottom);scroll.setLayoutParams(panel);
-            layerPosition.topMargin=dp(12)+top;layerBanner.setMaxWidth(Math.max(dp(100),getResources().getDisplayMetrics().widthPixels-dp(140)-left-right));layerBanner.setLayoutParams(layerPosition);
+            layerPosition.topMargin=dp(12)+top;if(takpWorld)layerPosition.leftMargin=dp(12)+left;
+            layerBanner.setMaxWidth(Math.max(dp(1),getResources().getDisplayMetrics().widthPixels-dp(takpWorld?176:140)-left-right));layerBanner.setLayoutParams(layerPosition);
             return insets;
         });
         setContentView(layout);immersive();
-        controller=new ControllerManager(this,profileWork,event->{
+        controller=new ControllerManager(this,profileWork,runtime.server.profiles.current(),event->{
             switch(event.optString("type")) {
-                case "button":if(event.optString("action").equals("ClientMenu")){setMenuOpen(true);break;}display.input.action(event.optString("action"),event.optBoolean("down"));break;
+                case "button":if(event.optString("action").equals("ClientMenu")){setMenuOpen(true);break;}if(event.optString("action").equals("MouseLookToggle")){if(event.optBoolean("down"))changeMouseLook(!display.input.mouseLookEnabled());break;}display.input.action(event.optString("action"),event.optBoolean("down"));break;
                 case "pointer":display.input.move((float)event.optDouble("x"),(float)event.optDouble("y"));break;
                 case "wheel":display.input.wheel(event.optInt("y"));break;
-                case "layer":showLayer(event.optInt("x")+1,event.optString("action"));break;
+                case "layer":display.input.setMouseLook(false);showLayer(event.optInt("x")+1,event.optString("action"));break;
+                case "capture":if(!event.optBoolean("down"))display.input.setMouseLook(false);break;
             }
         });
         setMenuOpen(false);display.connect();handler.post(refresh);
     }
     private void showLayer(int index,String name){handler.removeCallbacks(hideLayer);layerBanner.animate().cancel();layerBanner.setText("Layer "+index+" · "+name);layerBanner.setAlpha(1f);handler.postDelayed(hideLayer,1500);}
+    private void updateLookControls(){if(lookButton==null)return;boolean ready=runtime.alive()&&display.relative!=null&&!keyboardOpen&&!mappingsOpen&&!commandPending&&!failureShown;lookButton.setEnabled(ready);lookMenuButton.setEnabled(ready);}
+    private void changeMouseLook(boolean enabled){if(enabled&&(!gameInputActive()||display.relative==null||!runtime.alive())){display.input.setMouseLook(false);updateLookControls();Toast.makeText(this,"Mouse look unavailable; reopen the display after client input connects",Toast.LENGTH_SHORT).show();return;}display.input.setMouseLook(enabled);}
+    private void mouseLookChanged(boolean enabled){
+        display.mousePositionKnown=false;if(!enabled)display.releaseLookCapture();if(lookButton==null)return;
+        lookButton.setText(enabled?"Look on":"Look off");lookButton.setContentDescription(enabled?"Mouse look on. Tap to disable mouse look.":"Mouse look off. Tap to enable mouse look.");lookButton.setSelected(enabled);
+        handler.removeCallbacks(hideLayer);layerBanner.animate().cancel();layerBanner.setText(enabled?"Mouse look on":"Mouse look off");layerBanner.setAlpha(hasWindowFocus()?1f:0f);
+        if(enabled){display.requestFocus();display.captureMouseIfPresent();}else handler.postDelayed(hideLayer,1500);
+    }
     private int dp(int value){return Math.round(value*getResources().getDisplayMetrics().density);}
     private GradientDrawable panelBackground(int color){GradientDrawable background=new GradientDrawable();background.setColor(color);background.setCornerRadius(dp(16));return background;}
-    private void addMenuButton(String title,View.OnClickListener action){Button button=new Button(this);button.setText(title);button.setAllCaps(false);button.setTextColor(Color.WHITE);button.setMinHeight(dp(48));button.setBackground(new RippleDrawable(ColorStateList.valueOf(0x44ffffff),panelBackground(0x18ffffff),null));button.setOnClickListener(action);LinearLayout.LayoutParams params=new LinearLayout.LayoutParams(-1,dp(48));params.topMargin=dp(4);menu.addView(button,params);}
+    private Button addMenuButton(String title,View.OnClickListener action){Button button=new Button(this);button.setText(title);button.setAllCaps(false);button.setTextColor(Color.WHITE);button.setMinHeight(dp(48));button.setBackground(new RippleDrawable(ColorStateList.valueOf(0x44ffffff),panelBackground(0x18ffffff),null));button.setOnClickListener(action);LinearLayout.LayoutParams params=new LinearLayout.LayoutParams(-1,dp(48));params.topMargin=dp(4);menu.addView(button,params);return button;}
     private void immersive(){
         if(Build.VERSION.SDK_INT>=30){
             getWindow().setDecorFitsSystemWindows(false);
@@ -226,11 +248,15 @@ public final class ClientActivity extends Activity {
         private volatile LocalSocket inputSocket;
         private volatile RelativeInput relative;
         private volatile boolean closed;
+        private boolean mousePositionKnown;
+        private boolean releasingLookCapture;
+        private float mouseX,mouseY;
         final DisplayInput input=new DisplayInput(new DisplayInput.Sink(){
             public void key(int sym,boolean down){send(r->r.key(sym,down));}
             public void pointer(int x,int y,int buttons){if(!sendRelative(0,x,y,buttons))send(r->r.pointer(x,y,buttons));}
             public boolean relative(int dx,int dy,int buttons){return sendRelative(1,dx,dy,buttons);}
             public boolean buttons(int buttons){return sendRelative(2,0,0,buttons);}
+            public void mouseLook(boolean enabled){mouseLookChanged(enabled);}
         },runtime.server.profiles.current());
         interface Send {void write(RfbConnection connection)throws IOException;}
         ClientView(){super(ClientActivity.this);setFocusable(true);setFocusableInTouchMode(true);}
@@ -239,7 +265,7 @@ public final class ClientActivity extends Activity {
             if(closed||relative==null)return false;
             writer.execute(()->{try{RelativeInput target=relative;if(target!=null)target.send(type,x,y,mask);}catch(IOException e){closeInput();post(()->Toast.makeText(ClientActivity.this,"Relative input disconnected; reopen the display to restore mouse look",Toast.LENGTH_LONG).show());}});return true;
         }
-        void closeInput(){relative=null;try{if(inputSocket!=null)inputSocket.close();}catch(IOException ignored){}inputSocket=null;}
+        void closeInput(){relative=null;try{if(inputSocket!=null)inputSocket.close();}catch(IOException ignored){}inputSocket=null;post(()->{input.setMouseLook(false);updateLookControls();});}
         void connect(){new Thread(()->{
             try {
                 LocalSocket local=new LocalSocket();socket=local;
@@ -327,15 +353,32 @@ public final class ClientActivity extends Activity {
             if(!gameInputActive())return true;
             boolean mouse=event.isFromSource(InputDevice.SOURCE_MOUSE);
             if(event.getActionMasked()==MotionEvent.ACTION_CANCEL){input.releaseAll();return true;}
+            if(input.mouseLookEnabled()){
+                if(mouse){lookMouse(event);return true;}
+                if(event.getActionMasked()==MotionEvent.ACTION_POINTER_UP||event.getActionMasked()==MotionEvent.ACTION_POINTER_DOWN){input.lookTouchUp();return true;}
+                if(event.getActionMasked()==MotionEvent.ACTION_UP){input.lookTouchUp();performClick();return true;}
+                if(bounds.width()==0||bounds.height()==0)return true;
+                float x=(event.getX()-bounds.left)*frameWidth/bounds.width(),y=(event.getY()-bounds.top)*frameHeight/bounds.height();
+                if(event.getActionMasked()==MotionEvent.ACTION_DOWN){requestFocus();input.lookTouchDown(x,y);}else if(event.getActionMasked()==MotionEvent.ACTION_MOVE)input.lookTouchMove(x,y);
+                return true;
+            }
             if(event.getActionMasked()==MotionEvent.ACTION_UP){input.mouse("touch",1,false);if(mouse)mouseButtons(event);performClick();return true;}
             if(!position(event))return true;
             if(mouse)mouseButtons(event);else if(event.getActionMasked()==MotionEvent.ACTION_DOWN){requestFocus();input.mouse("touch",1,true);}
             return true;
         }
         private void mouseButtons(MotionEvent event){int mask=event.getButtonState();input.mouse("mouse-left",1,(mask&MotionEvent.BUTTON_PRIMARY)!=0);input.mouse("mouse-right",4,(mask&MotionEvent.BUTTON_SECONDARY)!=0);input.mouse("mouse-middle",2,(mask&MotionEvent.BUTTON_TERTIARY)!=0);}
+        void captureMouseIfPresent(){for(int id:InputDevice.getDeviceIds()){InputDevice device=InputDevice.getDevice(id);if(device!=null&&device.supportsSource(InputDevice.SOURCE_MOUSE)){requestPointerCapture();return;}}}
+        void releaseLookCapture(){if(hasPointerCapture()){releasingLookCapture=true;releasePointerCapture();}}
+        private void lookMouse(MotionEvent event){
+            if(!hasPointerCapture())requestPointerCapture();
+            if(mousePositionKnown)input.move((event.getX()-mouseX)*frameWidth/Math.max(1,getWidth()),(event.getY()-mouseY)*frameHeight/Math.max(1,getHeight()));
+            mouseX=event.getX();mouseY=event.getY();mousePositionKnown=true;mouseButtons(event);
+            if(event.getActionMasked()==MotionEvent.ACTION_SCROLL)input.wheel(Math.round(event.getAxisValue(MotionEvent.AXIS_VSCROLL)));
+        }
         @Override public boolean onGenericMotionEvent(MotionEvent event) {
             if(!gameInputActive())return true;
-            if(event.isFromSource(InputDevice.SOURCE_MOUSE)){position(event);mouseButtons(event);if(event.getAction()==MotionEvent.ACTION_SCROLL)input.wheel(Math.round(event.getAxisValue(MotionEvent.AXIS_VSCROLL)));return true;}
+            if(event.isFromSource(InputDevice.SOURCE_MOUSE)){if(input.mouseLookEnabled()){lookMouse(event);return true;}position(event);mouseButtons(event);if(event.getAction()==MotionEvent.ACTION_SCROLL)input.wheel(Math.round(event.getAxisValue(MotionEvent.AXIS_VSCROLL)));return true;}
             return super.onGenericMotionEvent(event);
         }
         @Override public boolean onCapturedPointerEvent(MotionEvent event){
@@ -343,7 +386,7 @@ public final class ClientActivity extends Activity {
             input.move(event.getX()*frameWidth/Math.max(1,getWidth()),event.getY()*frameHeight/Math.max(1,getHeight()));
             mouseButtons(event);if(event.getActionMasked()==MotionEvent.ACTION_SCROLL)input.wheel(Math.round(event.getAxisValue(MotionEvent.AXIS_VSCROLL)));return true;
         }
-        @Override public void onPointerCaptureChange(boolean captured){super.onPointerCaptureChange(captured);if(!captured)input.releaseAll();}
+        @Override public void onPointerCaptureChange(boolean captured){super.onPointerCaptureChange(captured);mousePositionKnown=false;if(captured)releasingLookCapture=false;else if(releasingLookCapture){releasingLookCapture=false;input.setMouseLook(false);}else input.releaseAll();}
         @Override public boolean performClick(){super.performClick();return true;}
         private void closeSocket(){closeInput();try{if(socket!=null)socket.close();}catch(IOException ignored){}}
         void close(){input.releaseAll();closed=true;writer.execute(this::closeSocket);writer.shutdown();handler.postDelayed(this::closeSocket,250);}

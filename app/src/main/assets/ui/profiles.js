@@ -12,6 +12,8 @@ function renderProfile(n){
   activeProfile=profile;document.body.dataset.profile=profile;$('runtime-heading-label').textContent=takp()?'TAKP server runtime':traditional()?'Traditional EQEmu runtime':'TRASC Custom runtime';$('world-profile').value=profile;
   document.querySelector('.eyebrow').textContent=takp()?'TAKP · AL’KABOR ADVENTURE':traditional()?'TRADITIONAL EQEMU · CLASSIC ADVENTURE':'TRIPTYCH · ANDROID';
   if(takp()){
+   $('client-cpu-profile').querySelector('option[value="accurate"]').textContent='Legacy math accuracy (recommended for TAKP)';
+   $('client-cpu-help').textContent='Legacy math accuracy restored visible TAKP NPC models in the Thor device test. It is the default for new TAKP launch settings; saved choices are retained. Brief visual glitches settled in that test. Relaunch after changing this option.';
    $('source-url').value=takpRepository;$('source-ref').value=takpRevision;
    $('maps-url').value='https://github.com/Russianranger/Mapstakp';$('maps-ref').value='95cb9322b853e7ec2f67158b87442286315042eb';
    $('runtime-online').textContent='Download / refresh TAKP build runtime';$('build-jobs').value='1';
@@ -60,7 +62,7 @@ function syncProfileControls(){
   $('traditional-tested-source').disabled=!!(busy||sessionAction||lastNative?.installing||lastNative?.session_busy||activeJob);
   for(const id of ['client-native-dll','client-fast-spells','client-load-pauses']){$(id).checked=false;$(id).disabled=true;}
   $('client-mouse-warp').disabled=takp()||!!(busy||sessionAction||!lastClientNative||lastClientNative.alive||lastClientNative.busy);
-  $('client-camera-help').textContent=takp()?'TAKP uses its supplied EQW input wrapper. Camera recentering has not been qualified for this client.':'Traditional camera recentering uses a separate bundled adapter for the verified RoF2 client. Original DirectInput is restored when the client stops. Disable and relaunch to revert.';
+  $('client-camera-help').textContent=takp()?'Use Look on/off beside the gear in the TAKP display to toggle mouse look. The right stick and touch drags steer the camera while it is on. Toggle it off for pointer input; opening launcher controls also turns it off. Controller mappings offer Toggle mouse look.':'Traditional camera recentering uses a separate bundled adapter for the verified RoF2 client. Original DirectInput is restored when the client stops. Disable and relaunch to revert.';
   if(takp()){
    for(const id of ['client-mouse-warp','client-name-sky','client-native-models']){$(id).checked=false;$(id).disabled=true;}
    $('takp-setup').disabled=clientBlocked||!!lastState?.running||!!(world?.source_ready&&world?.quests_ready&&world?.maps_ready&&world?.components?.assets?.imported);

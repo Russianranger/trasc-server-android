@@ -18,14 +18,15 @@ final class ControllerManager implements InputManager.InputDeviceListener {
     private final InputManager manager;
     private final Handler handler=new Handler(Looper.getMainLooper());
     private final ControllerInput input;
+    private final String worldProfile;
     private List<ControllerInput.Layer> layers=ControllerInput.defaultLayers();
     private long lastTick;
     private String loadError="";
     private int device=-1;
     private final Map<String,Float> digital=new HashMap<>(),analog=new HashMap<>();
     private final Runnable tick=new Runnable(){@Override public void run(){long now=SystemClock.uptimeMillis();input.tick((now-lastTick)/1000f);lastTick=now;handler.postDelayed(this,16);}};
-    ControllerManager(Context context,File work,Events events) {
-        this.events=events;profile=new File(work,"client/controller.json");
+    ControllerManager(Context context,File work,String worldProfile,Events events) {
+        this.events=events;this.worldProfile=worldProfile;profile=new File(work,"client/controller.json");
         input=new ControllerInput(new ControllerInput.Sink(){
             public void button(String action,boolean down){emit("button",action,down,0,0);}
             public void pointer(float dx,float dy){emit("pointer","",false,dx,dy);}
@@ -51,10 +52,11 @@ final class ControllerManager implements InputManager.InputDeviceListener {
     }
     JSONObject state()throws JSONException {
         return serialize(layers,input.deadzone,input.sensitivity).put("sources",new JSONArray(ControllerInput.SOURCES))
-            .put("actions",new JSONArray(ControllerInput.ACTIONS)).put("presets",presets()).put("active",input.active()).put("error",loadError)
+            .put("actions",new JSONArray(actions())).put("presets",presets()).put("active",input.active()).put("error",loadError)
             .put("current_layer",input.currentLayer()).put("current_layer_name",input.layerName()).put("max_layers",ControllerInput.MAX_LAYERS);
     }
     String layerLabel(){return (input.currentLayer()+1)+"/"+input.layerCount()+" · "+input.layerName();}
+    List<String> actions(){return ControllerInput.actions(worldProfile);}
     static JSONObject preset(String name)throws JSONException {
         if(name.equals("thor"))return serialize(ControllerInput.defaultLayers(),.2f,700);
         return serialize(ControllerInput.legacyLayers(ControllerInput.preset(name,false),ControllerInput.preset(name,true),name.equals("legacy")?"None":"L1"),.2f,name.equals("inventory")?450:700);
@@ -74,6 +76,7 @@ final class ControllerManager implements InputManager.InputDeviceListener {
             next=ControllerInput.legacyLayers(bindings(data.getJSONObject("bindings")),alternate,data.optString("modifier","None"));
         }
         float deadzone=(float)data.getDouble("deadzone"),speed=(float)data.getDouble("sensitivity");
+        List<String> available=actions();for(ControllerInput.Layer layer:next)for(String action:layer.bindings.values())if(!action.equals("Inherit")&&!available.contains(action))throw new IOException("Controller action is unavailable for this world: "+action);
         // Validate before changing disk or the active profile. Older saved maps migrate without replacing custom keys.
         ControllerInput check=new ControllerInput(new ControllerInput.Sink(){public void button(String a,boolean b){}public void pointer(float x,float y){}public void wheel(int v){}});
         check.configure(next,deadzone,speed);
@@ -95,6 +98,7 @@ final class ControllerManager implements InputManager.InputDeviceListener {
     }
     boolean key(KeyEvent event) {
         if(!accepts(event))return false;
+        if(event.getAction()==KeyEvent.ACTION_DOWN&&event.getRepeatCount()>0)return true;
         String source;
         switch(event.getKeyCode()) {
             case KeyEvent.KEYCODE_BUTTON_A:source="A";break;case KeyEvent.KEYCODE_BUTTON_B:source="B";break;
@@ -107,7 +111,7 @@ final class ControllerManager implements InputManager.InputDeviceListener {
             case KeyEvent.KEYCODE_DPAD_LEFT:source="DpadLeft";break;case KeyEvent.KEYCODE_DPAD_RIGHT:source="DpadRight";break;
             default:return false;
         }
-        if(event.getAction()==KeyEvent.ACTION_DOWN||event.getAction()==KeyEvent.ACTION_UP){digital.put(source,event.getAction()==KeyEvent.ACTION_DOWN?1f:0f);input.value(source,Math.max(digital.get(source),analog.getOrDefault(source,0f)));}
+        if(event.getAction()==KeyEvent.ACTION_DOWN||event.getAction()==KeyEvent.ACTION_UP){digital.put(source,event.getAction()==KeyEvent.ACTION_DOWN?1f:0f);input.physicalValue(source,Math.max(digital.get(source),analog.getOrDefault(source,0f)),event.getAction()==KeyEvent.ACTION_DOWN);}
         return true;
     }
     boolean motion(MotionEvent event) {

@@ -1,91 +1,78 @@
-# TRASC Android 0.6.20 / code 69
+# TRASC Android 0.6.21 / code 70
 
-All seven launch buttons align in one row on landscape/wide screens and compact
-grouped rows on narrow phones, on every tab in all three worlds and every
-launcher theme. Stacked labels keep a shared button height;
-Runtime, Server and Client headings and dividers distinguish each group.
-Stop client stays available while a server operation is busy.
+TAKP gains a compact **Look off / Look on** toggle beside the embedded client's
+gear button. Look starts off and is transient. When enabled, the right stick
+and touch drags steer the camera through a dedicated held right-button state;
+look-mode touch does not also send a left click. **Toggle mouse look** is an
+optional controller action, with no changes to saved bindings or defaults.
+The gear menu also offers **Enable mouse look**.
 
-The 0.6.19 TAKP camera adjustment remains included: relative movement uses a
-0.15 gain while the right mouse button is held. Signed fractional motion is
-retained, so slow movement still reaches the client. A configured
-700-pixel/second controller rate becomes 105 pixels/second during camera look;
-menu movement and other worlds keep their previous rates. The latest device
-report did not reassess camera behavior, so this adjustment still needs a
-Thor test. Cursor-warp feedback has not been established as the cause of the
-reported fast camera.
+Opening a menu, keyboard or controller mappings, losing focus, pausing/leaving
+the client or losing input capture disables the toggle. Controller disconnect,
+rebind, removal or layer changes also release it. Physical/controller right
+mouse-button holds remain independently owned when look is toggled off.
+Custom and Traditional retain their existing input. The new toggle still
+needs an AYN Thor test.
 
-The latest Thor logs record all 156 Paineel NPC creations. The user also reports
-NPC dialogue and doors opening while NPC models remain invisible. Server-side
-NPC activity is established. Speech and door interactions do not prove that
-NPC spawn packets reached the client; visibility remains unresolved, and this
-release does not claim an NPC fix. TAKP retains the
-server's existing Spawns/Netcode logging, recording actual spawn creations and
-coordinates plus packet errors where reported. Live NPC counts and
-nearby-distance snapshots are unavailable.
+The latest Thor test confirms that **Accurate / Legacy math accuracy CPU**
+resolves the invisible NPC models. Screenshots show normal skeleton and ghost
+models; brief visual glitches settled. Keep the confirmed Accurate setting
+for TAKP. This device result establishes model visibility without proving the
+precise numerical fault inside the translated game. This release does not
+change the server, renderer or client DLLs.
 
-ARM64 server qualification passed checks of the pinned server's native NPC
-spawn encoder with bulk packets containing 1, 56 and 100 NPCs, plus 156
-individual `NewSpawn` packets. This verifies architecture-specific packet
-construction; it does not establish delivery or model rendering on the Thor.
-The deployed server and client renderer remain unchanged.
+The 0.6.19 TAKP camera sensitivity remains included: relative motion uses a
+0.15 gain while the right mouse button is held, including the new look toggle.
+Signed fractional motion is retained. A configured 700-pixel/second controller
+rate becomes 105 pixels/second during camera look; ordinary pointer movement
+and the other worlds keep their rates. Compare look motion and menus on-device.
 
-For the next NPC check, stand near the Paineel gate and enter the native command
-`/target Tormented`. Report whether the Target window shows a name and HP while
-the model remains invisible, then camp and export fresh logs. This command is
-supported by the original TAKP client and requires no additional client mod.
+The grouped launcher controls remain available on every tab across all worlds
+and themes. Seven buttons align in one row on landscape/wide screens, with
+compact grouped rows on narrow phones. Stacked labels, matching heights and
+Runtime, Server and Client headings/dividers distinguish the controls. Stop
+client remains available while the server is busy.
 
-On 0.6.18, the user confirmed Android login, character creation, entry into
-Paineel, four stable minutes in the world and camp. Both the executable and
-original spell-file checksums were accepted by the server. A host probe using
-the same database seed also recorded 156 NPC creation events in Paineel with
-clean zone startup.
+Install as an APK update. Keep the existing Accurate CPU choice, client, Wine
+prefix, database and deployed server build; no reimport, reset, repeated
+Prepare or server rebuild is needed. All 21 native launcher components are
+reused from verified 0.6.20 with the existing preview signing certificate.
+The 0.6.18 login header repair and explicit Wine crash reporting remain included.
 
-Install this APK as an update, open the TAKP runtime, and start the server and
-client. Keep the existing client, Wine prefix, database and server build; no
-reimport, reset, repeated Prepare or server rebuild is needed. The 0.6.18 login
-header repair and explicit Wine crash reporting remain included.
+Windows TAKP 2.1c's original `spells_en.txt` stays preserved during Prepare and
+Export & sync. Server exports retain the separate `spells_us.txt` and
+`SkillCaps.txt` names. Legacy ZIPs containing only `spells_us.txt` remain accepted.
 
-Windows TAKP 2.1c's original `spells_en.txt` is accepted and preserved during
-Prepare and Export & sync. Server exports are `spells_us.txt` and `SkillCaps.txt`;
-their filenames stay as exported, with no rename of the client's spell file.
-Legacy ZIPs containing only `spells_us.txt` remain accepted.
+TAKP World sits beside TRASC Custom and Traditional EQEmu. Each world owns its
+server runtime, database, client and Wine prefix. Default, Monk and Necromancer
+launcher themes remain available across all three worlds.
 
-TAKP World joins TRASC Custom and Traditional EQEmu in the world selector.
-Each world has independent server files, database, client and Wine prefix.
-The Monk and Necromancer launcher themes remain available across all worlds.
+For a fresh TAKP installation, install the server runtime, **Download TAKP world
+files**, **Initialize fresh TAKP database**, and **Create local TAKP account**.
+Builds compile the pinned Servertakp fork with its existing playerbots and stage
+nine ARM64 binaries. The matching quests, maps, four-part Al’Kabor seed and eleven
+bot migrations use separate TAKP setup paths. Additional bot gameplay work is
+assessment only and is not implemented by this release.
 
-For a fresh TAKP setup, install the server runtime, **Download TAKP world files**,
-**Initialize fresh TAKP database**, and **Create local TAKP account**. Builds
-compile the pinned Servertakp fork with playerbots and stage nine ARM64 binaries
-before deployment. The matching queststakp and Mapstakp forks, Al’Kabor database
-and eleven bot migrations use separate TAKP setup paths.
+For a new client, import the complete Windows TAKP ZIP, install this world's
+client runtime and DirectX helpers, then **Prepare client**. Preparation installs
+the verified eqgame, EQW and D3D8 patches, writes the local UDP 6000 login endpoint
+and copies the two server exports without changing `spells_en.txt`. Launch uses
+Windows `eqgame.exe`; `eqmac.exe` remains its checksum resource.
 
-For a new client installation, import your complete Windows TAKP client ZIP, install this profile’s
-client runtime and DirectX helpers, then **Prepare client**. The launcher
-installs the supplied, verified eqgame, EQW and D3D8 patches, writes the local
-TAKP login endpoint on UDP 6000, and copies the server's spells_us.txt export
-and SkillCaps.txt without changing the client's original spells_en.txt.
-Launch uses Windows eqgame.exe; eqmac.exe remains its checksum resource.
-Proprietary game assets must come from your own complete client ZIP.
+The publication workflow requires full Python/browser, management/native input,
+DirectX, Android assembly/lint, signing/native reuse and ARM64 server checks.
+ARM64 qualification includes nine server binaries, all 156 Paineel NPC creation
+events and native bulk/individual spawn encoding. The release verification
+report records the completed checks and independently verified artifact hashes.
 
-Install this APK as an update. This build preserves the existing preview
-signing certificate and all 21 verified native launcher components from 0.6.19.
-Existing Custom and Traditional profile files stay in their own locations.
-The pinned server binaries and runtimes remain unchanged.
+Keep Accurate selected, test Look on with the right stick and touch, then switch
+Look off and test menu clicks. Open the gear/keyboard and resume from the
+background to check that look is released. Camp and export fresh logs for any
+input or rendering regression. Zoning and playerbot gameplay remain separate
+device acceptance work. TAKP uses EQW; RoF2 DLL hooks, launcher skin activation,
+Spire editing and PEQ era presets remain unavailable in this world.
 
-Version 0.6.20 passed all three main CI jobs, 408 Python tests without skips,
-all thirteen browser programs, management/native input and real DirectX checks,
-Android assembly/lint, signing and all 21 native reuse checks. Toolbar checks
-cover 54 world/theme/viewport combinations. ARM64 qualification passed all
-thirteen checks, including all nine production binaries, 156 Paineel NPC
-creation events and the native spawn encoding checks. The published APK,
-source archive, receipt and manifest hashes match the downloaded artifacts.
-See [0.6.20 release verification](https://github.com/Russianranger/trasc-server-android/blob/main/docs/release-status-0620.md). Camera behavior, NPC
-visibility, graphics/audio, zoning and bots require further device testing.
-TAKP uses its EQW input wrapper;
-RoF2 DLL hooks, launcher skin activation, Spire editing and PEQ era presets are
-unavailable in the TAKP profile. Use the in-game UI menu for TAKP skins.
-
-See the [TAKP setup and test guide](https://github.com/Russianranger/trasc-server-android/blob/codex/takp-world/docs/takp-world-0616.md)
-for the source pins, setup order and device checks.
+See the [TAKP setup and test guide](https://github.com/Russianranger/trasc-server-android/blob/main/docs/takp-world-0616.md),
+[0.6.21 release verification](https://github.com/Russianranger/trasc-server-android/blob/main/docs/release-status-0621.md)
+and [proposed Bots tab](https://github.com/Russianranger/trasc-server-android/blob/main/docs/bot-manager-design.md).

@@ -78,11 +78,10 @@ const server=http.createServer((req,res)=>{const name=req.url==='/'?'index.html'
   await page.evaluate(()=>{fixture.client=false;fixture.jobs.push({id:'busy',operation:'import_source',status:'running'});poll();});await page.waitForFunction(()=>lastState.jobs.some(j=>j.id==='busy'));assert(await page.isDisabled('#build-server'));
   await page.evaluate(()=>{fixture.jobs=[];poll();});await page.waitForFunction(()=>!document.getElementById('build-server').disabled);
   await page.locator('nav [data-tab=build]').click();await page.selectOption('#build-jobs','1');await page.click('#build-server');
-  await page.waitForFunction(()=>lastState.build_ready);
+  await page.waitForFunction(()=>lastState.build_ready&&busy===0&&!polling);
   assert((await page.textContent('#build-status')).includes('staged'));
   for(const id of ['start-server','deploy-build','rollback-build','export-client','client-prepare'])assert(await page.isDisabled('#'+id));
   assert(!(await page.isDisabled('#client-import')),'Traditional client ZIP import is available before deployment');
-  await page.waitForFunction(()=>busy===0&&!polling);
   await page.evaluate(async()=>{fixture.ready=true;await poll();});
   await page.waitForFunction(()=>!document.getElementById('deploy-build').disabled);
   assert(await page.isDisabled('#start-server'),'Server remains gated until deployment');
