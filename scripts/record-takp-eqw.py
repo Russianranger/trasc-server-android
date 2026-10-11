@@ -29,6 +29,8 @@ def record(source, output, root):
         raise ValueError('EQW camera helper must be a Windows x86 PE32 DLL')
     if b'TRASC_TAKP_WINE_RAW_LOOK_V2' not in data:
         raise ValueError('EQW DLL is missing the camera repair identity')
+    if b'TRASC_TAKP_CAMERA_TRACE_V1' not in data:
+        raise ValueError('EQW DLL is missing the bounded camera diagnostics identity')
     output.mkdir(parents=True, exist_ok=True)
     shutil.copyfile(dll, output/'eqw.dll')
     shutil.copyfile(source/'LICENSE.txt', output/'eqw-LICENSE.txt')
@@ -38,7 +40,8 @@ def record(source, output, root):
     for folder in (output/'source/eqw_takp/Release', output/'source/eqw_takp/x64'):
         if folder.exists(): shutil.rmtree(folder)
     patches = {str(path.relative_to(root)):digest(path) for path in (
-        root/'native/takp_camera_recenter.h', root/'scripts/prepare-takp-eqw.py', root/'scripts/record-takp-eqw.py')}
+        root/'native/takp_camera_recenter.h', root/'native/takp_camera_trace.h', root/'native/takp_dinput_observation.h',
+        root/'scripts/prepare-takp-eqw.py', root/'scripts/record-takp-eqw.py')}
     receipt = {'format':1, 'architecture':'x86', 'helper':'eqw.dll', 'sha256':digest(dll),
         'bytes':len(data), 'source_repository':'https://github.com/CoastalRedwood/eqw_takp',
         'source_commit':recipe.COMMIT, 'source_tag':'v1.0.2', 'upstream_game_input_sha256':recipe.INPUT_SHA,
@@ -46,6 +49,7 @@ def record(source, output, root):
         'upstream_source_sha256':recipe.SOURCE_SHA,
         'patched_source_sha256':{name:digest(source/'eqw_takp'/name) for name in recipe.SOURCE_SHA},
         'patch_files':patches, 'marker':'TRASC_TAKP_WINE_RAW_LOOK_V2',
+        'trace_marker':'TRASC_TAKP_CAMERA_TRACE_V1', 'camera_behavior':'0.6.23 V2 unchanged; format/queue/consumer diagnostics only',
         'compiler':'Microsoft Visual C++ v143, Release x86', 'build_commit':os.environ.get('GITHUB_SHA'),
         'build_run':int(os.environ.get('GITHUB_RUN_ID','0')), 'license_sha256':digest(source/'LICENSE.txt')}
     (output/'eqw-camera-build.json').write_text(json.dumps(receipt,indent=2)+'\n')
