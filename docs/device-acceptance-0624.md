@@ -7,7 +7,9 @@ this pass adds evidence collection. Keep separate results for each world.
 
 ## Preserve the installation
 
-Install the verified APK as an update without uninstalling. Preserve databases,
+Install the verified 0.6.24/code73 APK as an update without uninstalling. Confirm
+the version in Android app information; the inherited web footer still labels
+0.6.23 and is not the package version. Preserve databases,
 saved bots, compiled servers, imported clients, Wine prefixes, installed
 runtimes, profiles, controller bindings, renderer/CPU options and themes. Record
 the current owner/roster, important inventory/bank items, hotbars, personal
@@ -211,7 +213,7 @@ or downloading runtimes.
    leaving mixed old/new profiles. Test forced interruption/reopen on a spare
    restored test installation, not the only copy of a live session.
 5. After successful restore, reopen the app twice, check selected world/theme,
-   each world's gear/Look visibility and controller bindings, then **Start
+   each world's gear position, TAKP Look tile visibility and controller bindings, then **Start
    runtime → Bots → Refresh roster**. Verify databases, owner inventory/bank,
    existing/new bots, social/hotbar settings, clients/prefixes, renderer options
    and build/deploy receipts. Review login IP before server/client startup,

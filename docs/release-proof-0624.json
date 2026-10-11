@@ -1,0 +1,304 @@
+{
+  "format": "trasc-release-proof-1",
+  "version": "0.6.24",
+  "version_code": 73,
+  "qualified_source": {
+    "branch": "codex/takp-world",
+    "aliases": [
+      "codex/takp-input-bots-backup-0624"
+    ],
+    "commit": "02a1af7aa8d7a808aafcf4421971a15e9110a8cc",
+    "tree": "cef59fa3bd5a1b9f655b9a2d48eec02ec6a53531",
+    "base_main": "a029afaecd6567cfd8309418f0e7c86b7afb9f69",
+    "pr": {
+      "number": 30,
+      "url": "https://github.com/Russianranger/trasc-server-android/pull/30",
+      "merged": true,
+      "merge_commit": "dab13281d191e94ea06c3e8ad1fcf1f28f08dc6e",
+      "merged_at": "2026-10-11T02:10:18Z",
+      "merge_tree_equal_qualified_source": true
+    }
+  },
+  "release": {
+    "tag": "preview",
+    "tag_commit": "02a1af7aa8d7a808aafcf4421971a15e9110a8cc",
+    "url": "https://github.com/Russianranger/trasc-server-android/releases/tag/preview",
+    "assets": [
+      {
+        "id": 629529129,
+        "name": "launcher-sources.tar.gz",
+        "size": 237596196,
+        "digest": "sha256:8dcb8138f21c80c0056e2734d97952834e2c3a9a17f92a9c3997d8ad69f5a5d9",
+        "url": "https://github.com/Russianranger/trasc-server-android/releases/download/preview/launcher-sources.tar.gz",
+        "updated_at": "2026-10-11T02:08:47Z"
+      },
+      {
+        "id": 629529125,
+        "name": "native-reuse.json",
+        "size": 4817,
+        "digest": "sha256:025b0ab082d577c613817d87281fd7f3c37da76acb4fa32206f60e9122647bd1",
+        "url": "https://github.com/Russianranger/trasc-server-android/releases/download/preview/native-reuse.json",
+        "updated_at": "2026-10-11T02:08:41Z"
+      },
+      {
+        "id": 629529128,
+        "name": "preview-build.json",
+        "size": 765,
+        "digest": "sha256:436ce2fc4de17f30bba2730a18f2a05143dc22288f9673b3f04e0bb5116968c8",
+        "url": "https://github.com/Russianranger/trasc-server-android/releases/download/preview/preview-build.json",
+        "updated_at": "2026-10-11T02:08:41Z"
+      },
+      {
+        "id": 629529126,
+        "name": "trasc-server-android-preview.apk",
+        "size": 18866614,
+        "digest": "sha256:df748f8794aae4e33afe73c3c2eef6018ef77b2c3995112962f6304a37874feb",
+        "url": "https://github.com/Russianranger/trasc-server-android/releases/download/preview/trasc-server-android-preview.apk",
+        "updated_at": "2026-10-11T02:08:42Z"
+      }
+    ],
+    "download_verification": {
+      "source_commit": "02a1af7aa8d7a808aafcf4421971a15e9110a8cc",
+      "build_run": 38103647834,
+      "version": "0.6.24",
+      "version_code": 73,
+      "apk_bytes": 18866614,
+      "apk_sha256": "df748f8794aae4e33afe73c3c2eef6018ef77b2c3995112962f6304a37874feb",
+      "exact_bundled_source_assets": 112,
+      "exact_source_archive_files": 522,
+      "preserved_0623_source_sha256": "941374d293e92d3a31b0eccc6fdeb09143294266ab2338ea15fc049de19ceaeb",
+      "source_archive_sha256": "8dcb8138f21c80c0056e2734d97952834e2c3a9a17f92a9c3997d8ad69f5a5d9",
+      "native_reuse_manifest_sha256": "025b0ab082d577c613817d87281fd7f3c37da76acb4fa32206f60e9122647bd1",
+      "native_components_equal_verified_0623_apk": 21,
+      "exact_camera_helper_sha256": "495d6e1711e21f012d1f8c9581af74fdbdccac5f45e2e93508e40b4bd3dbca1d",
+      "apk_signature_verified": true,
+      "signing_certificate_sha256": "ff9c09cdc3e2404d1d7f72d61ce2f8651464f5e03dff340f70bd4df28c70e869",
+      "aapt_package": "io.github.russianranger.trasc.preview",
+      "aapt_version_name": "0.6.24",
+      "aapt_version_code": 73
+    }
+  },
+  "ci": {
+    "run": {
+      "id": 38103647834,
+      "status": "completed",
+      "conclusion": "success",
+      "head_sha": "02a1af7aa8d7a808aafcf4421971a15e9110a8cc",
+      "created_at": "2026-10-11T01:59:08Z",
+      "updated_at": "2026-10-11T02:08:50Z"
+    },
+    "jobs": [
+      {
+        "id": 114364517379,
+        "name": "apk",
+        "status": "completed",
+        "conclusion": "success",
+        "started_at": "2026-10-11T01:59:11Z",
+        "completed_at": "2026-10-11T02:07:07Z",
+        "url": "https://github.com/Russianranger/trasc-server-android/actions/runs/38103647834/job/114364517379"
+      },
+      {
+        "id": 114364517470,
+        "name": "modern-bots (traditional, Russianranger/Server, 4aceae18b94ffaafc08e2b17bc41cd72c77f795d, .)",
+        "status": "completed",
+        "conclusion": "success",
+        "started_at": "2026-10-11T01:59:14Z",
+        "completed_at": "2026-10-11T02:01:23Z",
+        "url": "https://github.com/Russianranger/trasc-server-android/actions/runs/38103647834/job/114364517470"
+      },
+      {
+        "id": 114364517528,
+        "name": "modern-bots (custom, Russianranger/Triptych-Triumvirate, 8f6ca0795f424a7b4eab750ff38fc6473d48375c...",
+        "status": "completed",
+        "conclusion": "success",
+        "started_at": "2026-10-11T01:59:14Z",
+        "completed_at": "2026-10-11T02:02:03Z",
+        "url": "https://github.com/Russianranger/trasc-server-android/actions/runs/38103647834/job/114364517528"
+      },
+      {
+        "id": 114364517553,
+        "name": "takp-server",
+        "status": "completed",
+        "conclusion": "success",
+        "started_at": "2026-10-11T01:59:14Z",
+        "completed_at": "2026-10-11T02:08:32Z",
+        "url": "https://github.com/Russianranger/trasc-server-android/actions/runs/38103647834/job/114364517553"
+      },
+      {
+        "id": 114366050811,
+        "name": "preview",
+        "status": "completed",
+        "conclusion": "success",
+        "started_at": "2026-10-11T02:08:34Z",
+        "completed_at": "2026-10-11T02:08:49Z",
+        "url": "https://github.com/Russianranger/trasc-server-android/actions/runs/38103647834/job/114366050811"
+      }
+    ],
+    "tests": {
+      "python": 505,
+      "python_skips": 0,
+      "all_browser_fixtures": "passed",
+      "android_assembly": "passed",
+      "android_lint": {
+        "errors": 0,
+        "warnings": 37
+      },
+      "signing_certificate_sha256": "ff9c09cdc3e2404d1d7f72d61ce2f8651464f5e03dff340f70bd4df28c70e869",
+      "native_payload_reuse": "21 unchanged from independently verified 0.6.23",
+      "takp_production_checks": 14,
+      "modern_custom_checks": 28,
+      "modern_traditional_checks": 28
+    },
+    "evidence_root": "qualification-0624/ci",
+    "artifacts": [
+      {
+        "id": 11688414422,
+        "name": "takp-launcher-validation-reports",
+        "size_in_bytes": 68746529
+      },
+      {
+        "id": 11688219323,
+        "name": "modern-bots-custom-arm64-verification",
+        "size_in_bytes": 27218
+      },
+      {
+        "id": 11688194697,
+        "name": "takp-launcher-release",
+        "size_in_bytes": 256355930
+      },
+      {
+        "id": 11688179313,
+        "name": "modern-bots-traditional-arm64-verification",
+        "size_in_bytes": 26506
+      },
+      {
+        "id": 11688628331,
+        "name": "takp-bookworm-arm64-verification",
+        "size_in_bytes": 861275
+      }
+    ]
+  },
+  "native": {
+    "takp": {
+      "pin": "03e934d0fdf460e2e6ce34c0a25a3e05d9f7e167",
+      "pr": 2,
+      "pr_url": "https://github.com/Russianranger/Servertakp/pull/2",
+      "merged": true,
+      "merge_commit": "b28b529e857784def1671b3d2759d0a7ac6c0084",
+      "merged_at": "2026-10-11T02:10:16Z",
+      "qualified_tree": "1785e3039a216cd8a220de26c51aaefc73101e2d",
+      "native_pr_run": 38102400606,
+      "production_receipt": {
+        "format": 1,
+        "profile": "takp",
+        "architecture": "arm64",
+        "source_commit": "03e934d0fdf460e2e6ce34c0a25a3e05d9f7e167",
+        "recipe": "eqmac-bookworm-arm64-luajit-v1",
+        "seed_sha256": "6f5a61206b22d3d70c20ece7fb8c617bbe0849d286b2cb48279841f4c6103433",
+        "checks": {
+          "complete_pinned_source_and_vendored_dependencies": true,
+          "takp_quests_flat_maps_and_opcodes": true,
+          "native_standalone_bot_policy_and_yaulp_regressions": true,
+          "native_production_build_and_nine_elf_dependency_checks": true,
+          "native_mac_spawn_encryption_opcode_and_literal_224_byte_client_layout": true,
+          "complete_four_part_seed_and_all_eleven_bot_migrations": true,
+          "existing_database_refused_without_replacement": true,
+          "local_account_creation_with_salted_password": true,
+          "local_login_world_and_dynamic_zone_startup": true,
+          "qeynos_zone_map_lua_boot_and_no_sql_schema_errors": true,
+          "paineel_zone_boot_with_pinned_content_and_all_156_seeded_npc_creation_events": true,
+          "actual_two_file_unfiltered_takp_export": true,
+          "native_zone_and_launcher_clean_shutdown": true,
+          "custom_workspace_and_credentials_preserved": true
+        },
+        "result": "passed",
+        "spawn_wire": {
+          "format": 1,
+          "wire_spawn_bytes": 224,
+          "bulk_packet_sizes": {
+            "1": 78,
+            "56": 1021,
+            "100": 1700
+          },
+          "individual_new_spawn_packets": 156,
+          "individual_encrypted_bytes": 12791,
+          "native_probe_stdout": "internal_spawn_bytes=305\nbulk_packets=3 new_spawn_packets=156",
+          "result": "passed"
+        },
+        "database": "takp_c7f0c0c755ea",
+        "paineel_seeded_npc_creation_count": 156
+      },
+      "build_receipt": {
+        "format": 1,
+        "profile": "takp",
+        "recipe": "eqmac-bookworm-arm64-luajit-v1",
+        "recipe_sha256": "d3cac2250042d68e6350d9856f76c457e7aa3fae8a618e6f9d1d38e7c2335445",
+        "source": {
+          "commit": "03e934d0fdf460e2e6ce34c0a25a3e05d9f7e167",
+          "tree_sha256": "3bcfc1f604909594a33ebfa8217d71f7fade167f4d439492fbe75e8ce0f44cf5",
+          "files": 5552,
+          "bytes": 147902744,
+          "bundled_dependencies": true
+        },
+        "source_tree_sha256": "3bcfc1f604909594a33ebfa8217d71f7fade167f4d439492fbe75e8ce0f44cf5",
+        "runtime_identity": "f03644bc85eaa178faa437e9c5a284160495b0df14af1a10befc12cbd2a558d6",
+        "built": 1791684484.4574072,
+        "binaries": {
+          "world": "19fb1c670a8221415ce6af696ae0f64fbcacea127e00c0ca1a2bd66a565e355e",
+          "zone": "1ef5e8c0fdd57761efa1da4fbbe6fe44398d0ee601cebedf7eb51d5bcbecc0c3",
+          "loginserver": "be1892526d5364c678bea05fd30398ae89ad845ceb84327e88048710e48c8818",
+          "shared_memory": "a11198654a827e9ba8f0295937a5e4def687787b5c904b14d3c5b1c4266c20dc",
+          "ucs": "9c424427c3cfedae10368bac25f48a35b3f0cd690b0eb61f7b9c9a2afcf05904",
+          "eqlaunch": "ae1d557413a53a5f93b5fc76bec4a5206fa615044859102b4c9c43bf86e0e892",
+          "queryserv": "a7268edbe6a6f4dbab092ac5f14a6b1a0922b0d7a7752358cc0ba171f40d5408",
+          "export_client_files": "5d5684807e74a861e374511ec1fb882b38807f77ecb7f852c7e7d6ee045e36d9",
+          "import_client_files": "6db907b3339b68060dbfd16826e31c01f628bded3335b9456610830b8ba69bb9"
+        }
+      }
+    },
+    "eqw": {
+      "recipe_commit": "f6f354b41d41cf93fc4d2d0672c183771856083f",
+      "run": 38102758503,
+      "dll_sha256": "495d6e1711e21f012d1f8c9581af74fdbdccac5f45e2e93508e40b4bd3dbca1d",
+      "dll_bytes": 93696,
+      "camera_reversal_fixed": false
+    }
+  },
+  "all_profile_host_qualification": "docs/all-session-qualification-0624.json",
+  "ci_log_sha256": {
+    "ci/apk-job.log": "997b591d2139a0159cf5f421d44e817c37b716ca1ec9e6a65fc1dc5cb407fa4d",
+    "ci/takp-job.log": "9bf10aff46f3485f7fcf6026b265d267140a010902eadbd1e411a490cb12ed2a",
+    "ci/custom-job.log": "deb3857f89631bae8843a488ca7b7314e11e4af79e81f8965f5de82bbc010444",
+    "ci/traditional-job.log": "fcdbfc607d8e94195ffe3eac7c50354149b37cf32db5ba549ce48c7c2d7ae535",
+    "ci/preview-job.log": "40a99e7fb65c1b9cd717cbc6cfaa7c8704306617ca0e749c1d580d45965a8fa3"
+  },
+  "recovery": {
+    "latest_prior_verified_version": "0.6.23/code72",
+    "prior_qualified_source": "cf6bec71d6f3171de27851d7df625cf84da096f8",
+    "prior_pr": 29,
+    "prior_ci": 38081870434,
+    "accessible_launcher_initially_clean": true,
+    "accessible_active_builds_at_recovery": false,
+    "inaccessible_previous_workspace": "/workspace/scratch/68f7303215aa",
+    "unpublished_prior_workspace_work": "unknown; not assumed",
+    "audited_launcher_branch_count": 46,
+    "audited_pull_requests": 30,
+    "audited_release_tags": [
+      "preview",
+      "traditional-runtime-v1",
+      "client-runtime-v1",
+      "runtime-v1",
+      "v0.6.2",
+      "v0.6",
+      "v0.5"
+    ]
+  },
+  "outstanding": [
+    "Physical AYN Thor camera reversal: diagnostics only; V2 motion delivery unchanged.",
+    "TAKP Yaulp after explicit device source update/build/deploy.",
+    "Physical all-profile Android SAF, large-file provider, heap and lifecycle acceptance.",
+    "All-world bot social/hotbar device execution and roundtrip acceptance.",
+    "TAKP NPC visibility and Traditional StoneUI remain separate.",
+    "Inherited launcher footer labels Preview 0.6.23; package manifest independently verifies 0.6.24/code73. Cosmetic label is retained pending the next code change."
+  ]
+}
