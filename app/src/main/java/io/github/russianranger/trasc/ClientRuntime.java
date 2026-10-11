@@ -69,6 +69,7 @@ final class ClientRuntime {
         return result;
     }
     private void begin()throws IOException {
+        server.requireRecovered();
         synchronized(server) {
             if(busy||server.sessionBusy||server.installing)throw new IOException("Finish the current runtime/session operation first");
             busy=true;
@@ -124,6 +125,7 @@ final class ClientRuntime {
         finally {busy=false;if(offline==null)archive.delete();}
     }
     synchronized JSONObject start(JSONObject options)throws Exception {
+        server.requireRecovered();
         begin();boolean started=false,compilerLease=false;
         try {
             Map<String,Object> profileOptions=ClientProfilePolicy.overrides(server.profiles.current(),options.optString("mode","client"));

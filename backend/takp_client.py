@@ -13,10 +13,11 @@ WINDOWS_FILES = ('eqgame.exe', 'eqmain.dll', 'eqgfx_dx8.dll')
 PATCHES = {
     'd3d8.dll': '122928cfe225c25d30decf7184a5d37e490cecf3b58256ba3206c7e1853f8ab8',
     'eqgame.dll': 'f0ca8e4bdcf3875419ecb1067a95bd6dbf8197e564f9d51ff4dec98a30f14b97',
-    'eqw.dll': 'c103e024f1cde7829603475e1532d3baabd0764280c63ca2797e7e72569554f4',
+    'eqw.dll': '495d6e1711e21f012d1f8c9581af74fdbdccac5f45e2e93508e40b4bd3dbca1d',
 }
 LEGACY_EQW_SHA = 'dffb97ac1f47d41f450614c8d6d4da30f3f47b7ed5046dbdbd111b3ba1fbe5ba'
 PREVIOUS_EQW_SHA = 'b739dfe64b7f69be2ffebf13a1cf794bcfd9e37fe143a75134ca6359e60ef584'
+OFFICIAL_0623_EQW_SHA = 'c103e024f1cde7829603475e1532d3baabd0764280c63ca2797e7e72569554f4'
 DISABLED = ('native_dinput8', 'native_d3dx', 'mouse_warp', 'reduce_load_pauses', 'fast_spell_parse',
             'name_sky_compatibility')
 RUNTIME_LIBRARIES = ('msvcp140.dll', 'vcruntime140.dll', 'ucrtbase.dll')
@@ -123,7 +124,7 @@ def upgrade_camera_helper(client, prefix, folder=None):
     expected = PATCHES['eqw.dll']
     if current == expected:
         return {'state':'current', 'sha256':expected, 'changed':False}
-    managed_previous = {LEGACY_EQW_SHA, PREVIOUS_EQW_SHA}
+    managed_previous = {LEGACY_EQW_SHA, PREVIOUS_EQW_SHA, OFFICIAL_0623_EQW_SHA}
     if current not in managed_previous:
         raise ValueError('TAKP EQW helper changed; Prepare the client to install the reviewed camera repair')
     folder = verify_bundle(folder)
@@ -150,10 +151,17 @@ def upgrade_camera_helper(client, prefix, folder=None):
         raise ValueError('TAKP camera previous backup must be an ordinary file')
     if previous.exists() and hashlib.sha256(previous.read_bytes()).hexdigest() != PREVIOUS_EQW_SHA:
         raise ValueError('TAKP camera previous backup changed; client helper was not replaced')
+    previous_0623 = backup/'eqw.0623.dll'
+    if previous_0623.is_symlink() or (previous_0623.exists() and not previous_0623.is_file()):
+        raise ValueError('TAKP camera 0.6.23 backup must be an ordinary file')
+    if previous_0623.exists() and hashlib.sha256(previous_0623.read_bytes()).hexdigest() != OFFICIAL_0623_EQW_SHA:
+        raise ValueError('TAKP camera 0.6.23 backup changed; client helper was not replaced')
     if not first.exists():
         atomic_bytes(first, original)
     if current == PREVIOUS_EQW_SHA and not previous.exists():
         atomic_bytes(previous, original)
+    if current == OFFICIAL_0623_EQW_SHA and not previous_0623.exists():
+        atomic_bytes(previous_0623, original)
     atomic_bytes(target, replacement)
     return {'state':'upgraded', 'sha256':expected, 'previous_sha256':current,
             'changed':True, 'backup':'client/prefix/trasc-takp-camera-originals/eqw.original.dll'}

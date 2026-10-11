@@ -303,12 +303,45 @@ class TakpClientTests(unittest.TestCase):
         self.assertEqual(effective['npc_rendering'],'standard')
         self.assertEqual(effective['renderer'],'software')
         self.assertEqual(client_runner.client_arguments(effective),['D:\\eqgame.exe'])
+
         self.assertEqual(client_runner.client_arguments({'executable':'eqgame.exe','profile':'custom'}),['D:\\eqgame.exe','patchme'])
         for function in (client_mouse.launch_mode,client_mouse.loading_mode,client_mouse.display_mode,client_mouse.boat_mode,client_mouse.particle_mode):
             self.assertEqual(function(requested,self.root/'nonexistent'),'off')
         supervisor=client_runner.Supervisor(requested)
         self.assertFalse(supervisor.status['native_dinput8_requested'])
         with self.assertRaises(ValueError): takp_client.effective_request({**requested,'mode':'compiler'})
+
+    def test_camera_diagnostics_upgrade_preserves_first_original_and_both_managed_helpers(self):
+        self.import_zip(self.content(self.root/'source'))
+        target=self.client/'eqw.dll';old_v2=target.read_bytes()
+        old_original=pe32()+b'original pre0622';old_v1=pe32()+b'official0622'
+        replacement=pe32()+b'bounded diagnostics';folder=self.root/'diagnostics';folder.mkdir();(folder/'eqw.dll').write_bytes(replacement)
+        patches=dict(takp_client.PATCHES);patches['eqw.dll']=hashlib.sha256(replacement).hexdigest()
+        prefix=self.engine.work/'client/prefix';backup=prefix/'trasc-takp-camera-originals';backup.mkdir(parents=True)
+        (backup/'eqw.original.dll').write_bytes(old_original);(backup/'eqw.0622.dll').write_bytes(old_v1)
+        with patch.object(takp_client,'PATCHES',patches), patch.object(takp_client,'LEGACY_EQW_SHA',hashlib.sha256(old_original).hexdigest()), patch.object(takp_client,'PREVIOUS_EQW_SHA',hashlib.sha256(old_v1).hexdigest()), patch.object(takp_client,'OFFICIAL_0623_EQW_SHA',hashlib.sha256(old_v2).hexdigest()), patch.object(takp_client,'verify_bundle',return_value=folder):
+            result=takp_client.upgrade_camera_helper(self.client,prefix)
+            self.assertEqual(result['previous_sha256'],hashlib.sha256(old_v2).hexdigest())
+            self.assertEqual(target.read_bytes(),replacement)
+            self.assertEqual((backup/'eqw.original.dll').read_bytes(),old_original)
+            self.assertEqual((backup/'eqw.0622.dll').read_bytes(),old_v1)
+            self.assertEqual((backup/'eqw.0623.dll').read_bytes(),old_v2)
+            self.assertFalse(takp_client.upgrade_camera_helper(self.client,prefix)['changed'])
+            self.assertEqual((backup/'eqw.0623.dll').read_bytes(),old_v2)
+
+    def test_camera_diagnostics_upgrade_refuses_changed_or_linked_0623_backup_without_dll_writes(self):
+        self.import_zip(self.content(self.root/'source'))
+        target=self.client/'eqw.dll';old_v2=target.read_bytes()
+        replacement=pe32()+b'bounded diagnostics';folder=self.root/'diagnostics';folder.mkdir();(folder/'eqw.dll').write_bytes(replacement)
+        patches=dict(takp_client.PATCHES);patches['eqw.dll']=hashlib.sha256(replacement).hexdigest()
+        prefix=self.engine.work/'client/prefix';backup=prefix/'trasc-takp-camera-originals';backup.mkdir(parents=True)
+        previous=backup/'eqw.0623.dll';previous.write_bytes(b'changed prior helper')
+        with patch.object(takp_client,'PATCHES',patches), patch.object(takp_client,'OFFICIAL_0623_EQW_SHA',hashlib.sha256(old_v2).hexdigest()), patch.object(takp_client,'verify_bundle',return_value=folder):
+            with self.assertRaisesRegex(ValueError,'0.6.23 backup changed'):takp_client.upgrade_camera_helper(self.client,prefix)
+            self.assertEqual(target.read_bytes(),old_v2);self.assertFalse((backup/'eqw.original.dll').exists())
+            previous.unlink();previous.symlink_to(target)
+            with self.assertRaisesRegex(ValueError,'ordinary file'):takp_client.upgrade_camera_helper(self.client,prefix)
+            self.assertEqual(target.read_bytes(),old_v2);self.assertFalse((backup/'eqw.original.dll').exists())
 
     def test_accurate_default_is_takp_only_and_retains_explicit_cpu_choices(self):
         request = {'profile':'takp','mode':'client','resolution':'800x600'}

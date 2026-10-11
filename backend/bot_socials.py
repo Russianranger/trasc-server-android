@@ -74,29 +74,67 @@ TAKP_ACTIONS = (
     ('abilities', 'Abilities', 'abilities {name}', 'Reports', 'List available abilities for spawned companions.'),
     ('departures', 'Departures', 'departures {name}', 'Reports', 'List available departure spells.'),
 )
+# Both exact modern server pins have identical command handler bodies:
+# Custom 8f6ca0795f424a7b4eab750ff38fc6473d48375c,
+#   Release-NMS-Server/zone/bot_commands/{bot,attack,follow,guard,hold,
+#                                      release,suspend,taunt}.cpp
+# Traditional 4aceae18b94ffaafc08e2b17bc41cd72c77f795d,
+#   zone/bot_commands/bot_{bot,attack,follow,guard,hold,release,suspend,taunt}.cpp
+# `byname` is an owner-scoped spawned-bot selector, never a global fallback.
+# Neither server registers a fallen-bot revive, sit or stand command.
+MODERN_ACTIONS = (
+    ('spawn_group', 'Spawn and group', None, 'Party', 'Keep one guarded spawn, target and invite button per companion. Party limits and timing still apply.'),
+    ('spawn', 'Spawn only', 'botspawn {name}', 'Party', 'Spawn selected names in combined buttons. This does not invite them; use Spawn and group for invitations.'),
+    ('follow', 'Follow owner', 'follow reset byname {name}', 'Party', 'Reset following to the owner and clear hate. The bot must be in the owner’s group or raid.'),
+    ('follow_target', 'Follow target', 'follow byname {name}', 'Party', 'Follow your current friendly group or raid target and clear hate.'),
+    ('stay', 'Guard position', 'guard byname {name}', 'Party', 'Guard the current position.'),
+    ('guard_clear', 'Stop guarding', 'guard clear byname {name}', 'Party', 'Clear the guarded position.'),
+    ('attack', 'Attack target', 'attack byname {name}', 'Party', 'Order the selected spawned companions to attack your current enemy target.'),
+    ('summon', 'Gather party', 'botsummon byname {name}', 'Party', 'Summon selected spawned companions and their pets to your location.'),
+    ('dismiss', 'Camp party', 'botcamp byname {name}', 'Party', 'Save and camp selected spawned companions.'),
+    ('hold', 'Hold attacks', 'hold byname {name}', 'Behavior', 'Hold attacks until Resume attacks is used.'),
+    ('hold_clear', 'Resume attacks', 'hold clear byname {name}', 'Behavior', 'Release held attacks; this is separate from resuming suspended AI.'),
+    ('suspend', 'Suspend AI', 'suspend byname {name}', 'Behavior', 'Suspend the selected companions’ AI processing until Resume AI.'),
+    ('release', 'Resume AI', 'release byname {name}', 'Behavior', 'Resume suspended AI processing and clear hate.'),
+    ('taunt_on', 'Taunt on', 'taunt on byname {name}', 'Behavior', 'Enable taunt for eligible selected companions.'),
+    ('taunt_off', 'Taunt off', 'taunt off byname {name}', 'Behavior', 'Disable taunt.'),
+    ('pettaunt_on', 'Pet taunt on', 'taunt on pet byname {name}', 'Behavior', 'Enable taunt on eligible pets belonging to the selected companions.'),
+    ('pettaunt_off', 'Pet taunt off', 'taunt off pet byname {name}', 'Behavior', 'Disable taunt on the selected companions’ pets.'),
+    ('ranged_on', 'Ranged on', 'bottoggleranged 1 byname {name}', 'Behavior', 'Enable ranged attacks where the selected companion can use them.'),
+    ('ranged_off', 'Ranged off', 'bottoggleranged 0 byname {name}', 'Behavior', 'Disable ranged attacks.'),
+    ('helm_on', 'Show helm', 'bottogglehelm 1 byname {name}', 'Appearance', 'Show the selected companions’ helms.'),
+    ('helm_off', 'Hide helm', 'bottogglehelm 0 byname {name}', 'Appearance', 'Hide the selected companions’ helms.'),
+    ('report', 'Report party', 'botreport byname {name}', 'Reports', 'Report the selected spawned companions’ readiness.'),
+    ('follow_current', 'Follow status', 'follow current byname {name}', 'Reports', 'Report whom each selected spawned companion is following.'),
+)
+
+
+def _action_specs(profile):
+    return TAKP_ACTIONS if profile == 'takp' else MODERN_ACTIONS if profile in ('custom', 'traditional') else ()
 
 
 def catalogue(profile):
     return [{'id': key, 'label': label, 'group': group, 'description': description}
-            for key, label, _, group, description in TAKP_ACTIONS] if profile == 'takp' else []
+            for key, label, _, group, description in _action_specs(profile)]
 
 
 def _actions(profile, args):
     value = args.get('actions')
     if value is None:
         return None  # Original per-bot format and receipts remain compatible.
-    known = {entry[0] for entry in TAKP_ACTIONS}
-    if (profile != 'takp' or not isinstance(value, list) or not value or
+    specifications = _action_specs(profile)
+    known = {entry[0] for entry in specifications}
+    if (not specifications or not isinstance(value, list) or not value or
             any(not isinstance(key, str) or key not in known for key in value) or len(value) != len(set(value))):
         raise ValueError('Choose distinct supported commands for this world')
-    return [entry for entry in TAKP_ACTIONS if entry[0] in value]
+    return [entry for entry in specifications if entry[0] in value]
 
 
 def _social_key(social):
     return social.get('social_id', social.get('bot_id'))
 
 
-def _valid_social(social):
+def _valid_social(social, profile='takp', owner_name=None):
     if not isinstance(social, dict):
         return False
     legacy = ('social_id' not in social and type(social.get('bot_id')) is int and social['bot_id'] > 0 and
@@ -109,12 +147,19 @@ def _valid_social(social):
                len(set(social['bot_ids'])) == len(social['bot_ids']) and
                isinstance(social.get('names'), list) and len(social['names']) == len(social['bot_ids']) and
                all(isinstance(value, str) and BOT_NAME.fullmatch(value) for value in social['names']) and
-               social.get('action') in {entry[0] for entry in TAKP_ACTIONS})
+               social.get('action') in {entry[0] for entry in _action_specs(profile)})
     if grouped:
         chunk = [{'id': identity, 'name': name} for identity, name in zip(social['bot_ids'], social['names'])]
-        template = next(entry[2] for entry in TAKP_ACTIONS if entry[0] == social['action'])
+        if social['action'] == 'spawn_group':
+            grouped = (len(chunk) == 1 and isinstance(owner_name, str) and
+                       type(social.get('spawn_pause')) is int and 5 <= social['spawn_pause'] <= 100)
+            commands = _commands(profile, chunk[0]['name'], {'spawn_pause': social.get('spawn_pause')}, owner_name) if grouped else None
+        else:
+            template = next(entry[2] for entry in _action_specs(profile) if entry[0] == social['action'])
+            prefix = '/say #bot ' if profile == 'takp' else '/say ^'
+            commands = [prefix + template.format(name=bot['name']) for bot in chunk]
         grouped = (social['social_id'] == social['action'] + '.' + _digest(chunk)[:24] and
-                   social.get('lines') == ['/say #bot ' + template.format(name=bot['name']) for bot in chunk])
+                   grouped and social.get('lines') == commands)
     return bool((legacy or grouped) and
                 type(social.get('page')) is int and 1 <= social['page'] <= 10 and
                 type(social.get('button')) is int and 1 <= social['button'] <= 12 and
@@ -351,7 +396,7 @@ def _records(engine, context, character_file):
                     not isinstance(socials, list) or len(socials) > MAX_SOCIALS or
                     not isinstance(placements, list) or len(placements) > len(socials)):
                 continue
-            valid_socials = all(_valid_social(social) for social in socials)
+            valid_socials = all(_valid_social(social, engine.profile, context['owner']['name']) for social in socials)
             if not valid_socials:
                 continue
             _placements(placements, socials, engine.profile)
@@ -418,8 +463,10 @@ def _plan(engine, owner, bots, args):
               'spawn_pause': args.get('spawn_pause', 20)}
     if actions:
         result['actions'] = [entry[0] for entry in actions]
-        result['message'] = ('One button per selected command. More than five names are split into numbered buttons; '
-                             'each button runs its displayed names. Revival requires a 60-second wait after falling and the owner out of combat; bots return at 1 HP; spawn afterward.')
+        result['message'] = ('Each button runs its displayed names. Commands with more than five names use numbered buttons. ' +
+                             ('Revival requires a 60-second wait after falling and the owner out of combat; bots return at 1 HP; spawn afterward.'
+                              if engine.profile == 'takp' else
+                              'Spawn and group keeps one guarded button per companion. Spawn only does not invite. Follow requires group or raid membership.'))
     if reason:
         return result, None
     records = _records(engine, context, path.name)
@@ -443,16 +490,24 @@ def _plan(engine, owner, bots, args):
                 free.append((page, button))
     requested = []
     if actions:
-        chunks = [selected[start:start + 5] for start in range(0, len(selected), 5)]
         for action, label, template, _, _ in actions:
+            width = 1 if action == 'spawn_group' else 5
+            chunks = [selected[start:start + width] for start in range(0, len(selected), width)]
             for index, chunk in enumerate(chunks, 1):
                 # Stable identity includes the exact action and displayed names,
                 # rather than one arbitrary bot ID shared by several buttons.
                 identity = action + '.' + _digest(chunk)[:24]
-                numbered = label if len(chunks) == 1 else label[:13] + ' ' + str(index)
+                # Existing modern spawn/invite buttons retain their companion
+                # labels and four-line guard; they cannot be combined into a
+                # five-line native social without removing invitations.
+                numbered = chunk[0]['name'] if action == 'spawn_group' else label if len(chunks) == 1 else label[:13] + ' ' + str(index)
+                commands = (_commands(engine.profile, chunk[0]['name'], args, owner['name']) if action == 'spawn_group' else
+                            [('/say #bot ' if engine.profile == 'takp' else '/say ^') + template.format(name=bot['name']) for bot in chunk])
                 requested.append({'social_id': identity, 'action': action, 'bot_ids': [bot['id'] for bot in chunk],
                                   'names': [bot['name'] for bot in chunk], 'label': numbered,
-                                  'lines': ['/say #bot ' + template.format(name=bot['name']) for bot in chunk]})
+                                  'lines': commands})
+                if action == 'spawn_group':
+                    requested[-1]['spawn_pause'] = args.get('spawn_pause', 20)
     else:
         requested = [{'bot_id': bot['id'], 'name': bot['name'], 'label': bot['name'],
                       'lines': _commands(engine.profile, bot['name'], args, owner['name'])} for bot in selected]
@@ -462,6 +517,10 @@ def _plan(engine, owner, bots, args):
     for social in requested:
         label, commands = social['label'], social['lines']
         previous = owned.get(_social_key(social))
+        if previous is None and social.get('action') == 'spawn_group':
+            # Only a prior launcher receipt may adopt a legacy per-bot button,
+            # and only if the exact current label/commands still match below.
+            previous = owned.get(social['bot_ids'][0])
         reuse = bool(previous and previous.get('label') == label and
                      previous.get('lines') == commands and type(previous.get('page')) is int and type(previous.get('button')) is int and
                      1 <= previous['page'] <= 10 and 1 <= previous['button'] <= 12 and

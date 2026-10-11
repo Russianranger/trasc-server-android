@@ -17,10 +17,10 @@ import traditional_build
 import traditional_verify
 
 REPOSITORY = 'https://github.com/Russianranger/Servertakp'
-REVISION = '25bf70acb6bd24853cf09e447ddd62b96a4491a4'
-SOURCE_TREE_SHA256 = '2d15df9713d3742a4ad9c1041e99b081b4896c81b919081377110620a19350ec'
-SOURCE_FILES = 5550
-SOURCE_BYTES = 147884398
+REVISION = '03e934d0fdf460e2e6ce34c0a25a3e05d9f7e167'
+SOURCE_TREE_SHA256 = '3bcfc1f604909594a33ebfa8217d71f7fade167f4d439492fbe75e8ce0f44cf5'
+SOURCE_FILES = 5552
+SOURCE_BYTES = 147902744
 SEED_SHA256 = '6f5a61206b22d3d70c20ece7fb8c617bbe0849d286b2cb48279841f4c6103433'
 RECIPE = 'eqmac-bookworm-arm64-luajit-v1'
 BINARIES = ('world', 'zone', 'loginserver', 'shared_memory', 'ucs', 'eqlaunch',

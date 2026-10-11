@@ -1,5 +1,7 @@
 #include "game_input.h"
 #include "trasc_camera_recenter.h"
+#define TRASC_TAKP_TRACE_IMPLEMENTATION
+#include "takp_camera_trace.h"
 
 #include <windows.h>
 
@@ -249,8 +251,10 @@ bool SetCameraClip(const trasc_takp_camera::Rect& value) {
 void ReleaseCameraClip() {
   if (!IsWine()) return;
   ::AcquireSRWLockExclusive(&camera_clip_lock);
-  camera_clip.release(GetCameraClip, SetCameraClip);
+  const bool owned = camera_clip.held();
+  const bool released = camera_clip.release(GetCameraClip, SetCameraClip);
   ::ReleaseSRWLockExclusive(&camera_clip_lock);
+  if (owned) trasc_takp_trace::write("clip_release ok=%d", released);
 }
 bool HoldCameraClip(int x, int y) {
   if (!IsWine()) return false;
@@ -263,10 +267,27 @@ bool HoldCameraClip(int x, int y) {
   const bool physical_down = (::GetAsyncKeyState(swap_mouse_buttons_ ? VK_LBUTTON : VK_RBUTTON) & 0x8000) != 0;
   const trasc_takp_camera::Rect bounds = {game_rect_.left, game_rect_.top, game_rect_.right, game_rect_.bottom};
   ::AcquireSRWLockExclusive(&camera_clip_lock);
-  const bool active = physical_down && ::GetForegroundWindow() == hwnd_ && !::IsIconic(hwnd_) && ::IsWindowVisible(hwnd_);
+  const bool foreground = ::GetForegroundWindow() == hwnd_;
+  const bool iconic = ::IsIconic(hwnd_) != 0;
+  const bool visible = ::IsWindowVisible(hwnd_) != 0;
+  const bool active = physical_down && foreground && !iconic && visible;
   const bool held = active && camera_clip.hold_since(generation, x, y, bounds, GetCameraClip, SetCameraClip);
   if (!active) camera_clip.release(GetCameraClip, SetCameraClip);
+  const unsigned long current_generation = camera_clip.generation();
   ::ReleaseSRWLockExclusive(&camera_clip_lock);
+  static LONG prior_gate = -1;
+  const LONG gate = held | (physical_down << 1) | (foreground << 2) | (iconic << 3) | (visible << 4);
+  const bool changed = ::InterlockedExchange(&prior_gate, gate) != gate;
+  if (trasc_takp_trace::sample(3, true, changed)) {
+    trasc_takp_camera::Rect current_clip = {};
+    POINT cursor = {};
+    const bool got_clip = GetCameraClip(current_clip);
+    const bool got_cursor = ::GetCursorPos(&cursor) != 0;
+    trasc_takp_trace::write("clip_hold held=%d physical=%d foreground=%d iconic=%d visible=%d generation=%lu/%lu center=%d,%d bounds=%d,%d,%d,%d win_clip_ok=%d win_clip=%d,%d,%d,%d win_cursor_ok=%d win_cursor=%ld,%ld",
+      held, physical_down, foreground, iconic, visible, generation, current_generation, x, y,
+      bounds.left, bounds.top, bounds.right, bounds.bottom, got_clip, current_clip.left, current_clip.top, current_clip.right, current_clip.bottom,
+      got_cursor, cursor.x, cursor.y);
+  }
   static bool announced = false;
   if (held && !announced) { Logger::Info("%s", trasc_takp_camera::marker); announced = true; }
   return held;
@@ -336,6 +357,7 @@ int __cdecl GetMouseDataRelHook() {
 
   if (!internal_mode) {
     ReleaseCameraClip();
+    trasc_takp_trace::frame(false);
     mouse_disabled = true;
     ResetMouseUpdateValues(false);  // Drains the buffers and moves the cursor off screen.
     return 0;
@@ -347,7 +369,16 @@ int __cdecl GetMouseDataRelHook() {
     ::SendMessage(hwnd_, WM_SETCURSOR, 0, HTCLIENT);  // Queue the WndProc (blocking) to update the cursor visibility.
   }
 
+  const bool trace_look = *g_mouse_rmb_down_mouse_look != 0;
+  trasc_takp_trace::frame(trace_look);
+  const long before_state_x = *g_mouse_x_abs_from_dinput_state, before_state_y = *g_mouse_y_abs_from_dinput_state;
+  const long before_accum_x = *g_mouse_x_abs_from_dinput, before_accum_y = *g_mouse_y_abs_from_dinput;
+  const short before_delta_x = *g_mouse_x_delta_from_dinput, before_delta_y = *g_mouse_y_delta_from_dinput;
   unsigned int result = hook_get_mouse_data_rel_.original(GetMouseDataRelHook)();
+  const long after_state_x = *g_mouse_x_abs_from_dinput_state, after_state_y = *g_mouse_y_abs_from_dinput_state;
+  const long after_accum_x = *g_mouse_x_abs_from_dinput, after_accum_y = *g_mouse_y_abs_from_dinput;
+  const short delta_x = *g_mouse_x_delta_from_dinput, delta_y = *g_mouse_y_delta_from_dinput;
+
 
   // Handle button swap option.
   if (swap_mouse_buttons_) {
@@ -366,6 +397,15 @@ int __cdecl GetMouseDataRelHook() {
     SyncToWin32Cursor();  // Override the internal absolute cursor position with the win32 cursor value.
   }
 
+  static LONG prior_delta_signs = 0;
+  const LONG signs = (delta_x > 0 ? 1 : delta_x < 0 ? 2 : 0) | (delta_y > 0 ? 4 : delta_y < 0 ? 8 : 0);
+  const bool changed = signs && ::InterlockedExchange(&prior_delta_signs, signs) != signs;
+  if (trasc_takp_trace::sample(2, trace_look || *g_mouse_rmb_down_mouse_look, changed))
+    trasc_takp_trace::write("consumer result=%u look=%d/%d focus=%d over=%d state_before=%ld,%ld state_after=%ld,%ld accum_before=%ld,%ld accum_after=%ld,%ld delta_before=%d,%d delta_after=%d,%d reset_state=%ld,%ld reset_accum=%ld,%ld saved=%ld,%ld",
+      result, trace_look, *g_mouse_rmb_down_mouse_look != 0, has_focus, over_client,
+      before_state_x, before_state_y, after_state_x, after_state_y, before_accum_x, before_accum_y,
+      after_accum_x, after_accum_y, before_delta_x, before_delta_y, delta_x, delta_y, *g_mouse_x_abs_from_dinput_state, *g_mouse_y_abs_from_dinput_state,
+      *g_mouse_x_abs_from_dinput, *g_mouse_y_abs_from_dinput, saved_rmouse_pt_.x, saved_rmouse_pt_.y);
   return result;
 }
 
@@ -396,6 +436,7 @@ void __fastcall RightMouseDownHook(void* this_ptr, int unused_edx, short x, shor
 
 void Initialize(HWND hwnd, bool swap_mouse_buttons, bool disable_keydown_clear) {
   hwnd_ = hwnd;
+  trasc_takp_trace::write("initialize helper=%s swap_buttons=%d", trasc_takp_camera::marker, swap_mouse_buttons);
   game_width_ = 640;  // Safe defaults until first hooked update.
   game_height_ = 480;
   game_rect_ = {0, 0, game_width_, game_height_};

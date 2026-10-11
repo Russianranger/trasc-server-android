@@ -18,7 +18,7 @@ final class LocalLogs {
     // binaries, saved credentials or potentially very large character chat logs.
     static boolean clientDiagnostic(String name) {
         String lower=name.toLowerCase(Locale.ROOT);
-        if(lower.equals("dinput8.log")||lower.equals("dbg.txt")||lower.equals("uierrors.txt"))return true;
+        if(lower.equals("dinput8.log")||lower.equals("dbg.txt")||lower.equals("uierrors.txt")||lower.equals("eqw-camera-diagnostics.log"))return true;
         if(!lower.startsWith("logs/"))return false;
         return Arrays.asList("dbg.txt","dbg.log","uierrors.txt","crash.log").contains(lower.substring(5));
     }
