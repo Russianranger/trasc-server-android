@@ -1,3 +1,17 @@
+# Active 0.6.24 continuation — qualification in progress
+
+Read `docs/release-status-0624.md`, `docs/device-acceptance-0624.md` and `docs/modern-bot-commands-0624.md` before older entries below. The latest independently verified published release remains 0.6.23/code72 until the new qualification/publication proof is recorded.
+
+Current launcher branch: `codex/takp-input-bots-backup-0624`, based on main `a029afaecd6567cfd8309418f0e7c86b7afb9f69`. Preserve and qualify its working changes; do not restart the completed 0.6.22/0.6.23 implementation. The uploaded Thor logs were read from the attached scratch ZIP and confirm V2 loaded, but lack the actual camera-consumer and cleric spell telemetry. Camera diagnosis remains open; no speculative delivery change is authorized by that evidence.
+
+Native Yaulp fix: `Russianranger/Servertakp` PR #2, source `03e934d0fdf460e2e6ce34c0a25a3e05d9f7e167`. Native standalone regression reproduces idle casting in baseline and passes the fix. Full native/Bookworm integration must pass before merge. The launcher pin changes for explicit source update/build/deploy; preserve installed server binaries and database/runtime receipts.
+
+This continuation adds verified modern bot-command multi-selection and bounded streaming all-profile backup/restore. Single-profile archives remain supported. Retain omitted world components and keep replaced sessions as recovery copies. Final qualification passed 96MiB-heap ZIP64 >4GiB logical file, 190,000-file and 58,256,144-byte-index round trips, plus crash/rollback/failure and legacy single-profile checks. Exact source/log hashes are in `docs/all-session-qualification-0624.json`; these do not substitute for physical Android acceptance.
+
+The coordinated EQW diagnostic-helper run `38102758503` succeeded on recipe `f6f354b41d41cf93fc4d2d0672c183771856083f`; its qualified DLL/source/proofs are integrated. One final application qualification/publication pipeline is planned. Check current Actions before starting anything; never run competing jobs. Preserve signing identity and published native payload, and independently verify the actual downloaded release APK after successful publication.
+
+---
+
 # Released: 0.6.23 camera and combined bot commands (2026-10-10 UTC)
 
 Read [release-status-0623.md](release-status-0623.md),

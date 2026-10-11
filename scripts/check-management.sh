@@ -21,6 +21,10 @@ if ! command -v javac >/dev/null; then compiler=(java -m jdk.compiler/com.sun.to
     tests/java/io/github/russianranger/trasc/AudioHostTest.java \
     app/src/main/java/io/github/russianranger/trasc/TarExtractor.java \
     app/src/main/java/io/github/russianranger/trasc/SessionArchive.java \
+    app/src/main/java/io/github/russianranger/trasc/SessionTransfer.java \
+    app/src/main/java/io/github/russianranger/trasc/SessionPreferences.java \
+    app/src/main/java/io/github/russianranger/trasc/AllProfileSwap.java \
+    tests/java/io/github/russianranger/trasc/AllSessionHostTest.java \
     tests/java/io/github/russianranger/trasc/TarExtractorHostTest.java \
     app/src/main/java/io/github/russianranger/trasc/WorldProfiles.java \
     app/src/main/java/io/github/russianranger/trasc/ServerRuntimeIdentity.java \
@@ -55,6 +59,14 @@ java -cp "$classes" io.github.russianranger.trasc.GameCommandHostTest
 java -cp "$classes" io.github.russianranger.trasc.AudioHostTest
 java -cp "$classes" io.github.russianranger.trasc.LogRetentionHostTest
 java -cp "$classes" io.github.russianranger.trasc.ManagementHostTest
+java -Xmx96m -cp "$classes" io.github.russianranger.trasc.AllSessionHostTest
+if [[ ${TRASC_ARCHIVE_HEAVY_TESTS:-0} == 1 ]]; then
+    # Optional disk/time-intensive qualification: a sparse >4GiB payload,
+    # 190k inventory records, and a near-limit long-name/link index at 96MiB.
+    for archive_case in --zip64 --entries --metadata; do
+        java -Xmx96m -cp "$classes" io.github.russianranger.trasc.AllSessionHostTest "$archive_case"
+    done
+fi
 java -cp "$classes" io.github.russianranger.trasc.TarExtractorHostTest
 java -cp "$classes" io.github.russianranger.trasc.WorldProfilesHostTest
 java -cp "$classes" io.github.russianranger.trasc.ServerRuntimeIdentityHostTest

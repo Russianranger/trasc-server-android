@@ -6,11 +6,15 @@
 #include <cstdio>
 #include <cstring>
 #include "../native/takp_camera_recenter.h"
+#define TRASC_TAKP_TRACE_IMPLEMENTATION
+#include "../native/takp_camera_trace.h"
+#include "../native/takp_dinput_observation.h"
 
 static IDirectInputDevice8A* mouse;
 static HWND game_window;
 static volatile LONG mode=0; // free=0, v1 warp=1, v2 clip=2, exit=-1
 static volatile LONG swap_buttons=0;
+static volatile LONG polling=1,manual_ack=0;
 static LONG totals[4],buttons;
 static CRITICAL_SECTION clip_lock;
 static trasc_takp_camera::LookClip clip;
@@ -37,13 +41,19 @@ static DWORD WINAPI input_frame(void*) {
     while(mode>=0) {
         auto generation=clip_generation();
         if(mode==2 && (GetAsyncKeyState(swap_buttons?VK_LBUTTON:VK_RBUTTON)&0x8000))hold_clip(generation);else release_clip();
+        if(!polling){InterlockedExchange(&manual_ack,1);Sleep(5);continue;}
+        InterlockedExchange(&manual_ack,0);
         DIMOUSESTATE2 state={};mouse->Acquire();
-        if(SUCCEEDED(mouse->GetDeviceState(sizeof(state),&state))) {
+        const HRESULT state_result=mouse->GetDeviceState(sizeof(state),&state);
+        trasc_takp_trace::frame(mode==2);
+        trasc_takp_observation::state_result(state_result,sizeof(state),&state);
+        if(SUCCEEDED(state_result)) {
             InterlockedExchangeAdd(totals,state.lX);InterlockedExchangeAdd(totals+1,state.lY);
             InterlockedExchange(&buttons,state.rgbButtons[1]!=0);
         }
         DIDEVICEOBJECTDATA events[256];DWORD count=256;
         HRESULT hr=mouse->GetDeviceData(sizeof(events[0]),events,&count,0);
+        trasc_takp_observation::data_result(hr,sizeof(events[0]),events,256,&count,0);
         if(hr==DIERR_NOTACQUIRED||hr==DIERR_INPUTLOST)count=0; // expected foreground loss
         else if(FAILED(hr)||hr==DI_BUFFEROVERFLOW)ExitProcess(21);
         for(DWORD i=0;i<count;i++) {
@@ -60,7 +70,13 @@ static void result(const char *value) {
     std::fputs(value,file);std::fclose(file);
     if(!MoveFileExA("D:\\reply.tmp","D:\\reply.txt",MOVEFILE_REPLACE_EXISTING|MOVEFILE_WRITE_THROUGH))ExitProcess(13);
 }
-int WINAPI WinMain(HINSTANCE instance,HINSTANCE,LPSTR,int) {
+int WINAPI WinMain(HINSTANCE instance,HINSTANCE,LPSTR arguments,int) {
+    if(!std::strncmp(arguments,"trace-smoke",11)){trasc_takp_trace::write("smoke bounded private camera telemetry");return 0;}
+    if(!std::strncmp(arguments,"trace-cap",9)) {
+        char text[800];std::memset(text,'x',sizeof(text)-1);text[sizeof(text)-1]=0;
+        for(int i=0;i<10000;i++)trasc_takp_trace::write("cap %d %s",i,text);
+        return 0;
+    }
     InitializeCriticalSection(&clip_lock);
     WNDCLASSA cls={};cls.lpfnWndProc=window_proc;cls.hInstance=instance;cls.lpszClassName="TrascCursorProbe";
     if(!RegisterClassA(&cls))return 10;
@@ -91,7 +107,62 @@ int WINAPI WinMain(HINSTANCE instance,HINSTANCE,LPSTR,int) {
                FAILED(mouse->SetCooperativeLevel(window,DISCL_FOREGROUND|DISCL_NONEXCLUSIVE)))return 16;
             DIPROPDWORD size={{sizeof(DIPROPDWORD),sizeof(DIPROPHEADER),0,DIPH_DEVICE},4096};
             if(FAILED(mouse->SetProperty(DIPROP_BUFFERSIZE,&size.diph)))return 17;
+            trasc_takp_observation::format_result(DI_OK,&c_dfDIMouse2);
+            trasc_takp_observation::property_result(DI_OK,DIPROP_BUFFERSIZE,&size.diph);
             pump=true;worker=CreateThread(nullptr,0,input_frame,nullptr,0,nullptr);if(!worker)return 18;
+        }
+        else if(!std::strncmp(command,"manual",6)) {
+            InterlockedExchange(&polling,0);
+            DWORD start=GetTickCount();while(!manual_ack&&GetTickCount()-start<5000)Sleep(1);
+            if(!manual_ack)return 22;
+        }
+        else if(!std::strncmp(command,"auto",4))InterlockedExchange(&polling,1);
+        else if(!std::strncmp(command,"absformat",9)) {
+            if(!manual_ack)return 23;
+            DIDATAFORMAT format=c_dfDIMouse2;format.dwFlags=DIDF_ABSAXIS;
+            mouse->Unacquire();HRESULT hr=mouse->SetDataFormat(&format);
+            trasc_takp_observation::format_result(hr,&format);
+            if(FAILED(hr)||FAILED(mouse->Acquire()))return 24;
+        }
+        else if(!std::strncmp(command,"relproperty",11)) {
+            if(!manual_ack)return 25;
+            mouse->Unacquire();DIPROPDWORD axis={{sizeof(DIPROPDWORD),sizeof(DIPROPHEADER),0,DIPH_DEVICE},DIPROPAXISMODE_REL};
+            HRESULT hr=mouse->SetProperty(DIPROP_AXISMODE,&axis.diph);
+            trasc_takp_observation::property_result(hr,DIPROP_AXISMODE,&axis.diph);
+            if(FAILED(hr)||FAILED(mouse->Acquire()))return 26;
+        }
+        else if(!std::strncmp(command,"customformat",12)) {
+            if(!manual_ack||c_dfDIMouse2.dwNumObjs>32)return 31;
+            DIDATAFORMAT format=c_dfDIMouse2;DIOBJECTDATAFORMAT objects[32];
+            std::memcpy(objects,format.rgodf,format.dwNumObjs*sizeof(objects[0]));format.rgodf=objects;
+            for(DWORD i=0;i<format.dwNumObjs;i++) {
+                if(objects[i].pguid&&IsEqualGUID(*objects[i].pguid,GUID_XAxis))objects[i].dwOfs=8;
+                if(objects[i].pguid&&IsEqualGUID(*objects[i].pguid,GUID_YAxis))objects[i].dwOfs=0;
+                if(objects[i].pguid&&IsEqualGUID(*objects[i].pguid,GUID_ZAxis))objects[i].dwOfs=4;
+            }
+            mouse->Unacquire();HRESULT hr=mouse->SetDataFormat(&format);
+            trasc_takp_observation::format_result(hr,&format);
+            if(FAILED(hr)||FAILED(mouse->Acquire()))return 32;
+        }
+        else if(!std::strncmp(command,"readstate",9)) {
+            if(!manual_ack)return 27;
+            DIMOUSESTATE2 state={};const HRESULT hr=mouse->GetDeviceState(sizeof(state),&state);
+            trasc_takp_observation::state_result(hr,sizeof(state),&state);
+            if(FAILED(hr))return 28;
+            char reply[192];std::sprintf(reply,"%s %ld %ld %ld",command,state.lX,state.lY,state.lZ);result(reply);continue;
+        }
+        else if(!std::strncmp(command,"readbuffer",10)||!std::strncmp(command,"peekbuffer",10)) {
+            if(!manual_ack)return 29;
+            const DWORD requested=command[10]=='1'?1:256;
+            const DWORD flags=command[0]=='p'?DIGDD_PEEK:0;
+            DIDEVICEOBJECTDATA events[256];DWORD count=requested;
+            const HRESULT hr=mouse->GetDeviceData(sizeof(events[0]),events,&count,flags);
+            trasc_takp_observation::data_result(hr,sizeof(events[0]),events,requested,&count,flags);
+            if(FAILED(hr)||hr==DI_BUFFEROVERFLOW)return 30;
+            LONG sum_x=0,sum_y=0;
+            for(DWORD i=0;i<count;i++){if(events[i].dwOfs==DIMOFS_X)sum_x+=(LONG)events[i].dwData;if(events[i].dwOfs==DIMOFS_Y)sum_y+=(LONG)events[i].dwData;}
+            char reply[192];std::sprintf(reply,"%s %lu %ld %ld %lu %lu",command,count,sum_x,sum_y,
+                count?events[0].dwSequence:0,count?events[count-1].dwSequence:0);result(reply);continue;
         }
         else if(!std::strncmp(command,"warp",4))mode=1;
         else if(!std::strncmp(command,"raw",3))mode=2;

@@ -3,6 +3,7 @@
 #define DIRECTINPUT_VERSION 0x0800
 #define INITGUID
 #include <dinput.h>
+#include "takp_dinput_observation.h"
 
 #include "iat_hook.h"
 #include "logger.h"
@@ -28,6 +29,8 @@ VTableHook hook_DInputCreateDevice_;
 VTableHook hook_DInputRelease_;
 
 // Device level functional hooks.
+VTableHook hook_key_SetProperty_;
+VTableHook hook_key_SetDataFormat_;
 VTableHook hook_key_SetCooperativeLevel_;
 VTableHook hook_key_GetDeviceData_;
 VTableHook hook_key_GetDeviceState_;
@@ -35,6 +38,8 @@ VTableHook hook_key_Release_;
 VTableHook hook_key_Acquire_;
 VTableHook hook_key_Unacquire_;
 
+VTableHook hook_mouse_SetProperty_;
+VTableHook hook_mouse_SetDataFormat_;
 VTableHook hook_mouse_SetCooperativeLevel_;
 VTableHook hook_mouse_GetDeviceData_;
 VTableHook hook_mouse_GetDeviceState_;
@@ -48,6 +53,26 @@ const char* GetDeviceStr(LPDIRECTINPUTDEVICE8W device) {
   return (device == keyboard_) ? "Keyboard" : (device == mouse_) ? "Mouse" : "Unknown";
 }
 
+// Observation only: preserve the client's exact DirectInput contract.
+HRESULT WINAPI DeviceSetDataFormatHook(LPDIRECTINPUTDEVICE8W device, LPCDIDATAFORMAT format) {
+  HRESULT result = DIERR_NOTINITIALIZED;
+  if (device == keyboard_)
+    result = hook_key_SetDataFormat_.original(DeviceSetDataFormatHook)(device, format);
+  else if (device == mouse_)
+    result = hook_mouse_SetDataFormat_.original(DeviceSetDataFormatHook)(device, format);
+  if (device == mouse_) trasc_takp_observation::format_result(result, format);
+  return result;
+}
+HRESULT WINAPI DeviceSetPropertyHook(LPDIRECTINPUTDEVICE8W device, REFGUID property, LPCDIPROPHEADER header) {
+  HRESULT result = DIERR_NOTINITIALIZED;
+  if (device == keyboard_)
+    result = hook_key_SetProperty_.original(DeviceSetPropertyHook)(device, property, header);
+  else if (device == mouse_)
+    result = hook_mouse_SetProperty_.original(DeviceSetPropertyHook)(device, property, header);
+  if (device == mouse_) trasc_takp_observation::property_result(result, property, header);
+  return result;
+}
+
 // Block any client attempts to release the dinput device resources.
 HRESULT WINAPI DeviceReleaseHook(LPDIRECTINPUTDEVICE8W device) {
   Logger::Info("Blocking DInput %s release request (0x%08x) on thread %d", GetDeviceStr(device), (int)device,
@@ -58,6 +83,7 @@ HRESULT WINAPI DeviceReleaseHook(LPDIRECTINPUTDEVICE8W device) {
 // Wrapper layer to redirect the device and correct an eqgame bug.
 HRESULT WINAPI DeviceGetDeviceDataHook(LPDIRECTINPUTDEVICE8W device, size_t buffer_size, LPDIDEVICEOBJECTDATA data,
                                        DWORD* event_count_max, LPUNKNOWN unk) {
+  const DWORD requested = event_count_max ? *event_count_max : 0;
   HRESULT result = DIERR_NOTINITIALIZED;
   if (device == keyboard_)
     result = hook_key_GetDeviceData_.original(DeviceGetDeviceDataHook)(device, buffer_size, data, event_count_max, unk);
@@ -65,6 +91,9 @@ HRESULT WINAPI DeviceGetDeviceDataHook(LPDIRECTINPUTDEVICE8W device, size_t buff
     result =
         hook_mouse_GetDeviceData_.original(DeviceGetDeviceDataHook)(device, buffer_size, data, event_count_max, unk);
 
+  if (device == mouse_)
+    trasc_takp_observation::data_result(result, static_cast<DWORD>(buffer_size), data, requested, event_count_max,
+      static_cast<DWORD>(reinterpret_cast<ULONG_PTR>(unk)));
   // The game client has a bug where it assumes that the event_count_max parameter is always set, even on failure.
   // Ensure that it is set to zero on failure in this layer.
   if (!SUCCEEDED(result) && event_count_max) *event_count_max = 0;
@@ -80,6 +109,8 @@ HRESULT WINAPI DeviceAcquireHook(LPDIRECTINPUTDEVICE8W device) {
   else if (device == mouse_)
     result = hook_mouse_Acquire_.original(DeviceAcquireHook)(device);
 
+  if (device == mouse_ && result != S_FALSE && trasc_takp_trace::sample(3, true))
+    trasc_takp_trace::write("acquire hr=%08lx flush=%d", static_cast<unsigned long>(result), result == DI_OK);
   if (result == DI_OK) {  // Returns DI_OK if new acquire else S_FALSE if already acquired.
     Logger::Info("Acquired and flushing %s", GetDeviceStr(device));
     DWORD items = INFINITE;  // Perform a flush of any stale data.
@@ -101,6 +132,7 @@ HRESULT WINAPI DeviceUnacquireHook(LPDIRECTINPUTDEVICE8W device) {
   else if (device == mouse_)
     result = hook_mouse_Unacquire_.original(DeviceUnacquireHook)(device);
 
+  if (device == mouse_) trasc_takp_trace::write("unacquire hr=%08lx", static_cast<unsigned long>(result));
   const char* effect = (result == DI_OK) ? "" : " (no effect)";
   Logger::Info("Unacquire %s %s", GetDeviceStr(device), effect);
   return result;
@@ -110,10 +142,10 @@ HRESULT WINAPI DeviceUnacquireHook(LPDIRECTINPUTDEVICE8W device) {
 HRESULT WINAPI DeviceGetDeviceStateHook(LPDIRECTINPUTDEVICE8W device, size_t buffer_size, LPDIDEVICEOBJECTDATA data) {
   if (device == keyboard_)
     return hook_key_GetDeviceState_.original(DeviceGetDeviceStateHook)(device, buffer_size, data);
-  else if (device == mouse_)
-    return hook_mouse_GetDeviceState_.original(DeviceGetDeviceStateHook)(device, buffer_size, data);
-  else
-    return DIERR_NOTINITIALIZED;
+  if (device != mouse_) return DIERR_NOTINITIALIZED;
+  const HRESULT result = hook_mouse_GetDeviceState_.original(DeviceGetDeviceStateHook)(device, buffer_size, data);
+  trasc_takp_observation::state_result(result, static_cast<DWORD>(buffer_size), data);
+  return result;
 }
 
 // Override the cooperative level to make the DInput play nice in windowed mode.
@@ -173,6 +205,8 @@ HRESULT WINAPI DirectInputCreateDeviceHook(LPDIRECTINPUT8* ppvOut, GUID& guid, L
     hook_key_Release_ = VTableHook(vtable, 2, DeviceReleaseHook);
     hook_key_Acquire_ = VTableHook(vtable, 7, DeviceAcquireHook);
     hook_key_Unacquire_ = VTableHook(vtable, 8, DeviceUnacquireHook);
+    hook_key_SetProperty_ = VTableHook(vtable, 6, DeviceSetPropertyHook);
+    hook_key_SetDataFormat_ = VTableHook(vtable, 11, DeviceSetDataFormatHook);
     hook_key_GetDeviceState_ = VTableHook(vtable, 9, DeviceGetDeviceStateHook);
     hook_key_GetDeviceData_ = VTableHook(vtable, 10, DeviceGetDeviceDataHook);
     hook_key_SetCooperativeLevel_ = VTableHook(vtable, 13, DeviceSetCooperativeLevelHook);
@@ -180,6 +214,8 @@ HRESULT WINAPI DirectInputCreateDeviceHook(LPDIRECTINPUT8* ppvOut, GUID& guid, L
     hook_mouse_Release_ = VTableHook(vtable, 2, DeviceReleaseHook);
     hook_mouse_Acquire_ = VTableHook(vtable, 7, DeviceAcquireHook);
     hook_mouse_Unacquire_ = VTableHook(vtable, 8, DeviceUnacquireHook);
+    hook_mouse_SetProperty_ = VTableHook(vtable, 6, DeviceSetPropertyHook);
+    hook_mouse_SetDataFormat_ = VTableHook(vtable, 11, DeviceSetDataFormatHook);
     hook_mouse_GetDeviceState_ = VTableHook(vtable, 9, DeviceGetDeviceStateHook);
     hook_mouse_GetDeviceData_ = VTableHook(vtable, 10, DeviceGetDeviceDataHook);
     hook_mouse_SetCooperativeLevel_ = VTableHook(vtable, 13, DeviceSetCooperativeLevelHook);

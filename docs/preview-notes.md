@@ -1,57 +1,15 @@
-# TRASC Android 0.6.23 / code 72
+# TRASC Android 0.6.24 / code 73
 
-TAKP's Bots tab now exports a combined **Spawn party** social and a separate
-**Revive party** social for the selected owned companions. Select multiple
-commands from 39 supported actions across Party, Behavior, Magic and Reports,
-preview their exact named lines, then place each social in a free hotbar slot
-or save it to socials only. Up to five names fit in one native social; larger
-selections, up to 20, split into numbered buttons without dropping names. The
-server's active/group limits still apply. No TAKP server rebuild is needed.
+Custom and Traditional now expose 23 verified bot actions each, with multi-select export to character socials and optional hotbar placement. Spawn-and-group remains the default; combined named spawn-only is available too. TAKP retains its 39 actions, combined **Spawn party** and separate **Revive party**. Native socials hold five lines, so larger selections split into numbered buttons without dropping names. Occupied personal slots and character settings remain protected by preview/revision checks and atomic backups. Modern profiles have no native revive command; one is not invented.
 
-Revive requires a fallen inactive bot, an owner out of combat and at least 60
-seconds since the recorded fall. It restores one HP and zero mana. Press
-**Revive party**, then **Spawn party**. This is separate from resurrection of
-a player corpse. Command descriptions retain target/class/combat restrictions.
+**Export all profiles** creates one streaming ZIP64 backup of included Custom, Traditional and TAKP sessions, plus controls, overlay positions, theme and active profile. Choose the Android document destination before export; the launcher avoids an extra large private ZIP. **Restore all profiles** verifies staged data before a journaled all-component activation. Omitted profiles/runtime/work trees are kept; included trees replace their snapshot when explicitly allowed, with prior trees retained as recovery copies. Seekable imports read directly; providers exposing a pipe require a bounded cache copy. Progress, cancellation before activation, storage reserve and operation exclusion are built in. Limits and metadata-memory checks fail with a clear error. Physical Thor/provider testing remains required.
 
-Stop the client and server, leave the runtime open, refresh the roster and
-select the owner and companions. **Preview buttons** discovers matching
-character files; choose the actual file and preview again if there are several.
-Existing occupied socials/hotbar slots and other settings are preserved. Each
-file-changing installation makes an atomic, revision-checked backup. Old
-0.6.22 per-bot backups and retry receipts remain supported.
+The TAKP server fix stops idle cleric Yaulp maintenance. All six native ranks are combat buffs attempted only during permitted melee, after healing, curing and crowd control and subject to native mana, recast, stacking and spell permissions. To receive this fix, explicitly update TAKP source to `03e934d0fdf460e2e6ce34c0a25a3e05d9f7e167`, build and deploy. Keep the installed server, database and receipts until the new build qualifies. No database reset is required.
 
-The TAKP camera follow-up replaces repeated Wine recenter warps with clipping
-only during mouse look, using Wine's raw relative-input path. The helper
-restores the prior clipping rectangle on look release, lost focus, minimize
-and close, including when game input is paused. Native Windows retains its
-original behavior. The 15% TAKP gain, touch/controller mappings and transient
-Look toggle remain. Physical Thor camera acceptance is still required.
+**Camera reversal remains unresolved on Thor.** V2 input delivery is retained; the official helper adds bounded Wine-only diagnostics for the actual game format, axis mode, buffers and consumer/gate behavior. The extended open fixture exercises the production TRASCIN1/XFlush transport and broader consumer modes, but does not prove a physical game-session fix. Reproduce the short touch/controller reversal sequence and promptly export the resulting camera log for the next targeted repair. The managed 0.6.23 helper is saved separately; original and 0.6.22 backups remain protected.
 
-Install as an APK update. The exact managed original or 0.6.22 EQW helper is
-upgraded before Wine starts; existing original backups are retained and the
-0.6.22 helper receives a separate backup. Changed/custom helpers are refused
-with a clear error. Preserve imported game files, Wine prefixes, runtime,
-profiles, renderer options, themes, controller mappings, character settings
-and databases. No reimport, prefix reset or database reset is required. All
-21 native launcher components are reused from verified 0.6.22, with the same
-preview signing certificate.
+Install as an APK update with the established signing identity. Re-use the 21 verified native launcher payloads from 0.6.23, and preserve runtime installations, compiled servers, client imports, Wine prefixes, databases/bots/characters, profiles, mappings, renderers, themes and settings. Existing Custom/Traditional bot generation needs a server rebuild/deploy only when its installed qualified bot utility is missing.
 
-The 0.6.22 Bots manager remains available across Custom, Traditional and TAKP.
-Custom/Traditional generation requires their qualified modern server utility:
-rebuild and deploy only if the installed server lacks it. Review storage and
-complete its full backup before any required table conversion. Existing bot
-records are preserved. Modern per-bot spawn/group export remains unchanged.
+Drag the gear to move its position with the Look tile, use **Show mouse look tile** to hide/show the tile, and **Reset controls position** to restore placement. TAKP NPC visibility and Traditional StoneUI remain separate tracked concerns.
 
-Drag the gear to move the gear and Look tile together. Saved per-world position,
-Show mouse look tile, controller Toggle mouse look and Reset controls position
-remain available. Keep the established Accurate / Legacy math accuracy setting
-for the TAKP NPC-model comparison. TAKP NPC visibility and Traditional StoneUI
-remain separate concerns; this update does not change their settings.
-
-Publication requires Python/MariaDB, browser, native/JVM, DirectX, Android
-assembly/lint, signing/reuse, TAKP ARM64 and modern offline-creation qualification.
-The separate camera fixture measures polled and buffered DirectInput in real
-Wine 10/Xvnc. Follow [Thor acceptance](docs/device-acceptance-0623.md),
-[bot command details](docs/bot-commands-0623.md) and
-[camera evidence](docs/takp-camera-0623.md). Open fixtures do not establish a
-physical TAKP play-session result.
+See [Thor acceptance](docs/device-acceptance-0624.md), [modern bot commands](docs/modern-bot-commands-0624.md), [camera investigation](docs/takp-camera-0624.md), and [release status](docs/release-status-0624.md). Host bounded-heap and crash/rollback tests do not substitute for physical Android acceptance.

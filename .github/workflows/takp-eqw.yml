@@ -1,8 +1,8 @@
-name: Build reviewed TAKP EQW camera repair
+name: Qualify TAKP EQW input diagnostics
 
 on:
   push:
-    branches: [codex/takp-eqw-0623]
+    branches: [codex/takp-eqw-0624]
   workflow_dispatch:
 
 permissions:
@@ -16,29 +16,30 @@ jobs:
       - name: Install open cursor fixture dependencies
         run: |
           sudo apt-get update
-          sudo apt-get install -y --no-install-recommends tigervnc-standalone-server g++-mingw-w64-i686 g++ libx11-6 libxtst6 libxext6 libxrender1 libxrandr2 libxi6 libxfixes3 libxcursor1 libxinerama1 libxxf86vm1 libfontconfig1 libfreetype6 libasound2t64 libpulse0 libvulkan1
+          sudo apt-get install -y --no-install-recommends tigervnc-standalone-server g++-mingw-w64-i686 g++ libx11-dev libxtst-dev libx11-6 libxtst6 libxext6 libxrender1 libxrandr2 libxi6 libxfixes3 libxcursor1 libxinerama1 libxxf86vm1 libfontconfig1 libfreetype6 libasound2t64 libpulse0 libvulkan1
       - name: Fetch the same pinned Wine 10 WoW64 build used by the client runtime
         run: |
           mkdir -p runtime-work/wine dist/cursor
           curl -fL --retry 3 -o runtime-work/wine.tar.xz https://github.com/Kron4ek/Wine-Builds/releases/download/10.0/wine-10.0-amd64-wow64.tar.xz
           echo 'aeebbbf239e548f0136f1cd72a2e109dd9a572a8f703da3c09fa40d74d5c255f  runtime-work/wine.tar.xz' | sha256sum --check
           tar -xJf runtime-work/wine.tar.xz --strip-components=1 -C runtime-work/wine
-      - name: Test DirectInput direction and look clipping under real Wine and Xvnc
+      - name: Test production transport, both axis modes, buffered consumers and diagnostics
         run: |
           g++ -std=c++14 -O2 -Wall -Wextra -Werror tests/takp_camera_recenter.cpp -o runtime-work/camera-unit
           runtime-work/camera-unit
           i686-w64-mingw32-g++ -std=c++14 -O2 -static -mwindows tests/takp_cursor_probe.cpp -o runtime-work/cursor-probe.exe -ldinput8 -ldxguid
-          python3 tests/integration_takp_cursor.py --wine "$PWD/runtime-work/wine/bin/wine" --probe runtime-work/cursor-probe.exe --output dist/cursor
+          gcc -std=c11 -O2 -Wall -Wextra -Werror tests/takp_xinput_probe.c -o runtime-work/xinput-probe -lX11 -lXtst
+          python3 tests/integration_takp_cursor.py --wine "$PWD/runtime-work/wine/bin/wine" --probe runtime-work/cursor-probe.exe --input-probe runtime-work/xinput-probe --output dist/cursor
       - uses: actions/upload-artifact@v4
         if: always()
         with:
-          name: takp-eqw-cursor-proof-0623
+          name: takp-eqw-cursor-proof-0624
           path: dist/cursor/*.log
           retention-days: 14
       - uses: actions/upload-artifact@v4
         if: success()
         with:
-          name: takp-eqw-cursor-receipt-0623
+          name: takp-eqw-cursor-receipt-0624
           path: dist/cursor/cursor-verification.json
           retention-days: 14
   eqw:
@@ -69,6 +70,6 @@ jobs:
           if ($LASTEXITCODE -ne 0) { throw 'EQW camera receipt verification failed' }
       - uses: actions/upload-artifact@v4
         with:
-          name: takp-eqw-camera-0623
+          name: takp-eqw-camera-0624
           path: dist/takp-eqw/
           retention-days: 14

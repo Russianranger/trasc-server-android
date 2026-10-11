@@ -13,16 +13,18 @@ import android.webkit.*;
 import org.json.JSONObject;
 import java.io.*;
 import java.util.concurrent.*;
+import java.util.Arrays;
 
 public final class MainActivity extends Activity {
     private WebView web;
     private RuntimeManager runtime;
     private ControllerManager controller;
-    private String controllerProfile;
+    private String controllerProfile,controllerActivation;
     private ClientRuntime clientRuntime;
     private final ExecutorService tasks=Executors.newFixedThreadPool(3);
     private String pickerId,pickerKind,exportPath;
     private boolean pickerReplace;
+    private JSONObject pickerLauncher;
     private WorldProfiles.Lease pickerLease;
     private static final int IMPORT=10,EXPORT=11;
     @Override public void onCreate(Bundle saved){
@@ -64,12 +66,15 @@ public final class MainActivity extends Activity {
         web.loadUrl("https://app.trasc.local/index.html");
         if(android.os.Build.VERSION.SDK_INT>=33)requestPermissions(new String[]{Manifest.permission.POST_NOTIFICATIONS},20);
     }
-    private ControllerManager createController(){controllerProfile=runtime.profiles.current();return new ControllerManager(this,runtime.work,controllerProfile,event->runOnUiThread(()->{
+    private String restoredActivation(){return getSharedPreferences("session-restoration",MODE_PRIVATE).getString("activation","");}
+    private ControllerManager createController(){controllerProfile=runtime.profiles.current();controllerActivation=restoredActivation();File selectedWork;
+        try{selectedWork=new File(runtime.profiles.home(controllerProfile),"work");}catch(IOException e){throw new IllegalStateException(e);}
+        return new ControllerManager(this,selectedWork,controllerProfile,event->runOnUiThread(()->{
         if(!isDestroyed()&&web!=null)web.evaluateJavascript("window.clientInputEvent && window.clientInputEvent("+event+")",null);
     }));}
     interface UiResult {Object run()throws Exception;}
     private void profileUi(String id,String profile,UiResult task){runOnUiThread(()->{
-        try(WorldProfiles.Lease ignored=runtime.profiles.enter(profile)){if(!profile.equals(controllerProfile)){controller.close();controller=createController();}reply(id,task.run(),null);}
+        try(WorldProfiles.Lease ignored=runtime.profiles.enter(profile)){if(!profile.equals(controllerProfile)||!restoredActivation().equals(controllerActivation)){controller.close();controller=createController();}reply(id,task.run(),null);}
         catch(Exception e){reply(id,null,e);}
     });}
     private boolean submit(Runnable task){try{tasks.execute(task);return true;}catch(RejectedExecutionException ignored){return false;}}
@@ -89,11 +94,15 @@ public final class MainActivity extends Activity {
                 WorldProfiles.Lease lease=null;
                 try {
                     JSONObject args=new JSONObject(input);Object result;
+                    if(!Arrays.asList("native_state","client_native_state","runtime_log","logs","session_cancel").contains(operation))runtime.requireRecovered();
                     final String profile=operation.equals("native_state")?runtime.profiles.current():args.optString("__profile",submittedProfile);
                     if(operation.equals("profile_switch")) {
                         final JSONObject changed=runtime.switchProfile(profile,args.getString("profile"));
                         runOnUiThread(()->{controller.close();controller=createController();reply(id,changed,null);});
                         return;
+                    }
+                    if(runtime.sessionBusy&&Arrays.asList("native_state","session_cancel").contains(operation)) {
+                        reply(id,operation.equals("session_cancel")?runtime.cancelSession():runtime.nativeState(),null);return;
                     }
                     lease=runtime.profiles.enter(profile);
                     if(runtime.sessionBusy&&!operation.equals("native_state")&&!operation.equals("runtime_log")&&!operation.equals("logs")&&!operation.equals("client_native_state"))throw new IOException("A complete session transfer is in progress");
@@ -129,11 +138,13 @@ public final class MainActivity extends Activity {
                             break;
                         case "logs": result=runtime.logs(args.optString("name","control.log"));break;
                         case "export_logs": service();result=runtime.exportLogs();break;
+                        case "session_cancel":result=runtime.cancelSession();break;
+                        case "session_backup_all":service();runOnUiThread(()->controller.capture(false));result=runtime.backupAllSessions(args.optJSONObject("launcher_preferences"),null);break;
                         case "session_backup": service();runOnUiThread(()->controller.capture(false));result=runtime.backupSession();break;
                         case "controller_state": profileUi(id,profile,()->controller.state());return;
                         case "controller_save": profileUi(id,profile,()->{controller.configure(args,true);return controller.state();});return;
                         case "controller_capture": profileUi(id,profile,()->{controller.capture(args.optBoolean("active")&&hasWindowFocus());return controller.state();});return;
-                        case "pick": runOnUiThread(()->pick(id,args.optString("kind","file"),args.optBoolean("replace"),profile));return;
+                        case "pick": runOnUiThread(()->pick(id,args.optString("kind","file"),args.optBoolean("replace"),profile,args.optJSONObject("launcher_preferences")));return;
                         case "export": runOnUiThread(()->export(id,args.optString("path"),profile));return;
                         case "era_apply": case "era_restore":
                             synchronized(clientRuntime) {
@@ -191,12 +202,14 @@ public final class MainActivity extends Activity {
             throw new IOException("Expected an HTTPS Microsoft license link");
         startActivity(new Intent(Intent.ACTION_VIEW,Uri.parse(url)));
     }
-    private void pick(String id,String kind,boolean replace,String profile){
+    private void pick(String id,String kind,boolean replace,String profile,JSONObject launcher){
         if(pickerId!=null){reply(id,null,new IOException("Finish the open file picker first"));return;}
         try{pickerLease=runtime.profiles.enter(profile);}catch(Exception e){reply(id,null,e);return;}
-        pickerId=id;pickerKind=kind;pickerReplace=replace;
-        Intent intent=new Intent(Intent.ACTION_OPEN_DOCUMENT).addCategory(Intent.CATEGORY_OPENABLE).setType("*/*");
-        try{startActivityForResult(intent,IMPORT);}catch(Exception e){pickerId=null;if(pickerLease!=null){pickerLease.close();pickerLease=null;}reply(id,null,e);}
+        pickerId=id;pickerKind=kind;pickerReplace=replace;pickerLauncher=launcher;
+        boolean allExport=kind.equals("session-export-all");
+        Intent intent=new Intent(allExport?Intent.ACTION_CREATE_DOCUMENT:Intent.ACTION_OPEN_DOCUMENT).addCategory(Intent.CATEGORY_OPENABLE).setType(allExport?"application/zip":"*/*");
+        if(allExport)intent.putExtra(Intent.EXTRA_TITLE,"TRASC-All-Worlds-"+new java.text.SimpleDateFormat("yyyyMMdd-HHmmss",java.util.Locale.ROOT).format(new java.util.Date())+".zip");
+        try{startActivityForResult(intent,allExport?EXPORT:IMPORT);}catch(Exception e){pickerId=null;if(pickerLease!=null){pickerLease.close();pickerLease=null;}reply(id,null,e);}
     }
     private File exportFile(String path)throws IOException {
         File file=TarExtractor.path(runtime.work,path);
@@ -208,26 +221,37 @@ public final class MainActivity extends Activity {
         if(pickerId!=null){reply(id,null,new IOException("Finish the open file picker first"));return;}
         try {
             pickerLease=runtime.profiles.enter(profile);
-            File file=exportFile(path);pickerId=id;exportPath=path;
+            File file=exportFile(path);pickerId=id;pickerKind=null;pickerLauncher=null;exportPath=path;
             Intent intent=new Intent(Intent.ACTION_CREATE_DOCUMENT).addCategory(Intent.CATEGORY_OPENABLE).setType("application/octet-stream").putExtra(Intent.EXTRA_TITLE,file.getName());
             startActivityForResult(intent,EXPORT);
         }catch(Exception e){pickerId=null;if(pickerLease!=null){pickerLease.close();pickerLease=null;}reply(id,null,e);}
     }
+    private static final class JSONObjectSafeCancelled {final JSONObject value=new JSONObject();JSONObjectSafeCancelled(){try{value.put("cancelled",true).put("message","File selection cancelled");}catch(Exception ignored){}}}
     @Override protected void onActivityResult(int request,int code,Intent data){
         super.onActivityResult(request,code,data);
         if(request!=IMPORT&&request!=EXPORT)return;
-        String id=pickerId,kind=pickerKind,path=exportPath;boolean replace=pickerReplace;pickerId=null;
+        String id=pickerId,kind=pickerKind,path=exportPath;boolean replace=pickerReplace;JSONObject launcher=pickerLauncher;pickerId=null;pickerKind=null;pickerLauncher=null;
         WorldProfiles.Lease transferLease=pickerLease;pickerLease=null;
         if(id==null){if(transferLease!=null)transferLease.close();return;}
-        if(code!=RESULT_OK||data==null||data.getData()==null){if(transferLease!=null)transferLease.close();reply(id,null,new IOException("File selection cancelled"));return;}
+        if(code!=RESULT_OK||data==null||data.getData()==null){if(transferLease!=null)transferLease.close();reply(id,new JSONObjectSafeCancelled().value,null);return;}
         if(transferLease==null){reply(id,null,new IOException("Reopen the file picker in the selected profile"));return;}
         Uri uri=data.getData();service();
         boolean accepted=submit(()->{
-            File temp=null;
+            File temp=null;android.os.ParcelFileDescriptor sessionDescriptor=null;boolean sessionTransport=false,destinationFinished=false;
+            boolean allExport="session-export-all".equals(kind),allImport="session-all".equals(kind);
             try {
+                if(allExport||allImport){runtime.beginSessionTransport(allExport?"preparing":"copy");sessionTransport=true;}
+                if(allExport) {
+                    JSONObject result;
+                    try(OutputStream out=getContentResolver().openOutputStream(uri,"wt")) {
+                        if(out==null)throw new IOException("Cannot write the selected backup destination");
+                        result=runtime.backupAllSessions(launcher,out);
+                    }
+                    destinationFinished=true;reply(id,result,null);return;
+                }
                 if(request==EXPORT){
                     try(InputStream in=new FileInputStream(exportFile(path));OutputStream out=getContentResolver().openOutputStream(uri,"wt")){
-                        if(out==null)throw new IOException("Cannot write the selected destination");byte[] b=new byte[1024*1024];int n;while((n=in.read(b))!=-1)out.write(b,0,n);
+                        if(out==null)throw new IOException("Cannot write the selected destination");SessionTransfer.copy(in,out,exportFile(path).length(),null,text->runtime.status=text);
                     }
                     reply(id,new JSONObject().put("message","File exported"),null);return;
                 }
@@ -237,8 +261,35 @@ public final class MainActivity extends Activity {
                 }
                 name=name.replaceAll("[^a-zA-Z0-9._-]","_");if(name.length()>160)name=name.substring(name.length()-160);
                 String unique=System.currentTimeMillis()+"-"+name;
-                temp="session".equals(kind)?new File(getCacheDir(),runtime.profiles.current()+"/"+unique):new File(runtime.work,"incoming/"+unique);
+                temp=("session".equals(kind)||allImport)?new File(getCacheDir(),runtime.profiles.current()+"/"+unique):new File(runtime.work,"incoming/"+unique);
                 runtime.status="Copying "+name+"…";
+                if(allImport) {
+                    // Seekable document providers can be verified directly. This avoids an extra
+                    // full private copy of large ZIPs on SD/USB storage. Pipe providers fall back
+                    // to the same fixed-buffer copy with explicit space checks.
+                    File archiveSource=null;
+                    try{sessionDescriptor=getContentResolver().openFileDescriptor(uri,"r");}catch(IOException unreadableDescriptor){sessionDescriptor=null;}
+                    if(sessionDescriptor!=null&&sessionDescriptor.getStatSize()>=0) {
+                        if(sessionDescriptor.getStatSize()>SessionArchive.MAX_ARCHIVE_BYTES)throw new IOException("Archive exceeds supported size");
+                        File candidate=new File("/proc/self/fd/"+sessionDescriptor.getFd());
+                        // Probe seekability independently from ZIP validation: a deliberately
+                        // rejected seekable archive must never trigger a second large copy.
+                        try(RandomAccessFile probe=new RandomAccessFile(candidate,"r")){probe.seek(1);archiveSource=candidate;}
+                        catch(IOException nonseekable){sessionDescriptor.close();sessionDescriptor=null;}
+                    }
+                    if(archiveSource==null) {
+                    if(sessionDescriptor!=null){sessionDescriptor.close();sessionDescriptor=null;}
+                    long expected=-1;
+                    try(Cursor cursor=getContentResolver().query(uri,new String[]{OpenableColumns.SIZE},null,null,null)){if(cursor!=null&&cursor.moveToFirst()&&!cursor.isNull(0))expected=cursor.getLong(0);}
+                    temp.getParentFile().mkdirs();
+                    try(InputStream in=getContentResolver().openInputStream(uri);FileOutputStream out=new FileOutputStream(temp)) {
+                        if(in==null)throw new IOException("Cannot read backup file");SessionTransfer.copy(in,out,expected,getCacheDir(),runtime.sessionProgress("copy"));out.getFD().sync();
+                    }
+                    archiveSource=temp;
+                    }
+                    JSONObject result=runtime.restoreAllSessions(archiveSource,replace);
+                    runOnUiThread(()->{if(!isDestroyed()){controller.close();controller=createController();}});reply(id,result,null);return;
+                }
                 try(InputStream in=getContentResolver().openInputStream(uri)){if(in==null)throw new IOException("Cannot read file");RuntimeManager.copy(in,temp);}
                 if("session".equals(kind)){
                     try {
@@ -254,15 +305,21 @@ public final class MainActivity extends Activity {
                     runtime.beginInstall();try{runtime.installArchive(temp);}finally{runtime.installing=false;temp.delete();}
                     reply(id,runtime.nativeState(),null);
                 }else {runtime.status="File imported: "+name;reply(id,new JSONObject().put("file",unique).put("path","incoming/"+unique).put("name",name),null);}
-            }catch(Exception e){if(temp!=null)temp.delete();runtime.status=e.getMessage();runtime.recordFailure(request==EXPORT?"save_export":"import_"+kind,e);reply(id,null,e);}
-            finally{transferLease.close();}
+            }catch(Exception e){if(temp!=null)temp.delete();runtime.status=e.getMessage();runtime.recordFailure(request==EXPORT?"save_export":"import_"+kind,e);if(e instanceof InterruptedIOException)reply(id,new JSONObjectSafeCancelled().value,null);else reply(id,null,e);}
+            finally{
+                if(allImport&&temp!=null)temp.delete();
+                if(sessionDescriptor!=null)try{sessionDescriptor.close();}catch(IOException ignored){}
+                if(allExport&&!destinationFinished)try{android.provider.DocumentsContract.deleteDocument(getContentResolver(),uri);}catch(Exception ignored){}
+                if(sessionTransport)runtime.endSessionTransport();transferLease.close();
+                if(!runtime.alive()&&!clientRuntime.alive()&&!runtime.installing&&!clientRuntime.busy)stopService(new Intent(MainActivity.this,ServerService.class));
+            }
         });
         if(!accepted)transferLease.close();
     }
     @Override public boolean dispatchKeyEvent(KeyEvent event){return controller!=null&&controller.key(event)||super.dispatchKeyEvent(event);}
     @Override public boolean dispatchGenericMotionEvent(MotionEvent event){return controller!=null&&controller.motion(event)||super.dispatchGenericMotionEvent(event);}
     @Override public void onWindowFocusChanged(boolean focus){super.onWindowFocusChanged(focus);if(!focus&&controller!=null)controller.capture(false);}
-    @Override protected void onResume(){super.onResume();if(controller!=null)try(WorldProfiles.Lease ignored=runtime.profiles.enter(runtime.profiles.current())){if(!runtime.profiles.current().equals(controllerProfile)){controller.close();controller=createController();}else controller.reload();}catch(IOException ignored){}if(web!=null)web.evaluateJavascript("if(typeof controllerLoaded!=='undefined'){controllerLoaded=false;if(currentTab==='client')loadController(true).catch(e=>notice(e.message,true));}",null);}
+    @Override protected void onResume(){super.onResume();if(controller!=null)try(WorldProfiles.Lease ignored=runtime.profiles.enter(runtime.profiles.current())){if(!runtime.profiles.current().equals(controllerProfile)||!restoredActivation().equals(controllerActivation)){controller.close();controller=createController();}else controller.reload();}catch(IOException ignored){}if(web!=null)web.evaluateJavascript("if(typeof controllerLoaded!=='undefined'){controllerLoaded=false;if(currentTab==='client')loadController(true).catch(e=>notice(e.message,true));}",null);}
     @Override protected void onPause(){if(controller!=null)controller.capture(false);super.onPause();}
     @Override public void onBackPressed(){if(controller.active()){controller.capture(false);return;}if(web!=null)web.evaluateJavascript("window.appBack && window.appBack()",null);}
     @Override protected void onDestroy(){pickerId=null;if(pickerLease!=null){pickerLease.close();pickerLease=null;}if(controller!=null)controller.close();if(web!=null){web.removeJavascriptInterface("Trasc");web.destroy();web=null;}tasks.shutdown();super.onDestroy();}

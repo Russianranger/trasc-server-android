@@ -77,6 +77,7 @@ public final class ManagementHostTest {
             write(work,"server/logs/zones/cabeast.log","nested zone log");
             write(work,"client/current/DINPUT8.log","system DirectInput load failed");
             write(work,"client/current/Logs/dbg.txt","game initialization failed");
+            write(work,"client/current/eqw-camera-diagnostics.log","bounded camera mode and reversal diagnostics");
             Map<String,String> uiDiagnostics=new LinkedHashMap<>();
             uiDiagnostics.put("UIErrors.txt","root UI diagnostic");
             uiDiagnostics.put("uierrors.TXT","root UI diagnostic with mixed filename case");
@@ -100,6 +101,7 @@ public final class ManagementHostTest {
             check(LocalLogs.tail(work.toFile(),"server/zones/cabeast.log").equals("nested zone log"),"Nested server logs readable");
             check(LocalLogs.tail(work.toFile(),"client/Logs/dbg.txt").equals("game initialization failed"),"Game startup log readable without runtime");
             check(LocalLogs.tail(work.toFile(),"client/DINPUT8.log").contains("DirectInput"),"Proxy log readable with original filename case");
+            check(LocalLogs.tail(work.toFile(),"client/eqw-camera-diagnostics.log").contains("camera mode"),"Managed camera diagnostics readable without runtime");
             check(LocalLogs.tail(work.toFile(),"missing.log").equals("No log output yet."),"Missing log is not a connection failure");
             Map<String,Path> names=LocalLogs.inventory(work.toFile());
             check(names.containsKey("app.log")&&names.containsKey("server/zones/cabeast.log"),"Native inventory includes app and nested server logs");
@@ -117,7 +119,7 @@ public final class ManagementHostTest {
             File bundle=LocalLogs.export(work.toFile(),"{\"native\":{\"alive\":false}}");
             try(ZipFile z=new ZipFile(bundle)) {
                 check(z.getEntry("logs/operation.log").getSize()==100006,"Log bundle includes full output, not just the viewer tail");
-                for(String needed:new String[]{"logs/app.log","logs/runtime.log","server/logs/zones/cabeast.log","client/current/DINPUT8.log","client/current/Logs/dbg.txt","status.json","export-notes.txt"})check(z.getEntry(needed)!=null,"Missing log bundle entry: "+needed);
+                for(String needed:new String[]{"logs/app.log","logs/runtime.log","server/logs/zones/cabeast.log","client/current/DINPUT8.log","client/current/Logs/dbg.txt","client/current/eqw-camera-diagnostics.log","status.json","export-notes.txt"})check(z.getEntry(needed)!=null,"Missing log bundle entry: "+needed);
                 for(Map.Entry<String,String> entry:uiDiagnostics.entrySet()) {
                     ZipEntry diagnostic=z.getEntry("client/current/"+entry.getKey());
                     check(diagnostic!=null,"UI diagnostic is exported with its original path: "+entry.getKey());

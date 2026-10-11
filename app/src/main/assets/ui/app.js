@@ -39,7 +39,7 @@ const tabStories={
 };
 function renderOverview(){const [title,summary]=tabStories[currentTab]||tabStories.setup;$('headline').textContent=currentTab==='server'&&lastState?.running?'Your world is running.':title;$('summary').textContent=activeProfile==='takp'&&currentTab==='setup'?'Download your TAKP forks, prepare the local world and bring in your Windows TAKP client.':activeProfile==='takp'&&currentTab==='build'?'Compile and stage the pinned TAKP server with playerbots.':activeProfile==='traditional'&&currentTab==='build'?'Prepare a copy of the tested source, then compile and stage its binaries.':summary;}
 function statusBadge(id,label,state){const el=$(id);el.textContent=label;el.dataset.state=state;el.classList.toggle('online',state==='running');}
-function clientStopBlocked(s=lastClientNative){return !s?.alive||!!(s.busy||lastNative?.session_busy||activeUiActions.has('client-stop')||activeUiActions.has('session-import')||activeUiActions.has('session-export')||(s.profile&&activeProfile&&s.profile!==activeProfile));}
+function clientStopBlocked(s=lastClientNative){return !s?.alive||!!(s.busy||lastNative?.session_busy||['client-stop','session-import','session-export','session-import-all','session-export-all'].some(id=>activeUiActions.has(id))||(s.profile&&activeProfile&&s.profile!==activeProfile));}
 function renderClientActivity(s){
  lastClientNative=s;if(typeof syncProfileControls==='function')syncProfileControls();if(typeof cleanupControls==='function')cleanupControls();
  let label='Client · Stopped',state='stopped';
@@ -92,8 +92,8 @@ async function poll(){
  if(polling)return;polling=true;
  try{await Promise.allSettled([
   (async()=>{let nativeKnown=false;try{
-   const n=await api('native_state',{},10000);nativeKnown=true;lastNative=n;if(typeof renderProfile==='function'&&!renderProfile(n))return;$('runtime-status').textContent=n.status;ready('runtime-ready',n.installed);
-   if(n.session_busy||n.installing){lastState=null;$('activity').hidden=false;$('activity-title').textContent=n.session_busy?'Complete session transfer':'Runtime installation';$('activity-detail').textContent=n.status;$('cancel').hidden=true;}
+   const n=await api('native_state',{},10000);nativeKnown=true;lastNative=n;if(typeof window.restoreLauncherAppearanceReceipt==='function')window.restoreLauncherAppearanceReceipt(n);if(typeof renderProfile==='function'&&!renderProfile(n))return;$('runtime-status').textContent=n.status;ready('runtime-ready',n.installed);
+   if(n.session_busy||n.installing){lastState=null;$('activity').hidden=false;$('activity-title').textContent=n.session_busy?'Complete session transfer':'Runtime installation';$('activity-detail').textContent=n.status+(n.session_busy&&n.session_total>0?' · '+bytes(n.session_bytes||0)+' / '+bytes(n.session_total):'');$('cancel').hidden=!n.session_busy||!n.session_cancellable;}
    else if(n.alive){render(await api('state',{},10000));}
    else {lastState=null;$('free').textContent=bytes(n.free_bytes);if(!busy)$('activity').hidden=true;}
   }catch(e){if(!nativeKnown)lastNative=null;lastState=null;$('runtime-status').textContent=e.message;}
@@ -190,7 +190,7 @@ for(const id of ['quick-logs','export-logs'])action(id,async()=>exportResult(awa
 action('refresh-source',()=>job('import_source',sourceArgs()));
 action('build-server',()=>job('build',{jobs:Number($('build-jobs').value)}));
 action('deploy-build',()=>job('deploy'));action('rollback-build',()=>job('rollback'));
-action('cancel',async()=>{await api('cancel');notice('Cancellation requested. Cleanup can take a moment.');});
+action('cancel',async()=>{await api(lastNative?.session_busy?'session_cancel':'cancel');notice('Cancellation requested. Cleanup can take a moment.');});
 action('load-backups',async()=>{const r=await api('files',{path:'backups'});$('backup-select').replaceChildren();for(const f of r.items.filter(x=>x.name.endsWith('.sql.gz'))){const o=document.createElement('option');o.value=f.path;o.textContent=f.name+' · '+bytes(f.size);$('backup-select').append(o);}if(!$('backup-select').options.length)notice('No local database backups yet.');});
 action('restore-backup',async()=>{if(!$('backup-select').value)throw new Error('Select a snapshot first.');await job('restore_database',{file:$('backup-select').value});});
 document.querySelectorAll('[data-query]').forEach(b=>b.addEventListener('click',()=>{$('sql-query').value=b.dataset.query;$('sql-write').checked=false;}));
@@ -254,6 +254,21 @@ action('fix-nektulos',()=>job('fix_nektulos'));
 action('revert-nektulos',()=>job('revert_nektulos'));
 action('session-export',async()=>{notice('Stopping the session and creating a complete backup…');const r=await api('session_backup');$('session-result').textContent='Local ZIP: '+r.file;await exportResult(r);notice('Complete session exported. Open runtime when you want to play again.');});
 action('session-import',async()=>{const r=await api('pick',{kind:'session',replace:$('replace-session').checked});initialSettings=false;rulesLoaded=false;notice(r.message);window.location.reload();});
+action('session-export-all',async()=>{
+ const launcher_preferences=typeof window.launcherAppearanceSnapshot==='function'?window.launcherAppearanceSnapshot():{};
+ notice('Choose where to save the backup of all profiles.');
+ const r=await api('pick',{kind:'session-export-all',launcher_preferences});
+ if(r.cancelled){notice('All-profile backup cancelled.');return;}
+ $('session-result').textContent=r.message||'All profiles exported to the selected destination.';
+ notice(r.message||'All-profile backup exported. Open the runtime when you want to play again.');
+});
+action('session-import-all',async()=>{
+ const r=await api('pick',{kind:'session-all',replace:$('replace-all-sessions').checked});
+ if(r.cancelled){notice('All-profile restore cancelled.');return;}
+ if(typeof window.restoreLauncherAppearanceReceipt==='function'&&r.restored_activation)window.restoreLauncherAppearanceReceipt(r);
+ else if(typeof window.restoreLauncherAppearance==='function')window.restoreLauncherAppearance(r.launcher_preferences);
+ initialSettings=false;rulesLoaded=false;notice(r.message||'All profiles restored.');window.location.reload();
+});
 
 for(const [id,mode] of [['clear-old-logs','older_2_days'],['reset-logs','reset']])action(id,async()=>{
  const buttons=[$('clear-old-logs'),$('reset-logs')];buttons.forEach(b=>b.disabled=true);

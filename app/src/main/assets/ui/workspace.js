@@ -37,7 +37,7 @@ function dllControls(){
  if(dllCompilerState&&(!dllCompilerState.compiler||!dllCompilerState.sdk||!dllCompilerState.runtime))$('dll-build').disabled=true;
  $('dll-sdk-confirm').disabled=blocked||workspaceUnavailable||!!lastState?.running||!sdkDownloadInfo||!$('dll-sdk-accept').checked;
  $('dll-sdk-accept').disabled=blocked;
- for(const id of ['session-import','session-export'])$(id).disabled=!!(busy||sessionAction||downloading||lastNative?.session_busy||lastNative?.installing);
+ for(const id of ['session-import','session-export','session-import-all','session-export-all'])$(id).disabled=!!(busy||sessionAction||downloading||lastNative?.session_busy||lastNative?.installing);
  if(downloading)for(const id of ['client-launch','client-desktop','client-prefix-repair','client-runtime-online','client-runtime-offline','client-directx-online','client-directx-offline','client-import','client-prepare'])$(id).disabled=true;
 }
 function closeSdkConsent(){sdkDownloadInfo=null;$('dll-sdk-consent').hidden=true;$('dll-sdk-accept').checked=false;dllControls();}

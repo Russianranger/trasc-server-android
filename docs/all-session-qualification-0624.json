@@ -1,0 +1,73 @@
+{
+  "format": "trasc-all-session-host-qualification-1",
+  "qualified_utc": "2026-10-11T01:58:21.669735+00:00",
+  "host_jre": "OpenJDK 17.0.20+8-1-24.04-Ubuntu",
+  "scope": "Host archive content, bounded metadata and transport, transactional activation, process-termination recovery and legacy selected-profile regression. Android packaging, SAF providers, device heap, physical power loss and AYN Thor acceptance require separate qualification.",
+  "source_sha256": {
+    "app/src/main/java/io/github/russianranger/trasc/SessionArchive.java": "7527ca2c7fd7c8a57af3b48f2741e2ca42f97bb4d2d240cf634cf1f52da00468",
+    "app/src/main/java/io/github/russianranger/trasc/AllProfileSwap.java": "bc1d1415c47e87fb578227f2d4243757cac26db7cbbcee853035117f4771298c",
+    "app/src/main/java/io/github/russianranger/trasc/SessionTransfer.java": "ce36e5eaf80d1998118169695843ae1e79029f90da63200e1dae7b0795939e88",
+    "app/src/main/java/io/github/russianranger/trasc/SessionPreferences.java": "5d040ed11bd8894b00d0d6d2f71172a2b478a91c2f9dc7d9d6bf92754c6ec07e",
+    "tests/java/io/github/russianranger/trasc/AllSessionHostTest.java": "596548c9ce7f39b45dd1f485929bf9076c91a722cb5032ec1ed7a2fa2095733b",
+    "scripts/check-management.sh": "2d253e443bf788a0b219d70234e9c3379164818e25f33300b7927a7228317e5b"
+  },
+  "reproduce_all": "TRASC_ARCHIVE_HEAVY_TESTS=1 bash scripts/check-management.sh",
+  "compile_command": "java -m jdk.compiler/com.sun.tools.javac.Main -d /tmp/trasc-all-world-classes tests/java/android/system/Os.java app/src/main/java/io/github/russianranger/trasc/{TarExtractor,WorldProfiles,SessionArchive,AllProfileSwap,SessionTransfer,SessionPreferences,LocalLogs,LogRetention,ControllerInput}.java tests/java/io/github/russianranger/trasc/{ManagementHostTest,AllSessionHostTest}.java",
+  "cases": [
+    {
+      "case": "entries",
+      "heap_limit_mib": 96,
+      "exit_code": 0,
+      "command": "java -Xmx96m -cp /tmp/trasc-all-world-classes io.github.russianranger.trasc.AllSessionHostTest --entries",
+      "local_log": "/workspace/scratch/7d3e9e30e199/all-session-entries-final-96m.log",
+      "stdout": "190000-file archive export/import passed under the supplied heap limit\nAll-world archive, rollback/crash recovery, namespace, cancellation and bounded transport tests passed",
+      "log_sha256": "0ba102e95113313b070246256e78019482d46cdc804a387b79ce81b964302495",
+      "test_source_sha256_at_execution": "031a34c4db3b1f08e568f7f195ed55b58661fca7939916d749e87edd726e4315"
+    },
+    {
+      "case": "metadata",
+      "heap_limit_mib": 96,
+      "exit_code": 0,
+      "command": "java -Xmx96m -cp /tmp/trasc-all-world-classes io.github.russianranger.trasc.AllSessionHostTest --metadata",
+      "local_log": "/workspace/scratch/7d3e9e30e199/all-session-metadata-final-96m.log",
+      "stdout": "87000 long-name/link records, 58256144 index bytes, passed under the supplied heap limit\nAll-world archive, rollback/crash recovery, namespace, cancellation and bounded transport tests passed",
+      "log_sha256": "6f947f9e2f04f0f0bf68a9f39486639f6cd9bc47636a60ff2f3f695cd491d1a0",
+      "test_source_sha256_at_execution": "031a34c4db3b1f08e568f7f195ed55b58661fca7939916d749e87edd726e4315"
+    },
+    {
+      "case": "zip64",
+      "heap_limit_mib": 96,
+      "exit_code": 0,
+      "command": "java -Xmx96m -cp /tmp/trasc-all-world-classes io.github.russianranger.trasc.AllSessionHostTest --zip64",
+      "local_log": "/workspace/scratch/7d3e9e30e199/all-session-zip64-final-96m.log",
+      "stdout": "ZIP64 export/import passed: 4294967313 bytes, source/restored SHA256 and markers match, archive 18743326 bytes\nAll-world archive, rollback/crash recovery, namespace, cancellation and bounded transport tests passed",
+      "log_sha256": "3edcff9306e479d79a1ca8c7f78ae03f9d7f36951cd76173c8eb86a0a5b17261"
+    }
+  ],
+  "normal_management": {
+    "command": "bash scripts/check-management.sh",
+    "exit_code": 0,
+    "local_log": "/workspace/scratch/7d3e9e30e199/all-session-management-final.log",
+    "log_sha256": "b715b6649aaf4d745a05d194ef491a53082a0c8ed5d35bbd0c8c0b417ca45f0e",
+    "stdout": "PASS: bounded native frame headers, RGBA colors, opaque alpha and row bounds\nPASS: one packed 720p payload, padded-row packing, partial writes, EINTR and peer-close handling\nspell integer fixture: fast=0 fields=7364520 elapsed_ms=100 checksum=2615182588\nspell integer fixture: fast=1 fields=7364520 elapsed_ms=52 checksum=2615182588\nPASS: integer values, cursor advancement, delimiters, signs, overflow and fallback\nPASS: Wine raw-look clip bounds, no repeated cursor warp, prior rectangle restore, focus/release retries and external clip ownership\nspell checksum fixture: fast=0 records=4096 bytes=5144576 patches=120 elapsed_ms=1137 checksum=2089226240\nspell checksum fixture: fast=1 records=4096 bytes=5144576 patches=120 elapsed_ms=23 checksum=2089226240\nPASS: actual upstream checksum bodies, keyed seeds, overlap fallback, list mutation, boundaries and scope switch\nNote: app/src/main/java/io/github/russianranger/trasc/StorageFiles.java uses unchecked or unsafe operations.\nNote: Recompile with -Xlint:unchecked for details.\nPASS: exact native chat commands and Enter, resolution-aware viewport reset, balanced pacing and cancellation at every step\nPASS: old hardware watermark stalls a 1920-frame producer; configured buffers progress after startup and repeated underruns\nPASS: audio wire format, stereo PCM, partial writes, playback head, invalid/truncated messages and sink cleanup\nLog retention: defaults, 2\u20135 histories, active PID protection, legacy cleanup, size bounds and symlink isolation passed\nPASS: Debian multiarch session roundtrip, checksums, traversal rejection, permissions, symlinks, native offline log reading/export, controller focus, held-key reference counts and analog pointer\nAll-world archive, rollback/crash recovery, namespace, cancellation and bounded transport tests passed\nPASS: hard-link denial regression, independent copies, executable/data modes, empty files, link chains, guest symlinks, traversal/target rejection and expanded-size limit\nThree-world isolation, selection persistence, stale cleanup rejection, operation guards and TAKP session roundtrip passed\nThree-world runtime routing, TAKP dependency image reuse, strict session identity and legacy preparation restores passed\nStorage cleanup: offline pagination, 64-bit sizes, all-selection preflight, stale inode/tree protection, recovery journals, preserved active copies, traversal and symlink isolation passed\nPASS: relative mouse wire, fractional deltas beyond screen bounds, absolute touch and held-button release\nPASS: TAKP camera gain, fractional signed deltas, overlapping RMB holds, free menu/touch pointer and other worlds unchanged\nPASS: TAKP-only transient mouse-look latch, independent RMB sources, relative touch, Escape/Enter/lifecycle release and failed-channel fallback\nPASS: mouse-look physical edge/repeat/overlap, neutral rearming after capture/rebind, analog trigger capture and synthetic layer reconciliation\nPASS: exact Thor defaults, named cycling/wrap/direct/held layers, repeat suppression, focus recovery and legacy migration\nPASS: native RFB pixels/events, malformed frames, combined controller/physical/touch holds, focus releases and typed Enter\nPASS: Traditional/TAKP client policy, clean hooks, retained graphics/display and Custom compiler isolation\nPASS: three compact world paths, independent server/client PRoot helpers, Unix byte limits, private permissions and unchanged persistent imports/prefixes\nPASS: per-world normalized overlay placement, safe insets/resize, stable hidden tile, edge placement, tap/drag threshold and cancellation\nPASS: runtime preflight requires exit success and accelerator evidence; failed/unsupported mode falls back; timeout aborts cleanly",
+    "test_source_sha256_at_execution": "031a34c4db3b1f08e568f7f195ed55b58661fca7939916d749e87edd726e4315"
+  },
+  "heavy_assertions": {
+    "entries": "190000 real empty files plus directory/metadata records export and restore under 96 MiB; ZIP64 central-directory count",
+    "metadata": "87000 long-name/link records with a 58,256,144-byte index export and restore under 96 MiB",
+    "zip64": "Sparse logical client file of 4,294,967,313 bytes (4GiB+17), sentinel bytes at 0/4GiB/finalbyte, direct-output export and actual SessionArchive.restore. Restored length, independently streamed source/restored SHA256, sentinels and companion marker match. Compressed archive 18,743,326 bytes."
+  },
+  "default_assertions": [
+    "All three worlds, databases, runtime files, client prefixes, mappings and build receipts roundtrip",
+    "Activation failures at first/second/third world and global components roll back all changed components",
+    "Interrupted activation and repeated restart recovery; strict corrupt-journal refusal before mutation",
+    "Absent/partial-world trees preserved; previous included sessions retained under all-session-recovery/UUID",
+    "Partial-world native overlay preferences preserve target omitted-work keys; included work/global preferences restore snapshot",
+    "Malicious namespaces, duplicate/overlapping paths, bad hashes, incorrect presence flags and oversized metadata refused",
+    "Hostile ZIP64 entry counts and oversized central-directory size rejected before eager ZipFile allocation",
+    "Readonly directory cleanup and rollback preserve old directory modes",
+    "Cancelled local archive and 48 MiB fixed-buffer transfer, truncation and byte-limit failures"
+  ],
+  "memory_model": "File content uses one reusable 1 MiB buffer per sequential archive operation. Metadata is bounded O(entries+names), not constant memory; index <=64MiB, <=200000 records, record <=32768 characters. EOCD/ZIP64 preflight validates member count/CEN ranges and current available heap before ZipFile allocation; inventory parsing checks headroom and refuses safely after one GC/recheck per pressure occurrence.",
+  "qualification_order_note": "190k, long-index and management checks passed before extending only the optional ZIP64 fixture with actual large-file restore and independent SHA256/marker checks. The archive, transaction, transfer and preferences implementations stayed identical. The extended ZIP64 case then passed at 96 MiB."
+}

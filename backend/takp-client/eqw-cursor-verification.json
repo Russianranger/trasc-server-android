@@ -1,11 +1,16 @@
 {
   "wine": "wine-10.0",
-  "github_commit": "202ff0d995b45302d8cfb6a78e47ceea87a5b965",
-  "github_run_id": "38081609076",
+  "github_commit": "f6f354b41d41cf93fc4d2d0672c183771856083f",
+  "github_run_id": "38102758503",
   "fixture_sha256": {
-    "tests/takp_cursor_probe.cpp": "19cd94e76531109464f255f51c244e7fcc0379ecf5fb185a03309fa4c41e7672",
-    "tests/integration_takp_cursor.py": "233bdc00d4a700b97865102000cf50a998d2f648e0e05b740e5e2d4350ead4fe",
-    "native/takp_camera_recenter.h": "6180f25385af25bc6b5d097b36248e492041c7326cfd6fc94e1a2a2d16c245c4"
+    "tests/takp_cursor_probe.cpp": "2bc79eb509a05b5ddeea8d9c51bd45a1c9cd171ea0b1520c6138db3158988528",
+    "tests/integration_takp_cursor.py": "4a36329d5c4aa946c25876bcaed4f035d362fa23d9a9a5f10d911b4a2fc2a2d7",
+    "native/takp_camera_recenter.h": "6180f25385af25bc6b5d097b36248e492041c7326cfd6fc94e1a2a2d16c245c4",
+    "native/takp_camera_trace.h": "c0301f87a3077c6065bda204fc63c262141cd13a041653f910655b4e55c9e519",
+    "native/takp_dinput_observation.h": "325b56bcb220400da5ae83d4656dbc50d90c6dd9ec3ee7eca51068e2ff483d5a",
+    "tests/takp_xinput_probe.c": "1ecd494b297542749a2ed184ca2f41b509e03a64b5fb2fd8ce8ee5e7cf7a92d2",
+    "tests/takp_input_transport.py": "5b77b8c0610be48ed3148997de2c069345ad846c5c82edc909f1a14400761ec1",
+    "native/presentation/input.h": "1da77135b5d468b08ba7d3b6551aad3a4449c3e417b006e8de0e8f26b03b6fc3"
   },
   "legacy_offsets": [
     20,
@@ -20,11 +25,11 @@
         0
       ],
       "polled": [
-        3799,
+        3919,
         0
       ],
       "buffered": [
-        3799,
+        3919,
         0
       ]
     },
@@ -34,11 +39,11 @@
         0
       ],
       "polled": [
-        5531,
+        4933,
         0
       ],
       "buffered": [
-        5531,
+        4933,
         0
       ]
     },
@@ -48,12 +53,12 @@
         400
       ],
       "polled": [
-        3582,
-        3534
+        3781,
+        3814
       ],
       "buffered": [
-        3582,
-        3534
+        3781,
+        3814
       ]
     },
     {
@@ -62,12 +67,12 @@
         -200
       ],
       "polled": [
-        3780,
-        3771
+        3781,
+        3671
       ],
       "buffered": [
-        3780,
-        3771
+        3781,
+        3671
       ]
     },
     {
@@ -76,12 +81,12 @@
         200
       ],
       "polled": [
-        6402,
-        3742
+        6681,
+        3841
       ],
       "buffered": [
-        6402,
-        3742
+        6681,
+        3841
       ]
     },
     {
@@ -90,12 +95,12 @@
         -400
       ],
       "polled": [
-        5282,
-        1582
+        5581,
+        1681
       ],
       "buffered": [
-        5282,
-        1582
+        5581,
+        1681
       ]
     }
   ],
@@ -320,5 +325,199 @@
     ]
   },
   "menu_pointer_free": true,
-  "verification": "real Wine10/Xvnc polled and buffered DirectInput; open fixture, not actual client acceptance"
+  "verification": "real Wine10/Xvnc polled and buffered DirectInput; open fixture, not actual client acceptance",
+  "controller_cadence": [
+    {
+      "packets": 65,
+      "injected": [
+        0,
+        0
+      ],
+      "polled": [
+        0,
+        0
+      ],
+      "buffered": [
+        0,
+        0
+      ],
+      "pause_drift": [
+        0,
+        0
+      ]
+    },
+    {
+      "packets": 45,
+      "injected": [
+        0,
+        0
+      ],
+      "polled": [
+        0,
+        0
+      ],
+      "buffered": [
+        0,
+        0
+      ],
+      "pause_drift": [
+        0,
+        0
+      ]
+    },
+    {
+      "packets": 50,
+      "injected": [
+        0,
+        0
+      ],
+      "polled": [
+        0,
+        0
+      ],
+      "buffered": [
+        0,
+        0
+      ],
+      "pause_drift": [
+        0,
+        0
+      ]
+    }
+  ],
+  "pipelined_transport_bursts": [
+    {
+      "packets": 360,
+      "fragmented": false,
+      "injected": [
+        40,
+        0
+      ],
+      "polled": [
+        40,
+        0
+      ],
+      "buffered": [
+        40,
+        0
+      ]
+    },
+    {
+      "packets": 360,
+      "fragmented": true,
+      "injected": [
+        0,
+        -40
+      ],
+      "polled": [
+        0,
+        -40
+      ],
+      "buffered": [
+        0,
+        -40
+      ]
+    },
+    {
+      "packets": 360,
+      "fragmented": false,
+      "injected": [
+        40,
+        -40
+      ],
+      "polled": [
+        40,
+        -40
+      ],
+      "buffered": [
+        40,
+        -40
+      ]
+    }
+  ],
+  "consumer_modes": {
+    "absolute_baseline": [
+      400,
+      300
+    ],
+    "absolute_out": [
+      480,
+      340
+    ],
+    "absolute_reverse": [
+      460,
+      330
+    ],
+    "absolute_reset_model_after_negative_input": [
+      60,
+      30
+    ],
+    "relative_state": [
+      40,
+      0
+    ],
+    "peek_repeats_same_events": true,
+    "bounded_first_old_event": [
+      1,
+      8,
+      0,
+      2526,
+      2526
+    ],
+    "remaining_consumed": [
+      14,
+      32,
+      0,
+      2528,
+      2554
+    ],
+    "actual_game_contract": "unknown until device helper diagnostics",
+    "custom_format_axis_offsets": [
+      8,
+      0,
+      4
+    ],
+    "custom_format_raw_memory": [
+      -5,
+      0,
+      9
+    ]
+  },
+  "diagnostic_trace": {
+    "marker": "TRASC_TAKP_CAMERA_TRACE_V1",
+    "bounded_bytes": 44444,
+    "foreign_file_preserved": true,
+    "owned_session_rotated": true
+  },
+  "transport": {
+    "packets": 1900,
+    "relative": 1886,
+    "absolute": 4,
+    "buttons": 10,
+    "zero_relative": 10,
+    "relative_sum": [
+      7134,
+      -5970
+    ],
+    "positive_axes": [
+      792,
+      528
+    ],
+    "negative_axes": [
+      544,
+      769
+    ],
+    "wire_bytes": 30400,
+    "writes": 1782,
+    "mask": 0,
+    "seconds": 18.31823457200001,
+    "protocol": "TRASCIN1",
+    "pipeline": "production parser; per-packet XFlush",
+    "closed": true,
+    "native_decoded": {
+      "relative": 1886,
+      "absolute": 4,
+      "buttons": 10
+    }
+  }
 }

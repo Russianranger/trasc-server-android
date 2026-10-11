@@ -20,18 +20,24 @@ public final class RuntimeManager {
     final Context context;
     final WorldProfiles profiles;
     File home, work, rootfs;
+    private String boundProfile;
+    volatile boolean sessionCancelled,sessionCancellable;
+    volatile long sessionBytes,sessionTotal=-1;
+    volatile String sessionPhase="idle";
     volatile String status = "Install the runtime to begin.";
     volatile boolean installing;
     volatile boolean sessionBusy;
     private volatile Process process;
     private String token;
-    private String recoveryError;
+    private volatile String recoveryError;
+    private volatile String sessionRecoveryError;
+    void requireRecovered()throws IOException {if(sessionRecoveryError!=null)throw new IOException(sessionRecoveryError);if(recoveryError!=null)throw new IOException(recoveryError);}
     private final Timer logMaintenance=new Timer("log-retention",true);
 
     private RuntimeManager(Context c) {
         context=c;profiles=new WorldProfiles(c.getFilesDir());
         home=c.getFilesDir();work=new File(home,"work");rootfs=new File(home,"rootfs");
-        try {bindProfile(profiles.current());} catch(IOException e){recoveryError="Profile recovery failed: "+e.getMessage();status=recoveryError;}
+        try {AllProfileSwap.recover(c.getFilesDir());profiles.reload();applyAllPreferences();bindProfile(profiles.current());} catch(IOException e){recoveryError="Profile recovery failed: "+e.getMessage();status=recoveryError;}
         logMaintenance.schedule(new TimerTask(){@Override public void run(){
             synchronized(RuntimeManager.this){
                 if(sessionBusy)return;
@@ -40,8 +46,8 @@ public final class RuntimeManager {
         }},1000,60000);
     }
     private void bindProfile(String id)throws IOException {
-        home=profiles.home(id);work=new File(home,"work");rootfs=new File(home,"rootfs");
-        recoveryError=null;token=null;process=null;
+        boundProfile=id;home=profiles.home(id);work=new File(home,"work");rootfs=new File(home,"rootfs");
+        if(sessionRecoveryError==null)recoveryError=null;token=null;process=null;
         recoverSessionSwap();
         for(String folder:new String[]{"incoming","logs","run"}) {
             File dir=new File(work,folder);if(!dir.isDirectory()&&!dir.mkdirs())throw new IOException("Cannot prepare the selected profile");
@@ -49,7 +55,7 @@ public final class RuntimeManager {
         status=WorldProfiles.label(id)+" · "+(installed()?"Runtime stopped":"Install the runtime to begin.");
     }
     JSONObject switchProfile(String expected,String id)throws Exception {
-        WorldProfiles.valid(id);profiles.beginSwitch(expected);
+        requireRecovered();WorldProfiles.valid(id);profiles.beginSwitch(expected);
         try {
             ClientRuntime client=ClientRuntime.get(context);
             synchronized(client){synchronized(this){
@@ -88,7 +94,7 @@ public final class RuntimeManager {
         if (installing) throw new IOException("Runtime installation is in progress");
         if (!installed()) {status="Install the runtime to begin."; return;}
         JSONObject marker=runtimeMarker(rootfs);
-        ServerRuntimeIdentity.validateSession(profiles.current(),marker.optInt("format"),marker.optString("architecture"),
+        ServerRuntimeIdentity.validateSession(boundProfile,marker.optInt("format"),marker.optString("architecture"),
             marker.optString("profile"),marker.optString("runtime"),marker.optInt("build_adapter"));
         File nativeDir=new File(context.getApplicationInfo().nativeLibraryDir);
         File proot=new File(nativeDir,"libproot.so"), loader=new File(nativeDir,"libproot-loader.so");
@@ -100,7 +106,7 @@ public final class RuntimeManager {
             try(InputStream in=context.getAssets().open(name)) { copy(in,new File(backend,name)); }
         byte[] secret=new byte[32]; new SecureRandom().nextBytes(secret); token=hex(secret);
         write(new File(work,"run/api-token"),token);
-        ClientTransientPaths temporary=new ClientTransientPaths(context.getFilesDir(),profiles.current(),true);
+        ClientTransientPaths temporary=new ClientTransientPaths(context.getFilesDir(),boundProfile,true);
         temporary.prepare();
         File tmp=temporary.tmp;
         new File(rootfs,"tmp").mkdirs(); new File(rootfs,"work").mkdirs(); new File(rootfs,"opt/trasc").mkdirs();
@@ -112,7 +118,7 @@ public final class RuntimeManager {
             "-b","/dev","-b","/proc","-b",work.getPath()+":/work","-b",backend.getPath()+":/opt/trasc",
             "-b",tmp.getPath()+":/tmp","-w","/work","/usr/bin/env","-i","HOME=/root","USER=root",
             "PATH=/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin","LANG=C.UTF-8","TMPDIR=/tmp",
-            "PYTHONUNBUFFERED=1","/usr/bin/python3","/opt/trasc/engine.py","--token-file","/work/run/api-token","--profile",profiles.current()));
+            "PYTHONUNBUFFERED=1","/usr/bin/python3","/opt/trasc/engine.py","--token-file","/work/run/api-token","--profile",boundProfile));
         ProcessBuilder pb=new ProcessBuilder(command);
         pb.environment().put("PROOT_LOADER",loader.getPath());
         pb.environment().put("PROOT_TMP_DIR",tmp.getPath());
@@ -156,10 +162,14 @@ public final class RuntimeManager {
         process=null;
     }
     JSONObject nativeState() throws Exception {
+        android.content.SharedPreferences restoration=context.getSharedPreferences("session-restoration",Context.MODE_PRIVATE);
+        JSONObject launcher=new JSONObject(restoration.getString("launcher_preferences","{}"));
         JSONObject marker;
         try{marker=runtimeMarker(rootfs);}catch(IOException e){marker=new JSONObject();}
         return new JSONObject().put("installed",installed()).put("alive",alive()).put("installing",installing)
-            .put("session_busy",sessionBusy)
+            .put("session_busy",sessionBusy).put("session_cancellable",sessionBusy&&sessionCancellable)
+            .put("session_phase",sessionPhase).put("session_bytes",sessionBytes).put("session_total",sessionTotal)
+            .put("restored_activation",restoration.getString("activation",null)).put("launcher_preferences",launcher)
             .put("status",status).put("free_bytes",home.getUsableSpace()).put("abi",android.os.Build.SUPPORTED_ABIS[0])
             .put("profile",profiles.current()).put("profile_label",WorldProfiles.label(profiles.current()))
             .put("runtime_build_ready",buildReady(profiles.current(),marker))
@@ -218,7 +228,7 @@ public final class RuntimeManager {
             .put("message","Reset "+cleared[0]+" diagnostic log files to 0 bytes.");
     }
     private void captureFerryDiagnostics() {
-        if(!alive()||!profiles.current().equals("custom"))return;
+        if(!alive()||!boundProfile.equals("custom"))return;
         try {
             JSONObject snapshot=request("ferry_diagnostics",new JSONObject(),5000);
             if(!snapshot.optBoolean("ok"))throw new IOException(snapshot.optString("error"));
@@ -263,6 +273,7 @@ public final class RuntimeManager {
     }
     void beginInstall() throws IOException {
         synchronized(this) {
+            requireRecovered();
             if(alive() || installing || sessionBusy) throw new IOException("Stop the runtime and finish any session transfer before installing it");
             if(!Arrays.asList(android.os.Build.SUPPORTED_ABIS).contains("arm64-v8a")) throw new IOException("An ARM64 Android device is required");
             installing=true;
@@ -286,10 +297,23 @@ public final class RuntimeManager {
             Thread.sleep(500);
         }
     }
+    synchronized JSONObject cancelSession()throws Exception {
+        if(!sessionBusy||!sessionCancellable)throw new IOException("No cancellable session transfer is active");
+        sessionCancelled=true;status="Cancelling session transfer…";return new JSONObject().put("cancelled",true).put("message",status);
+    }
+    SessionArchive.Progress sessionProgress(String phase) {
+        sessionPhase=phase;return new SessionArchive.Progress(){
+            public void update(String text){status=text;}
+            public void bytes(long done,long total){sessionBytes=done;sessionTotal=total;}
+            public void check()throws IOException {if(sessionCancelled||Thread.currentThread().isInterrupted())throw new InterruptedIOException("Session transfer cancelled; existing worlds are unchanged");}
+        };
+    }
+    synchronized void beginSessionTransport(String phase)throws IOException {beginSession();sessionPhase=phase;}
+    void endSessionTransport(){sessionCancellable=false;sessionPhase="idle";sessionBusy=false;profiles.endMaintenance();}
     private synchronized void beginSession()throws IOException {
         if(recoveryError!=null)throw new IOException(recoveryError);
         if(sessionBusy||installing||ClientRuntime.get(context).busy)throw new IOException("Wait for the current runtime, client or session operation");
-        sessionBusy=true;
+        profiles.beginMaintenance();sessionBusy=true;sessionCancelled=false;sessionCancellable=true;sessionBytes=0;sessionTotal=-1;sessionPhase="preparing";
     }
     JSONObject backupSession()throws Exception {
         beginSession();
@@ -302,14 +326,164 @@ public final class RuntimeManager {
             stop();
             if(alive())throw new IOException("Runtime must be stopped before copying session files");
             target.getParentFile().mkdirs();
-            SessionArchive.create(rootfs,work,target,BuildConfig.VERSION_NAME,profiles.current(),text->status=text);
+            SessionArchive.create(rootfs,work,target,BuildConfig.VERSION_NAME,profiles.current(),sessionProgress("archive"));
             status="Complete session ZIP ready. Runtime stopped; open runtime to continue.";
             return new JSONObject().put("file","exports/"+target.getName()).put("message","Complete session created. Save it outside the app. The runtime is stopped.");
         } catch(Exception e) {
             status="Session backup failed: "+e.getMessage()+(alive()?". See Logs for details.":". Runtime is stopped. Logs are still available; open runtime to continue.");
             recordFailure("session_backup",e);
             throw new IOException(status,e);
-        } finally {sessionBusy=false;}
+        } finally {sessionBusy=false;profiles.endMaintenance();}
+    }
+    /** This backend does not keep inactive world processes alive. Start only complete installed runtimes to checkpoint MariaDB. */
+    private void quiesceAllProfiles()throws Exception {
+        ClientRuntime.get(context).stop();String selected=profiles.current();boolean selectedPrepared=false;
+        try {
+            if(alive()) {assertNoJobs();awaitJob("prepare_session_backup");stop();selectedPrepared=true;}
+            for(String id:SessionArchive.WORLDS) {
+                sessionProgress("checkpoint").check();if(id.equals(selected)&&selectedPrepared)continue;
+                File candidate=profiles.home(id),candidateRoot=new File(candidate,"rootfs"),candidateWork=new File(candidate,"work");
+                if(!new File(candidateRoot,"etc/trasc-runtime.json").isFile()||!new File(candidateWork,"settings.json").isFile()) {
+                    File database=new File(candidateWork,"database");File[] data=database.listFiles();
+                    if(data!=null&&data.length>0)throw new IOException("Cannot verify the stopped database in incomplete world: "+id);
+                    continue; // Partial/offline imports need no unavailable runtime launch.
+                }
+                bindProfile(id);status="Preparing "+WorldProfiles.label(id)+" for backup…";start();assertNoJobs();awaitJob("prepare_session_backup");stop();
+                if(alive())throw new IOException("A world runtime did not stop cleanly: "+id);
+            }
+        } finally {
+            try {if(alive())stop();}finally {
+                if(!alive())bindProfile(selected);
+                else {recoveryError="A world runtime failed to stop during backup. Reopen the app after checking shutdown logs.";status=recoveryError;}
+            }
+        }
+    }
+    private void assertNoJobs()throws Exception {
+        if(!alive())return;
+        org.json.JSONArray jobs=request("state",new JSONObject()).getJSONObject("result").getJSONArray("jobs");
+        for(int i=0;i<jobs.length();i++)if(Arrays.asList("queued","running").contains(jobs.getJSONObject(i).getString("status")))throw new IOException("Finish the active operation before transferring all worlds");
+    }
+    private File preferencesSnapshot(JSONObject launcher)throws Exception {
+        Properties props=new Properties();org.json.JSONArray controls=new org.json.JSONArray();
+        for(Map.Entry<String,?> e:context.getSharedPreferences("client-controls",Context.MODE_PRIVATE).getAll().entrySet()) {
+            controls.put(controlPreference(e.getKey(),e.getValue()));
+        }
+        props.setProperty("client_controls",controls.toString());
+        String theme=launcher==null?"default":launcher.optString("theme","default");
+        if(!Arrays.asList("default","necromancer","monk").contains(theme))throw new IOException("Unknown launcher appearance");
+        props.setProperty("launcher_preferences",new JSONObject().put("theme",theme).toString());
+        File file=File.createTempFile("session-preferences-",".properties",context.getCacheDir());
+        try(FileOutputStream out=new FileOutputStream(file)){props.store(out,"Saved client controls and launcher appearance");out.getFD().sync();}
+        try{checkedPreferences(file);return file;}catch(Exception e){file.delete();throw e;}
+    }
+    private JSONObject controlPreference(String key,Object value)throws Exception {
+        String type=value instanceof Boolean?"boolean":value instanceof Float?"float":value instanceof Integer?"int":value instanceof Long?"long":value instanceof String?"string":"unsupported";
+        if(type.equals("unsupported"))throw new IOException("Unsupported saved client control preference");return new JSONObject().put("key",key).put("type",type).put("value",value);
+    }
+    private void preserveOmittedControls(Properties preferences,Properties manifest)throws Exception {
+        List<String> preserved=new ArrayList<>();for(String id:SessionArchive.WORLDS)if(!"true".equals(manifest.getProperty(id+".work")))preserved.add(id);
+        Map<String,JSONObject> archived=new LinkedHashMap<>(),current=new LinkedHashMap<>();org.json.JSONArray values=new org.json.JSONArray(preferences.getProperty("client_controls"));
+        for(int i=0;i<values.length();i++){JSONObject item=values.getJSONObject(i);archived.put(item.getString("key"),item);}
+        for(Map.Entry<String,?> e:context.getSharedPreferences("client-controls",Context.MODE_PRIVATE).getAll().entrySet())current.put(e.getKey(),controlPreference(e.getKey(),e.getValue()));
+        org.json.JSONArray merged=new org.json.JSONArray();for(JSONObject item:SessionPreferences.merge(archived,current,preserved).values())merged.put(item);preferences.setProperty("client_controls",merged.toString());
+    }
+    private Properties checkedPreferences(File file)throws Exception {
+        if(!Files.isRegularFile(file.toPath(),java.nio.file.LinkOption.NOFOLLOW_LINKS)||file.length()>131072)throw new IOException("Invalid all-world device settings");
+        Properties p=new Properties();try(InputStream in=new FileInputStream(file)){p.load(in);}
+        org.json.JSONArray values=new org.json.JSONArray(p.getProperty("client_controls","[]"));if(values.length()>1000)throw new IOException("Too many control preferences");
+        Set<String> keys=new HashSet<>();
+        for(int i=0;i<values.length();i++) {
+            JSONObject item=values.getJSONObject(i);String key=item.getString("key"),type=item.getString("type");
+            if(key.length()>200||!keys.add(key)||!Arrays.asList("boolean","float","int","long","string").contains(type))throw new IOException("Invalid control preference");
+            if(type.equals("boolean"))item.getBoolean("value");else if(type.equals("float")){if(!Double.isFinite(item.getDouble("value"))||!Float.isFinite((float)item.getDouble("value")))throw new IOException("Invalid control coordinate");}
+            else if(type.equals("int"))item.getInt("value");else if(type.equals("long"))item.getLong("value");else if(item.getString("value").length()>8192)throw new IOException("Invalid control preference value");
+        }
+        JSONObject launcher=new JSONObject(p.getProperty("launcher_preferences","{}"));
+        if(!Arrays.asList("default","necromancer","monk").contains(launcher.getString("theme")))throw new IOException("Invalid launcher appearance");return p;
+    }
+    private JSONObject applyAllPreferences()throws IOException {
+        File file=new File(context.getFilesDir(),"session-preferences.properties");if(!file.isFile())return null;
+        try {
+            Properties p=checkedPreferences(file);String activation=p.getProperty("activation","");
+            android.content.SharedPreferences receipts=context.getSharedPreferences("session-restoration",Context.MODE_PRIVATE);
+            if(!activation.equals(receipts.getString("activation",null))) {
+                android.content.SharedPreferences.Editor edit=context.getSharedPreferences("client-controls",Context.MODE_PRIVATE).edit().clear();
+                org.json.JSONArray values=new org.json.JSONArray(p.getProperty("client_controls"));
+                for(int i=0;i<values.length();i++){JSONObject v=values.getJSONObject(i);String key=v.getString("key");switch(v.getString("type")) {
+                    case "boolean":edit.putBoolean(key,v.getBoolean("value"));break;case "float":edit.putFloat(key,(float)v.getDouble("value"));break;
+                    case "int":edit.putInt(key,v.getInt("value"));break;case "long":edit.putLong(key,v.getLong("value"));break;case "string":edit.putString(key,v.getString("value"));break;
+                }}
+                if(!edit.commit()||!receipts.edit().putString("activation",activation).putString("launcher_preferences",p.getProperty("launcher_preferences")).commit())throw new IOException("Could not apply restored device settings");
+            }
+            return new JSONObject(p.getProperty("launcher_preferences"));
+        } catch(Exception e){throw new IOException("Cannot recover restored device settings",e);}
+    }
+    JSONObject backupAllSessions(JSONObject launcher,OutputStream output)throws Exception {
+        boolean own=!sessionBusy;if(own)beginSession();String selected=profiles.current();File prefs=null;
+        File target=output==null?new File(work,"exports/all-worlds-"+System.currentTimeMillis()+".zip"):new File(context.getCacheDir(),"all-world-stream.zip");
+        try {
+            quiesceAllProfiles();prefs=preferencesSnapshot(launcher);SessionArchive.Progress progress=sessionProgress("archive");
+            SessionArchive.createAll(context.getFilesDir(),target,BuildConfig.VERSION_NAME,selected,prefs,progress,output);
+            status="All three worlds backed up. Client and server runtimes are stopped.";
+            JSONObject result=new JSONObject().put("message",status).put("profiles",new org.json.JSONArray(SessionArchive.WORLDS));
+            if(output==null)result.put("file","exports/"+target.getName());return result;
+        } catch(Exception e){if(output==null)target.delete();recordFailure("session_backup_all",e);throw e;}
+        finally {if(prefs!=null)prefs.delete();if(own)endSessionTransport();}
+    }
+    private boolean stagedConfiguration(File world,String relative)throws IOException {
+        java.nio.file.Path root=world.toPath(),target=SessionArchive.confined(root,relative),current=root;
+        for(java.nio.file.Path part:root.relativize(target)) {
+            current=current.resolve(part);if(Files.isSymbolicLink(current))throw new IOException("Restored configuration cannot contain symbolic links: "+relative);
+            if(!current.equals(target)&&Files.exists(current,java.nio.file.LinkOption.NOFOLLOW_LINKS)&&!Files.isDirectory(current,java.nio.file.LinkOption.NOFOLLOW_LINKS))throw new IOException("Invalid configuration directory: "+relative);
+        }
+        if(!Files.exists(target,java.nio.file.LinkOption.NOFOLLOW_LINKS))return false;
+        if(!Files.isRegularFile(target,java.nio.file.LinkOption.NOFOLLOW_LINKS))throw new IOException("Configuration must be a regular file: "+relative);return true;
+    }
+    private void validateStagedWorld(File world,String id)throws Exception {
+        File settingsFile=new File(world,"work/settings.json");
+        if(stagedConfiguration(world,"rootfs/etc/trasc-runtime.json")) {
+            JSONObject marker=runtimeMarker(new File(world,"rootfs"));
+            ServerRuntimeIdentity.validateSession(id,marker.optInt("format"),marker.optString("architecture"),marker.optString("profile"),marker.optString("runtime"),marker.optInt("build_adapter"));
+        }
+        if(stagedConfiguration(world,"work/settings.json")) {
+            if(!Files.isRegularFile(settingsFile.toPath(),java.nio.file.LinkOption.NOFOLLOW_LINKS)||settingsFile.length()>131072)throw new IOException("Invalid "+id+" settings");
+            JSONObject settings=new JSONObject(new String(Files.readAllBytes(settingsFile.toPath()),StandardCharsets.UTF_8));
+            if(!id.equals(settings.optString("profile","custom"))||!settings.getString("database").matches("[A-Za-z0-9_]+"))throw new IOException("World settings do not match "+id);
+            for(String key:new String[]{"db_password","root_password"})if(!settings.getString(key).matches("[0-9a-f]{40}"))throw new IOException("Invalid database credentials in "+id);
+            settings.put("bot_database_epoch",java.util.UUID.randomUUID().toString().replace("-",""));
+            int settingsMode=SessionArchive.mode(settingsFile.toPath());File temp=new File(settingsFile.getParentFile(),"settings.session-new");
+            try{try(FileOutputStream out=new FileOutputStream(temp)){out.write(settings.toString(2).getBytes(StandardCharsets.UTF_8));out.getFD().sync();}
+                SessionArchive.chmod(temp.toPath(),settingsMode);Files.move(temp.toPath(),settingsFile.toPath(),java.nio.file.StandardCopyOption.ATOMIC_MOVE,java.nio.file.StandardCopyOption.REPLACE_EXISTING);AllProfileSwap.syncDirectory(settingsFile.getParentFile());
+            }finally{Files.deleteIfExists(temp.toPath());}
+        }
+    }
+    JSONObject restoreAllSessions(File archive,boolean replace)throws Exception {
+        boolean own=!sessionBusy;if(own)beginSession();File staging=new File(context.getFilesDir(),"all-session-stage");
+        String previous=profiles.current();boolean activated=false;
+        try {
+            Properties header=SessionArchive.readManifest(archive);if(!SessionArchive.allProfiles(header))throw new IOException("Choose an all-world backup, or use selected-world restore for older backups");
+            SessionArchive.archiveProfiles(header);ClientRuntime.get(context).stop();assertNoJobs();
+            if(alive()){awaitJob("prepare_session_backup");stop();}
+            SessionArchive.removeTree(staging);Files.createDirectories(staging.toPath());
+            Properties manifest=SessionArchive.restore(archive,staging,sessionProgress("verify"));
+            for(String id:SessionArchive.WORLDS)validateStagedWorld(new File(staging,"worlds/"+id),id);
+            File preferences=new File(staging,"global/preferences.properties");Properties prefs=checkedPreferences(preferences);preserveOmittedControls(prefs,manifest);prefs.setProperty("activation",java.util.UUID.randomUUID().toString());
+            try(FileOutputStream out=new FileOutputStream(preferences)){prefs.store(out,"Restored device settings");out.getFD().sync();}
+            checkedPreferences(preferences);
+            SessionArchive.syncDirectories(staging,sessionProgress("verify"));sessionProgress("verify").check();sessionCancellable=false;sessionPhase="activate";status="Activating verified worlds…";
+            String recoveryCopy=AllProfileSwap.activate(context.getFilesDir(),staging,manifest.getProperty("selected_profile"),replace,SessionArchive.includedComponents(manifest));activated=true;
+            profiles.reload();bindProfile(profiles.current());ClientRuntime.get(context).bindProfile(profiles.current());JSONObject launcher=applyAllPreferences();
+            status="All worlds restored. Open the runtime, review login IP, then start the server.";
+            return new JSONObject().put("message",status).put("source_version",manifest.getProperty("app_version")).put("active_profile",profiles.current()).put("launcher_preferences",launcher)
+                .put("restored_activation",context.getSharedPreferences("session-restoration",Context.MODE_PRIVATE).getString("activation",null)).put("recovery_copy",recoveryCopy);
+        } catch(Exception e) {
+            if(activated){recoveryError="All worlds are restored; device settings recovery is pending. Force-stop and reopen the app to retry before starting a runtime.";sessionRecoveryError=recoveryError;status=recoveryError;throw new IOException(recoveryError,e);}
+            if(AllProfileSwap.pending(context.getFilesDir())){sessionRecoveryError="Interrupted all-world restore requires force-stopping and reopening the app for recovery.";recoveryError=sessionRecoveryError;status=sessionRecoveryError;}
+            throw e;
+        } finally {
+            if(!activated){profiles.reload();if(!alive())bindProfile(previous);}
+            try{SessionArchive.removeTree(staging);}finally{if(own)endSessionTransport();}
+        }
     }
     private File sessionJournal(){return new File(home,"session-swap.properties");}
     private void recoverSessionSwap()throws IOException {
@@ -344,7 +518,7 @@ public final class RuntimeManager {
             }
             TarExtractor.remove(staging);staging.mkdirs();
             status="Checking complete session ZIP…";
-            Properties manifest=SessionArchive.restore(archive,staging,text->status=text);
+            Properties manifest=SessionArchive.restore(archive,staging,sessionProgress("verify"));
             for(String path:new String[]{"rootfs/etc/trasc-runtime.json","work/settings.json"})
                 if(new File(staging,path).length()>131072)throw new IOException("Session configuration exceeds supported size");
             JSONObject marker=new JSONObject(new String(Files.readAllBytes(new File(staging,"rootfs/etc/trasc-runtime.json").toPath()),StandardCharsets.UTF_8));
@@ -358,6 +532,7 @@ public final class RuntimeManager {
             // and idempotency tokens must not target it even when IDs repeat.
             settings.put("bot_database_epoch",java.util.UUID.randomUUID().toString().replace("-",""));
             write(new File(staging,"work/settings.json"),settings.toString(2));
+            sessionProgress("verify").check();sessionCancellable=false;sessionPhase="activate";
             Properties journal=new Properties();
             for(String name:new String[]{"rootfs","work"}) {
                 journal.setProperty(name,String.valueOf(new File(home,name).exists()));
@@ -375,7 +550,7 @@ public final class RuntimeManager {
             token=null;
             status="Complete session restored. Open runtime, review the login IP, then start the server.";
             return new JSONObject().put("message",status).put("source_version",manifest.getProperty("app_version"));
-        } finally {try{TarExtractor.remove(staging);}finally{sessionBusy=false;}}
+        } finally {try{TarExtractor.remove(staging);}finally{sessionBusy=false;profiles.endMaintenance();}}
     }
     void installArchive(File archive) throws Exception {
         File staging=new File(home,"rootfs-install"), previous=new File(home,"rootfs-previous");

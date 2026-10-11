@@ -105,6 +105,13 @@ def qualify(args):
         engine.import_maps({'file': name})
         engine.sync_content({})
         report['checks']['takp_quests_flat_maps_and_opcodes'] = True
+        # Qualify the imported pinned bot policy, including the seed-backed
+        # Yaulp scheduling regression, on this native host before the full build.
+        bot_tests = engine.source_root() / 'tests/player-bots/run.py'
+        if not bot_tests.is_file():
+            raise RuntimeError('Pinned TAKP source lacks the standalone bot qualification runner')
+        subprocess.run([sys.executable, str(bot_tests)], cwd=engine.source_root(), check=True)
+        report['checks']['native_standalone_bot_policy_and_yaulp_regressions'] = True
         engine.build({'jobs': args.jobs})
         report['checks']['native_production_build_and_nine_elf_dependency_checks'] = True
         report['spawn_wire'] = qualify_spawn_wire(

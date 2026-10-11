@@ -26,6 +26,7 @@ public final class ServerService extends Service {
     @Override public int onStartCommand(Intent intent,int flags,int startId){
         if(intent!=null&&STOP.equals(intent.getAction())&&stopping.compareAndSet(false,true)){
             RuntimeManager runtime=RuntimeManager.get(this);ClientRuntime client=ClientRuntime.get(this);
+            if(runtime.sessionBusy){stopping.set(false);android.util.Log.i("TRASC","Session transfer owns shutdown; use Cancel in the launcher before stopping.");return START_NOT_STICKY;}
             String profile=runtime.profiles.current();
             shutdown.execute(()->{
             try(WorldProfiles.Lease ignored=runtime.profiles.enter(profile)){

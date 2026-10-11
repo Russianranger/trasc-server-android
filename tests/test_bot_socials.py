@@ -410,20 +410,21 @@ class BotSocialTests(unittest.TestCase):
         commands = bot_socials.catalogue('takp')
         self.assertIn('fallen', next(c['description'] for c in commands if c['id'] == 'revive'))
         self.assertIn('player corpse', next(c['description'] for c in commands if c['id'] == 'resurrect'))
-        self.assertEqual(bot_socials.catalogue('traditional'), [])
+        self.assertTrue(bot_socials.catalogue('traditional'))
+        self.assertNotIn('revive', {c['id'] for c in bot_socials.catalogue('traditional')})
         preview = self.preview(actions=['dps_off', 'sit_on', 'taunt_on', 'resurrect'])
         expected = {'dps_off': '/say #bot dps cast off Ninnaflalzm', 'sit_on': '/say #bot sit Ninnaflalzm on',
                     'taunt_on': '/say #bot taunt Ninnaflalzm 1', 'resurrect': '/say #bot resurrect Ninnaflalzm'}
         self.assertEqual({s['action']: s['lines'][0] for s in preview['socials']}, expected)
 
-    def test_unknown_duplicate_injected_commands_and_explicit_actions_in_modern_are_refused(self):
+    def test_unknown_duplicate_injected_commands_and_incompatible_profile_actions_are_refused(self):
         for actions in ([], ['spawn', 'spawn'], ['revive_all'], ['spawn\n/say injected'], 'spawn', [True]):
             with self.subTest(actions=actions), self.assertRaises(ValueError):
                 self.preview(actions=actions)
         self.engine.profile = 'traditional'
         self.path.write_bytes(ROF2)
         with self.assertRaises(ValueError):
-            self.preview(actions=['spawn'])
+            self.preview(actions=['revive'])
         self.assertEqual(len(self.preview()['socials']), 2)
         self.assertEqual(self.path.read_bytes(), ROF2)
 
@@ -496,6 +497,151 @@ class BotSocialTests(unittest.TestCase):
         ini = bot_socials.Ini(self.path.read_bytes())
         self.assertEqual(ini.get('Socials', f'Page{first["page"]}Button{first["button"]}Line1'), '/say Personal command')
         self.assertIn(b'Text=Keep caf\xe9', self.path.read_bytes())
+
+    def test_modern_catalogue_matches_verified_native_byname_handlers_and_excludes_takp_only_commands(self):
+        expected = {
+            'spawn': '/say ^botspawn Ninnaflalzm', 'dismiss': '/say ^botcamp byname Ninnaflalzm',
+            'report': '/say ^botreport byname Ninnaflalzm', 'summon': '/say ^botsummon byname Ninnaflalzm',
+            'attack': '/say ^attack byname Ninnaflalzm', 'follow': '/say ^follow reset byname Ninnaflalzm',
+            'follow_target': '/say ^follow byname Ninnaflalzm', 'follow_current': '/say ^follow current byname Ninnaflalzm',
+            'stay': '/say ^guard byname Ninnaflalzm', 'guard_clear': '/say ^guard clear byname Ninnaflalzm',
+            'hold': '/say ^hold byname Ninnaflalzm', 'hold_clear': '/say ^hold clear byname Ninnaflalzm',
+            'suspend': '/say ^suspend byname Ninnaflalzm', 'release': '/say ^release byname Ninnaflalzm',
+            'taunt_on': '/say ^taunt on byname Ninnaflalzm', 'taunt_off': '/say ^taunt off byname Ninnaflalzm',
+            'pettaunt_on': '/say ^taunt on pet byname Ninnaflalzm', 'pettaunt_off': '/say ^taunt off pet byname Ninnaflalzm',
+            'ranged_on': '/say ^bottoggleranged 1 byname Ninnaflalzm', 'ranged_off': '/say ^bottoggleranged 0 byname Ninnaflalzm',
+            'helm_on': '/say ^bottogglehelm 1 byname Ninnaflalzm', 'helm_off': '/say ^bottogglehelm 0 byname Ninnaflalzm',
+        }
+        for profile in ('custom', 'traditional'):
+            with self.subTest(profile=profile):
+                self.engine.profile = profile
+                self.path.write_bytes(ROF2)
+                catalogue = bot_socials.catalogue(profile)
+                self.assertEqual(len(catalogue), 23)
+                self.assertTrue({'revive', 'sit_on', 'sit_off', 'dps_on', 'resurrect'}.isdisjoint(c['id'] for c in catalogue))
+                preview = self.preview(bots=BOTS[:1], actions=list(expected))
+                self.assertEqual({s['action']: s['lines'][0] for s in preview['socials']}, expected)
+                self.assertTrue(all(s['names'] == ['Ninnaflalzm'] for s in preview['socials']))
+                self.assertEqual(self.path.read_bytes(), ROF2)
+        self.assertEqual(len(bot_socials.catalogue('takp')), 39)
+
+    def test_modern_guarded_spawn_keeps_invites_and_adopts_only_exact_recorded_legacy_buttons(self):
+        for profile in ('custom', 'traditional'):
+            with self.subTest(profile=profile):
+                self.engine.profile = profile
+                self.path.write_bytes(ROF2)
+                legacy_preview = self.preview()
+                self.install(legacy_preview)
+                updated = self.preview(actions=['spawn_group'])
+                self.assertTrue(all(s['existing'] for s in updated['socials']))
+                self.assertEqual([(s['page'], s['button']) for s in updated['socials']],
+                                 [(s['page'], s['button']) for s in legacy_preview['socials']])
+                self.assertEqual([s['label'] for s in updated['socials']], [b['name'] for b in BOTS])
+                for social, bot in zip(updated['socials'], BOTS):
+                    self.assertEqual(social['lines'], [f'/pause 20, /say ^botspawn {bot["name"]}', '/target Aldenmar',
+                                                     f'/pause 5, /target {bot["name"]}', '/invite'])
+                    self.assertEqual(social['bot_ids'], [bot['id']])
+                    self.assertEqual(social['spawn_pause'], 20)
+                self.assertTrue(self.install(updated)['reused'])
+
+    def test_modern_combined_spawn_is_explicitly_separate_from_grouping(self):
+        self.engine.profile = 'custom'
+        self.path.write_bytes(ROF2)
+        preview = self.preview(actions=['spawn', 'spawn_group', 'follow'])
+        self.assertEqual([s['action'] for s in preview['socials']], ['spawn_group', 'spawn_group', 'spawn', 'follow'])
+        spawn = next(s for s in preview['socials'] if s['action'] == 'spawn')
+        self.assertEqual(spawn['label'], 'Spawn only')
+        self.assertEqual(spawn['lines'], ['/say ^botspawn Ninnaflalzm', '/say ^botspawn Tormentedsoul'])
+        self.assertNotIn('/invite', spawn['lines'])
+        self.assertIn('does not invite', preview['message'])
+        self.assertEqual(len({s['social_id'] for s in preview['socials']}), 4)
+        self.assertTrue(all(len(s['label'].encode('ascii')) <= 15 for s in preview['socials']))
+
+    def test_modern_named_actions_keep_five_line_boundaries_and_twenty_names_without_truncation(self):
+        bots = [{'id': n + 1, 'name': 'Named' + chr(65 + n)} for n in range(20)]
+        for profile in ('custom', 'traditional'):
+            self.engine.profile = profile
+            self.path.write_bytes(ROF2)
+            for count, widths in [(1, [1]), (5, [5]), (6, [5, 1]), (20, [5] * 4)]:
+                with self.subTest(profile=profile, count=count):
+                    preview = self.preview(bots=bots[:count], actions=['spawn_group', 'follow', 'report'])
+                    self.assertEqual(len([s for s in preview['socials'] if s['action'] == 'spawn_group']), count)
+                    for action in ('follow', 'report'):
+                        socials = [s for s in preview['socials'] if s['action'] == action]
+                        self.assertEqual([len(s['lines']) for s in socials], widths)
+                        self.assertEqual([name for s in socials for name in s['names']], [b['name'] for b in bots[:count]])
+
+    def test_modern_multi_action_install_retry_hotbar_format_and_restore_are_byte_exact(self):
+        for profile in ('custom', 'traditional'):
+            with self.subTest(profile=profile):
+                self.engine.profile = profile
+                self.path.write_bytes(ROF2)
+                preview = self.preview(actions=['spawn_group', 'report', 'taunt_off'])
+                placements = [{'social_id': s['social_id'], 'bar': 2, 'page': 3, 'button': n + 1}
+                              for n, s in enumerate(preview['socials'])]
+                installed = self.install(preview, placements=placements)
+                after = self.path.read_bytes()
+                ini = bot_socials.Ini(after)
+                for placement, social in zip(placements, preview['socials']):
+                    self.assertEqual(ini.get('HotButtons2', f'Page3Button{placement["button"]}'), bot_socials._binding(profile, social))
+                retried = self.install(preview, placements=placements)
+                self.assertTrue(retried['reused'])
+                self.assertEqual(retried['backup_id'], installed['backup_id'])
+                newer = self.preview(actions=['taunt_off', 'report', 'spawn_group'])
+                self.assertTrue(all(s['existing'] for s in newer['socials']))
+                self.assertEqual([s['social_id'] for s in newer['socials']], [s['social_id'] for s in preview['socials']])
+                self.assertEqual(self.path.read_bytes(), after)
+                restored = bot_socials.restore(self.engine, self.args(_owner=OWNER, character_file=self.path.name,
+                                              file_revision=installed['file_revision'], backup_id=installed['backup_id']))
+                self.assertTrue(restored['restored'])
+                self.assertEqual(self.path.read_bytes(), ROF2)
+
+    def test_modern_record_tamper_pause_and_unsupported_actions_refuse_without_overwriting(self):
+        self.engine.profile = 'traditional'
+        self.path.write_bytes(ROF2)
+        for actions in (['revive'], ['sit_on'], ['resurrect'], ['delete'], ['spawn', 'spawn'], ['follow\n/say injected']):
+            with self.subTest(actions=actions), self.assertRaises(ValueError):
+                self.preview(actions=actions)
+        for pause in (True, 0, 101, '20'):
+            with self.subTest(pause=pause), self.assertRaises(ValueError):
+                self.preview(actions=['spawn_group'], spawn_pause=pause)
+        preview = self.preview(actions=['spawn_group', 'follow'])
+        with self.assertRaisesRegex(ValueError, 'changed'):
+            self.install(preview, actions=['spawn_group', 'stay'])
+        self.assertEqual(self.path.read_bytes(), ROF2)
+        installed = self.install(preview)
+        record_path = self.root / bot_socials.BACKUPS / installed['backup_id'] / 'record.json'
+        record = json.loads(record_path.read_text())
+        record['socials'][0]['lines'][1] = '/target Someoneelse'
+        record_path.write_text(json.dumps(record))
+        self.assertNotIn(installed['backup_id'], [b['id'] for b in self.preview(actions=['spawn_group'])['backups']])
+
+    def test_modern_multi_action_occupied_slots_and_later_personal_settings_remain_protected(self):
+        self.engine.profile = 'custom'
+        self.path.write_bytes(ROF2)
+        preview = self.preview(actions=['follow', 'report'])
+        for placements in ([{'social_id': preview['socials'][0]['social_id'], 'bar': 1, 'page': 1, 'button': 2}],
+                           [{'social_id': s['social_id'], 'bar': 1, 'page': 1, 'button': 3} for s in preview['socials']]):
+            with self.assertRaises(ValueError):
+                self.install(preview, placements=placements)
+            self.assertEqual(self.path.read_bytes(), ROF2)
+        installed = self.install(preview)
+        self.path.write_bytes(self.path.read_bytes() + b'; Personal settings after game exit\r\n')
+        with self.assertRaisesRegex(ValueError, 'later changes'):
+            bot_socials.restore(self.engine, self.args(_owner=OWNER, character_file=self.path.name,
+                                file_revision=hashlib.sha256(self.path.read_bytes()).hexdigest(), backup_id=installed['backup_id']))
+
+    def test_modern_spawn_group_backups_validate_nondefault_pause_and_native_owner_guard(self):
+        self.engine.profile = 'traditional'
+        self.path.write_bytes(ROF2)
+        preview = self.preview(actions=['spawn_group'], spawn_pause=35)
+        installed = self.install(preview, spawn_pause=35)
+        self.assertEqual(preview['socials'][0]['lines'][0], '/pause 35, /say ^botspawn Ninnaflalzm')
+        newer = self.preview(actions=['spawn_group'], spawn_pause=35)
+        self.assertTrue(all(s['existing'] for s in newer['socials']))
+        self.assertTrue(newer['backups'][0]['restorable'])
+        self.assertTrue(bot_socials.restore(self.engine, self.args(_owner=OWNER, character_file=self.path.name,
+                                           file_revision=installed['file_revision'], backup_id=installed['backup_id']))['restored'])
 
 
 if __name__ == '__main__':

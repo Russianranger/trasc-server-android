@@ -27,6 +27,7 @@ final class WorldProfiles {
         Properties p=new Properties();try(InputStream in=new FileInputStream(file)){p.load(in);}
         return valid(p.getProperty("active"));
     }
+    synchronized void reload()throws IOException {current=read(base);error=null;}
     String current(){return current;}
     static String label(String id){return "takp".equals(id)?"TAKP World":"traditional".equals(id)?"Traditional EQEmu":"TRASC Custom";}
     File home(String id)throws IOException {
