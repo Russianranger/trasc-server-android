@@ -15,6 +15,7 @@ import time
 
 import traditional_build
 import traditional_verify
+import source_updates
 
 REPOSITORY = 'https://github.com/Russianranger/Servertakp'
 REVISION = '03e934d0fdf460e2e6ce34c0a25a3e05d9f7e167'
@@ -25,6 +26,17 @@ SEED_SHA256 = '6f5a61206b22d3d70c20ece7fb8c617bbe0849d286b2cb48279841f4c6103433'
 RECIPE = 'eqmac-bookworm-arm64-luajit-v1'
 BINARIES = ('world', 'zone', 'loginserver', 'shared_memory', 'ucs', 'eqlaunch',
             'queryserv', 'export_client_files', 'import_client_files')
+
+# Exact released adapters remain eligible to RUN their already deployed
+# outputs. They cannot qualify a newly staged build under today's recipe.
+DEPLOYED_RECIPES = {
+    ('2d15df9713d3742a4ad9c1041e99b081b4896c81b919081377110620a19350ec',
+     '30f84583dce03e651e971e41b0eb7eaa4c71dceb3cb295f24458db13f4193a84'):
+        ('25bf70acb6bd24853cf09e447ddd62b96a4491a4', 5550, 147884398),
+    ('3bcfc1f604909594a33ebfa8217d71f7fade167f4d439492fbe75e8ce0f44cf5',
+     'd3cac2250042d68e6350d9856f76c457e7aa3fae8a618e6f9d1d38e7c2335445'):
+        ('03e934d0fdf460e2e6ce34c0a25a3e05d9f7e167', 5552, 147902744),
+}
 
 
 def digest(path):
@@ -133,12 +145,23 @@ def record(engine, directory='server/bin.staged'):
     root = _path(engine, directory)
     info = _json(root / 'build-info.json')
     current_runtime = runtime(engine)
+    current_recipe = (info.get('source_tree_sha256') == SOURCE_TREE_SHA256
+                      and info.get('recipe_sha256') == digest(__file__))
+    legacy = DEPLOYED_RECIPES.get((info.get('source_tree_sha256'), info.get('recipe_sha256')))
+    allowed_legacy = directory in ('server/bin', 'server/bin.previous', 'server/bin.swap') and legacy is not None
+    if allowed_legacy:
+        provenance = info.get('source', {})
+        allowed_legacy = (isinstance(provenance, dict) and provenance.get('commit') == legacy[0]
+                          and provenance.get('tree_sha256') == info.get('source_tree_sha256')
+                          and provenance.get('files') == legacy[1] and provenance.get('bytes') == legacy[2]
+                          and provenance.get('bundled_dependencies') is True)
     if (info.get('format') != 1 or info.get('profile') != 'takp'
-            or info.get('recipe') != RECIPE or info.get('source_tree_sha256') != SOURCE_TREE_SHA256
-            or info.get('recipe_sha256') != digest(__file__)
+            or info.get('recipe') != RECIPE or not (current_recipe or allowed_legacy)
             or not current_runtime['ready'] or info.get('runtime_identity') != current_runtime['identity']
             or set(info.get('binaries', {})) != set(BINARIES)):
         raise ValueError('TAKP binaries do not match the qualified source, recipe and runtime')
+    if directory == 'server/bin.staged' and info.get('input_sha256') != source_updates.source_identity_cached(engine):
+        raise ValueError('TAKP source changed since compilation; the previous staged binaries are preserved')
     signature = tuple((name, (root / name).stat().st_size, (root / name).stat().st_mtime_ns,
                        (root / name).stat().st_ctime_ns) for name in BINARIES)
     cache = getattr(engine, '_takp_binary_cache', {})
@@ -179,6 +202,35 @@ def status(engine):
             'recipe': RECIPE, 'revision': REVISION}
 
 
+BUILD_OPTIONS = ('-DCMAKE_BUILD_TYPE=Release', '-DEQEMU_BUILD_SERVER=ON',
+                 '-DEQEMU_BUILD_LOGIN=ON', '-DEQEMU_BUILD_CLIENT_FILES=ON',
+                 '-DEQEMU_BUILD_TESTS=OFF', '-DEQEMU_BUILD_LUA=ON',
+                 '-DEQEMU_PREFER_LUA=OFF', '-DEQEMU_SFMT19937=OFF')
+
+
+def build_directory(engine):
+    """Return the adopted stable cache path, including pre-update caches."""
+    pointer = _path(engine, 'builds/takp-cache.json')
+    if pointer.exists():
+        value = _json(pointer)
+        name = value.get('directory', '')
+        if not re.fullmatch(r'takp-[0-9a-f]{12}(?:-[0-9a-f]{12})?', str(name)):
+            raise ValueError('Invalid TAKP compiler-cache receipt')
+        return _path(engine, 'builds/' + name)
+    # Legacy deployed receipts independently authenticate runtime/source/recipe
+    # and binaries. Their cache still lives at its original absolute location.
+    try:
+        info = record(engine, 'server/bin')
+        commit = info.get('source', {}).get('commit', '')
+        if re.fullmatch('[0-9a-f]{40}', str(commit)):
+            path = _path(engine, 'builds/takp-' + commit[:12])
+            if (path / 'CMakeCache.txt').is_file():
+                return path
+    except (OSError, ValueError, TypeError, KeyError):
+        pass
+    return _path(engine, 'builds/takp-' + REVISION[:12])
+
+
 def build(engine, args):
     from engine import atomic_json
     if engine.server_running():
@@ -188,22 +240,36 @@ def build(engine, args):
         raise ValueError(environment['message'])
     source = engine.source_root()
     provenance = qualify_source(source, engine.check_cancel)
+    input_sha256 = source_updates.identity(source_updates.inventory(source, engine.check_cancel))
     jobs = int(args.get('jobs', engine.config['jobs']))
     if not 1 <= jobs <= 4:
         raise ValueError('Choose 1–4 build jobs for this device')
     if shutil.disk_usage(engine.work).free < 3 * 1024**3:
         raise ValueError('Free at least 3 GiB before compiling the TAKP server')
-    build_dir = _path(engine, 'builds/takp-' + REVISION[:12])
-    build_dir.mkdir(parents=True, exist_ok=True)
+    build_dir = build_directory(engine)
+    trusted_legacy = False
+    try:
+        record(engine, 'server/bin')
+        trusted_legacy = True
+    except (OSError, ValueError, KeyError, TypeError):
+        pass
+    cache_identity = source_updates.cache_identity('takp', environment['identity'], RECIPE, source, BUILD_OPTIONS)
+    try:
+        source_updates.ensure_cache(engine, build_dir, cache_identity, source, BUILD_OPTIONS,
+                                    incremental=args.get('incremental') is True, trusted_legacy=trusted_legacy)
+    except ValueError:
+        if args.get('incremental') is True:
+            raise
+        # An explicitly selected original build can use a fresh compatible
+        # directory. Keep the old cache, receipts and binary outputs intact.
+        build_dir = _path(engine, 'builds/takp-' + REVISION[:12] + '-' + cache_identity[:12])
+        source_updates.ensure_cache(engine, build_dir, cache_identity, source, BUILD_OPTIONS)
+    atomic_json(_path(engine, 'builds/takp-cache.json'), {'format': 1, 'directory': build_dir.name})
     engine.config['jobs'] = jobs
     engine.save()
-    engine.run(['cmake', '-S', source, '-B', build_dir, '-G', 'Ninja',
-                '-DCMAKE_BUILD_TYPE=Release', '-DEQEMU_BUILD_SERVER=ON',
-                '-DEQEMU_BUILD_LOGIN=ON', '-DEQEMU_BUILD_CLIENT_FILES=ON',
-                '-DEQEMU_BUILD_TESTS=OFF', '-DEQEMU_BUILD_LUA=ON',
-                '-DEQEMU_PREFER_LUA=OFF', '-DEQEMU_SFMT19937=OFF'], timeout=900)
-    engine.run(['cmake', '--build', build_dir, '--parallel', str(jobs),
-                '--target', *BINARIES], timeout=24 * 3600)
+    traditional_build._cmake(engine, ['-S', str(source), '-B', str(build_dir), '-G', 'Ninja', *BUILD_OPTIONS], 900)
+    traditional_build._cmake(engine, ['--build', str(build_dir), '--parallel', str(jobs),
+                                     '--target', *BINARIES], 24 * 3600)
     prepared = _path(engine, 'server/bin.preparing-' + secrets.token_hex(6))
     prepared.mkdir()
     try:
@@ -228,9 +294,13 @@ def build(engine, args):
                 raise ValueError('TAKP binary depends on a build directory: ' + name)
             hashes[name] = digest(target)
         qualify_source(source, engine.check_cancel)
+        current_runtime = runtime(engine)
+        if not current_runtime['ready'] or current_runtime['identity'] != environment['identity']:
+            raise ValueError('TAKP compiler runtime changed during compilation; previous staged binaries are preserved')
         atomic_json(prepared / 'build-info.json', {'format': 1, 'profile': 'takp', 'recipe': RECIPE,
                     'recipe_sha256': digest(__file__), 'source': provenance,
                     'source_tree_sha256': SOURCE_TREE_SHA256, 'runtime_identity': environment['identity'],
+                    'input_sha256': input_sha256, 'cache_identity': cache_identity,
                     'built': time.time(), 'binaries': hashes})
         stage = _path(engine, 'server/bin.staged')
         old = _path(engine, 'server/bin.staged.old')

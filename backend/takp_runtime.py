@@ -203,7 +203,21 @@ def setup(engine, args):
     if not source.exists():
         engine.import_source({'url': build.REPOSITORY, 'ref': build.REVISION})
     else:
-        build.qualify_source(engine.source_root(), engine.check_cancel)
+        try:
+            build.qualify_source(engine.source_root(), engine.check_cancel)
+        except ValueError:
+            engine.check_cancel()
+            # Setup is also the visible "Download TAKP" action. An app update
+            # can advance its qualified pin while leaving the previous source
+            # and running server intact. Review the actual source before an
+            # update; the update transaction preserves unchanged timestamps,
+            # prior source and local changes, and refuses conflicts.
+            preview = engine.source_update_preview({})
+            if not preview.get('apply_allowed'):
+                raise ValueError(preview.get('message') or
+                                 'Review the installed TAKP source in Build → Update before downloading its update')
+            engine.source_update_apply({'token': preview['token']})
+            build.qualify_source(engine.source_root(), engine.check_cancel)
     sync_content(engine)
     for kind, repository, revision in (('quests', QUESTS_REPOSITORY, QUESTS_REVISION),
                                         ('maps', MAPS_REPOSITORY, MAPS_REVISION)):

@@ -49,9 +49,10 @@ import era_rules
 import client_ui
 import bots
 import modern_bot_bridge
+import source_updates
 from log_retention import rotate
 
-VERSION = '0.6.24'
+VERSION = '0.6.25'
 DEFAULT_REPO = 'https://github.com/Russianranger/Triptych-Triumvirate'
 BINARIES = ('world', 'zone', 'loginserver', 'shared_memory', 'ucs', 'eqlaunch', 'queryserv', 'export_client_files')
 CLIENT_FILES = ('spells_us.txt', 'dbstr_us.txt', 'SkillCaps.txt', 'BaseData.txt')
@@ -203,6 +204,17 @@ class Engine(ManagedContent):
         self.stopping = False
         self.log_path = self.work / 'logs' / 'control.log'
         self.ensure_mysql_options()
+        self.source_recovery_error = ''
+        try:
+            source_updates.recover(self)
+        except (ValueError, OSError) as error:
+            self.source_recovery_error = str(error)
+            self.log('Source update recovery needs attention: ' + str(error))
+        if profile == 'takp':
+            try:
+                self.recover_takp_skeletons()
+            except (ValueError, OSError) as error:
+                self.log('TAKP skeleton recovery needs attention: ' + str(error))
         threading.Thread(target=self.worker, daemon=True).start()
         self.log('Control service ready. Server remains stopped until Start is selected.')
         self.traditional_recovery_error = None
@@ -386,11 +398,33 @@ class Engine(ManagedContent):
                 raise ValueError('Choose a traditional EQEmu source tree for this profile')
             if self.profile == 'takp':
                 metadata['takp'] = takp_build.qualify_source(candidate, self.check_cancel)
+            # Inventory bounds and source path validation must pass before any
+            # previously installed source/recovery tree is renamed.
+            managed_entries = source_updates.inventory(candidate, self.check_cancel)
             atomic_json(candidate / 'trasc-source.json', metadata)
             current, previous = self.work / 'sources/current', self.work / 'sources/previous'
-            if previous.exists(): shutil.rmtree(previous)
-            if current.exists(): os.replace(current, previous)
-            os.replace(candidate, current)
+            retained = self.work / 'sources' / ('previous-retained-' + secrets.token_hex(8))
+            had_current, had_previous = current.exists(), previous.exists()
+            managed_path = self.work / 'sources/managed-source.json'
+            old_managed = source_updates._read(managed_path) if managed_path.exists() else None
+            moved_current = activated = False
+            if had_previous: os.replace(previous, retained)
+            try:
+                if had_current:
+                    os.replace(current, previous)
+                    moved_current = True
+                os.replace(candidate, current)
+                activated = True
+                source_updates._atomic(self.work / 'sources/managed-source.json', {
+                    'format': source_updates.FORMAT, 'profile': self.profile, 'source': metadata,
+                    'entries': managed_entries, 'tree_sha256': source_updates.identity(managed_entries)})
+            except BaseException:
+                if activated and current.exists(): os.replace(current, candidate)
+                if moved_current and previous.exists(): os.replace(previous, current)
+                if had_previous and retained.exists(): os.replace(retained, previous)
+                if old_managed is not None: source_updates._atomic(managed_path, old_managed)
+                else: managed_path.unlink(missing_ok=True)
+                raise
             if metadata.get('repo'):
                 self.config.update(repo=metadata['repo'], ref=metadata['ref'])
                 self.save()
@@ -680,11 +714,13 @@ class Engine(ManagedContent):
         if self.profile == 'takp': return takp_build.build(self, args)
         if self.profile == 'traditional': return traditional_build.build(self, args)
         root = self.source_root()
+        if self.server_running(): raise ValueError('Stop the server before compiling')
         server = root / 'Release-NMS-Server' if (root / 'Release-NMS-Server').is_dir() else root
         jobs = int(args.get('jobs', self.config['jobs']))
         if not 1 <= jobs <= 4: raise ValueError('Choose 1–4 build jobs for this device')
         for needed in ('libs/luabind/CMakeLists.txt', 'submodules/fmt/CMakeLists.txt', 'submodules/libuv/CMakeLists.txt'):
             if not (server / needed).exists(): raise ValueError('Source lacks bundled dependencies: ' + needed + '. Import a complete source ZIP including submodules.')
+        before_patches = source_updates.inventory(root, self.check_cancel)
         ferry_support = server_ferry.prepare(server)
         bot_creation_bridge, bot_creation_bridge_unavailable = None, None
         try:
@@ -696,32 +732,68 @@ class Engine(ManagedContent):
             if (server / 'zone/trasc-bot-bridge.json').exists(): raise
             bot_creation_bridge_unavailable = str(error)
             self.log('Offline bot generation unavailable for this source: ' + str(error))
+        # The adapters have just independently verified their managed patches.
+        # Record them so a future source delta can distinguish them from edits.
+        source_updates.remember_patch_outputs(self, before_patches)
         self.config['jobs'] = jobs
         self.save()
-        build = self.work / 'builds' / 'current'
-        # A source refresh can change CMake's absolute source path expectations.
-        build.mkdir(exist_ok=True)
-        self.run(['cmake', '-S', server, '-B', build, '-G', 'Ninja', '-DCMAKE_BUILD_TYPE=Release',
+        options = ('-DCMAKE_BUILD_TYPE=Release',
             '-DEQEMU_BUILD_LOGIN=ON', '-DEQEMU_BUILD_SERVER=ON', '-DEQEMU_BUILD_CLIENT_FILES=ON',
             '-DEQEMU_PREFER_LUA=ON', '-DLUA_INCLUDE_DIR=/usr/include/lua5.1',
-            '-DLUA_LIBRARY=/usr/lib/aarch64-linux-gnu/liblua5.1.so'], timeout=600)
-        self.run(['cmake', '--build', build, '--parallel', str(jobs), '--target', *BINARIES], timeout=24*3600)
-        stage = self.work / 'server/bin.staged'
-        if stage.exists(): shutil.rmtree(stage)
-        stage.mkdir()
-        for name in BINARIES:
-            matches = [p for p in build.rglob(name) if p.is_file() and 'CMakeFiles' not in p.parts]
-            if len(matches) != 1: raise ValueError('Cannot locate built binary: ' + name)
-            with matches[0].open('rb') as binary: header = binary.read(20)
-            if header[:4] != b'\x7fELF' or header[4] != 2 or int.from_bytes(header[18:20], 'little') != 183:
-                raise ValueError(name + ' is not an ARM64 ELF binary')
-            shutil.copy2(matches[0], stage / name)
-            (stage / name).chmod(0o755)
+            '-DLUA_LIBRARY=/usr/lib/aarch64-linux-gnu/liblua5.1.so')
+        runtime_identity = source_updates.custom_runtime_identity(self)
+        compatibility = source_updates.cache_identity('custom', runtime_identity, 'custom-ninja-v1', server, options)
+        build = self.work / 'builds/current'
+        pointer = self.work / 'builds/custom-cache.json'
+        if pointer.exists():
+            value = source_updates._read(pointer)
+            name = value.get('directory', '')
+            if not re.fullmatch(r'current(?:-[0-9a-f]{12})?', str(name)):
+                raise ValueError('Invalid Custom compiler-cache receipt')
+            build = self.work / 'builds' / name
+        try:
+            source_updates.ensure_cache(self, build, compatibility, server, options, incremental=args.get('incremental') is True)
+        except ValueError:
+            if args.get('incremental') is True: raise
+            build = self.work / 'builds' / ('current-' + compatibility[:12])
+            source_updates.ensure_cache(self, build, compatibility, server, options)
+        atomic_json(pointer, {'format': 1, 'directory': build.name})
+        source_tree = source_updates.identity(source_updates.inventory(root, self.check_cancel))
         source_info = json.loads((root / 'trasc-source.json').read_text())
-        atomic_json(stage / 'build-info.json', {'source': source_info, 'built': time.time(), 'app': VERSION,
-            'ferry_support': ferry_support, 'bot_creation_bridge': bot_creation_bridge,
-            'bot_creation_bridge_unavailable': bot_creation_bridge_unavailable,
-            'zone_sha256': server_ferry.digest(stage / 'zone')})
+        traditional_build._cmake(self, ['-S', str(server), '-B', str(build), '-G', 'Ninja', *options], 600)
+        traditional_build._cmake(self, ['--build', str(build), '--parallel', str(jobs), '--target', *BINARIES], 24*3600)
+        if (source_tree != source_updates.identity(source_updates.inventory(root, self.check_cancel))
+                or source_info != json.loads((root / 'trasc-source.json').read_text())
+                or runtime_identity != source_updates.custom_runtime_identity(self)):
+            raise ValueError('Source or compiler runtime changed during compilation; previous staged binaries are preserved')
+        stage = self.work / ('server/bin.custom-preparing-' + secrets.token_hex(8))
+        stage.mkdir()
+        try:
+            hashes = {}
+            for name in BINARIES:
+                self.check_cancel()
+                matches = [p for p in build.rglob(name) if p.is_file() and 'CMakeFiles' not in p.parts]
+                if len(matches) != 1: raise ValueError('Cannot locate built binary: ' + name)
+                with matches[0].open('rb') as binary: header = binary.read(20)
+                if len(header) != 20 or header[:4] != b'\x7fELF' or header[4] != 2 or int.from_bytes(header[18:20], 'little') != 183:
+                    raise ValueError(name + ' is not an ARM64 ELF binary')
+                shutil.copy2(matches[0], stage / name)
+                (stage / name).chmod(0o755)
+                hashes[name] = source_updates._digest(stage / name, self.check_cancel)
+                with (stage / name).open('rb') as stream: os.fsync(stream.fileno())
+            atomic_json(stage / 'build-info.json', {'source': source_info, 'built': time.time(), 'app': VERSION,
+                'ferry_support': ferry_support, 'bot_creation_bridge': bot_creation_bridge,
+                'bot_creation_bridge_unavailable': bot_creation_bridge_unavailable,
+                'binaries': hashes, 'source_tree_sha256': source_tree,
+                'runtime_identity': runtime_identity, 'cache_identity': compatibility,
+                'zone_sha256': server_ferry.digest(stage / 'zone')})
+            if (source_tree != source_updates.identity(source_updates.inventory(root, self.check_cancel))
+                    or source_info != json.loads((root / 'trasc-source.json').read_text())
+                    or runtime_identity != source_updates.custom_runtime_identity(self)):
+                raise ValueError('Source or compiler runtime changed while staging; previous staged and deployed binaries are preserved')
+            source_updates.promote_custom_stage(self, stage)
+        finally:
+            if stage.exists(): shutil.rmtree(stage)
         return {'message': 'Build passed. Stop the server, then select Deploy build.' +
                 (' Offline bot generation is unavailable for this source: ' + bot_creation_bridge_unavailable if bot_creation_bridge_unavailable else ''),
                 'staged': True, 'bot_creation_bridge_unavailable': bot_creation_bridge_unavailable}
@@ -732,6 +804,13 @@ class Engine(ManagedContent):
         if self.server_running(): raise ValueError('Stop the server before deploying binaries')
         stage = self.work / 'server/bin.staged'
         if not all((stage / x).exists() for x in BINARIES): raise ValueError('Complete a successful build first')
+        build_info = json.loads((stage / 'build-info.json').read_text())
+        if build_info.get('binaries'):
+            if build_info.get('source_tree_sha256') != source_updates.identity(source_updates.inventory(self.source_root(), self.check_cancel)):
+                raise ValueError('Source changed since compilation; keep the previous staged build and compile again')
+            for name in BINARIES:
+                if source_updates._digest(stage / name, self.check_cancel) != build_info['binaries'].get(name):
+                    raise ValueError('Staged binary changed since compilation: ' + name)
         self.sync_content(args)
         self.write_config()
         current, previous = self.work / 'server/bin', self.work / 'server/bin.previous'
@@ -739,6 +818,23 @@ class Engine(ManagedContent):
         if current.exists(): os.replace(current, previous)
         os.replace(stage, current)
         return {'message': 'Binaries deployed. The previous binaries are available for rollback.'}
+
+    def source_update_preview(self, args):
+        return source_updates.preview(self, args)
+
+    def source_update_apply(self, args):
+        return source_updates.apply(self, args)
+
+    def build_update(self, args):
+        source_updates.recover(self)
+        if 'allow_fresh' in args and not isinstance(args['allow_fresh'], bool):
+            raise ValueError('Choose the explicit fresh-cache build option')
+        return self.build(dict(args, incremental=args.get('allow_fresh') is not True))
+
+    def deploy_update(self, args):
+        if not source_updates.staged_ready(self):
+            raise ValueError('Compile the current updated source successfully before deploying; earlier staged and deployed binaries are preserved')
+        return self.deploy(args)
 
     def rollback(self, args):
         if self.profile == 'takp': return takp_runtime.rollback(self, args)
@@ -1198,11 +1294,16 @@ class Engine(ManagedContent):
             'build_ready':takp['build']['staged_valid'] if takp else (traditional['build']['staged_valid'] if traditional else (self.work/'server/bin.staged/build-info.json').exists()), 'rollback_ready':takp['deployment']['rollback_allowed'] if takp else (self.work/'server/bin.previous').exists(),
             'processes':{name:{'pid':p.pid,'running':p.poll() is None,'exit':p.poll()} for name,p in self.processes.items()},
             'jobs':self.jobs,'free_bytes':shutil.disk_usage(self.work).free,'running':self.server_running(),
-            'nektulos':self.nektulos_status(), 'client':client}
+            'nektulos':self.nektulos_status(), 'client':client,
+            'source_update':source_updates.status(self)}
 
     def dispatch(self,op,args):
         if args.get('__profile', self.profile) != self.profile:
             raise ValueError('World profile changed. Refresh before continuing.')
+        if (self.work / 'run/source-update.json').exists() and op in ('import_source', 'source_update_preview', 'source_update_apply', 'build', 'build_update', 'deploy', 'deploy_update', 'start'):
+            source_updates.recover(self)
+        if op in ('takp_skeleton_status', 'set_takp_skeletons') and self.profile != 'takp':
+            raise ValueError('Skeleton alternatives belong to TAKP World')
         if self.profile in ('traditional', 'takp'):
             if op.startswith(('boat_trial_', 'ferry_', 'client_dll_', 'client_addons_')) or op in ('fix_nektulos','revert_nektulos','apply_spell_test','restore_spell_test'):
                 raise ValueError('This repair or addon belongs to TRASC Custom')
@@ -1237,6 +1338,11 @@ class Engine(ManagedContent):
             'client_dll_download_info':lambda a:client_toolchain.download_info(self,a),
             'client_dll_download':lambda a:client_toolchain.download(self,a),
             'client_dll_deploy':lambda a:client_dll.deploy_dll(self,a),
+            'takp_skeleton_status':lambda a:self.takp_skeleton_status(a),
+            'set_takp_skeletons':lambda a:self.set_takp_skeletons(a),
+            'source_update_status':lambda a:source_updates.status(self),
+            'source_update_preview':self.source_update_preview,'source_update_apply':self.source_update_apply,
+            'build_update':self.build_update,'deploy_update':self.deploy_update,
             'player_export':lambda a:player_data.export_players(self,a),'player_preview':lambda a:player_data.preview_players(self,a),
             'player_restore':self.restore_player_data,
             'import_source':self.import_source,'import_maps':self.import_maps,'import_database':self.import_database,
@@ -1274,7 +1380,7 @@ def serve(work, port, token, profile='custom'):
                     threading.Thread(target=server.shutdown,daemon=True).start()
                     result={'message':'Stopping all processes and database'}
                 elif op=='cancel': engine.cancel.set(); result={'message':'Cancellation requested'}
-                elif op in ('state','files','logs','databases','client_dll_status','client_dll_download_info','ferry_diagnostics','traditional_status','takp_status','era_status','bots_status','bots_characters','bots_roster'): result=engine.dispatch(op,args)
+                elif op in ('state','files','logs','databases','client_dll_status','client_dll_download_info','ferry_diagnostics','traditional_status','takp_status','era_status','bots_status','bots_characters','bots_roster','source_update_status','takp_skeleton_status'): result=engine.dispatch(op,args)
                 else: result=engine.enqueue(op,args)
                 payload=json.dumps({'ok':True,'result':result}).encode()
             except Exception as e:

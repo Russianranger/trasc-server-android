@@ -24,20 +24,12 @@ from engine import Engine, atomic_json
 import takp_build
 import takp_runtime
 from takp_spawn_wire import qualify_spawn_wire
+from integration_source_updates import (LEGACY_SERVER_COMMIT, archive_tree, immutable_archives,
+                                        stamps, tree_hashes)
 
 ANSI = re.compile(r'\x1b\[[0-?]*[ -/]*[@-~]')
 FIXTURE_USER = 'takpfixture'
 FIXTURE_PASSWORD = 'takp-fixture-pass'
-
-
-def archive_tree(source, target, selected=None):
-    with zipfile.ZipFile(target, 'w', zipfile.ZIP_DEFLATED) as archive:
-        files = sorted(Path(source).rglob('*')) if selected is None else selected
-        for path in files:
-            relative = path.relative_to(source)
-            if path.is_file() and not path.is_symlink() and '.git' not in relative.parts:
-                archive.write(path, Path('fixture') / relative)
-    return target.name
 
 
 def logs(engine):
@@ -73,11 +65,156 @@ def wait_for(engine, predicate, description, seconds=120):
     raise RuntimeError('Timed out waiting for ' + description + '\n' + output[-8000:])
 
 
+def qualify_legacy_source_transition(engine, args, report):
+    """Same-workspace upgrade: actual released receipts, native cache and data."""
+    baseline_path = args.output.parent / 'takp-legacy-baseline.json'
+    baseline = json.loads(baseline_path.read_text())
+    if baseline['result'] != 'passed' or baseline['source_commit'] != LEGACY_SERVER_COMMIT:
+        raise RuntimeError('The legacy native bootstrap did not qualify its exact source')
+    before_upgrade = engine.state()
+    if not before_upgrade['binaries_ready'] or not before_upgrade['takp']['deployment']['start_allowed']:
+        raise RuntimeError('App upgrade disabled the verified released TAKP server')
+    deployed = tree_hashes(engine.work / 'server/bin')
+    if deployed != baseline['deployed_hashes']:
+        raise RuntimeError('App upgrade altered deployed TAKP binaries or receipts')
+    source = engine.source_root()
+    if stamps(source) != baseline['source_stamps']:
+        raise RuntimeError('App upgrade changed the legacy source before update review')
+    credentials = {key: engine.config[key] for key in
+                   ('database', 'db_password', 'server_key', 'db_port', 'ip', 'login_port')}
+    # The old-app child closed its app-owned MariaDB during shutdown. Boot the
+    # same preserved database through the new runtime before issuing SQL.
+    engine.ensure_db()
+    player_state = engine.mysql('SELECT COUNT(*) FROM items; SELECT COUNT(*) FROM tblLoginServerAccounts;')
+    with immutable_archives(engine, {LEGACY_SERVER_COMMIT: args.baseline_source,
+                                     takp_build.REVISION: args.source}, takp_build.REPOSITORY):
+        preview = engine.source_update_preview({})
+        if (not preview['apply_allowed'] or preview['counts'] != {'added': 2, 'deleted': 0, 'changed': 2}
+                or set(preview['files']['changed']) != {'zone/player_bot.cpp', 'tests/player-bots/run.py'}):
+            raise RuntimeError('Native source review did not identify the exact Yaulp source delta: ' + str(preview))
+        engine.source_update_apply({'token': preview['token']})
+    after = stamps(source)
+    affected = set().union(*map(set, preview['files'].values()))
+    unchanged = set(baseline['source_stamps']) - affected
+    if any(after[name] != baseline['source_stamps'][name] for name in unchanged):
+        raise RuntimeError('Source update changed an unchanged file inode, size or mtime')
+    if tree_hashes(engine.work / 'server/bin') != deployed:
+        raise RuntimeError('Source update changed the currently deployed binaries')
+    if credentials != {key: engine.config[key] for key in credentials} or player_state != engine.mysql(
+            'SELECT COUNT(*) FROM items; SELECT COUNT(*) FROM tblLoginServerAccounts;'):
+        raise RuntimeError('Source update changed existing database/account settings')
+    if not engine.state()['takp']['deployment']['start_allowed']:
+        raise RuntimeError('Source update disabled the still-qualified previous server')
+    # This is a real launch using the old nine binaries through the NEW app.
+    # The latest source has not been compiled yet; no staged build can mask the
+    # start-disabled regression that the device reported.
+    engine.start({})
+    wait_for(engine, lambda output: 'ClientManager listening for RDP clients on port [6000]' in output,
+             'legacy server started through the upgraded app')
+    stopped = engine.stop({})
+    if not stopped['clean_shutdown']:
+        raise RuntimeError('Legacy server did not shut down cleanly through the upgraded app')
+    stage = engine.work / 'server/bin.staged'
+    shutil.copytree(engine.work / 'server/bin', stage)
+    previous_stage = tree_hashes(stage)
+    previous_run = engine.run
+    failure_reached_ninja = False
+    def fail_actual_ninja(command, *positional, **keywords):
+        nonlocal failure_reached_ninja
+        words = [str(word) for word in command]
+        cmake = next((index for index, word in enumerate(words) if Path(word).name == 'cmake'), None)
+        if cmake is not None and words[cmake + 1:cmake + 2] == ['--build']:
+            failure_reached_ninja = True
+            # A genuine nonzero Ninja child, after production cache selection
+            # and CMake configuration, without changing the qualified source.
+            words = words[:words.index('--target')] + ['--target', 'trasc_missing_qualification_target']
+            return previous_run(words, *positional, **keywords)
+        return previous_run(command, *positional, **keywords)
+    engine.run = fail_actual_ninja
+    try:
+        try:
+            engine.build_update({'jobs': args.jobs})
+        except ValueError as error:
+            if not failure_reached_ninja or 'Command failed' not in str(error):
+                raise
+        else:
+            raise RuntimeError('Intentionally failing native build unexpectedly succeeded')
+    finally:
+        engine.run = previous_run
+    if tree_hashes(stage) != previous_stage or tree_hashes(engine.work / 'server/bin') != deployed:
+        raise RuntimeError('Failed production build altered prior staged/deployed binaries or receipts')
+    if not engine.state()['takp']['deployment']['start_allowed']:
+        raise RuntimeError('Failed production build disabled previous deployed server')
+    build_dir = engine.work / baseline['build_directory']
+    if stamps(build_dir, '.o') != baseline['object_stamps']:
+        raise RuntimeError('Source review or deliberately refused build rewrote legacy compiler objects')
+    transition = {'format': 1, 'from_commit': LEGACY_SERVER_COMMIT, 'to_commit': takp_build.REVISION,
+                  'preview': preview, 'unchanged_source_files_preserved': len(unchanged),
+                  'legacy_build_directory': baseline['build_directory'],
+                  'legacy_native_object_count': len(baseline['object_stamps']),
+                  'legacy_deployed_start_after_upgrade_and_source_update': True,
+                  'actual_failed_ninja_preserved_staged_and_deployed_receipts': True,
+                  'database_credentials_and_account_counts_preserved': True}
+    report['source_update_transition'] = transition
+    report['checks']['verified_released_legacy_server_remains_startable_after_app_upgrade'] = True
+    report['checks']['actual_legacy_to_latest_source_delta_preserves_all_unchanged_inodes_and_mtimes'] = True
+    report['checks']['failed_incremental_native_build_preserves_previous_stage_deployment_and_readiness'] = True
+    return build_dir, baseline['object_stamps']
+
+
+def qualify_incremental_objects(engine, args, report, build_dir, before):
+    if takp_build.build_directory(engine) != build_dir:
+        raise RuntimeError('Production update replaced the legacy cache instead of adopting it')
+    after = stamps(build_dir, '.o')
+    if set(before) != set(after):
+        raise RuntimeError('A single-translation-unit update unexpectedly changed the native object inventory')
+    changed = sorted(name for name in before if before[name] != after[name])
+    expected = ['zone/CMakeFiles/zone.dir/player_bot.cpp.o']
+    if changed != expected:
+        raise RuntimeError('Yaulp incremental build compiled unrelated objects: ' + str(changed))
+    transition = report['source_update_transition']
+    transition['native_changed_objects'] = changed
+    transition['native_unchanged_objects_preserved'] = len(after) - len(changed)
+    before_noop = tree_hashes(engine.work / 'server/bin.staged')
+    operation = engine.work / 'logs/operation.log'
+    log_offset = operation.stat().st_size
+    engine.build_update({'jobs': args.jobs})
+    with operation.open('rb') as stream:
+        stream.seek(log_offset)
+        no_op_output = stream.read().decode(errors='replace')
+    if 'ninja: no work to do.' not in no_op_output:
+        raise RuntimeError('No-op production rebuild did not report an empty Ninja work graph')
+    if stamps(build_dir, '.o') != after:
+        raise RuntimeError('A no-op production rebuild unexpectedly recompiled C++ objects')
+    # Receipt timestamps may advance, but a no-op compile may not change a
+    # single server binary. All nine outputs are compared by SHA-256.
+    after_noop = tree_hashes(engine.work / 'server/bin.staged')
+    if any(before_noop[name] != after_noop[name] for name in takp_build.BINARIES):
+        raise RuntimeError('No-op production build changed native binary bytes')
+    transition['native_no_op_all_objects_and_nine_binary_hashes_preserved'] = True
+    transition['native_no_op_ninja_output'] = 'ninja: no work to do.'
+    transition['result'] = 'passed'
+    report['checks']['real_cmake_ninja_reuses_legacy_cache_and_compiles_only_player_bot'] = True
+    report['checks']['second_production_build_is_a_no_op_for_all_native_objects_and_binaries'] = True
+    atomic_json(args.output.parent / 'takp-source-update-native.json', transition)
+
+
 def qualify(args):
     if platform.machine() not in ('aarch64', 'arm64'):
         raise RuntimeError('TAKP runtime qualification requires native ARM64')
     args.output.parent.mkdir(parents=True, exist_ok=True)
     args.output.unlink(missing_ok=True)
+    if bool(args.baseline_app) != bool(args.baseline_source):
+        raise ValueError('Supply both released baseline app and native source fixtures')
+    subprocess.run([sys.executable, str(Path(__file__).with_name('integration_source_updates.py')),
+                    '--work', str(args.work.parent / 'source-update-cmake-fixtures'),
+                    '--output', str(args.output.parent / 'all-profile-source-update-cmake.json')], check=True)
+    if args.baseline_app:
+        subprocess.run([sys.executable, str(Path(__file__).with_name('integration_source_updates.py')),
+                        '--bootstrap-legacy', '--work', str(args.work), '--baseline-app', str(args.baseline_app),
+                        '--baseline-source', str(args.baseline_source), '--quests', str(args.quests),
+                        '--maps', str(args.maps), '--output', str(args.output.parent / 'takp-legacy-baseline.json'),
+                        '--jobs', str(args.jobs)], check=True)
     engine = Engine(args.work, 'takp')
     custom = Engine(args.work.parent / 'custom-preserved', 'custom')
     sentinel = custom.work / 'server/keep.txt'
@@ -89,21 +226,44 @@ def qualify(args):
     zone = None
     zone_log = None
     try:
-        name = archive_tree(args.source, engine.work / 'incoming/server.zip')
-        imported = engine.import_source({'file': name})
+        incremental = None
+        if args.baseline_app:
+            content_paths = {'quests': engine.work / 'server/quests',
+                             'maps': engine.work / 'maps', 'assets': engine.work / 'server/assets'}
+            retained_content = {kind: tree_hashes(path) for kind, path in content_paths.items()}
+            incremental = qualify_legacy_source_transition(engine, args, report)
+            imported = {'source': json.loads((engine.source_root() / 'trasc-source.json').read_text())}
+        else:
+            name = archive_tree(args.source, engine.work / 'incoming/server.zip')
+            imported = engine.import_source({'file': name})
         if imported['source']['takp']['tree_sha256'] != takp_build.SOURCE_TREE_SHA256:
             raise RuntimeError('Production source importer did not qualify the pinned tree')
         report['checks']['complete_pinned_source_and_vendored_dependencies'] = True
-        name = archive_tree(args.quests, engine.work / 'incoming/quests.zip')
-        engine.dispatch('import_content', {'kind': 'quests', 'file': name})
-        maps = [path for path in args.maps.iterdir() if path.name.startswith(('qeynos.', 'paineel.'))
-                or path.name.startswith(('README', 'LICENSE'))]
-        for zone_name in ('qeynos', 'paineel'):
-            if not any(path.name == zone_name + '.map' for path in maps):
-                raise RuntimeError('Pinned map fixture lacks ' + zone_name)
-        name = archive_tree(args.maps, engine.work / 'incoming/maps.zip', maps)
-        engine.import_maps({'file': name})
+        if incremental:
+            # The released app already installed the same pinned content.
+            # A source-only update must keep it, not request replacement.
+            content = engine.state()['takp']
+            if not all(content['components'][kind]['imported'] for kind in content_paths):
+                raise RuntimeError('App/source upgrade invalidated retained TAKP content')
+            for zone_name in ('qeynos', 'paineel'):
+                if not (engine.work / 'maps' / (zone_name + '.map')).is_file():
+                    raise RuntimeError('Retained map fixture lacks ' + zone_name)
+        else:
+            name = archive_tree(args.quests, engine.work / 'incoming/quests.zip')
+            engine.dispatch('import_content', {'kind': 'quests', 'file': name})
+            maps = [path for path in args.maps.iterdir() if path.name.startswith(('qeynos.', 'paineel.'))
+                    or path.name.startswith(('README', 'LICENSE'))]
+            for zone_name in ('qeynos', 'paineel'):
+                if not any(path.name == zone_name + '.map' for path in maps):
+                    raise RuntimeError('Pinned map fixture lacks ' + zone_name)
+            name = archive_tree(args.maps, engine.work / 'incoming/maps.zip', maps)
+            engine.import_maps({'file': name})
         engine.sync_content({})
+        if incremental:
+            if any(tree_hashes(path) != retained_content[kind] for kind, path in content_paths.items()):
+                raise RuntimeError('Source update replaced installed TAKP quests, maps or opcode assets')
+            report['checks']['existing_quests_maps_and_assets_preserved_without_reimport'] = True
+            report['source_update_transition']['existing_content_preserved'] = True
         report['checks']['takp_quests_flat_maps_and_opcodes'] = True
         # Qualify the imported pinned bot policy, including the seed-backed
         # Yaulp scheduling regression, on this native host before the full build.
@@ -112,14 +272,20 @@ def qualify(args):
             raise RuntimeError('Pinned TAKP source lacks the standalone bot qualification runner')
         subprocess.run([sys.executable, str(bot_tests)], cwd=engine.source_root(), check=True)
         report['checks']['native_standalone_bot_policy_and_yaulp_regressions'] = True
-        engine.build({'jobs': args.jobs})
+        engine.build_update({'jobs': args.jobs}) if incremental else engine.build({'jobs': args.jobs})
+        if incremental:
+            qualify_incremental_objects(engine, args, report, *incremental)
         report['checks']['native_production_build_and_nine_elf_dependency_checks'] = True
         report['spawn_wire'] = qualify_spawn_wire(
-            engine.work / ('builds/takp-' + takp_build.REVISION[:12]),
+            takp_build.build_directory(engine),
             engine.source_root(), args.output.parent / 'spawn-wire')
         report['checks']['native_mac_spawn_encryption_opcode_and_literal_224_byte_client_layout'] = True
-        database = engine.dispatch('takp_initialize_database', {})
-        active_database = database['database']
+        if incremental:
+            active_database = engine.config['database']
+            takp_runtime.verify_database(engine)
+        else:
+            database = engine.dispatch('takp_initialize_database', {})
+            active_database = database['database']
         report['database'] = active_database
         expected_versions = {str(number) for number in range(1, 12)}
         versions = {row[0] for row in takp_runtime._rows(engine, 'SELECT version FROM takp_bot_schema;')}
@@ -137,7 +303,8 @@ def qualify(args):
         if engine.config['database'] != active_database or before != engine.mysql('SELECT COUNT(*) FROM items;'):
             raise RuntimeError('Refused database initialization still changed the database')
         report['checks']['existing_database_refused_without_replacement'] = True
-        engine.dispatch('takp_create_account', {'username': FIXTURE_USER, 'password': FIXTURE_PASSWORD})
+        if not incremental:
+            engine.dispatch('takp_create_account', {'username': FIXTURE_USER, 'password': FIXTURE_PASSWORD})
         account = takp_runtime._rows(engine, "SELECT AccountPassword,ForumName FROM tblLoginServerAccounts WHERE AccountName='" + FIXTURE_USER + "';")
         expected = hashlib.sha1((FIXTURE_PASSWORD + engine.config['server_key']).encode()).hexdigest()
         if account != [[expected, FIXTURE_USER]]:
@@ -238,4 +405,6 @@ if __name__ == '__main__':
     parser.add_argument('--maps', type=Path, required=True)
     parser.add_argument('--output', type=Path, required=True)
     parser.add_argument('--jobs', type=int, default=2)
+    parser.add_argument('--baseline-app', type=Path)
+    parser.add_argument('--baseline-source', type=Path)
     qualify(parser.parse_args())

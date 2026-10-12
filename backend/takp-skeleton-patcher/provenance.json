@@ -1,0 +1,20 @@
+{
+  "format": 1,
+  "repository": "https://github.com/Russianranger/EqSkelePatcher",
+  "upstream": "https://github.com/nickgal/EqSkelePatcher",
+  "revision": "c3382bc492a9810bcbea50e78cda4463f514c95b",
+  "license": "MIT",
+  "copyright": "Copyright (c) 2023 Nick Gal",
+  "mechanism": "Offline gequip5.wld and global6_chr.wld string-table SKE to LSK replacement inside their S3D archives",
+  "implementation": "Bounded Python adaptation preserving original WLD offsets/fragments and all other S3D compressed payloads; no upstream executable is downloaded or executed",
+  "format_sources": [
+    "https://github.com/EQEmu/zone-utilities/blob/b361e63dd067e8959f5bf2341579f481d2374fd5/src/common/pfs.cpp",
+    "https://github.com/EQEmu/zone-utilities/blob/b361e63dd067e8959f5bf2341579f481d2374fd5/src/common/wld_structs.h",
+    "https://github.com/cjab/libeq/blob/e06ae17dd38b624983663505e25b99a259ea0b15/crates/libeq_pfs/FORMAT.md",
+    "https://github.com/cjab/libeq/blob/9def52ed1c39d8ba1365793011cf797536e4ea18/crates/libeq_wld/src/parser/strings.rs"
+  ],
+  "known_issues": [
+    "https://github.com/nickgal/EqSkelePatcher/issues/1",
+    "https://github.com/nickgal/EqSkelePatcher/issues/3"
+  ]
+}

@@ -19,6 +19,7 @@ import tarfile
 import time
 import urllib.request
 import modern_bot_bridge
+import source_updates
 
 REPOSITORY = "https://github.com/Russianranger/Server"
 REVISION = "4aceae18b94ffaafc08e2b17bc41cd72c77f795d"
@@ -36,6 +37,14 @@ MAX_WEBSOCKET_DOWNLOAD = 8 * 1024**2
 MIN_FREE = 3 * 1024**3
 RUNTIME_MARKER = Path("/etc/trasc-runtime.json")
 MEMORY_INFO = Path('/proc/meminfo')
+
+BUILD_OPTIONS = ('-DCMAKE_BUILD_TYPE=Release', '-DCMAKE_CXX_COMPILER=/usr/bin/g++', '-DCMAKE_C_COMPILER=/usr/bin/gcc',
+                 '-DCMAKE_TOOLCHAIN_FILE=', '-DCMAKE_CXX_FLAGS_RELEASE=-O2 -DNDEBUG -fno-strict-aliasing',
+                 '-DCMAKE_EXPORT_COMPILE_COMMANDS=ON', '-DEQEMU_USE_SYSTEM_DEPENDENCIES=ON',
+                 '-DLUAJIT_INCLUDE_DIR=/usr/include/luajit-2.1', '-DLUAJIT_LIBRARY=/usr/lib/aarch64-linux-gnu/libluajit-5.1.so',
+                 '-DEQEMU_BUILD_PCH=ON', '-DEQEMU_BUILD_SERVER=ON', '-DEQEMU_BUILD_LOGIN=ON',
+                 '-DEQEMU_BUILD_CLIENT_FILES=ON', '-DEQEMU_BUILD_PERL=ON', '-DEQEMU_BUILD_LUA=ON',
+                 '-DEQEMU_BUILD_TESTS=OFF', '-DEQEMU_ADD_PROFILER=OFF')
 
 # Full-file guards were generated from the pinned, pristine Git commit. Every
 # guard is checked before any overlay transformation writes a file.
@@ -1293,12 +1302,16 @@ def _runtime(engine):
         return result
 
 
-def _prepare_overlay(engine, root, provenance, source_identity, entries, runtime_identity):
+def _prepare_overlay(engine, root, provenance, source_identity, entries, runtime_identity, incremental=False):
     base = _mkdir(engine, engine.work / 'builds/traditional')
     source, receipt = base / 'source', base / 'overlay-receipt.json'
     identity = _digest({'source': source_identity, 'inputs': _tree_sha(entries), 'runtime': runtime_identity,
                         'recipe': _recipe_identity(), 'source_location': str(source), 'objects_location': str(base / 'objects')})
     expected = _expected_overlay(root, entries)
+    cache_identity = source_updates.cache_identity('traditional', runtime_identity, RECIPE, source,
+                    (*BUILD_OPTIONS, '-DTRASC_WEBSOCKETPP_INCLUDE_DIR=' + str(source / 'submodules/websocketpp')))
+    identity = _digest({'overlay': identity, 'cache': cache_identity})
+    stored, old_actual = None, None
     try:
         stored = _json(_confined(engine, receipt))
         if stored.get('format') == 1 and stored.get('identity') == identity:
@@ -1307,6 +1320,10 @@ def _prepare_overlay(engine, root, provenance, source_identity, entries, runtime
             if _tree_sha(actual) == stored.get('overlay_sha256') and _overlay_valid(actual, expected):
                 engine.log('Reusing the verified Traditional build overlay')
                 return source, identity
+        if stored.get('format') == 1 and source.exists():
+            actual = _inventory(source, engine.check_cancel)
+            if _tree_sha(actual) == stored.get('overlay_sha256'):
+                old_actual = actual
     except (OSError, ValueError):
         engine.check_cancel()
     temporary = base / ('source-preparing-' + secrets.token_hex(8))
@@ -1325,11 +1342,38 @@ def _prepare_overlay(engine, root, provenance, source_identity, entries, runtime
             raise ValueError('Traditional patched overlay failed its complete expected-input validation')
         overlay_sha = _tree_sha(actual)
         engine.check_cancel()
-        _remove(engine, base / 'objects')
-        _remove(engine, source)
-        os.replace(temporary, source)
+        reused = False
+        if old_actual is not None:
+            trusted_legacy = False
+            try:
+                import traditional_runtime
+                traditional_runtime._record(engine, 'server/bin')
+                trusted_legacy = True
+            except (OSError, ValueError, KeyError, TypeError):
+                pass
+            try:
+                source_updates.ensure_cache(engine, base / 'objects', cache_identity, source,
+                    (*BUILD_OPTIONS, '-DTRASC_WEBSOCKETPP_INCLUDE_DIR=' + str(source / 'submodules/websocketpp')),
+                    incremental=incremental, trusted_legacy=trusted_legacy)
+                source_updates.reconcile(engine, temporary, source, old_actual, actual)
+                if _tree_sha(_inventory(source, engine.check_cancel)) != overlay_sha:
+                    raise ValueError('Traditional incremental overlay does not match the qualified new inputs')
+                reused = True
+                engine.log('Updated only changed Traditional overlay inputs; existing Ninja objects are retained')
+            except ValueError:
+                if incremental:
+                    raise
+        if not reused:
+            # Preserve incompatible caches and receipts rather than deleting
+            # the only copy of expensive compiler work.
+            for name in ('objects', 'source'):
+                original = base / name
+                if original.exists():
+                    os.replace(original, base / (name + '-retained-' + secrets.token_hex(8)))
+            os.replace(temporary, source)
         _atomic_json(receipt, {'format': 1, 'recipe': RECIPE, 'identity': identity,
-                              'overlay_sha256': overlay_sha, 'source': provenance, 'created': time.time()})
+                              'overlay_sha256': overlay_sha, 'source': provenance, 'created': time.time(),
+                              'cache_identity': cache_identity})
         return source, identity
     finally:
         _remove(engine, temporary)
@@ -1542,22 +1586,35 @@ def build(engine, args):
     engine.log('Fingerprinting the complete Traditional source before compilation')
     entries = _inventory(root, engine.check_cancel, source=True)
     input_sha = _tree_sha(entries)
-    overlay, build_identity = _prepare_overlay(engine, root, provenance, source_identity, entries, runtime['identity'])
+    overlay, build_identity = _prepare_overlay(engine, root, provenance, source_identity, entries, runtime['identity'], args.get('incremental') is True)
     objects = _mkdir(engine, base / 'objects')
+    cache_identity = source_updates.cache_identity('traditional', runtime['identity'], RECIPE, overlay,
+                    (*BUILD_OPTIONS, '-DTRASC_WEBSOCKETPP_INCLUDE_DIR=' + str(overlay / 'submodules/websocketpp')))
+    trusted_legacy = False
+    try:
+        import traditional_runtime
+        traditional_runtime._record(engine, 'server/bin')
+        trusted_legacy = True
+    except (OSError, ValueError, KeyError, TypeError):
+        pass
+    try:
+        source_updates.ensure_cache(engine, objects, cache_identity, overlay,
+                    (*BUILD_OPTIONS, '-DTRASC_WEBSOCKETPP_INCLUDE_DIR=' + str(overlay / 'submodules/websocketpp')),
+                    incremental=args.get('incremental') is True, trusted_legacy=trusted_legacy)
+    except ValueError:
+        if args.get('incremental') is True:
+            raise
+        os.replace(objects, base / ('objects-retained-' + secrets.token_hex(8)))
+        source_updates.ensure_cache(engine, objects, cache_identity, overlay,
+                    (*BUILD_OPTIONS, '-DTRASC_WEBSOCKETPP_INCLUDE_DIR=' + str(overlay / 'submodules/websocketpp')))
     stage = engine.work / 'server' / ('bin.traditional-preparing-' + secrets.token_hex(8))
     evidence = base / ('evidence-preparing-' + secrets.token_hex(8))
     _mkdir(engine, evidence)
     try:
         engine.log('Configuring Traditional ARM64 with LuaJIT, Perl and both client-file utilities')
-        _cmake(engine, ['-S', str(overlay), '-B', str(objects), '-G', 'Ninja',
-                       '-DCMAKE_BUILD_TYPE=Release', '-DCMAKE_CXX_COMPILER=/usr/bin/g++', '-DCMAKE_C_COMPILER=/usr/bin/gcc',
-                       '-DCMAKE_TOOLCHAIN_FILE=', '-DCMAKE_CXX_FLAGS_RELEASE=-O2 -DNDEBUG -fno-strict-aliasing',
-                       '-DCMAKE_EXPORT_COMPILE_COMMANDS=ON', '-DEQEMU_USE_SYSTEM_DEPENDENCIES=ON',
+        _cmake(engine, ['-S', str(overlay), '-B', str(objects), '-G', 'Ninja', *BUILD_OPTIONS,
                        '-DTRASC_WEBSOCKETPP_INCLUDE_DIR=' + str(overlay / 'submodules/websocketpp'),
-                       '-DLUAJIT_INCLUDE_DIR=/usr/include/luajit-2.1', '-DLUAJIT_LIBRARY=/usr/lib/aarch64-linux-gnu/libluajit-5.1.so',
-                       '-DEQEMU_BUILD_PCH=ON', '-DEQEMU_BUILD_SERVER=ON', '-DEQEMU_BUILD_LOGIN=ON',
-                       '-DEQEMU_BUILD_CLIENT_FILES=ON', '-DEQEMU_BUILD_PERL=ON', '-DEQEMU_BUILD_LUA=ON',
-                       '-DEQEMU_BUILD_TESTS=OFF', '-DEQEMU_ADD_PROFILER=OFF'], 600)
+                       ], 600)
         _cmake(engine, ['--build', str(objects), '--parallel', str(jobs), '--target', *BINARIES], 24 * 3600)
         engine.check_cancel()
         _mkdir(engine, stage)

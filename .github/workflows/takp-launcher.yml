@@ -11,7 +11,7 @@ concurrency:
 jobs:
   takp-server:
     runs-on: ubuntu-24.04-arm
-    timeout-minutes: 65
+    timeout-minutes: 90
     steps:
       - uses: actions/checkout@v4
       - uses: actions/checkout@v4
@@ -19,6 +19,15 @@ jobs:
           repository: Russianranger/Servertakp
           ref: 03e934d0fdf460e2e6ce34c0a25a3e05d9f7e167
           path: runtime-work/takp-source
+      - uses: actions/checkout@v4
+        with:
+          ref: cf6bec71d6f3171de27851d7df625cf84da096f8
+          path: runtime-work/takp-baseline-app
+      - uses: actions/checkout@v4
+        with:
+          repository: Russianranger/Servertakp
+          ref: 25bf70acb6bd24853cf09e447ddd62b96a4491a4
+          path: runtime-work/takp-baseline-source
       - uses: actions/checkout@v4
         with:
           repository: Russianranger/queststakp
@@ -39,6 +48,8 @@ jobs:
             -v "$PWD/backend:/opt/trasc:ro" \
             -v "$PWD/tests:/tests:ro" \
             -v "$PWD/runtime-work/takp-source:/source:ro" \
+            -v "$PWD/runtime-work/takp-baseline-app/backend:/baseline-app:ro" \
+            -v "$PWD/runtime-work/takp-baseline-source:/baseline-source:ro" \
             -v "$PWD/runtime-work/takp-quests:/fixtures/quests:ro" \
             -v "$PWD/runtime-work/takp-maps:/fixtures/maps:ro" \
             -v "$PWD/runtime-work/takp-work:/work" \
@@ -49,7 +60,7 @@ jobs:
           from pathlib import Path
           Path("/etc/trasc-runtime.json").write_text(json.dumps({"format":1,"architecture":"arm64","distribution":"debian-bookworm","profile":"takp","runtime":"takp-1.0","source_profile":"traditional","source_runtime":"traditional-1.0","build_adapter":1}) + "\n")
           PY
-              python3 /tests/integration_takp_runtime.py --work /work --source /source --quests /fixtures/quests --maps /fixtures/maps --output /evidence/takp-runtime.json --jobs 2
+              python3 /tests/integration_takp_runtime.py --work /work --source /source --quests /fixtures/quests --maps /fixtures/maps --output /evidence/takp-runtime.json --jobs 2 --baseline-app /baseline-app --baseline-source /baseline-source
             ' 2>&1 | tee dist/takp/qualification.log
       - name: Restore runner ownership of generated qualification evidence
         if: always()
@@ -238,24 +249,24 @@ jobs:
         id: baseline-cache
         with:
           path: runtime-work/baseline/
-          key: takp-native-baseline-0.6.23-0bd0081eefeb44eeb72a2f54491355409d79eb9cbbbd8f8e24a8dd530feefe57
-      - name: Fetch the verified 0.6.23 release assets
+          key: takp-native-baseline-0.6.24-df748f8794aae4e33afe73c3c2eef6018ef77b2c3995112962f6304a37874feb
+      - name: Fetch the verified 0.6.24 release assets
         if: steps.baseline-cache.outputs.cache-hit != 'true'
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
           mkdir -p runtime-work/baseline dist
-          gh api repos/Russianranger/trasc-server-android/releases/assets/628886437 -H 'Accept: application/octet-stream' > runtime-work/baseline/base.apk
-          gh api repos/Russianranger/trasc-server-android/releases/assets/628886445 -H 'Accept: application/octet-stream' > runtime-work/baseline/launcher-sources.tar.gz
-      - name: Reuse the exact published 0.6.23 native launcher payload
+          gh api repos/Russianranger/trasc-server-android/releases/assets/629529126 -H 'Accept: application/octet-stream' > runtime-work/baseline/base.apk
+          gh api repos/Russianranger/trasc-server-android/releases/assets/629529129 -H 'Accept: application/octet-stream' > runtime-work/baseline/launcher-sources.tar.gz
+      - name: Reuse the exact published 0.6.24 native launcher payload
         run: |
-          echo '941374d293e92d3a31b0eccc6fdeb09143294266ab2338ea15fc049de19ceaeb  runtime-work/baseline/launcher-sources.tar.gz' | sha256sum --check
-          python3 scripts/reuse-launcher-native.py extract --apk runtime-work/baseline/base.apk --receipt dist/native-reuse.json --expected-sha 0bd0081eefeb44eeb72a2f54491355409d79eb9cbbbd8f8e24a8dd530feefe57 --baseline-version 0.6.23 --include-camera
+          echo '8dcb8138f21c80c0056e2734d97952834e2c3a9a17f92a9c3997d8ad69f5a5d9  runtime-work/baseline/launcher-sources.tar.gz' | sha256sum --check
+          python3 scripts/reuse-launcher-native.py extract --apk runtime-work/baseline/base.apk --receipt dist/native-reuse.json --expected-sha df748f8794aae4e33afe73c3c2eef6018ef77b2c3995112962f6304a37874feb --baseline-version 0.6.24 --include-camera
       - uses: actions/cache/save@v4
         if: steps.baseline-cache.outputs.cache-hit != 'true'
         with:
           path: runtime-work/baseline/
-          key: takp-native-baseline-0.6.23-0bd0081eefeb44eeb72a2f54491355409d79eb9cbbbd8f8e24a8dd530feefe57
+          key: takp-native-baseline-0.6.24-df748f8794aae4e33afe73c3c2eef6018ef77b2c3995112962f6304a37874feb
       - name: Install host regression dependencies
         run: |
           sudo apt-get update
@@ -276,17 +287,17 @@ jobs:
         run: |
           cp app/build/outputs/apk/debug/app-debug.apk dist/trasc-server-android-preview.apk
           mkdir -p runtime-work/source-bundle/launcher-source
-          cp runtime-work/baseline/launcher-sources.tar.gz runtime-work/source-bundle/launcher-source/preserved-sources-0.6.23.tar.gz
-          git archive --format=tar.gz HEAD > runtime-work/source-bundle/launcher-source/launcher-code-0.6.24.tar.gz
+          cp runtime-work/baseline/launcher-sources.tar.gz runtime-work/source-bundle/launcher-source/preserved-sources-0.6.24.tar.gz
+          git archive --format=tar.gz HEAD > runtime-work/source-bundle/launcher-source/launcher-code-0.6.25.tar.gz
           cp dist/native-reuse.json backend-assets/traditional-camera-bundle.json THIRD_PARTY_NOTICES.md runtime-work/source-bundle/launcher-source/
           tar -czf dist/launcher-sources.tar.gz -C runtime-work/source-bundle launcher-source
           python3 - <<'PY'
           import hashlib,json,os,pathlib
           p=pathlib.Path('dist/trasc-server-android-preview.apk')
           manifest={'commit':os.environ['GITHUB_SHA'],'sha256':hashlib.file_digest(p.open('rb'),'sha256').hexdigest(),
-            'file':p.name,'version':'0.6.24','version_code':73,'application_id':'io.github.russianranger.trasc.preview',
+            'file':p.name,'version':'0.6.25','version_code':74,'application_id':'io.github.russianranger.trasc.preview',
             'signing_certificate_sha256':pathlib.Path('docs/preview-signing.sha256').read_text().strip(),
-            'build_run':int(os.environ['GITHUB_RUN_ID']),'native_payload_reused_from':'0.6.23',
+            'build_run':int(os.environ['GITHUB_RUN_ID']),'native_payload_reused_from':'0.6.24',
             'native_reuse_manifest_sha256':hashlib.sha256(pathlib.Path('dist/native-reuse.json').read_bytes()).hexdigest(),
             'traditional_camera_adapter_sha256':hashlib.sha256(pathlib.Path('backend-assets/trasc-camera-dinput8.dll').read_bytes()).hexdigest(),
             'source_archive_sha256':hashlib.file_digest(pathlib.Path('dist/launcher-sources.tar.gz').open('rb'),'sha256').hexdigest()}

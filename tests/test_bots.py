@@ -79,6 +79,13 @@ class BotBuildCompatibilityTests(unittest.TestCase):
     def setUp(self):
         import engine
         self.module=engine
+        import source_updates
+        # These source-capability fixtures contain a tiny ARM64 ELF header,
+        # not an executable runtime. Native CI qualifies the real compiler;
+        # keep this boundary explicit while exercising the production guards.
+        runtime_patch = patch.object(source_updates, 'custom_runtime_identity', return_value='a' * 64)
+        runtime_patch.start()
+        self.addCleanup(runtime_patch.stop)
         self.tmp=tempfile.TemporaryDirectory()
         self.work=Path(self.tmp.name)
         self.source=self.work/'sources/current'
@@ -96,6 +103,8 @@ class BotBuildCompatibilityTests(unittest.TestCase):
             def source_root(inner): return self.source
             def save(inner): pass
             def log(inner,message): pass
+            def server_running(inner): return False
+            def check_cancel(inner): pass
             def run(inner,command,**kwargs): inner.commands.append(command)
         self.engine=Harness()
     def tearDown(self): self.tmp.cleanup()
@@ -120,6 +129,35 @@ class BotBuildCompatibilityTests(unittest.TestCase):
         with patch.object(self.module.server_ferry,'prepare',return_value={'feature':'existing-ferry'}),patch.object(modern_bot_bridge,'prepare',side_effect=ValueError('Patched source changed')):
             with self.assertRaisesRegex(ValueError,'Patched source changed'): self.module.Engine.build(self.engine,{})
         self.assertEqual(self.engine.commands,[])
+
+    def test_source_edit_during_staging_cannot_relabel_old_outputs_as_new_source(self):
+        import modern_bot_bridge
+        stage = self.work / 'server/bin.staged'
+        deployed = self.work / 'server/bin'
+        for directory, content in ((stage, b'previous successful stage'), (deployed, b'installed server')):
+            directory.mkdir()
+            (directory / 'zone').write_bytes(content)
+            (directory / 'build-info.json').write_bytes(content)
+        before = {str(path.relative_to(self.work)): path.read_bytes()
+                  for directory in (stage, deployed) for path in directory.iterdir()}
+        original = self.module.shutil.copy2
+        edited = False
+        def copy(source, destination, *args, **kwargs):
+            nonlocal edited
+            result = original(source, destination, *args, **kwargs)
+            if 'bin.custom-preparing-' in str(destination) and not edited:
+                edited = True
+                (self.source / 'zone/late.cpp').write_text('concurrent user source edit')
+            return result
+        with patch.object(self.module.server_ferry, 'prepare', return_value={'feature': 'existing-ferry'}), \
+                patch.object(modern_bot_bridge, 'prepare', side_effect=modern_bot_bridge.UnsupportedSource('Pristine unsupported fixture')), \
+                patch.object(self.module.shutil, 'copy2', side_effect=copy):
+            with self.assertRaisesRegex(ValueError, 'changed while staging'):
+                self.module.Engine.build(self.engine, {})
+        self.assertTrue(edited)
+        self.assertEqual({str(path.relative_to(self.work)): path.read_bytes()
+                          for directory in (stage, deployed) for path in directory.iterdir()}, before)
+        self.assertEqual((self.source / 'zone/late.cpp').read_text(), 'concurrent user source edit')
 
 
 @unittest.skipUnless(os.environ.get('ERARULES_MARIADB')=='1','Set ERARULES_MARIADB=1 to run the isolated real database fixture')

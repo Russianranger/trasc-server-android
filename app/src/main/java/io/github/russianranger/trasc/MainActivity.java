@@ -167,6 +167,9 @@ public final class MainActivity extends Activity {
                         case "import_client_zip": case "import_client_ui": case "activate_client_ui": case "restore_client_ui": case "prepare_client": case "export_client":
                         case "apply_spell_test": case "restore_spell_test":
                         case "client_addons_copy": case "client_dll_deploy":
+                        case "set_takp_skeletons":
+                        case "source_update_preview": case "source_update_apply":
+                        case "build_update": case "deploy_update":
                         case "client_dll_sdk": case "client_dll_download":
                             // Serialize submission with native launch; start also checks queued/running jobs.
                             synchronized(clientRuntime) {

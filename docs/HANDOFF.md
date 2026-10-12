@@ -1,3 +1,15 @@
+# Active 0.6.25 continuation — qualification pending
+
+Read `docs/release-status-0625.md`, `docs/source-updates-0625.md`, `docs/takp-skeletons-0625.md` and `docs/device-acceptance-0625.md` before older release entries below. Current published APK remains 0.6.24 until new successful qualification and independent publication proof.
+
+Branch `codex/source-updates-skele-0625`, based on exact main 0742d1367a3cf5bf26b69231c7df9e97bc25d6d1. User reported stale TAKP source setup and disabled Start server; source ZIPs themselves are complete. Preserve installed 25bf source/cache/deployment while applying verified 03e delta. Old known deployed receipts now verify independently of newer source; new stages stay strict.
+
+New all-profile Updates workflow is reviewed/transactional and preserves unchanged files/objects. Historical Custom lacks compiler/runtime cache provenance: explicit one-time fresh build, retain old cache; future updates reusable. Optional TAKP classic skeleton assets use bounded MIT EqSkelePatcher adaptation and exact retained originals/caches, no new DLLs. Original camera/helper behavior stays unchanged; new uploaded bundle has no fresh camera consumer trace. NPC visibility and Traditional StoneUI remain separate.
+
+Local 551 Python run passed with 22 database skips, management passed; actual ZIP and native CMake proofs retained in docs. One coordinated production/Android pipeline is required, including real old TAKP→new source/cache/start/no-op qualification. Do not run competing builds or assume this draft is published. Update release proof/status here only after actual downloaded APK/signature/source/native verification. Old committed work was recovered after workspace maintenance removed prior scratch; no inaccessible unfinished work assumed.
+
+---
+
 # Released 0.6.24 — device acceptance remains (2026-10-11 UTC)
 
 Read `docs/release-status-0624.md`, `docs/release-proof-0624.json`, `docs/device-acceptance-0624.md`, `docs/takp-camera-0624.md` and `docs/modern-bot-commands-0624.md` before older history below.

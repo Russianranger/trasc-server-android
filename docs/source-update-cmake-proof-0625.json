@@ -1,0 +1,41 @@
+{
+  "format": 1,
+  "kind": "bounded_native_cmake_fixture",
+  "profiles": {
+    "custom": {
+      "changed_source_files": 1,
+      "unchanged_source_stamps": 5,
+      "changed_object_files": [
+        "CMakeFiles/zone.dir/zone/player_bot.cpp.o"
+      ],
+      "no_op_ninja": "ninja: no work to do.",
+      "production_cache_receipt_verified_after_source_change": true,
+      "actual_invalid_cpp_compile_failed": true,
+      "deployed_executable_preserved_and_runs": true
+    },
+    "traditional": {
+      "changed_source_files": 1,
+      "unchanged_source_stamps": 5,
+      "changed_object_files": [
+        "CMakeFiles/zone.dir/zone/player_bot.cpp.o"
+      ],
+      "no_op_ninja": "ninja: no work to do.",
+      "production_cache_receipt_verified_after_source_change": true,
+      "actual_invalid_cpp_compile_failed": true,
+      "deployed_executable_preserved_and_runs": true
+    },
+    "takp": {
+      "changed_source_files": 1,
+      "unchanged_source_stamps": 5,
+      "changed_object_files": [
+        "CMakeFiles/zone.dir/zone/player_bot.cpp.o"
+      ],
+      "no_op_ninja": "ninja: no work to do.",
+      "production_cache_receipt_verified_after_source_change": true,
+      "actual_invalid_cpp_compile_failed": true,
+      "deployed_executable_preserved_and_runs": true
+    }
+  },
+  "result": "passed",
+  "scope": "Real C++ compiler/Ninja and common updater; fixture-specific source pins, not full server builds"
+}

@@ -10,11 +10,13 @@ function spellTestControls(){
  $('spell-test-apply').disabled=activeProfile==='takp'||!!(busy||clientFileBusy||active||!clientImported);
  $('spell-test-restore').disabled=activeProfile==='takp'||!!(busy||clientFileBusy||!active);
  $('client-import').disabled=!!(busy||clientFileBusy||active);
+ if(typeof renderTakpSkeletonControls==='function')renderTakpSkeletonControls();
  for(const id of ['client-prepare','export-client'])$(id).disabled=!!(busy||clientFileBusy||incomplete);
  if(typeof syncProfileControls==='function')syncProfileControls();
 }
 function renderClientStatus(client){
  clientImported=!!client?.imported;spellComparison=client?.spell_test||{};
+ if(typeof renderTakpSkeletonStatus==='function'&&client?.skeletons)renderTakpSkeletonStatus(client.skeletons);
  $('client-status').textContent=clientImported?client.files+' entries · '+bytes(client.bytes)+' extracted. '+(activeProfile==='takp'?(client.prepared?'TAKP patches and local login settings prepared.':'Prepare this TAKP client to install the supplied patches and login settings.'):activeProfile==='traditional'?'Clean Traditional client uses Wine’s built-in DirectInput.':client.dinput8_present?'dinput8.dll is present.':'dinput8.dll was not found beside eqgame.exe.'):'No client imported.';
  $('spell-test-status').textContent=spellComparison.error|| (spellComparison.state==='applied'?
   'Compatibility on · '+(spellComparison.excluded_count??spellComparison.excluded_ids.length)+' IDs excluded · '+spellComparison.filtered_rows+' rows in each folder. Future exports stay filtered. Latest full table retained for Restore.':

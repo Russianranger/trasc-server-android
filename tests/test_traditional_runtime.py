@@ -6,6 +6,7 @@ native CI test executes the actual server, MariaDB and encrypted login protocol.
 import contextlib
 import hashlib
 import json
+import shutil
 import os
 from pathlib import Path
 import sys
@@ -381,6 +382,22 @@ class TraditionalRuntimeTests(unittest.TestCase):
             self.deployed()
         self.assertFalse((self.engine.work/'server/bin').exists())
         self.assertFalse(self.backups)
+
+    def test_exact_0624_deployed_recipe_survives_adapter_update_with_offline_bots(self):
+        self.deployed()
+        path = self.engine.work / 'server/bin/build-info.json'
+        info = json.loads(path.read_text())
+        info.update(recipe_identity=runtime.LEGACY_0624_RECIPE_IDENTITY,
+                    bot_creation_bridge=modern_bot_bridge.metadata('traditional'))
+        atomic_json(path, info)
+        self.assertEqual(runtime._record(self.engine)['recipe_identity'], runtime.LEGACY_0624_RECIPE_IDENTITY)
+        self.assertTrue(runtime.status(self.engine, {})['start_allowed'])
+        staged = self.engine.work / 'server/bin.staged'
+        shutil.copytree(self.engine.work / 'server/bin', staged)
+        with self.assertRaisesRegex(ValueError, 'qualified runtime and build recipe'):
+            runtime._record(self.engine, 'server/bin.staged')
+        (self.engine.work / 'server/bin/zone').write_bytes(b'changed')
+        self.assertFalse(runtime.status(self.engine, {})['start_allowed'])
 
     def test_legacy_acceptance_still_checks_verifier_runtime_manifest_report_and_binaries(self):
         path,info=self.legacy_deployed()
