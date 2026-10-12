@@ -6,7 +6,7 @@ This is an optional model asset change. It does not alter server rules, database
 
 ## Enable and restore
 
-1. Stop the client. Select **TAKP World**, then the **Client** tab.
+1. Stop the client. Select **TAKP World**, choose **Start runtime** if stopped, then the **Client** tab.
 2. Enable the classic skeleton option and apply it. The app first validates both archive structures, their compressed blocks and matching WLDs. Both must contain the upstream `SKE` identifiers; unfamiliar or already modified archives are refused before activation.
 3. Launch the client and check skeleton NPC/pet appearances in a familiar zone. Keep the renderer and camera settings unchanged for this comparison.
 4. Stop the client, disable the option and apply it to restore the exact original archive bytes. Check the same NPCs/pets again.

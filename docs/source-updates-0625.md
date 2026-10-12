@@ -12,7 +12,7 @@ TAKP and Traditional update to the exact app-qualified source revisions. Custom 
 
 ## Use on Thor
 
-1. Stop the client and server, leave the server runtime open, and save an external session checkpoint. Open **Builds**. The current verified deployed server should remain startable even if its imported source needs updating.
+1. Stop the client and server, leave the server runtime open, and save an external session checkpoint. If checkpoint export stopped the runtime, choose **Start runtime** again. Open **Builds**. The current verified deployed server should remain startable even if its imported source needs updating.
 2. In **Updates**, choose **Refresh update status**. Check the imported/target/deployed revisions and cache message. For Custom, choose the desired branch/ref. For TAKP and Traditional, the qualified target is selected by the app.
 3. **Check source update** downloads and validates the candidate, then displays counts and file paths. It does not replace the current source, build or deploy. Local edits are listed and block application. Preserve/reconcile them before checking again; changing the target invalidates the review.
 4. **Apply reviewed source update** applies the reviewed immutable delta. Changed/deleted originals and source metadata remain under `sources/update-backups/<review token>`. Unchanged source and compiler output remain intact. A stale review, changed candidate, unsupported source or insufficient space refuses before activation.
@@ -37,3 +37,5 @@ A second defect made old deployed build receipts depend on the new imported-sour
 The coordinated production TAKP job also bootstraps the exact released older app/server, adopts its real ARM64 build cache, tests startup after upgrading the app, applies the actual Yaulp delta, verifies failed-build preservation, checks the changed object set, then requires a true no-op rebuild before the usual server/database/native integration. Use the release receipt for its final result. Small fixtures alone do not establish the production or device result.
 
 Source activation and Custom stage promotion use durable journals. Recovery validates all retained files, metadata, destinations and ancestor types before writing any live file. Backups, rename parents, receipt replacements and deletions are flushed before committed cleanup. Unknown edits and unsafe recovery data refuse rather than discarding user files. These tests do not substitute for physical storage/power-loss acceptance.
+
+Production qualification passed in run `38204284306`: one of 375 TAKP objects recompiled, 374 retained, followed by a true no-op rebuild and unchanged nine binary hashes. See `release-proof-0625.json` for exact receipts and scope.

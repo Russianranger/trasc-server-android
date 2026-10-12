@@ -1,0 +1,906 @@
+{
+  "format": "trasc-release-proof-1",
+  "version": "0.6.25",
+  "version_code": 74,
+  "qualified_source": {
+    "branch": "codex/takp-world",
+    "aliases": [
+      "codex/source-updates-skele-0625"
+    ],
+    "commit": "92a2bd663e1a7d4a433494c6e7cb59a82e41bd4a",
+    "tree": "20b024d19095fb68ff642c511aed77f708b82135",
+    "base_main": "0742d1367a3cf5bf26b69231c7df9e97bc25d6d1",
+    "pr": {
+      "number": 31,
+      "url": "https://github.com/Russianranger/trasc-server-android/pull/31",
+      "merged": true,
+      "merge_commit": "5d6b581c44d1a05816ed2b6288c34a0220d58805",
+      "merged_at": "2026-10-12T04:47:24Z",
+      "merge_tree_equal_qualified_source": true
+    }
+  },
+  "release": {
+    "tag": "preview",
+    "tag_commit": "92a2bd663e1a7d4a433494c6e7cb59a82e41bd4a",
+    "url": "https://github.com/Russianranger/trasc-server-android/releases/tag/preview",
+    "assets": [
+      {
+        "id": 632686874,
+        "name": "launcher-sources.tar.gz",
+        "size": 247549804,
+        "digest": "sha256:42eeecf9321b0059bcd665ae3b21a3d34cbc0dd3f39923ffed16305c9327c8f5",
+        "url": "https://github.com/Russianranger/trasc-server-android/releases/download/preview/launcher-sources.tar.gz",
+        "updated_at": "2026-10-12T04:44:54Z",
+        "public_download_verified": true
+      },
+      {
+        "id": 632686877,
+        "name": "native-reuse.json",
+        "size": 4817,
+        "digest": "sha256:696c29700f4aa312af973d0bfaf9c73733a1a13c80b68e6eefc5f9e4e4c043ff",
+        "url": "https://github.com/Russianranger/trasc-server-android/releases/download/preview/native-reuse.json",
+        "updated_at": "2026-10-12T04:44:45Z",
+        "public_download_verified": true
+      },
+      {
+        "id": 632686873,
+        "name": "preview-build.json",
+        "size": 765,
+        "digest": "sha256:e6a414b8cc1f5ed091039b4984bc22678dc1e6834a8a0ef3df1ed23fed19f01d",
+        "url": "https://github.com/Russianranger/trasc-server-android/releases/download/preview/preview-build.json",
+        "updated_at": "2026-10-12T04:44:45Z",
+        "public_download_verified": true
+      },
+      {
+        "id": 632686872,
+        "name": "trasc-server-android-preview.apk",
+        "size": 18901006,
+        "digest": "sha256:cfef9fffc28285e95913b8782f98c9d0822e67a06414f86c37180a9b9cc85feb",
+        "url": "https://github.com/Russianranger/trasc-server-android/releases/download/preview/trasc-server-android-preview.apk",
+        "updated_at": "2026-10-12T04:44:46Z",
+        "public_download_verified": true
+      }
+    ],
+    "download_verification": {
+      "source_commit": "92a2bd663e1a7d4a433494c6e7cb59a82e41bd4a",
+      "build_run": 38204284306,
+      "version": "0.6.25",
+      "version_code": 74,
+      "apk_bytes": 18901006,
+      "apk_sha256": "cfef9fffc28285e95913b8782f98c9d0822e67a06414f86c37180a9b9cc85feb",
+      "source_archive_sha256": "42eeecf9321b0059bcd665ae3b21a3d34cbc0dd3f39923ffed16305c9327c8f5",
+      "native_reuse_manifest_sha256": "696c29700f4aa312af973d0bfaf9c73733a1a13c80b68e6eefc5f9e4e4c043ff",
+      "exact_bundled_source_assets": 119,
+      "exact_source_archive_files": 541,
+      "preserved_0624_source_sha256": "8dcb8138f21c80c0056e2734d97952834e2c3a9a17f92a9c3997d8ad69f5a5d9",
+      "native_components_equal_verified_0624_apk": 21,
+      "exact_camera_helper_sha256": "495d6e1711e21f012d1f8c9581af74fdbdccac5f45e2e93508e40b4bd3dbca1d",
+      "apk_signature_verified": true,
+      "signing_certificate_sha256": "ff9c09cdc3e2404d1d7f72d61ce2f8651464f5e03dff340f70bd4df28c70e869",
+      "aapt_package": "io.github.russianranger.trasc.preview",
+      "aapt_version_name": "0.6.25",
+      "aapt_version_code": 74,
+      "skeleton_patcher_source_license_provenance_bundled": true,
+      "footer_version_matches_package": true
+    }
+  },
+  "ci": {
+    "run": {
+      "id": 38204284306,
+      "status": "completed",
+      "conclusion": "success",
+      "head_sha": "92a2bd663e1a7d4a433494c6e7cb59a82e41bd4a",
+      "created_at": "2026-10-12T04:33:41Z",
+      "updated_at": "2026-10-12T04:44:58Z",
+      "html_url": "https://github.com/Russianranger/trasc-server-android/actions/runs/38204284306"
+    },
+    "jobs": [
+      {
+        "id": 114664212010,
+        "name": "apk",
+        "status": "completed",
+        "conclusion": "success",
+        "started_at": "2026-10-12T04:33:44Z",
+        "completed_at": "2026-10-12T04:42:15Z",
+        "html_url": "https://github.com/Russianranger/trasc-server-android/actions/runs/38204284306/job/114664212010"
+      },
+      {
+        "id": 114664212062,
+        "name": "takp-server",
+        "status": "completed",
+        "conclusion": "success",
+        "started_at": "2026-10-12T04:33:46Z",
+        "completed_at": "2026-10-12T04:44:29Z",
+        "html_url": "https://github.com/Russianranger/trasc-server-android/actions/runs/38204284306/job/114664212062"
+      },
+      {
+        "id": 114664212111,
+        "name": "modern-bots (traditional, Russianranger/Server, 4aceae18b94ffaafc08e2b17bc41cd72c77f795d, .)",
+        "status": "completed",
+        "conclusion": "success",
+        "started_at": "2026-10-12T04:33:46Z",
+        "completed_at": "2026-10-12T04:36:00Z",
+        "html_url": "https://github.com/Russianranger/trasc-server-android/actions/runs/38204284306/job/114664212111"
+      },
+      {
+        "id": 114664212288,
+        "name": "modern-bots (custom, Russianranger/Triptych-Triumvirate, 8f6ca0795f424a7b4eab750ff38fc6473d48375c...",
+        "status": "completed",
+        "conclusion": "success",
+        "started_at": "2026-10-12T04:33:47Z",
+        "completed_at": "2026-10-12T04:36:36Z",
+        "html_url": "https://github.com/Russianranger/trasc-server-android/actions/runs/38204284306/job/114664212288"
+      },
+      {
+        "id": 114666463829,
+        "name": "preview",
+        "status": "completed",
+        "conclusion": "success",
+        "started_at": "2026-10-12T04:44:32Z",
+        "completed_at": "2026-10-12T04:44:57Z",
+        "html_url": "https://github.com/Russianranger/trasc-server-android/actions/runs/38204284306/job/114666463829"
+      }
+    ],
+    "tests": {
+      "python": 551,
+      "python_skips": 0,
+      "management_jvm": "passed",
+      "directx_preservation": "passed",
+      "all_browser_fixtures": "passed",
+      "android_assembly": "passed",
+      "android_lint": {
+        "errors": 0,
+        "warnings": 37
+      },
+      "signing_certificate_sha256": "ff9c09cdc3e2404d1d7f72d61ce2f8651464f5e03dff340f70bd4df28c70e869",
+      "native_payload_reuse": "21 unchanged from independently verified 0.6.24",
+      "takp_production_checks": 20,
+      "modern_custom_checks": 28,
+      "modern_traditional_checks": 28
+    },
+    "artifacts": [
+      {
+        "id": 11727121792,
+        "name": "takp-launcher-validation-reports",
+        "size_in_bytes": 75906177,
+        "digest": "sha256:e3287bfd4696221acc15d60cf7ccdf82ce2ea8ab36ea88249457acdf82088dc6",
+        "created_at": "2026-10-12T04:42:11Z"
+      },
+      {
+        "id": 11726528393,
+        "name": "takp-launcher-release",
+        "size_in_bytes": 266346252,
+        "digest": "sha256:bdcb2d5c5b549376fd11adfed686fbbebaa11f57b95745f5b6e5e36f24a283e6",
+        "created_at": "2026-10-12T04:42:08Z"
+      },
+      {
+        "id": 11726442879,
+        "name": "modern-bots-custom-arm64-verification",
+        "size_in_bytes": 27225,
+        "digest": "sha256:9d559fe56744ec94076696281af99c49563987273d6cbbe74d194788b54e9bc2",
+        "created_at": "2026-10-12T04:36:34Z"
+      },
+      {
+        "id": 11726279670,
+        "name": "takp-bookworm-arm64-verification",
+        "size_in_bytes": 1021048,
+        "digest": "sha256:ba4e2f9721a60237bfdfc5391d64aa0db678136915cfcc8e978ca0de766c7ee6",
+        "created_at": "2026-10-12T04:44:25Z"
+      },
+      {
+        "id": 11726244103,
+        "name": "modern-bots-traditional-arm64-verification",
+        "size_in_bytes": 26506,
+        "digest": "sha256:818646df79a2bd7ba0e52ac8d3f1966c60cb3b803f89082d79e6ba9087d81cbe",
+        "created_at": "2026-10-12T04:35:58Z"
+      }
+    ],
+    "failed_attempts": [
+      {
+        "run": 38201744261,
+        "source": "568ef72f8bd6cf08ffe4fe5e7e9555600760c529",
+        "failures": [
+          "Stale TAKP UI source-pin assertion",
+          "Fixture issued SQL before starting preserved database after old-app shutdown"
+        ],
+        "modern_native_gates_passed": true,
+        "jobs_finished_and_caches_saved_before_next_run": true
+      },
+      {
+        "run": 38203254344,
+        "source": "f433b5a8c2e8c49bb4a1525ddb8b00ad3a1a5c2d",
+        "failure": "Redundant quest import into already installed legacy workspace correctly refused",
+        "apk_and_modern_native_gates_passed": true,
+        "real_legacy_server_start_source_update_and_failed_ninja_preservation_passed": true,
+        "all_jobs_finished_before_next_run": true
+      }
+    ],
+    "production_changes_between_attempts": false,
+    "competing_builds_launched": false
+  },
+  "native": {
+    "takp": {
+      "pin": "03e934d0fdf460e2e6ce34c0a25a3e05d9f7e167",
+      "native_server_pr": 2,
+      "native_server_merge_commit": "b28b529e857784def1671b3d2759d0a7ac6c0084",
+      "production_receipt": {
+        "format": 1,
+        "profile": "takp",
+        "architecture": "arm64",
+        "source_commit": "03e934d0fdf460e2e6ce34c0a25a3e05d9f7e167",
+        "recipe": "eqmac-bookworm-arm64-luajit-v1",
+        "seed_sha256": "6f5a61206b22d3d70c20ece7fb8c617bbe0849d286b2cb48279841f4c6103433",
+        "checks": {
+          "verified_released_legacy_server_remains_startable_after_app_upgrade": true,
+          "actual_legacy_to_latest_source_delta_preserves_all_unchanged_inodes_and_mtimes": true,
+          "failed_incremental_native_build_preserves_previous_stage_deployment_and_readiness": true,
+          "complete_pinned_source_and_vendored_dependencies": true,
+          "existing_quests_maps_and_assets_preserved_without_reimport": true,
+          "takp_quests_flat_maps_and_opcodes": true,
+          "native_standalone_bot_policy_and_yaulp_regressions": true,
+          "real_cmake_ninja_reuses_legacy_cache_and_compiles_only_player_bot": true,
+          "second_production_build_is_a_no_op_for_all_native_objects_and_binaries": true,
+          "native_production_build_and_nine_elf_dependency_checks": true,
+          "native_mac_spawn_encryption_opcode_and_literal_224_byte_client_layout": true,
+          "complete_four_part_seed_and_all_eleven_bot_migrations": true,
+          "existing_database_refused_without_replacement": true,
+          "local_account_creation_with_salted_password": true,
+          "local_login_world_and_dynamic_zone_startup": true,
+          "qeynos_zone_map_lua_boot_and_no_sql_schema_errors": true,
+          "paineel_zone_boot_with_pinned_content_and_all_156_seeded_npc_creation_events": true,
+          "actual_two_file_unfiltered_takp_export": true,
+          "native_zone_and_launcher_clean_shutdown": true,
+          "custom_workspace_and_credentials_preserved": true
+        },
+        "result": "passed",
+        "source_update_transition": {
+          "format": 1,
+          "from_commit": "25bf70acb6bd24853cf09e447ddd62b96a4491a4",
+          "to_commit": "03e934d0fdf460e2e6ce34c0a25a3e05d9f7e167",
+          "preview": {
+            "token": "f17a9c7e16686ed32e87da550b5946b1",
+            "profile": "takp",
+            "from_commit": "25bf70acb6bd24853cf09e447ddd62b96a4491a4",
+            "to_commit": "03e934d0fdf460e2e6ce34c0a25a3e05d9f7e167",
+            "apply_allowed": true,
+            "up_to_date": false,
+            "counts": {
+              "added": 2,
+              "deleted": 0,
+              "changed": 2
+            },
+            "files": {
+              "added": [
+                "docs/player-bots-yaulp-ai.md",
+                "tests/player-bots/yaulp_spell_tests.py"
+              ],
+              "deleted": [],
+              "changed": [
+                "tests/player-bots/run.py",
+                "zone/player_bot.cpp"
+              ]
+            },
+            "files_truncated": false,
+            "conflicts": [],
+            "conflict_count": 0,
+            "download_mode": "immutable-archive",
+            "message": "Source update reviewed; unchanged inputs and compiled objects will be retained"
+          },
+          "unchanged_source_files_preserved": 5548,
+          "legacy_build_directory": "builds/takp-25bf70acb6bd",
+          "legacy_native_object_count": 375,
+          "legacy_deployed_start_after_upgrade_and_source_update": true,
+          "actual_failed_ninja_preserved_staged_and_deployed_receipts": true,
+          "database_credentials_and_account_counts_preserved": true,
+          "existing_content_preserved": true,
+          "native_changed_objects": [
+            "zone/CMakeFiles/zone.dir/player_bot.cpp.o"
+          ],
+          "native_unchanged_objects_preserved": 374,
+          "native_no_op_all_objects_and_nine_binary_hashes_preserved": true,
+          "native_no_op_ninja_output": "ninja: no work to do.",
+          "result": "passed"
+        },
+        "spawn_wire": {
+          "format": 1,
+          "wire_spawn_bytes": 224,
+          "bulk_packet_sizes": {
+            "1": 78,
+            "56": 1021,
+            "100": 1700
+          },
+          "individual_new_spawn_packets": 156,
+          "individual_encrypted_bytes": 12791,
+          "native_probe_stdout": "internal_spawn_bytes=305\nbulk_packets=3 new_spawn_packets=156",
+          "result": "passed"
+        },
+        "database": "takp_2740f8d49fe7",
+        "paineel_seeded_npc_creation_count": 156
+      },
+      "source_update_transition": {
+        "format": 1,
+        "from_commit": "25bf70acb6bd24853cf09e447ddd62b96a4491a4",
+        "to_commit": "03e934d0fdf460e2e6ce34c0a25a3e05d9f7e167",
+        "preview": {
+          "token": "f17a9c7e16686ed32e87da550b5946b1",
+          "profile": "takp",
+          "from_commit": "25bf70acb6bd24853cf09e447ddd62b96a4491a4",
+          "to_commit": "03e934d0fdf460e2e6ce34c0a25a3e05d9f7e167",
+          "apply_allowed": true,
+          "up_to_date": false,
+          "counts": {
+            "added": 2,
+            "deleted": 0,
+            "changed": 2
+          },
+          "files": {
+            "added": [
+              "docs/player-bots-yaulp-ai.md",
+              "tests/player-bots/yaulp_spell_tests.py"
+            ],
+            "deleted": [],
+            "changed": [
+              "tests/player-bots/run.py",
+              "zone/player_bot.cpp"
+            ]
+          },
+          "files_truncated": false,
+          "conflicts": [],
+          "conflict_count": 0,
+          "download_mode": "immutable-archive",
+          "message": "Source update reviewed; unchanged inputs and compiled objects will be retained"
+        },
+        "unchanged_source_files_preserved": 5548,
+        "legacy_build_directory": "builds/takp-25bf70acb6bd",
+        "legacy_native_object_count": 375,
+        "legacy_deployed_start_after_upgrade_and_source_update": true,
+        "actual_failed_ninja_preserved_staged_and_deployed_receipts": true,
+        "database_credentials_and_account_counts_preserved": true,
+        "existing_content_preserved": true,
+        "native_changed_objects": [
+          "zone/CMakeFiles/zone.dir/player_bot.cpp.o"
+        ],
+        "native_unchanged_objects_preserved": 374,
+        "native_no_op_all_objects_and_nine_binary_hashes_preserved": true,
+        "native_no_op_ninja_output": "ninja: no work to do.",
+        "result": "passed"
+      },
+      "build_receipt": {
+        "format": 1,
+        "profile": "takp",
+        "recipe": "eqmac-bookworm-arm64-luajit-v1",
+        "recipe_sha256": "3479697073922a8dce92feee7b5b9cadc46674d56535e845f117abaf44c0f3e8",
+        "source": {
+          "commit": "03e934d0fdf460e2e6ce34c0a25a3e05d9f7e167",
+          "tree_sha256": "3bcfc1f604909594a33ebfa8217d71f7fade167f4d439492fbe75e8ce0f44cf5",
+          "files": 5552,
+          "bytes": 147902744,
+          "bundled_dependencies": true
+        },
+        "source_tree_sha256": "3bcfc1f604909594a33ebfa8217d71f7fade167f4d439492fbe75e8ce0f44cf5",
+        "runtime_identity": "f03644bc85eaa178faa437e9c5a284160495b0df14af1a10befc12cbd2a558d6",
+        "input_sha256": "b90bd5f2da22c1193384102cea6659289831ddfd96de711f1e22747819f27bc6",
+        "cache_identity": "3a650e5d63767f2e6d303f2ebe4109c077e1f326d909a61158f5e9a75d71ec08",
+        "built": 1791780249.3630536,
+        "binaries": {
+          "world": "b592afe54eeba2ec7e77fdd6d3cb0a947f36c8a8e725549e2c9d6f6a8df343d8",
+          "zone": "8fa81e8e91ab59d99c7ff1c6181c550c4be916559d173a637c063bbe9b5e88a3",
+          "loginserver": "1831aeea142ea66bb5141ece90e398ad558fbc8fd85cbeee0aac49b4c74b9a0b",
+          "shared_memory": "80203fa635d696528a7437d735b0fa74680fefa3f6b61fc76cb353105590936d",
+          "ucs": "f7ee1c8b10428b93ec0f3bb08c588bbdfb874fc71e75e304684fa9965d961596",
+          "eqlaunch": "d5671ff2d4c04cdc71a07b92255b618cbabbe3a4f6e87b7f8cc1d9ec581e490b",
+          "queryserv": "92ac74ccaca953f46fd0b9d8d5a18aaba8eed8d575b3fac50d3c2206a7a1fe90",
+          "export_client_files": "b48b8893988f41d96825006d3b0953487c59bb439c67251ce1affc4d69d32038",
+          "import_client_files": "076cd288e03c445fd309b6fbf0049981db625f5981cb8774ca9ec4f0221ce2ec"
+        }
+      },
+      "previous_build_receipt": {
+        "format": 1,
+        "profile": "takp",
+        "recipe": "eqmac-bookworm-arm64-luajit-v1",
+        "recipe_sha256": "30f84583dce03e651e971e41b0eb7eaa4c71dceb3cb295f24458db13f4193a84",
+        "source": {
+          "commit": "25bf70acb6bd24853cf09e447ddd62b96a4491a4",
+          "tree_sha256": "2d15df9713d3742a4ad9c1041e99b081b4896c81b919081377110620a19350ec",
+          "files": 5550,
+          "bytes": 147884398,
+          "bundled_dependencies": true
+        },
+        "source_tree_sha256": "2d15df9713d3742a4ad9c1041e99b081b4896c81b919081377110620a19350ec",
+        "runtime_identity": "f03644bc85eaa178faa437e9c5a284160495b0df14af1a10befc12cbd2a558d6",
+        "built": 1791780188.2473884,
+        "binaries": {
+          "world": "b592afe54eeba2ec7e77fdd6d3cb0a947f36c8a8e725549e2c9d6f6a8df343d8",
+          "zone": "af18d7e01f2b2b40c243574f3deb60a1e1b1e48d65a5f15145593084ff036163",
+          "loginserver": "1831aeea142ea66bb5141ece90e398ad558fbc8fd85cbeee0aac49b4c74b9a0b",
+          "shared_memory": "80203fa635d696528a7437d735b0fa74680fefa3f6b61fc76cb353105590936d",
+          "ucs": "f7ee1c8b10428b93ec0f3bb08c588bbdfb874fc71e75e304684fa9965d961596",
+          "eqlaunch": "d5671ff2d4c04cdc71a07b92255b618cbabbe3a4f6e87b7f8cc1d9ec581e490b",
+          "queryserv": "92ac74ccaca953f46fd0b9d8d5a18aaba8eed8d575b3fac50d3c2206a7a1fe90",
+          "export_client_files": "b48b8893988f41d96825006d3b0953487c59bb439c67251ce1affc4d69d32038",
+          "import_client_files": "076cd288e03c445fd309b6fbf0049981db625f5981cb8774ca9ec4f0221ce2ec"
+        }
+      },
+      "changed_binaries_from_legacy": [
+        "zone"
+      ],
+      "unchanged_binaries_from_legacy": 8,
+      "legacy_baseline_summary": {
+        "format": 1,
+        "baseline_app_commit": "cf6bec71d6f3171de27851d7df625cf84da096f8",
+        "source_commit": "25bf70acb6bd24853cf09e447ddd62b96a4491a4",
+        "recipe_sha256": "30f84583dce03e651e971e41b0eb7eaa4c71dceb3cb295f24458db13f4193a84",
+        "source_tree_sha256": "2d15df9713d3742a4ad9c1041e99b081b4896c81b919081377110620a19350ec",
+        "build_directory": "builds/takp-25bf70acb6bd",
+        "cmake_cache_sha256": "e6399dce4cbb7fcebdc318aa23a81fd58ebb0a7ae994258326cf5de044c733a6",
+        "ninja_log_sha256": "6f4e344246a77ec176269c0c0972fd8c36d1a1cd19d36a29735b859680d2fa50",
+        "elapsed_seconds": 517.635,
+        "checks": {
+          "production_legacy_build": true,
+          "seed_content_account_and_real_deployment": true,
+          "legacy_server_started_and_stopped": true
+        },
+        "result": "passed",
+        "receipt_sha256": "74834e18127fb89210d76d84053f12ea485f62c0ed66a555313a6eafdb02d386",
+        "source_stamp_count": 5550,
+        "object_stamp_count": 375
+      }
+    },
+    "modern": {
+      "custom": {
+        "format": 1,
+        "profile": "custom",
+        "architecture": "aarch64",
+        "source_revision": "8f6ca0795f424a7b4eab750ff38fc6473d48375c",
+        "database_seed": {
+          "kind": "pinned_custom_source",
+          "path": "database/release-peq.zip",
+          "sha256": "4ed5c2f19f7cd1553ca6bdcc1b71ee766e9eb7acc273d806d3710542c0f2442e"
+        },
+        "result": "passed",
+        "checks": {
+          "debugger_layer": {
+            "format": 1,
+            "existing_packages_unchanged": true,
+            "existing_tool_bytes_unchanged": true,
+            "base_packages_sha256": "7696b1a2d22a841c9cea6575982b74e41105a4dfe38f6eead842f976d94a2b58",
+            "tools": [
+              "dc53dbc5a583d03ae8ed6272ca9afc0f58873f9f9b86dd7d448b17fb3f88a8d0  /usr/bin/gcc",
+              "22084e38d464db4299003c899eae3f1cb563ed6a75b3179e3e2a2d593d640528  /usr/bin/g++",
+              "f9cdf554a4e27fa35a19e0ceeee9240faf09706d4a2f2db2d67d8bead877a013  /usr/bin/cmake",
+              "c33483364705a23a1a2fe7daca8c0a911a507e721ceba3cdc8751d98e8232404  /usr/bin/ninja",
+              "a6097f7672f78105082b665344a2deef7f26be89833dc170fa573c0c64deba2b  /usr/bin/perl"
+            ],
+            "debugger_version": "GNU gdb (Debian 13.1-3) 13.1",
+            "added_packages": {
+              "gdb": "13.1-3",
+              "libbabeltrace1:arm64": "1.5.11-1+b2",
+              "libboost-regex1.74.0:arm64": "1.74.0+ds1-21",
+              "libdebuginfod-common": "0.188-2.1",
+              "libdebuginfod1:arm64": "0.188-2.1",
+              "libdw1:arm64": "0.188-2.1",
+              "libglib2.0-0:arm64": "2.74.6-2+deb12u9",
+              "libpython3.11:arm64": "3.11.2-6+deb12u9",
+              "libsource-highlight-common": "3.1.9-4.2",
+              "libsource-highlight4v5:arm64": "3.1.9-4.2+b3",
+              "sensible-utils": "0.0.17+nmu1",
+              "ucf": "3.0043+nmu1+deb12u1"
+            }
+          },
+          "native_compilation": {
+            "zone": "1a836c77082c143df62e73c6714baadc111ae718279f5c37c13ea1a36aab1884",
+            "shared_memory": "dff8f4e251302b799b817f9d9e73c94af7731b757a7848876fe02fa50517ba61",
+            "world": "bdb96df5ba96dc654fc036034697ec2eb8cbb43ad20a323e21dec964d797fed7"
+          },
+          "full_database_seed": {
+            "items": 287110,
+            "spells_new": 40947
+          },
+          "pinned_custom_schema_before_bot_migrations": {
+            "version": 9328,
+            "bots_version": 0,
+            "custom_version": 78,
+            "empty_player_tables": {
+              "account": 0,
+              "character_data": 0,
+              "inventory": 0,
+              "sharedbank": 0
+            },
+            "existing_bot_tables": false
+          },
+          "native_migrations": {
+            "bots_version": 9054,
+            "fixture_transactional_engines": [
+              "character_data",
+              "data_buckets"
+            ]
+          },
+          "early-rejection-preserves-command-settings": {
+            "rows_unchanged": true,
+            "error": "Bot creation number is outside its valid range."
+          },
+          "missing-shared-items-rejected-without-writes": {
+            "rows_unchanged": true,
+            "error": "Shared item data is unavailable; start and stop this world server to prepare items before generating bots."
+          },
+          "capability_and_deployment_identity": {
+            "creation_receipt_table": "trasc_bot_creation_receipts",
+            "format": 1,
+            "offline_create": true,
+            "patch_identity": "06165d77f8646e42bfaa5b9fd7e9cd0cb0f49d1c0812831071c52dd46cb37976",
+            "profile": "custom",
+            "shared_content_database_required": true,
+            "source_revision": "8f6ca0795f424a7b4eab750ff38fc6473d48375c",
+            "reason": ""
+          },
+          "real_owner_inventory_and_sharedbank_preserved": {
+            "item": 1001,
+            "original_guid": 0
+          },
+          "production_preview_generate_normal_state_items_hooks": {
+            "ids": [
+              1,
+              2
+            ],
+            "state": [
+              [
+                "1",
+                "890001",
+                "35",
+                "1157",
+                "0",
+                "6",
+                "19",
+                "3",
+                "9",
+                "9"
+              ],
+              [
+                "2",
+                "890001",
+                "35",
+                "980",
+                "819",
+                "1",
+                "5",
+                "1",
+                "2",
+                "2"
+              ]
+            ],
+            "starting_item": 1001,
+            "settings_override_rows": 0,
+            "settings_initialization": "native_server_helper"
+          },
+          "database_restart_native_load_idempotent_retry": true,
+          "player-name-collision": {
+            "rows_unchanged": true,
+            "error": "The server rejected bot creation. Check name, race/class, owner level and creation limits."
+          },
+          "bot-name-collision": {
+            "rows_unchanged": true,
+            "error": "The server rejected bot creation. Check name, race/class, owner level and creation limits."
+          },
+          "invalid-race-class": {
+            "rows_unchanged": true,
+            "error": "The server rejected bot creation. Check name, race/class, owner level and creation limits."
+          },
+          "invalid-gender": {
+            "rows_unchanged": true,
+            "error": "Bot creation number is outside its valid range."
+          },
+          "retry-draft-mismatch": {
+            "rows_unchanged": true,
+            "error": "This creation token belongs to another bot draft."
+          },
+          "database-incarnation-mismatch": {
+            "rows_unchanged": true,
+            "error": "This database was replaced or restored; refresh the bot roster."
+          },
+          "owner-profile-mismatch": {
+            "rows_unchanged": true,
+            "error": "The selected owner changed; refresh the roster."
+          },
+          "owner-level-limit": {
+            "rows_unchanged": true,
+            "error": "The server rejected bot creation. Check name, race/class, owner level and creation limits."
+          },
+          "global-creation-limit": {
+            "rows_unchanged": true,
+            "error": "The server rejected bot creation. Check name, race/class, owner level and creation limits."
+          },
+          "mid-batch-limit-rollback": {
+            "rows_unchanged": true,
+            "error": "The server rejected bot creation. Check name, race/class, owner level and creation limits."
+          },
+          "class-creation-limit": {
+            "rows_unchanged": true,
+            "error": "The server rejected bot creation. Check name, race/class, owner level and creation limits."
+          },
+          "owner-zone-rules-limit-rollback": {
+            "rows_unchanged": true,
+            "error": "The server rejected bot creation. Check name, race/class, owner level and creation limits."
+          },
+          "creation-hook-error-rollback": {
+            "rows_unchanged": true,
+            "error": "The owner's bot creation quest failed; the batch was rolled back."
+          },
+          "ancillary-save-error-rollback": {
+            "rows_unchanged": true,
+            "error": "A bot state, starting item or quest database save failed; the batch was rolled back."
+          },
+          "empty_owner_real_sharedbank_hook_and_native_reload": {
+            "owner_id": 890002,
+            "bot_id": 7
+          },
+          "nontransactional-owner-rejected": {
+            "rows_unchanged": true,
+            "error": "Bot data, owners and creation receipts must use InnoDB; no storage engine was changed."
+          },
+          "no_world_services_launched": true
+        },
+        "elapsed_seconds": 87.91
+      },
+      "traditional": {
+        "format": 1,
+        "profile": "traditional",
+        "architecture": "aarch64",
+        "source_revision": "4aceae18b94ffaafc08e2b17bc41cd72c77f795d",
+        "database_seed": {
+          "kind": "immutable_five_part_peq",
+          "sha256": "ac8649f23d2c3aea2cade138dfe10d46d1b21ad1a80d08ca95f5434fab7f218d"
+        },
+        "result": "passed",
+        "checks": {
+          "debugger_layer": {
+            "format": 1,
+            "existing_packages_unchanged": true,
+            "existing_tool_bytes_unchanged": true,
+            "base_packages_sha256": "7696b1a2d22a841c9cea6575982b74e41105a4dfe38f6eead842f976d94a2b58",
+            "tools": [
+              "dc53dbc5a583d03ae8ed6272ca9afc0f58873f9f9b86dd7d448b17fb3f88a8d0  /usr/bin/gcc",
+              "22084e38d464db4299003c899eae3f1cb563ed6a75b3179e3e2a2d593d640528  /usr/bin/g++",
+              "f9cdf554a4e27fa35a19e0ceeee9240faf09706d4a2f2db2d67d8bead877a013  /usr/bin/cmake",
+              "c33483364705a23a1a2fe7daca8c0a911a507e721ceba3cdc8751d98e8232404  /usr/bin/ninja",
+              "a6097f7672f78105082b665344a2deef7f26be89833dc170fa573c0c64deba2b  /usr/bin/perl"
+            ],
+            "debugger_version": "GNU gdb (Debian 13.1-3) 13.1",
+            "added_packages": {
+              "gdb": "13.1-3",
+              "libbabeltrace1:arm64": "1.5.11-1+b2",
+              "libboost-regex1.74.0:arm64": "1.74.0+ds1-21",
+              "libdebuginfod-common": "0.188-2.1",
+              "libdebuginfod1:arm64": "0.188-2.1",
+              "libdw1:arm64": "0.188-2.1",
+              "libglib2.0-0:arm64": "2.74.6-2+deb12u9",
+              "libpython3.11:arm64": "3.11.2-6+deb12u9",
+              "libsource-highlight-common": "3.1.9-4.2",
+              "libsource-highlight4v5:arm64": "3.1.9-4.2+b3",
+              "sensible-utils": "0.0.17+nmu1",
+              "ucf": "3.0043+nmu1+deb12u1"
+            }
+          },
+          "native_compilation": {
+            "zone": "cd3e97865e18d514c9c4aeb96ff7b663face4bb5d3de776d2e1530ca2f7a6f5c",
+            "shared_memory": "6e4e7a1b6c3e906fc197189156173259037a49e895961737ce6d5a08a4d0c0a2",
+            "world": "8957f646a6d6036eca66ae3b94b5489a5e05e54b74b024ad4203b1deabddcaae"
+          },
+          "full_database_seed": {
+            "items": 117944,
+            "spells_new": 40722
+          },
+          "native_migrations": {
+            "bots_version": 9055,
+            "fixture_transactional_engines": [
+              "character_data",
+              "data_buckets"
+            ]
+          },
+          "native_schema_repair": {
+            "repaired": true,
+            "enabled": true,
+            "migration_sha256": "f068977fda01564eb2a2620d208f0abd369fc9cbfc5cf38d9db87b0fa652e85d",
+            "versions_before_and_after": [
+              9328,
+              9055,
+              0
+            ],
+            "full_backup": "backups/database-20261012-043516-28fc.sql.gz",
+            "full_backup_sha256": "ec2ba6b7952e5a33b41cdb0dd40e061609a3f47ed88bb82c113ec370bd974288",
+            "fixture_legacy_rows": [
+              [
+                "890101",
+                "7"
+              ],
+              [
+                "890102",
+                "16383"
+              ]
+            ],
+            "obsolete_expansion_override_rows": 0,
+            "qualification_boundary": "Same production schema helper after exact source guard validation and real full backup; full deployed-runtime receipt gate is separately unit-tested."
+          },
+          "early-rejection-preserves-command-settings": {
+            "rows_unchanged": true,
+            "error": "Bot creation number is outside its valid range."
+          },
+          "missing-shared-items-rejected-without-writes": {
+            "rows_unchanged": true,
+            "error": "Shared item data is unavailable; start and stop this world server to prepare items before generating bots."
+          },
+          "capability_and_deployment_identity": {
+            "creation_receipt_table": "trasc_bot_creation_receipts",
+            "format": 1,
+            "offline_create": true,
+            "patch_identity": "60a6f5c288bdb77456f947bf8b78263ff25141553b1f724e8e255c0dc5ded109",
+            "profile": "traditional",
+            "shared_content_database_required": true,
+            "source_revision": "4aceae18b94ffaafc08e2b17bc41cd72c77f795d",
+            "reason": ""
+          },
+          "real_owner_inventory_and_sharedbank_preserved": {
+            "item": 1001,
+            "original_guid": 0
+          },
+          "production_preview_generate_normal_state_items_hooks": {
+            "ids": [
+              890103,
+              890104
+            ],
+            "state": [
+              [
+                "890103",
+                "890001",
+                "35",
+                "1157",
+                "0",
+                "4",
+                "16",
+                "3",
+                "2",
+                "2"
+              ],
+              [
+                "890104",
+                "890001",
+                "35",
+                "980",
+                "819",
+                "0",
+                "8",
+                "1",
+                "9",
+                "9"
+              ]
+            ],
+            "starting_item": 1001,
+            "settings_override_rows": 0,
+            "settings_initialization": "native_server_helper"
+          },
+          "database_restart_native_load_idempotent_retry": true,
+          "player-name-collision": {
+            "rows_unchanged": true,
+            "error": "The server rejected bot creation. Check name, race/class, owner level and creation limits."
+          },
+          "bot-name-collision": {
+            "rows_unchanged": true,
+            "error": "The server rejected bot creation. Check name, race/class, owner level and creation limits."
+          },
+          "invalid-race-class": {
+            "rows_unchanged": true,
+            "error": "The server rejected bot creation. Check name, race/class, owner level and creation limits."
+          },
+          "invalid-gender": {
+            "rows_unchanged": true,
+            "error": "Bot creation number is outside its valid range."
+          },
+          "retry-draft-mismatch": {
+            "rows_unchanged": true,
+            "error": "This creation token belongs to another bot draft."
+          },
+          "database-incarnation-mismatch": {
+            "rows_unchanged": true,
+            "error": "This database was replaced or restored; refresh the bot roster."
+          },
+          "owner-profile-mismatch": {
+            "rows_unchanged": true,
+            "error": "The selected owner changed; refresh the roster."
+          },
+          "owner-level-limit": {
+            "rows_unchanged": true,
+            "error": "The server rejected bot creation. Check name, race/class, owner level and creation limits."
+          },
+          "global-creation-limit": {
+            "rows_unchanged": true,
+            "error": "The server rejected bot creation. Check name, race/class, owner level and creation limits."
+          },
+          "mid-batch-limit-rollback": {
+            "rows_unchanged": true,
+            "error": "The server rejected bot creation. Check name, race/class, owner level and creation limits."
+          },
+          "class-creation-limit": {
+            "rows_unchanged": true,
+            "error": "The server rejected bot creation. Check name, race/class, owner level and creation limits."
+          },
+          "owner-zone-rules-limit-rollback": {
+            "rows_unchanged": true,
+            "error": "The server rejected bot creation. Check name, race/class, owner level and creation limits."
+          },
+          "creation-hook-error-rollback": {
+            "rows_unchanged": true,
+            "error": "The owner's bot creation quest failed; the batch was rolled back."
+          },
+          "ancillary-save-error-rollback": {
+            "rows_unchanged": true,
+            "error": "A bot state, starting item or quest database save failed; the batch was rolled back."
+          },
+          "empty_owner_real_sharedbank_hook_and_native_reload": {
+            "owner_id": 890002,
+            "bot_id": 890109
+          },
+          "nontransactional-owner-rejected": {
+            "rows_unchanged": true,
+            "error": "Bot data, owners and creation receipts must use InnoDB; no storage engine was changed."
+          },
+          "no_world_services_launched": true
+        },
+        "elapsed_seconds": 78.14
+      }
+    },
+    "eqw": {
+      "recipe_commit": "f6f354b41d41cf93fc4d2d0672c183771856083f",
+      "run": 38102758503,
+      "dll_sha256": "495d6e1711e21f012d1f8c9581af74fdbdccac5f45e2e93508e40b4bd3dbca1d",
+      "dll_bytes": 93696,
+      "unchanged_from_verified_0624": true,
+      "camera_reversal_fixed": false
+    }
+  },
+  "skeleton_patcher": {
+    "repository": "https://github.com/Russianranger/EqSkelePatcher",
+    "revision": "c3382bc492a9810bcbea50e78cda4463f514c95b",
+    "license": "MIT",
+    "model_option": "classic",
+    "provenance": "backend/takp-skeleton-patcher/provenance.json",
+    "physical_appearance_accepted": false
+  },
+  "source_update_archive_qualification": "docs/source-update-archive-proof-0625.json",
+  "all_profile_native_cmake_qualification": "docs/source-update-cmake-proof-0625.json",
+  "all_profile_large_backup_host_qualification_preserved": "docs/all-session-qualification-0624.json",
+  "ci_log_sha256": {
+    "ci/apk-114661054902.log": "aab242fb2cb2fcb3de48726ec9683b7c4dab3738f8287f086affe19299d1f263",
+    "ci/apk-114664212010.log": "2701392b2803b186590badae2c11a63a6988dc0b28b086a0cfae2ed0fb192618",
+    "ci/apk-failed-114656446916.log": "7acab6a7a001a774ed9addd688ffb70c9fa17c24106fa9321178d80086645d3c",
+    "ci/modern-custom-114656446985.log": "294697e308efb55a402c6389bb308361ba4b6809283e4ad169c4ec5ed5c34908",
+    "ci/modern-custom-114661055066.log": "ab7c5529dafb7307129beeb2accea61f980d48ee6c8a3a3a0aea8b189d71a658",
+    "ci/modern-custom-114664212288.log": "d2a04df1bb7c3ada61ddeaebaee2ae2d54f282908a24a002f02a225dc889502d",
+    "ci/modern-traditional-114656446726.log": "73dc9124e3fe332f727ccce8a25c8e4174b6f57736fa5075b6cdd494f3f54ec5",
+    "ci/modern-traditional-114661055079.log": "539218e0a077e922bf06612bc4743e5081f1485d2ebbba6784fcc3434d5a0faf",
+    "ci/modern-traditional-114664212111.log": "d8a6f440c5279867643de34bd681b3a3728681923caea3f87c3774472a21e40f",
+    "ci/preview-114666463829.log": "6a67ec0fed7df52e6409e195d2ff2f123b08f15721ec0c7384b5d571818c7fd5",
+    "ci/takp-114664212062.log": "732b8811c1b4e31900612313ba5e816386421c019f087f944db78000476c12d0",
+    "ci/takp-failed-114656446881.log": "8c983801e74ca26b87532a7754f3114280bdbd13d2a635e8ecaf369e0b3a7259",
+    "ci/takp-failed-114661055095.log": "9b0317e2225938cee29c8acd9b175eb89fdc54716f4983f2555ce59efc635134"
+  },
+  "recovery": {
+    "exact_main_at_recovery": "0742d1367a3cf5bf26b69231c7df9e97bc25d6d1",
+    "prior_verified_version": "0.6.24/code73",
+    "prior_qualified_source": "02a1af7aa8d7a808aafcf4421971a15e9110a8cc",
+    "prior_pr": 30,
+    "prior_ci": 38103647834,
+    "previous_scratch_checkout_removed_by_maintenance": true,
+    "accessible_unfinished_work_at_recovery": false,
+    "accessible_active_build_at_recovery": false,
+    "previous_agent_inaccessible_workspace_work": "unknown; not assumed",
+    "attached_log_evidence": "Stale TAKP source reused before fetching; no deployed receipt or fresh camera consumer trace supplied"
+  },
+  "outstanding": [
+    "Physical AYN Thor Start server after runtime boot with installed legacy receipts.",
+    "TAKP Yaulp after explicit incremental source update/build/deploy.",
+    "Physical touch/controller reversal trace and camera repair based on that evidence.",
+    "Classic skeleton visual/texture compatibility and original restore on Thor.",
+    "All-world bots, commands, socials/hotbars and preservation acceptance.",
+    "Physical Android SAF large all-profile export/import, memory and lifecycle acceptance.",
+    "TAKP NPC visibility and Traditional StoneUI remain separate."
+  ]
+}
