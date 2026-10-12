@@ -228,6 +228,9 @@ def qualify(args):
     try:
         incremental = None
         if args.baseline_app:
+            content_paths = {'quests': engine.work / 'server/quests',
+                             'maps': engine.work / 'maps', 'assets': engine.work / 'server/assets'}
+            retained_content = {kind: tree_hashes(path) for kind, path in content_paths.items()}
             incremental = qualify_legacy_source_transition(engine, args, report)
             imported = {'source': json.loads((engine.source_root() / 'trasc-source.json').read_text())}
         else:
@@ -236,16 +239,31 @@ def qualify(args):
         if imported['source']['takp']['tree_sha256'] != takp_build.SOURCE_TREE_SHA256:
             raise RuntimeError('Production source importer did not qualify the pinned tree')
         report['checks']['complete_pinned_source_and_vendored_dependencies'] = True
-        name = archive_tree(args.quests, engine.work / 'incoming/quests.zip')
-        engine.dispatch('import_content', {'kind': 'quests', 'file': name})
-        maps = [path for path in args.maps.iterdir() if path.name.startswith(('qeynos.', 'paineel.'))
-                or path.name.startswith(('README', 'LICENSE'))]
-        for zone_name in ('qeynos', 'paineel'):
-            if not any(path.name == zone_name + '.map' for path in maps):
-                raise RuntimeError('Pinned map fixture lacks ' + zone_name)
-        name = archive_tree(args.maps, engine.work / 'incoming/maps.zip', maps)
-        engine.import_maps({'file': name})
+        if incremental:
+            # The released app already installed the same pinned content.
+            # A source-only update must keep it, not request replacement.
+            content = engine.state()['takp']
+            if not all(content['components'][kind]['imported'] for kind in content_paths):
+                raise RuntimeError('App/source upgrade invalidated retained TAKP content')
+            for zone_name in ('qeynos', 'paineel'):
+                if not (engine.work / 'maps' / (zone_name + '.map')).is_file():
+                    raise RuntimeError('Retained map fixture lacks ' + zone_name)
+        else:
+            name = archive_tree(args.quests, engine.work / 'incoming/quests.zip')
+            engine.dispatch('import_content', {'kind': 'quests', 'file': name})
+            maps = [path for path in args.maps.iterdir() if path.name.startswith(('qeynos.', 'paineel.'))
+                    or path.name.startswith(('README', 'LICENSE'))]
+            for zone_name in ('qeynos', 'paineel'):
+                if not any(path.name == zone_name + '.map' for path in maps):
+                    raise RuntimeError('Pinned map fixture lacks ' + zone_name)
+            name = archive_tree(args.maps, engine.work / 'incoming/maps.zip', maps)
+            engine.import_maps({'file': name})
         engine.sync_content({})
+        if incremental:
+            if any(tree_hashes(path) != retained_content[kind] for kind, path in content_paths.items()):
+                raise RuntimeError('Source update replaced installed TAKP quests, maps or opcode assets')
+            report['checks']['existing_quests_maps_and_assets_preserved_without_reimport'] = True
+            report['source_update_transition']['existing_content_preserved'] = True
         report['checks']['takp_quests_flat_maps_and_opcodes'] = True
         # Qualify the imported pinned bot policy, including the seed-backed
         # Yaulp scheduling regression, on this native host before the full build.
