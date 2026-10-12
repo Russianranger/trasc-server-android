@@ -13,9 +13,9 @@ const server=http.createServer((req,res)=>{
   const page=await browser.newPage({viewport:{width:1280,height:720}}),errors=[];page.on('pageerror',e=>errors.push(e.message));
   await page.addInitScript(()=>{
    const f=window.fixture={profile:localStorage.takpWorld||'custom',alive:false,client:false,busy:false,jobs:[],calls:[],source:false,quests:false,maps:false,initialized:false,bots:false,accounts:0,staged:false,deployed:false,imported:false,prepared:false};
-   f.state=()=>({profile:f.profile,version:'0.6.16',running:f.running||false,
-    settings:{ip:'127.0.0.1',login_port:f.profile==='takp'?6000:5999,repo:f.profile==='takp'?'https://github.com/Russianranger/Servertakp':f.profile==='traditional'?'https://github.com/Russianranger/Server':'https://github.com/Russianranger/Triptych-Triumvirate',ref:f.profile==='takp'?'25bf70acb6bd24853cf09e447ddd62b96a4491a4':'main',maps_url:f.profile==='takp'?'https://github.com/Russianranger/Mapstakp':'https://github.com/Akkadius/EQEmuMaps',workers:1,jobs:2},
-    processes:{},jobs:f.jobs,source:f.source?{commit:'25bf70acb6bd24853cf09e447ddd62b96a4491a4'}:{},maps_ready:f.maps,database_imported:f.initialized,build_ready:f.staged,binaries_ready:f.deployed,
+   f.state=()=>({profile:f.profile,version:'0.6.25',running:f.running||false,
+    settings:{ip:'127.0.0.1',login_port:f.profile==='takp'?6000:5999,repo:f.profile==='takp'?'https://github.com/Russianranger/Servertakp':f.profile==='traditional'?'https://github.com/Russianranger/Server':'https://github.com/Russianranger/Triptych-Triumvirate',ref:f.profile==='takp'?'03e934d0fdf460e2e6ce34c0a25a3e05d9f7e167':'main',maps_url:f.profile==='takp'?'https://github.com/Russianranger/Mapstakp':'https://github.com/Akkadius/EQEmuMaps',workers:1,jobs:2},
+    processes:{},jobs:f.jobs,source:f.source?{commit:'03e934d0fdf460e2e6ce34c0a25a3e05d9f7e167'}:{},maps_ready:f.maps,database_imported:f.initialized,build_ready:f.staged,binaries_ready:f.deployed,
     client:{imported:f.imported,prepared:f.prepared},free_bytes:50e9,
     traditional:{build:{},components:{}},
     takp:{source_ready:f.source,quests_ready:f.quests,maps_ready:f.maps,database_ready:f.initialized,bot_schema_ready:f.bots,local_accounts:f.accounts,login_port:6000,
@@ -60,7 +60,7 @@ const server=http.createServer((req,res)=>{
   await page.selectOption('#world-profile','takp');await page.click('#switch-profile');
   await page.waitForFunction(()=>activeProfile==='takp'&&document.body.dataset.profile==='takp'&&!polling);
   assert.equal(await page.inputValue('#source-url'),'https://github.com/Russianranger/Servertakp');
-  assert.equal(await page.inputValue('#source-ref'),'25bf70acb6bd24853cf09e447ddd62b96a4491a4');
+  assert.equal(await page.inputValue('#source-ref'),'03e934d0fdf460e2e6ce34c0a25a3e05d9f7e167');
   assert.equal(await page.inputValue('#maps-url'),'https://github.com/Russianranger/Mapstakp');
   assert(await page.locator('#takp-setup').isVisible());
   for(const id of ['source-git','maps-git','import-db'])assert(!(await page.locator('#'+id).isVisible()),'Generic import control is hidden for TAKP: '+id);

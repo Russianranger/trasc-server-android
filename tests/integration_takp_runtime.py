@@ -82,6 +82,9 @@ def qualify_legacy_source_transition(engine, args, report):
         raise RuntimeError('App upgrade changed the legacy source before update review')
     credentials = {key: engine.config[key] for key in
                    ('database', 'db_password', 'server_key', 'db_port', 'ip', 'login_port')}
+    # The old-app child closed its app-owned MariaDB during shutdown. Boot the
+    # same preserved database through the new runtime before issuing SQL.
+    engine.ensure_db()
     player_state = engine.mysql('SELECT COUNT(*) FROM items; SELECT COUNT(*) FROM tblLoginServerAccounts;')
     with immutable_archives(engine, {LEGACY_SERVER_COMMIT: args.baseline_source,
                                      takp_build.REVISION: args.source}, takp_build.REPOSITORY):
