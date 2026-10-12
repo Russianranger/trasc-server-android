@@ -3,7 +3,7 @@ const traditionalRepository='https://github.com/Russianranger/Server';
 const traditionalRevision='4aceae18b94ffaafc08e2b17bc41cd72c77f795d';
 function traditional(){return activeProfile==='traditional';}
 const takpRepository='https://github.com/Russianranger/Servertakp';
-const takpRevision='25bf70acb6bd24853cf09e447ddd62b96a4491a4';
+const takpRevision='03e934d0fdf460e2e6ce34c0a25a3e05d9f7e167';
 function takp(){return activeProfile==='takp';}
 function renderProfile(n){
  const profile=n.profile||'custom';

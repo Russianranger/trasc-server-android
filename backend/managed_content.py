@@ -160,7 +160,9 @@ class ManagedContent:
         result = json.loads(marker.read_text()) if marker.exists() else {'imported': False}
         if self.profile == 'takp':
             import takp_client
+            import takp_skeletons
             result.update(client_type='takp', profile='takp', exported_files=list(takp_client.CLIENT_FILES), spell_test={'state':'off'})
+            result['skeletons'] = takp_skeletons.status(self._local_client(required=False))
             if result.get('imported'):
                 try:
                     result['validation'] = takp_client.validate_client(self.work / 'client/current', patched=True)
@@ -172,6 +174,22 @@ class ManagedContent:
         try: result['spell_test'] = test_record(self.work)
         except (ValueError, OSError) as e: result['spell_test'] = {'state': 'error', 'error': str(e)}
         return result
+
+    def recover_takp_skeletons(self):
+        if self.profile != 'takp': return
+        import takp_skeletons
+        client = self._local_client(required=False)
+        if client is not None: takp_skeletons.recover(client)
+
+    def takp_skeleton_status(self, args=None):
+        if self.profile != 'takp': raise ValueError('Classic skeleton assets belong to TAKP World')
+        import takp_skeletons
+        return takp_skeletons.status(self._local_client(required=False))
+
+    def set_takp_skeletons(self, args):
+        if self.profile != 'takp': raise ValueError('Classic skeleton assets belong to TAKP World')
+        import takp_skeletons
+        return takp_skeletons.set_enabled(self._local_client(), args.get('enabled'), self.check_cancel)
 
     def apply_spell_test(self, args):
         if self.profile == 'takp': raise ValueError('The RoF2 spell comparison does not apply to TAKP. Prepare its two native data files instead')
@@ -273,6 +291,13 @@ class ManagedContent:
         from engine import atomic_json, safe_path, extract_archive
         from client_spells import require_no_test
         if self.profile != 'takp': require_no_test(self.work)
+        else:
+            self.recover_takp_skeletons()
+            skeletons = self.takp_skeleton_status()
+            if skeletons['state'] in ('error', 'interrupted'):
+                raise ValueError(skeletons['message'])
+            if skeletons['enabled']:
+                raise ValueError('Restore original TAKP skeletons before importing a replacement client; its originals remain protected')
         archive = safe_path(self.work / 'incoming', args['file'], True)
         if not archive.is_file() or archive.parent != self.work / 'incoming':
             raise ValueError('Choose a client ZIP through the Android file picker')

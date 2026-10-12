@@ -135,7 +135,15 @@ class FakeEngine:
                 raise ValueError('Simulated configure failure')
             objects = Path(args[args.index('-B') + 1])
             objects.mkdir(parents=True, exist_ok=True)
-            (objects / 'CMakeCache.txt').write_text('fixture CMake cache\n')
+            source = args[args.index('-S') + 1]
+            cache = ['CMAKE_HOME_DIRECTORY:INTERNAL=' + source,
+                     'CMAKE_CACHEFILE_DIR:INTERNAL=' + str(objects),
+                     'CMAKE_GENERATOR:INTERNAL=Ninja', 'CMAKE_CXX_COMPILER:FILEPATH=/usr/bin/g++']
+            for option in args:
+                if option.startswith('-D') and '=' in option:
+                    key, value = option[2:].split('=', 1)
+                    cache.append(key + ':STRING=' + value)
+            (objects / 'CMakeCache.txt').write_text('\n'.join(cache) + '\n')
         elif any(Path(item).name == 'traditional_verify.py' for item in args):
             stage, evidence = Path(args[-2]), Path(args[-1])
             with patch.object(verify, '_command', side_effect=loader_command):
@@ -480,7 +488,7 @@ class TraditionalBuildTests(unittest.TestCase):
         self.assertNotEqual(before_cache[0], after_cache[0])
         self.assertEqual(before_cache[1], after_cache[1])
 
-    def test_changed_recipe_invalidates_stage_and_object_cache(self):
+    def test_changed_adapter_receipt_invalidates_stage_but_keeps_compatible_objects(self):
         self.compile()
         previous = self.staged_bytes()
         objects = self.engine.work / 'builds/traditional/objects'
@@ -488,8 +496,36 @@ class TraditionalBuildTests(unittest.TestCase):
         with patch.object(build, '_recipe_identity', return_value='c' * 64):
             self.assertFalse(build.status(self.engine)['staged_valid'])
             self.overlay()
-        self.assertFalse(objects.exists())
+        self.assertEqual((objects / 'stale-object.o').read_bytes(), b'old recipe object')
         self.assertEqual(self.staged_bytes(), previous)
+
+    def test_incompatible_compiler_options_preserve_old_cache_for_explicit_fresh_build(self):
+        self.compile()
+        previous = self.staged_bytes()
+        objects = self.engine.work / 'builds/traditional/objects'
+        (objects / 'valuable-object.o').write_bytes(b'old qualified cache')
+        with patch.object(build, 'BUILD_OPTIONS', tuple(option.replace('-O2 ', '-O3 ') for option in build.BUILD_OPTIONS)):
+            self.overlay()
+        self.assertFalse(objects.exists())
+        retained = list((self.engine.work / 'builds/traditional').glob('objects-retained-*'))
+        self.assertEqual(len(retained), 1)
+        self.assertEqual((retained[0] / 'valuable-object.o').read_bytes(), b'old qualified cache')
+        self.assertEqual(self.staged_bytes(), previous)
+
+    def test_source_delta_updates_only_changed_overlay_mtimes_and_retains_objects(self):
+        self.compile()
+        overlay = self.engine.work / 'builds/traditional/source'
+        objects = self.engine.work / 'builds/traditional/objects'
+        unchanged = overlay / 'common/strings.cpp'
+        prior = (unchanged.stat().st_ino, unchanged.stat().st_mtime_ns)
+        (objects / 'valuable-object.o').write_bytes(b'qualified compiler work')
+        (self.source / 'ordinary.cpp').write_text('int changed = 2;\n')
+        root, provenance, source_identity = build._guard_source(self.engine)
+        entries = build._inventory(root, self.engine.check_cancel, source=True)
+        build._prepare_overlay(self.engine, root, provenance, source_identity, entries, 'b' * 64, incremental=True)
+        self.assertEqual((unchanged.stat().st_ino, unchanged.stat().st_mtime_ns), prior)
+        self.assertEqual((overlay / 'ordinary.cpp').read_text(), 'int changed = 2;\n')
+        self.assertEqual((objects / 'valuable-object.o').read_bytes(), b'qualified compiler work')
 
     def test_cancel_during_binary_copy_preserves_previous_stage(self):
         self.compile()

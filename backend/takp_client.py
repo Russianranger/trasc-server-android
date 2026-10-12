@@ -185,6 +185,9 @@ def effective_request(request):
 def validate_request(request, client):
     if request.get('mode') != 'client':
         return {'state': 'off', 'client_type': 'takp'}
+    import takp_skeletons
+    takp_skeletons.recover(client)
+    takp_skeletons.verify_active(client)
     report = validate_client(client, patched=True)
     if request.get('executable') != report['executable']:
         raise ValueError('Launch the TAKP Windows eqgame.exe; eqmac.exe is only its checksum resource')

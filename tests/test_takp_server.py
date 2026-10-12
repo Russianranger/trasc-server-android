@@ -56,6 +56,77 @@ class TakpServerTests(unittest.TestCase):
         self.assertEqual((current / 'keep.txt').read_text(), 'existing source')
         self.assertEqual(before, self.engine.config_path.read_bytes())
 
+    def test_setup_updates_an_older_qualified_source_instead_of_rejecting_it(self):
+        current = self.engine.work / 'sources/current'
+        current.mkdir()
+        (current / 'CMakeLists.txt').write_text('project(fixture)')
+        (current / 'zone').mkdir()
+        (current / 'trasc-source.json').write_text(json.dumps({'takp': {'commit':
+            '25bf70acb6bd24853cf09e447ddd62b96a4491a4'}}))
+        before = self.engine.config_path.read_bytes()
+        with patch('takp_build.qualify_source', side_effect=[ValueError('complete TAKP'), {'commit': takp_build.REVISION}]) as qualify, \
+                patch.object(self.engine, 'source_update_preview', create=True,
+                             return_value={'apply_allowed': True, 'token': 'reviewed-update'}) as preview, \
+                patch.object(self.engine, 'source_update_apply', create=True) as apply, \
+                patch('takp_runtime.sync_content') as sync, \
+                patch('takp_runtime._component', return_value={'imported': True}), \
+                patch('takp_runtime.status', return_value={}):
+            takp_runtime.setup(self.engine, {})
+        preview.assert_called_once_with({})
+        apply.assert_called_once_with({'token': 'reviewed-update'})
+        self.assertEqual(qualify.call_count, 2)
+        sync.assert_called_once_with(self.engine)
+        self.assertEqual(before, self.engine.config_path.read_bytes())
+
+    def test_setup_never_overwrites_conflicting_local_source(self):
+        current = self.engine.work / 'sources/current'
+        current.mkdir()
+        (current / 'CMakeLists.txt').write_text('project(fixture)')
+        (current / 'zone').mkdir()
+        (current / 'zone/local.cpp').write_text('my local source')
+        (current / 'trasc-source.json').write_text('{}')
+        before = self.engine.config_path.read_bytes()
+        with patch('takp_build.qualify_source', side_effect=ValueError('complete TAKP')), \
+                patch.object(self.engine, 'source_update_preview', create=True,
+                             return_value={'apply_allowed': False, 'message': 'Local source conflicts; review Build → Update.'}), \
+                patch.object(self.engine, 'source_update_apply', create=True) as apply, \
+                patch('takp_runtime.sync_content') as sync:
+            with self.assertRaisesRegex(ValueError, 'Local source conflicts'):
+                takp_runtime.setup(self.engine, {})
+        apply.assert_not_called()
+        sync.assert_not_called()
+        self.assertEqual((current / 'zone/local.cpp').read_text(), 'my local source')
+        self.assertEqual(before, self.engine.config_path.read_bytes())
+
+    def test_setup_keeps_the_current_qualified_source_without_an_update(self):
+        current = self.engine.work / 'sources/current'
+        current.mkdir()
+        (current / 'CMakeLists.txt').write_text('project(fixture)')
+        (current / 'zone').mkdir()
+        (current / 'trasc-source.json').write_text('{}')
+        with patch('takp_build.qualify_source', return_value={'commit': takp_build.REVISION}), \
+                patch.object(self.engine, 'source_update_preview', create=True) as preview, \
+                patch.object(self.engine, 'source_update_apply', create=True) as apply, \
+                patch('takp_runtime.sync_content'), \
+                patch('takp_runtime._component', return_value={'imported': True}), \
+                patch('takp_runtime.status', return_value={}):
+            takp_runtime.setup(self.engine, {})
+        preview.assert_not_called()
+        apply.assert_not_called()
+
+    def test_setup_cancellation_never_starts_source_review_or_download(self):
+        current = self.engine.work / 'sources/current'
+        current.mkdir()
+        (current / 'CMakeLists.txt').write_text('project(fixture)')
+        (current / 'zone').mkdir()
+        (current / 'trasc-source.json').write_text('{}')
+        self.engine.cancel.set()
+        with patch('takp_build.qualify_source', side_effect=ValueError('Operation cancelled')), \
+                patch.object(self.engine, 'source_update_preview', create=True) as preview:
+            with self.assertRaisesRegex(ValueError, 'Operation cancelled'):
+                takp_runtime.setup(self.engine, {})
+        preview.assert_not_called()
+
     def test_flat_maps_import_and_failed_replacement_restore_old_files(self):
         name = self.archive({'Maps/qeynos.map': b'original', 'Maps/qeynos.wtr': b'water'})
         self.engine.import_maps({'file': name})

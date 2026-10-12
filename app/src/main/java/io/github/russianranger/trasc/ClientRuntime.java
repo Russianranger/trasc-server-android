@@ -148,7 +148,7 @@ final class ClientRuntime {
                 org.json.JSONArray jobs=response.getJSONObject("result").getJSONArray("jobs");
                 for(int i=0;i<jobs.length();i++) {
                     JSONObject job=jobs.getJSONObject(i);
-                    if(Arrays.asList("client_settings_save","import_client_zip","import_client_ui","activate_client_ui","restore_client_ui","prepare_client","export_client","apply_spell_test","restore_spell_test","client_addons_copy","client_dll_deploy","client_dll_sdk","client_dll_download","era_apply","era_restore","bots_generate","bots_socials_install","bots_socials_restore","bots_storage_enable").contains(job.optString("operation"))&&Arrays.asList("queued","running").contains(job.optString("status")))
+                    if(Arrays.asList("client_settings_save","import_client_zip","import_client_ui","activate_client_ui","restore_client_ui","prepare_client","export_client","apply_spell_test","restore_spell_test","client_addons_copy","client_dll_deploy","client_dll_sdk","client_dll_download","set_takp_skeletons","source_update_preview","source_update_apply","build_update","deploy_update","era_apply","era_restore","bots_generate","bots_socials_install","bots_socials_restore","bots_storage_enable").contains(job.optString("operation"))&&Arrays.asList("queued","running").contains(job.optString("status")))
                         throw new IOException("Wait for client file changes to finish before launching");
                 }
             }
@@ -226,7 +226,7 @@ final class ClientRuntime {
             if(!takp()&&spellJournal.exists())request.put("spell_test",json(spellJournal));
             RuntimeManager.write(new File(run,"request.json"),request.toString());
             File backend=new File(server.home,"client-backend");backend.mkdirs();
-            for(String name:new String[]{"client_runner.py","takp_client.py","managed_content.py","client_mouse.py","traditional_camera.py","trasc-camera-dinput8.dll","traditional-camera-bundle.json","client_presentation.py","log_retention.py","client_display.py","client_xauthority.py","client_metrics.py","client_spells.py","client_vulkan.py","client_audio.py","libasound_module_pcm_trasc.so","audio-bundle.json","graphics_probe.py","runtime_probe.py","wined3d.dll","wined3d-patch.json","wineserver","wineserver-patch.json"})
+            for(String name:new String[]{"client_runner.py","takp_client.py","takp_skeletons.py","managed_content.py","client_mouse.py","traditional_camera.py","trasc-camera-dinput8.dll","traditional-camera-bundle.json","client_presentation.py","log_retention.py","client_display.py","client_xauthority.py","client_metrics.py","client_spells.py","client_vulkan.py","client_audio.py","libasound_module_pcm_trasc.so","audio-bundle.json","graphics_probe.py","runtime_probe.py","wined3d.dll","wined3d-patch.json","wineserver","wineserver-patch.json"})
                 try(InputStream in=context.getAssets().open(name)){RuntimeManager.copy(in,new File(backend,name));}
             if(takp()) {
                 new File(backend,"takp-client").mkdirs();

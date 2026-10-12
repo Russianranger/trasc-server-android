@@ -87,3 +87,7 @@ Cinzel and Crimson Pro from https://github.com/google/fonts, distributed under t
 Microsoft Visual C++ compiler tools and Windows SDK headers/libraries are user-supplied and are not distributed by this project. In-app compilation uses the existing Wine/Box64 runtime with an isolated compiler prefix.
 
 The native presentation/input helper statically links the MIT/X11-licensed libXdamage and libXtst client libraries. Their complete distribution copyright/license notices are bundled in the APK as `presentation-notices.txt` and in the corresponding launcher source archive.
+
+## Optional TAKP classic skeleton assets (0.6.25)
+
+The reversible model option adapts [EqSkelePatcher](https://github.com/Russianranger/EqSkelePatcher/tree/c3382bc492a9810bcbea50e78cda4463f514c95b), copyright (c) 2023 Nick Gal, MIT licensed. Its exact source, MIT notice and provenance are bundled under `takp-skeleton-patcher/` and retained in `backend/takp-skeleton-patcher/` in the source archive. The bounded Python adaptation changes only the selected WLD string tables inside a user-imported client's model archives. It redistributes no EverQuest model assets and installs no third-party executable. The primary PFS/S3D and WLD format references are recorded in the provenance file.

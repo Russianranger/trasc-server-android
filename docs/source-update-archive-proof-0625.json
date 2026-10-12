@@ -1,0 +1,27 @@
+{
+  "result": "passed",
+  "from_commit": "25bf70acb6bd24853cf09e447ddd62b96a4491a4",
+  "to_commit": "03e934d0fdf460e2e6ce34c0a25a3e05d9f7e167",
+  "original_error": "Use the complete TAKP server ZIP at revision 03e934d; its bundled dependencies and database must be included",
+  "source": {
+    "commit": "03e934d0fdf460e2e6ce34c0a25a3e05d9f7e167",
+    "tree_sha256": "3bcfc1f604909594a33ebfa8217d71f7fade167f4d439492fbe75e8ce0f44cf5",
+    "files": 5552,
+    "bytes": 147902744,
+    "bundled_dependencies": true
+  },
+  "delta": {
+    "added": 2,
+    "deleted": 0,
+    "changed": 2
+  },
+  "unchanged_inode_and_mtime_preserved": true,
+  "deployed_binaries_database_client_prefix_settings_preserved": true,
+  "prior_changed_files_retained": true,
+  "latest_setup_is_noop": true,
+  "local_source_edits_refused_and_preserved": true,
+  "archive_sha256": {
+    "25bf70acb6bd24853cf09e447ddd62b96a4491a4": "a026ae891c5cc9b0056f0ecc81e5b1c1929666ec277918c77f02f92724c27530",
+    "03e934d0fdf460e2e6ce34c0a25a3e05d9f7e167": "6ebabc4ed032833a579314c42d6b2b0237512c9539352efc4a9795a8db4178b1"
+  }
+}
