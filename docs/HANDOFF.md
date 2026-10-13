@@ -1,3 +1,13 @@
+# Latest device follow-up: V3 loaded, confinement still fails (2026-10-13 18:12 Chicago)
+
+Read `docs/device-camera-0626.md` / `docs/device-camera-evidence-0626.json` before earlier release history. New `logs-836710138545428717.zip` confirms 0.6.26/code75, expected V3 helper/native module, upgrade from prior official bytes and prefix reuse. Existing server and saved-character world entry logged; no new source/build/deploy/database initialization. Client still alive at export, no new crash. Full bots/inventory/three-profile preservation not proved by these logs.
+
+Physical capture invariant fails: 48 ClipCursor recovery calls all ok=1, but 36/60 held clip samples escaped; retries >=250ms; REL/no PEEK, held event ages1–25ms; 34/35 nonempty held buffers have individual last-axis >19px, max92. Startup19.238s-old event is Lookoff, not held backlog. Look release restores fullclip. Do not mark camera fixed or equate API success with confinement. User supplied attachment only, no new subjective camera/direction report.
+
+Next: read preserved global/app GrabPointer registry values without overwriting; correlate actual X focus/master/source devices/relative valuators/core vs raw events/XQueryPointer/DirectInput with known signed inputs and intended stick directions. Real Box64+Bookworm/TigerVNC1.12 runtime differs from host-native fixture. Complete root cause unresolved; no more blind retry/ABS/queue-drain changes. Keep working server/Yaulp and data. NPC/StoneUI, all-profile backup/bots/persistence/skeleton restore/no-work-object receipts separate. No new build/release started; this is a documentation-only checkpoint.
+
+---
+
 # Released 0.6.26 — physical right-stick acceptance (2026-10-13 UTC)
 
 Read `docs/release-status-0626.md`, `docs/release-proof-0626.json` and `docs/takp-camera-0626.md` first. Qualified/published source `72f482c58986d4b9d62f7d7e264cf5eadb4c80c1`, tree `6ace7009cb7b5aa891ad66d5583b34429384928c`; PR #33 merged as `6ebe155ed8ae02c0b8eeff90d716a448c5509fb0` with the exact tree. Run `38350483443` passed all five jobs, 553 Python tests/no skips, JVM/browser/controller/DirectX, APK assembly/lint/signing and all native profile checks. Native camera run `38349508008` separately passed actual lost-X-grab recovery and exact signed movement/zero drift. No owned build remains.

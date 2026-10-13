@@ -1,0 +1,89 @@
+{
+  "format": "trasc-device-camera-evidence-1",
+  "app_version": "0.6.26",
+  "app_version_code": 75,
+  "device": "AYN Thor",
+  "bundle": {
+    "name": "logs-836710138545428717.zip",
+    "bytes": 729911,
+    "sha256": "daf0073b3a3ebbefbd07f8e2af2a0c2224277d441052eac16356e26b3d493466",
+    "export_utc": "2026-10-13T23:12:54.244565Z",
+    "export_chicago": "2026-10-13T18:12:54.244565-05:00"
+  },
+  "helper": {
+    "marker": "TRASC_TAKP_WINE_RAW_LOOK_V3",
+    "sha256": "875056a62d2df3c7434bf05d23d73186d6565d2bd5a14f2f53a58fa7d015bab3",
+    "previous_sha256": "495d6e1711e21f012d1f8c9581af74fdbdccac5f45e2e93508e40b4bd3dbca1d",
+    "upgrade_reported": true,
+    "native_loaded": true,
+    "prefix_update": "reuse",
+    "retained_backup_bytes_in_bundle": false
+  },
+  "trace": {
+    "file": "client/current/eqw-camera-diagnostics.log",
+    "bytes": 69500,
+    "sha256": "c785378696c7d6d16c03131079225c1dec1dffccc506f56235e79a12225c0155",
+    "format_flags": 2,
+    "axis_mode": 1,
+    "axis_interpretation": "REL",
+    "held_clip_samples": 60,
+    "escaped_cursor_samples": 36,
+    "all_held_samples_foreground_visible_physical_button": true,
+    "cached_clip": [
+      640,
+      360,
+      641,
+      361
+    ],
+    "clip_repair_calls": 48,
+    "all_clip_repair_api_results_ok": true,
+    "repair_span_ms": 20360,
+    "minimum_retry_interval_ms": 250,
+    "held_nonempty_buffer_samples": 35,
+    "held_nonempty_buffer_oldest_age_ms": [
+      1,
+      25
+    ],
+    "held_buffer_flags": 0,
+    "held_individual_last_axis_over_19_pixels": 34,
+    "maximum_held_individual_last_axis_pixels": 92,
+    "clip_release_recorded": true,
+    "full_clip_restored_after_release": true,
+    "startup_only_old_event": {
+      "age_ms": 19238,
+      "look": 0,
+      "scope": "Not part of held-look reproduction"
+    }
+  },
+  "session": {
+    "server_start_completed": true,
+    "server_start_operation_seconds": 7,
+    "existing_character_world_entry_logged": true,
+    "game_running_at_export": true,
+    "latest_session_crash_or_stop_recorded": false,
+    "new_source_build_deploy_or_database_initialization_recorded": false,
+    "full_character_inventory_and_bot_persistence_verified": false
+  },
+  "conclusions": {
+    "capture_invariant": "Failed: successful ClipCursor requests did not establish observed confinement",
+    "camera_reversal_physical_acceptance": "Still unconfirmed; user supplied no description or synchronized stick directions/video",
+    "mechanism": "Unresolved: accepted ClipCursor alone cannot distinguish suppressed/refused confinement, wrong X pointer/device or missing/malformed XI2 raw motion",
+    "controlled_wine_fixture": "Remains valid for its host mechanism; does not reproduce this Thor result",
+    "no_supported_abs_conversion_or_held_queue_backlog_fix": true
+  },
+  "missing_measurements": [
+    "Preserved global/per-eqgame.exe Wine GrabPointer registry values",
+    "Native X focus and relevant window ownership",
+    "XI2 client/master/source device IDs and relative valuator metadata",
+    "Core MotionNotify and XI_RawMotion events correlated with XQueryPointer",
+    "Timestamped intended right-stick input and actual camera direction"
+  ],
+  "preservation_limits": [
+    "Backup DLL bytes absent from bundle",
+    "Full three-profile character/bot reopening not verified",
+    "External all-profile backup/restore not verified",
+    "Classic skeleton visual appearance and exact revert not verified",
+    "Physical repeat no-work rebuild and per-object/receipt inventory absent",
+    "NPC visibility and Traditional StoneUI remain separate"
+  ]
+}

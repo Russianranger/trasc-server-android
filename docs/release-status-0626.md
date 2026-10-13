@@ -74,3 +74,15 @@ and physical repeat no-work build/object receipts still need confirmation.
 Use [device-acceptance-0625.md](device-acceptance-0625.md) and
 [source-updates-0625.md](source-updates-0625.md) for the retained preservation
 procedure; 0.6.26 supersedes their APK and camera-helper identities only.
+
+## October 13 evening device follow-up
+
+The fresh 0.6.26 bundle confirms the V3 upgrade, native loading, prefix reuse
+and existing-character world entry. Capture recovery made 48 accepted requests,
+but 36/60 held samples still showed an escaped cursor. Held event ages were
+1–25 ms and large individual offsets remain. **Physical camera acceptance is
+not passed.** The native host qualification remains scoped to its fixture;
+successful ClipCursor calls do not prove device confinement. See
+[device-camera-0626.md](device-camera-0626.md) and
+[device-camera-evidence-0626.json](device-camera-evidence-0626.json).
+The user's new camera observations/direction sequence are not supplied.
