@@ -1,3 +1,9 @@
+# 0.6.26 right-stick capture recovery (2026-10-13 UTC)
+
+Read `docs/release-status-0626.md` and `docs/takp-camera-0626.md` first. The user confirmed 0.6.25 existing-server startup, incremental source update/build/deployment and stopped cleric idle Yaulp. Fresh actual camera trace contains REL input, young events and escaped cursor despite cached one-pixel capture; the input source was Thor right stick. V3 retries only an observed escaped owned clip at 250 ms intervals without cursor warps/focus changes. Native MSVC and real Wine10 lost-grab recovery passed run `38349508008`; exact helper/source/proof bundled. Launcher 0.6.26/code75 APK qualification/publication pending. Keep working server/database/assets/prefixes/settings; camera acceptance remains physical and NPC/StoneUI are separate.
+
+---
+
 # Released 0.6.25 — move to AYN Thor acceptance (2026-10-12 UTC)
 
 Read `docs/release-status-0625.md`, `docs/release-proof-0625.json`, `docs/device-acceptance-0625.md`, `docs/source-updates-0625.md` and `docs/takp-skeletons-0625.md` before older history. Qualified source `92a2bd663e1a7d4a433494c6e7cb59a82e41bd4a`, tree `20b024d19095fb68ff642c511aed77f708b82135`, branch `codex/takp-world`/alias `codex/source-updates-skele-0625`; PR #31 merged as `5d6b581c44d1a05816ed2b6288c34a0220d58805` with the exact tree. Main adds only documentation receipts after merge, with no rebuild. Preview points to qualified source.

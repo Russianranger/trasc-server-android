@@ -1,11 +1,11 @@
 {
   "wine": "wine-10.0",
-  "github_commit": "f6f354b41d41cf93fc4d2d0672c183771856083f",
-  "github_run_id": "38102758503",
+  "github_commit": "688ff50b6a4f6c25ef7dcfb2e3a632c39adbd394",
+  "github_run_id": "38349508008",
   "fixture_sha256": {
-    "tests/takp_cursor_probe.cpp": "2bc79eb509a05b5ddeea8d9c51bd45a1c9cd171ea0b1520c6138db3158988528",
-    "tests/integration_takp_cursor.py": "4a36329d5c4aa946c25876bcaed4f035d362fa23d9a9a5f10d911b4a2fc2a2d7",
-    "native/takp_camera_recenter.h": "6180f25385af25bc6b5d097b36248e492041c7326cfd6fc94e1a2a2d16c245c4",
+    "tests/takp_cursor_probe.cpp": "68e23c167c481c35b759f593d3a3c3844c7dd6ef8efbe78f6544ce82d80069a1",
+    "tests/integration_takp_cursor.py": "155026f602020482ed9fd079c1d669ca9b67c9bf696874f01ce1444e00e84f05",
+    "native/takp_camera_recenter.h": "77f669b54196ebc24f02a20c87ec1f44973b9ee82c4c576bb5fd1bf02d697cc2",
     "native/takp_camera_trace.h": "c0301f87a3077c6065bda204fc63c262141cd13a041653f910655b4e55c9e519",
     "native/takp_dinput_observation.h": "325b56bcb220400da5ae83d4656dbc50d90c6dd9ec3ee7eca51068e2ff483d5a",
     "tests/takp_xinput_probe.c": "1ecd494b297542749a2ed184ca2f41b509e03a64b5fb2fd8ce8ee5e7cf7a92d2",
@@ -25,11 +25,11 @@
         0
       ],
       "polled": [
-        3919,
+        3939,
         0
       ],
       "buffered": [
-        3919,
+        3939,
         0
       ]
     },
@@ -39,11 +39,11 @@
         0
       ],
       "polled": [
-        4933,
+        5591,
         0
       ],
       "buffered": [
-        4933,
+        5591,
         0
       ]
     },
@@ -53,12 +53,12 @@
         400
       ],
       "polled": [
-        3781,
-        3814
+        3582,
+        3575
       ],
       "buffered": [
-        3781,
-        3814
+        3582,
+        3575
       ]
     },
     {
@@ -67,12 +67,12 @@
         -200
       ],
       "polled": [
-        3781,
-        3671
+        3581,
+        3342
       ],
       "buffered": [
-        3781,
-        3671
+        3581,
+        3342
       ]
     },
     {
@@ -81,12 +81,12 @@
         200
       ],
       "polled": [
-        6681,
-        3841
+        6002,
+        3513
       ],
       "buffered": [
-        6681,
-        3841
+        6002,
+        3513
       ]
     },
     {
@@ -95,12 +95,12 @@
         -400
       ],
       "polled": [
-        5581,
-        1681
+        5539,
+        1601
       ],
       "buffered": [
-        5581,
-        1681
+        5539,
+        1601
       ]
     }
   ],
@@ -461,15 +461,15 @@
       1,
       8,
       0,
-      2526,
-      2526
+      2767,
+      2767
     ],
     "remaining_consumed": [
       14,
       32,
       0,
-      2528,
-      2554
+      2769,
+      2795
     ],
     "actual_game_contract": "unknown until device helper diagnostics",
     "custom_format_axis_offsets": [
@@ -483,39 +483,166 @@
       9
     ]
   },
+  "lost_x_grab_recovery": {
+    "fault": "external unmap of X confine window without focus change",
+    "injected_fault": {
+      "window": "0xe00008",
+      "geometry": [
+        400,
+        300,
+        1,
+        1
+      ]
+    },
+    "cached_rect_unchanged": true,
+    "legacy_physical_escape": [
+      401,
+      300
+    ],
+    "native_gate_preserved": true,
+    "metrics_before": {
+      "repairs": 0,
+      "last_repair_ok": true,
+      "held": true
+    },
+    "metrics_lost": {
+      "repairs": 0,
+      "last_repair_ok": true,
+      "held": true
+    },
+    "metrics_recovered": {
+      "repairs": 1,
+      "last_repair_ok": true,
+      "held": true
+    },
+    "same_rect_recovered_pointer": [
+      400,
+      300
+    ],
+    "signed_reversals": [
+      {
+        "injected": [
+          30,
+          0
+        ],
+        "polled": [
+          30,
+          0
+        ],
+        "buffered": [
+          30,
+          0
+        ]
+      },
+      {
+        "injected": [
+          -20,
+          0
+        ],
+        "polled": [
+          -20,
+          0
+        ],
+        "buffered": [
+          -20,
+          0
+        ]
+      },
+      {
+        "injected": [
+          0,
+          40
+        ],
+        "polled": [
+          0,
+          40
+        ],
+        "buffered": [
+          0,
+          40
+        ]
+      },
+      {
+        "injected": [
+          0,
+          -30
+        ],
+        "polled": [
+          0,
+          -30
+        ],
+        "buffered": [
+          0,
+          -30
+        ]
+      },
+      {
+        "injected": [
+          20,
+          -20
+        ],
+        "polled": [
+          20,
+          -20
+        ],
+        "buffered": [
+          20,
+          -20
+        ]
+      },
+      {
+        "injected": [
+          -15,
+          15
+        ],
+        "polled": [
+          -15,
+          15
+        ],
+        "buffered": [
+          -15,
+          15
+        ]
+      }
+    ],
+    "idle_drift": [
+      0,
+      0
+    ]
+  },
   "diagnostic_trace": {
     "marker": "TRASC_TAKP_CAMERA_TRACE_V1",
-    "bounded_bytes": 44444,
+    "bounded_bytes": 54454,
     "foreign_file_preserved": true,
     "owned_session_rotated": true
   },
   "transport": {
-    "packets": 1900,
-    "relative": 1886,
+    "packets": 2021,
+    "relative": 2007,
     "absolute": 4,
     "buttons": 10,
     "zero_relative": 10,
     "relative_sum": [
-      7134,
-      -5970
+      7150,
+      -5965
     ],
     "positive_axes": [
-      792,
-      528
+      843,
+      563
     ],
     "negative_axes": [
-      544,
-      769
+      579,
+      804
     ],
-    "wire_bytes": 30400,
-    "writes": 1782,
+    "wire_bytes": 32336,
+    "writes": 1903,
     "mask": 0,
-    "seconds": 18.31823457200001,
+    "seconds": 22.54979806099999,
     "protocol": "TRASCIN1",
     "pipeline": "production parser; per-packet XFlush",
     "closed": true,
     "native_decoded": {
-      "relative": 1886,
+      "relative": 2007,
       "absolute": 4,
       "buttons": 10
     }
