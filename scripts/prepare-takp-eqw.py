@@ -49,16 +49,27 @@ bool HoldCameraClip(int x, int y) {
   // reacquire after release. Wine's input query can pump window messages, so
   // it must remain outside the clip lock; generation rejects an overtaken query.
   const bool physical_down = (::GetAsyncKeyState(swap_mouse_buttons_ ? VK_LBUTTON : VK_RBUTTON) & 0x8000) != 0;
+  // Unlike GetClipCursor's cached Wine rectangle, this can expose an escaped
+  // physical cursor. Query outside the lock: Wine can pump lifecycle messages.
+  POINT observed_cursor = {};
+  const bool cursor_known = ::GetCursorPos(&observed_cursor) != 0;
   const trasc_takp_camera::Rect bounds = {game_rect_.left, game_rect_.top, game_rect_.right, game_rect_.bottom};
   ::AcquireSRWLockExclusive(&camera_clip_lock);
   const bool foreground = ::GetForegroundWindow() == hwnd_;
   const bool iconic = ::IsIconic(hwnd_) != 0;
   const bool visible = ::IsWindowVisible(hwnd_) != 0;
   const bool active = physical_down && foreground && !iconic && visible;
-  const bool held = active && camera_clip.hold_since(generation, x, y, bounds, GetCameraClip, SetCameraClip);
+  const unsigned long prior_repairs = camera_clip.repair_count();
+  const bool held = active && camera_clip.hold_verified_since(generation, x, y, bounds,
+    cursor_known, observed_cursor.x, observed_cursor.y, ::GetTickCount(), GetCameraClip, SetCameraClip);
   if (!active) camera_clip.release(GetCameraClip, SetCameraClip);
   const unsigned long current_generation = camera_clip.generation();
+  const unsigned long repair_count = camera_clip.repair_count();
+  const bool repair_ok = camera_clip.repair_ok();
   ::ReleaseSRWLockExclusive(&camera_clip_lock);
+  if (repair_count != prior_repairs)
+    trasc_takp_trace::write("clip_repair count=%lu ok=%d generation=%lu/%lu cursor=%ld,%ld center=%d,%d",
+      repair_count, repair_ok, generation, current_generation, observed_cursor.x, observed_cursor.y, x, y);
   static LONG prior_gate = -1;
   const LONG gate = held | (physical_down << 1) | (foreground << 2) | (iconic << 3) | (visible << 4);
   const bool changed = ::InterlockedExchange(&prior_gate, gate) != gate;
@@ -215,7 +226,7 @@ void GameInput::HandleLossOfFocus() {
     (source/'eqw_takp/trasc_camera_recenter.h').write_bytes((root/'native/takp_camera_recenter.h').read_bytes())
     (source/'eqw_takp/takp_camera_trace.h').write_bytes((root/'native/takp_camera_trace.h').read_bytes())
     (source/'eqw_takp/takp_dinput_observation.h').write_bytes((root/'native/takp_dinput_observation.h').read_bytes())
-    print('PASS: exact EQW source patched; V2 delivery retained, bounded Wine-only format/consumer/capture diagnostics added')
+    print('PASS: exact EQW source patched; escaped Wine capture retries the same clip at a bounded rate without cursor warps')
 
 
 if __name__ == '__main__':

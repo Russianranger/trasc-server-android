@@ -12,7 +12,7 @@ import zipfile
 TAKP_HELPERS = {
     'd3d8.dll': '122928cfe225c25d30decf7184a5d37e490cecf3b58256ba3206c7e1853f8ab8',
     'eqgame.dll': 'f0ca8e4bdcf3875419ecb1067a95bd6dbf8197e564f9d51ff4dec98a30f14b97',
-    'eqw.dll': '495d6e1711e21f012d1f8c9581af74fdbdccac5f45e2e93508e40b4bd3dbca1d',
+    'eqw.dll': '875056a62d2df3c7434bf05d23d73186d6565d2bd5a14f2f53a58fa7d015bab3',
 }
 
 
@@ -51,12 +51,13 @@ def verify(apk, signing_report, root):
         for name, digest in camera['patch_files'].items():
             if hashlib.sha256((root / name.replace('\\', '/')).read_bytes()).hexdigest() != digest:
                 raise ValueError('TAKP camera patch differs from its build provenance')
-        if camera['marker'] != 'TRASC_TAKP_WINE_RAW_LOOK_V2':
+        if camera['marker'] != 'TRASC_TAKP_WINE_RAW_LOOK_V3':
             raise ValueError('TAKP raw camera repair identity is missing')
         if camera.get('trace_marker') != 'TRASC_TAKP_CAMERA_TRACE_V1' or camera['trace_marker'].encode() not in dll:
             raise ValueError('TAKP bounded input diagnostics identity is missing')
-        for name in ('takp_camera_trace.h', 'takp_dinput_observation.h'):
-            if (root/'native/takp-eqw-source/eqw_takp'/name).read_bytes() != (root/'native'/name).read_bytes():
+        for name in ('takp_camera_recenter.h', 'takp_camera_trace.h', 'takp_dinput_observation.h'):
+            preserved_name = 'trasc_camera_recenter.h' if name == 'takp_camera_recenter.h' else name
+            if (root/'native/takp-eqw-source/eqw_takp'/preserved_name).read_bytes() != (root/'native'/name).read_bytes():
                 raise ValueError('Preserved EQW diagnostic source differs: ' + name)
         for name, digest in camera['patched_source_sha256'].items():
             preserved = root/'native/takp-eqw-source/eqw_takp'/name
@@ -97,6 +98,17 @@ def verify(apk, signing_report, root):
                 or trace.get('marker') != 'TRASC_TAKP_CAMERA_TRACE_V1' or not 0 < trace.get('bounded_bytes', 0) <= 128*1024
                 or not trace.get('foreign_file_preserved') or not trace.get('owned_session_rotated')):
             raise ValueError('TAKP production transport/consumer/diagnostics qualification is missing')
+        recovery = proof.get('lost_x_grab_recovery', {})
+        reversals = recovery.get('signed_reversals', [])
+        if (not recovery.get('cached_rect_unchanged') or not recovery.get('native_gate_preserved')
+                or recovery.get('legacy_physical_escape') == [400, 300]
+                or recovery.get('same_rect_recovered_pointer') != [400, 300]
+                or not recovery.get('metrics_recovered', {}).get('last_repair_ok')
+                or recovery.get('metrics_recovered', {}).get('repairs', 0) <= recovery.get('metrics_lost', {}).get('repairs', 0)
+                or len(reversals) != 6
+                or any(row['polled'] != row['injected'] or row['buffered'] != row['injected'] for row in reversals)
+                or recovery.get('idle_drift') != [0, 0]):
+            raise ValueError('TAKP physical-grab recovery qualification is missing')
         for name in ('eqw-LICENSE.txt', 'd3d8to9-LICENSE.txt'):
             data = archive.read('assets/takp-client/' + name)
             if not data or data != (root / 'backend/takp-client' / name).read_bytes():

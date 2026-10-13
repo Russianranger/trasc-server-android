@@ -7,6 +7,7 @@ import hashlib
 import json
 import os
 from pathlib import Path
+import re
 import shutil
 import subprocess
 import time
@@ -38,6 +39,8 @@ def run(wine, probe, output, input_probe=None):
     xlib.XFetchName.argtypes=[ctypes.c_void_p,ctypes.c_ulong,ctypes.POINTER(ctypes.c_void_p)]
     xlib.XQueryTree.argtypes=[ctypes.c_void_p,ctypes.c_ulong,ctypes.POINTER(ctypes.c_ulong),ctypes.POINTER(ctypes.c_ulong),ctypes.POINTER(ctypes.c_void_p),ctypes.POINTER(ctypes.c_uint)]
     xlib.XFree.argtypes=[ctypes.c_void_p]
+    xlib.XGetGeometry.argtypes=[ctypes.c_void_p,ctypes.c_ulong,ctypes.POINTER(ctypes.c_ulong),ctypes.POINTER(ctypes.c_int),ctypes.POINTER(ctypes.c_int),ctypes.POINTER(ctypes.c_uint),ctypes.POINTER(ctypes.c_uint),ctypes.POINTER(ctypes.c_uint),ctypes.POINTER(ctypes.c_uint)]
+    xlib.XUnmapWindow.argtypes=[ctypes.c_void_p,ctypes.c_ulong]
     xtst.XTestFakeRelativeMotionEvent.argtypes=[ctypes.c_void_p,ctypes.c_int,ctypes.c_int,ctypes.c_ulong]
     xtst.XTestFakeMotionEvent.argtypes=[ctypes.c_void_p,ctypes.c_int,ctypes.c_int,ctypes.c_int,ctypes.c_ulong]
     xtst.XTestFakeButtonEvent.argtypes=[ctypes.c_void_p,ctypes.c_uint,ctypes.c_int,ctypes.c_ulong]
@@ -115,7 +118,7 @@ def run(wine, probe, output, input_probe=None):
             nonlocal sequence
             sequence+=1;value=f'{mode} {sequence}'
             temporary=output/'command.new';temporary.write_text(value);temporary.replace(output/'command.txt')
-            return wait_file(output/'reply.txt',value,child,prefix=mode.startswith(('sample','readstate','readbuffer','peekbuffer')))
+            return wait_file(output/'reply.txt',value,child,prefix=mode.startswith(('sample','readstate','readbuffer','peekbuffer','clipmetrics')))
         def sample():
             values=list(map(int,command('sample').split()[2:]))
             assert len(values)==14,values
@@ -129,6 +132,22 @@ def run(wine, probe, output, input_probe=None):
             print(json.dumps(row),flush=True)
             return row
         def difference(before,after,kind):return [after[kind][i]-before[kind][i] for i in range(2)]
+        def clip_metrics():
+            values=list(map(int,command('clipmetrics').split()[2:]));assert len(values)==3,values
+            return {'repairs':values[0],'last_repair_ok':bool(values[1]),'held':bool(values[2])}
+        def unmap_confine_window():
+            # XUnmapWindow releases an active grab when its confine_to window
+            # becomes unviewable. This damages only the X grab, preserving the
+            # Wine clip rectangle and game focus. A different client's
+            # XUngrabPointer would release only that client's own grab.
+            windows=re.findall(r'clipping to [^\r\n]+ win ([0-9a-fA-F]+)',(output/'wine.log').read_text(errors='replace'))
+            for value in reversed(windows):
+                window=int(value,16);geometry_root=ctypes.c_ulong();x,y=ctypes.c_int(),ctypes.c_int()
+                width,height,border,depth=ctypes.c_uint(),ctypes.c_uint(),ctypes.c_uint(),ctypes.c_uint()
+                if xlib.XGetGeometry(display,window,ctypes.byref(geometry_root),ctypes.byref(x),ctypes.byref(y),ctypes.byref(width),ctypes.byref(height),ctypes.byref(border),ctypes.byref(depth)) and (x.value,y.value,width.value,height.value)==(400,300,1,1):
+                    xlib.XUnmapWindow(display,window);xlib.XSync(display,False)
+                    return {'window':hex(window),'geometry':[x.value,y.value,width.value,height.value]}
+            raise AssertionError('Wine trace did not identify the live one-pixel X confine window; lost-grab regression was not exercised')
         old=[]
         for dx in (20,20,20,-10):
             motion(dx,0);command('legacy');old.append(point()[0]-400)
@@ -235,6 +254,45 @@ def run(wine, probe, output, input_probe=None):
                 expected=[sum(v[i] for v in events) for i in range(2)]
                 assert difference(before,after,'state')==expected and difference(before,after,'buffered')==expected,(expected,before,after)
                 bursts.append({'packets':len(events),'fragmented':bool(fragments),'injected':expected,'polled':difference(before,after,'state'),'buffered':difference(before,after,'buffered')})
+        # Reproduce a silently lost X grab while the SAME Wine rectangle and
+        # logical LookClip remain held. Restoring X focus would let Wine's own
+        # FocusIn handler repair capture, so this fault never changes focus.
+        command('legacyheld');time.sleep(.1)
+        lost_before=diagnose('lost-grab-before');metrics_before=clip_metrics()
+        assert lost_before['native']['clip']==[400,300,401,301] and lost_before['x_pointer']==(400,300),lost_before
+        assert lost_before['native']['foreground'] and lost_before['native']['focused'] and lost_before['native']['visible'] and lost_before['native']['rmb'],lost_before
+        injected_fault=unmap_confine_window();time.sleep(.05);motion(1,0);time.sleep(.35)
+        escaped=diagnose('lost-grab-legacy-held');metrics_lost=clip_metrics()
+        assert escaped['native']['clip']==[400,300,401,301],('fault changed the cached Wine rectangle; not the intended lost-grab reproduction',escaped)
+        assert escaped['native']['foreground'] and escaped['native']['focused'] and escaped['native']['visible'] and escaped['native']['rmb'],('fault changed the look/focus gate',escaped)
+        # Xvnc can retain unconstrained internal coordinates during a grab;
+        # the first movement after losing it need not start at the last
+        # confined point. Require observed escape, not a guessed endpoint.
+        assert escaped['x_pointer']!=(400,300) and metrics_lost['held'],('legacy cached rectangle did not conceal an escaped physical cursor',escaped,metrics_lost)
+        assert metrics_lost['repairs']==metrics_before['repairs'],('legacy-held path unexpectedly repaired capture',metrics_before,metrics_lost)
+        command('verified');deadline=time.monotonic()+2
+        while point()!=(400,300) and time.monotonic()<deadline:time.sleep(.01)
+        time.sleep(.15);recovered=diagnose('lost-grab-verified-recovered');metrics_recovered=clip_metrics()
+        assert recovered['native']['clip']==[400,300,401,301] and recovered['x_pointer']==(400,300),('same-rectangle retry did not physically recover capture',recovered)
+        assert recovered['native']['foreground'] and recovered['native']['focused'] and recovered['native']['visible'] and recovered['native']['rmb'],recovered
+        assert metrics_recovered['held'] and metrics_recovered['last_repair_ok'] and metrics_recovered['repairs']>metrics_lost['repairs'],(metrics_lost,metrics_recovered)
+        recovery_reversals=[]
+        # Separate each sign's totals: a zero net result alone could conceal
+        # lost or duplicated positive/negative controller packets.
+        for dx,dy,count in ((1,0,30),(-1,0,20),(0,2,20),(0,-2,15),(1,-1,20),(-1,1,15)):
+            before=sample()
+            for _ in range(count):motion(dx,dy);time.sleep(.016)
+            time.sleep(.15);after=sample();expected=[count*dx,count*dy]
+            polled=difference(before,after,'state');buffered=difference(before,after,'buffered')
+            assert polled==expected and buffered==expected,('signed small input after grab recovery differs',expected,polled,buffered)
+            assert point()==(400,300),('capture escaped after recovery',point())
+            recovery_reversals.append({'injected':expected,'polled':polled,'buffered':buffered})
+        idle=sample();time.sleep(.3);stopped=sample()
+        assert difference(idle,stopped,'state')==[0,0] and difference(idle,stopped,'buffered')==[0,0],('recovered capture drifted without input',idle,stopped)
+        lost_grab={'fault':'external unmap of X confine window without focus change','injected_fault':injected_fault,
+            'cached_rect_unchanged':True,'legacy_physical_escape':escaped['x_pointer'],'native_gate_preserved':True,
+            'metrics_before':metrics_before,'metrics_lost':metrics_lost,'metrics_recovered':metrics_recovered,
+            'same_rect_recovered_pointer':recovered['x_pointer'],'signed_reversals':recovery_reversals,'idle_drift':[0,0]}
         # The real client can select either mode and consume a bounded queue.
         # Observe both modes, including the reset model, without choosing one for
         # the proprietary consumer. The next Thor trace establishes its contract.
@@ -292,6 +350,7 @@ def run(wine, probe, output, input_probe=None):
                  'focus_restored_relative':restored_relative,'swapped_button_relative':swapped_relative,
                  'menu_pointer_free':True,'verification':'real Wine10/Xvnc polled and buffered DirectInput; open fixture, not actual client acceptance'}
         receipt.update(controller_cadence=cadence,pipelined_transport_bursts=bursts,consumer_modes=consumer_modes,
+            lost_x_grab_recovery=lost_grab,
             diagnostic_trace={'marker':'TRASC_TAKP_CAMERA_TRACE_V1','bounded_bytes':trace_path.stat().st_size,'foreign_file_preserved':True,'owned_session_rotated':True},
             transport=transport.summary() if transport else {'type':'direct XTest with per-event XSync'})
         (output/'cursor-verification.json').write_text(json.dumps(receipt,indent=2)+'\n')
