@@ -1,6 +1,13 @@
-# 0.6.26 right-stick capture recovery (2026-10-13 UTC)
+# Released 0.6.26 — physical right-stick acceptance (2026-10-13 UTC)
 
-Read `docs/release-status-0626.md` and `docs/takp-camera-0626.md` first. The user confirmed 0.6.25 existing-server startup, incremental source update/build/deployment and stopped cleric idle Yaulp. Fresh actual camera trace contains REL input, young events and escaped cursor despite cached one-pixel capture; the input source was Thor right stick. V3 retries only an observed escaped owned clip at 250 ms intervals without cursor warps/focus changes. Native MSVC and real Wine10 lost-grab recovery passed run `38349508008`; exact helper/source/proof bundled. Launcher 0.6.26/code75 APK qualification/publication pending. Keep working server/database/assets/prefixes/settings; camera acceptance remains physical and NPC/StoneUI are separate.
+Read `docs/release-status-0626.md`, `docs/release-proof-0626.json` and `docs/takp-camera-0626.md` first. Qualified/published source `72f482c58986d4b9d62f7d7e264cf5eadb4c80c1`, tree `6ace7009cb7b5aa891ad66d5583b34429384928c`; PR #33 merged as `6ebe155ed8ae02c0b8eeff90d716a448c5509fb0` with the exact tree. Run `38350483443` passed all five jobs, 553 Python tests/no skips, JVM/browser/controller/DirectX, APK assembly/lint/signing and all native profile checks. Native camera run `38349508008` separately passed actual lost-X-grab recovery and exact signed movement/zero drift. No owned build remains.
+
+Public APK 0.6.26/code75: 18,901,782 bytes, SHA-256 `7bb7a902c5695a430e396ddd035703b4cce278c11896b371a98363090290fa85`. Prefer the release download URL with `?v=0.6.26`; a bare URL initially returned cached 0.6.25, then verified current. Independent public audit verified original cert identity (signature validity by CI), 119 exact APK source assets, all 544 archived Git files, preserved 0.6.24 source archive and all 21 native bytes equal actual verified 0.6.25. V3 helper SHA `875056a62d2df3c7434bf05d23d73186d6565d2bd5a14f2f53a58fa7d015bab3`.
+
+User physically confirmed existing-server/saved-character startup before update, source apply/build/deploy and stopped cleric idle Yaulp. Log: only player_bot.cpp.o compiled then zone linked; 55s/two jobs, deploy21s, server-start6s excluding login. Failed mouse-look reproduction was Thor right stick; fresh REL consumer trace showed escaped cursor despite cached clip. V3 only retries observed escaped owned clip at 250ms bounds. Known helper upgrades retain originals, custom/unsafe backups refuse; no server/database/runtime/settings/native Android changes.
+
+Next: install APK in place, stop/relaunch TAKP client, retain working server without rebuild/reimport/prefix reset. Test right-stick short reversals/vertical/diagonal/neutral, Look off/on, menu/chat, resume and zone change; export short fresh trace including V3/clip_repair rows. No actual Thor camera success claimed. NPC visibility/Traditional StoneUI remain separate; full all-profile backup/persistence, skeleton visuals/exact restore and physical no-work rebuild/object receipts remain open. Documentation checkpoint does not require APK rebuild.
+
 
 ---
 

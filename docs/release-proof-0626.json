@@ -1,0 +1,238 @@
+{
+  "format": "trasc-release-proof-1",
+  "version": "0.6.26",
+  "version_code": 75,
+  "qualified_source": {
+    "branch": "codex/takp-world",
+    "commit": "72f482c58986d4b9d62f7d7e264cf5eadb4c80c1",
+    "tree": "6ace7009cb7b5aa891ad66d5583b34429384928c",
+    "base_main": "04c473d45fb66066d5cd78adc4a1782e39bb3009",
+    "pr": {
+      "number": 33,
+      "url": "https://github.com/Russianranger/trasc-server-android/pull/33",
+      "merged": true,
+      "merge_commit": "6ebe155ed8ae02c0b8eeff90d716a448c5509fb0",
+      "merged_at": "2026-10-13T05:31:07Z",
+      "merge_tree_equal_qualified_source": true
+    }
+  },
+  "release": {
+    "tag": "preview",
+    "tag_commit": "72f482c58986d4b9d62f7d7e264cf5eadb4c80c1",
+    "url": "https://github.com/Russianranger/trasc-server-android/releases/tag/preview",
+    "rolling_tag_original_published_at": "2026-09-13T02:32:21Z",
+    "assets": [
+      {
+        "id": 635995347,
+        "name": "launcher-sources.tar.gz",
+        "size": 247568489,
+        "digest": "sha256:f45071ee5e74694da5f2a9ec04616f5eab7674cc6d8efc04294634a8ba4c75e1",
+        "url": "https://github.com/Russianranger/trasc-server-android/releases/download/preview/launcher-sources.tar.gz",
+        "updated_at": "2026-10-13T05:26:51Z",
+        "public_download_verified": true
+      },
+      {
+        "id": 635995338,
+        "name": "native-reuse.json",
+        "size": 4817,
+        "digest": "sha256:696c29700f4aa312af973d0bfaf9c73733a1a13c80b68e6eefc5f9e4e4c043ff",
+        "url": "https://github.com/Russianranger/trasc-server-android/releases/download/preview/native-reuse.json",
+        "updated_at": "2026-10-13T05:26:41Z",
+        "public_download_verified": true
+      },
+      {
+        "id": 635995346,
+        "name": "preview-build.json",
+        "size": 765,
+        "digest": "sha256:65708aff82d1149b07cc80ea42de20a2b3947b5894ffff10c7c18985632dd6e1",
+        "url": "https://github.com/Russianranger/trasc-server-android/releases/download/preview/preview-build.json",
+        "updated_at": "2026-10-13T05:26:41Z",
+        "public_download_verified": true
+      },
+      {
+        "id": 635995342,
+        "name": "trasc-server-android-preview.apk",
+        "size": 18901782,
+        "digest": "sha256:7bb7a902c5695a430e396ddd035703b4cce278c11896b371a98363090290fa85",
+        "url": "https://github.com/Russianranger/trasc-server-android/releases/download/preview/trasc-server-android-preview.apk",
+        "updated_at": "2026-10-13T05:26:42Z",
+        "public_download_verified": true
+      }
+    ],
+    "download_verification": {
+      "source_commit": "72f482c58986d4b9d62f7d7e264cf5eadb4c80c1",
+      "build_run": 38350483443,
+      "version": "0.6.26",
+      "version_code": 75,
+      "apk_bytes": 18901782,
+      "apk_sha256": "7bb7a902c5695a430e396ddd035703b4cce278c11896b371a98363090290fa85",
+      "source_archive_sha256": "f45071ee5e74694da5f2a9ec04616f5eab7674cc6d8efc04294634a8ba4c75e1",
+      "native_reuse_manifest_sha256": "696c29700f4aa312af973d0bfaf9c73733a1a13c80b68e6eefc5f9e4e4c043ff",
+      "preview_build_manifest_sha256": "65708aff82d1149b07cc80ea42de20a2b3947b5894ffff10c7c18985632dd6e1",
+      "exact_bundled_source_assets": 119,
+      "exact_source_archive_files": 544,
+      "preserved_0624_source_sha256": "8dcb8138f21c80c0056e2734d97952834e2c3a9a17f92a9c3997d8ad69f5a5d9",
+      "native_components_equal_actual_verified_0625_apk": 21,
+      "native_components_match_verified_0624_reuse_manifest": 21,
+      "exact_camera_helper_sha256": "875056a62d2df3c7434bf05d23d73186d6565d2bd5a14f2f53a58fa7d015bab3",
+      "camera_helper_bytes": 93696,
+      "apk_signature_verified_by_release_ci": true,
+      "public_apk_sha256_equals_ci_manifest": true,
+      "signing_certificate_independently_extracted": true,
+      "signing_certificate_sha256": "ff9c09cdc3e2404d1d7f72d61ce2f8651464f5e03dff340f70bd4df28c70e869",
+      "binary_manifest_package": "io.github.russianranger.trasc.preview",
+      "binary_manifest_version_name": "0.6.26",
+      "binary_manifest_version_code": 75,
+      "footer_version_matches_package": true,
+      "all_public_assets_independently_downloaded": true,
+      "public_download_url": "https://github.com/Russianranger/trasc-server-android/releases/download/preview/trasc-server-android-preview.apk?v=0.6.26",
+      "initial_bare_url_served_cached_0625": true,
+      "bare_url_subsequently_verified_current": true
+    }
+  },
+  "ci": {
+    "run": {
+      "id": 38350483443,
+      "status": "completed",
+      "conclusion": "success",
+      "head_sha": "72f482c58986d4b9d62f7d7e264cf5eadb4c80c1",
+      "created_at": "2026-10-13T05:15:38Z",
+      "updated_at": "2026-10-13T05:26:55Z",
+      "html_url": "https://github.com/Russianranger/trasc-server-android/actions/runs/38350483443"
+    },
+    "jobs": [
+      {
+        "id": 115141500837,
+        "name": "takp-server",
+        "status": "completed",
+        "conclusion": "success",
+        "started_at": "2026-10-13T05:15:43Z",
+        "completed_at": "2026-10-13T05:26:21Z",
+        "html_url": "https://github.com/Russianranger/trasc-server-android/actions/runs/38350483443/job/115141500837"
+      },
+      {
+        "id": 115141501101,
+        "name": "apk",
+        "status": "completed",
+        "conclusion": "success",
+        "started_at": "2026-10-13T05:15:41Z",
+        "completed_at": "2026-10-13T05:23:16Z",
+        "html_url": "https://github.com/Russianranger/trasc-server-android/actions/runs/38350483443/job/115141501101"
+      },
+      {
+        "id": 115141501153,
+        "name": "modern-bots (traditional, Russianranger/Server, 4aceae18b94ffaafc08e2b17bc41cd72c77f795d, .)",
+        "status": "completed",
+        "conclusion": "success",
+        "started_at": "2026-10-13T05:15:44Z",
+        "completed_at": "2026-10-13T05:18:00Z",
+        "html_url": "https://github.com/Russianranger/trasc-server-android/actions/runs/38350483443/job/115141501153"
+      },
+      {
+        "id": 115141501238,
+        "name": "modern-bots (custom, Russianranger/Triptych-Triumvirate, 8f6ca0795f424a7b4eab750ff38fc6473d48375c...",
+        "status": "completed",
+        "conclusion": "success",
+        "started_at": "2026-10-13T05:15:44Z",
+        "completed_at": "2026-10-13T05:18:35Z",
+        "html_url": "https://github.com/Russianranger/trasc-server-android/actions/runs/38350483443/job/115141501238"
+      },
+      {
+        "id": 115144334050,
+        "name": "preview",
+        "status": "completed",
+        "conclusion": "success",
+        "started_at": "2026-10-13T05:26:25Z",
+        "completed_at": "2026-10-13T05:26:54Z",
+        "html_url": "https://github.com/Russianranger/trasc-server-android/actions/runs/38350483443/job/115144334050"
+      }
+    ],
+    "python_tests": 553,
+    "python_skips": 0,
+    "management_jvm_and_browser_fixtures_passed": true,
+    "android_assembly_lint_signing_passed": true,
+    "controlled_production_incremental": {
+      "legacy_native_objects": 375,
+      "changed_objects": [
+        "zone/CMakeFiles/zone.dir/player_bot.cpp.o"
+      ],
+      "retained_native_objects": 374,
+      "unchanged_source_files_preserved": 5548,
+      "second_build_output": "ninja: no work to do.",
+      "second_build_all_objects_and_nine_binary_hashes_preserved": true,
+      "failed_native_build_preserved_stage_deployment_and_readiness": true,
+      "database_credentials_accounts_content_preserved": true,
+      "scope": "Isolated production ARM64 qualification, not physical Thor measurements"
+    }
+  },
+  "camera_qualification": {
+    "run": 38349508008,
+    "url": "https://github.com/Russianranger/trasc-server-android/actions/runs/38349508008",
+    "commit": "688ff50b6a4f6c25ef7dcfb2e3a632c39adbd394",
+    "jobs": [
+      {
+        "id": 115138430941,
+        "name": "cursor",
+        "conclusion": "success"
+      },
+      {
+        "id": 115138431180,
+        "name": "eqw",
+        "conclusion": "success"
+      }
+    ],
+    "helper_sha256": "875056a62d2df3c7434bf05d23d73186d6565d2bd5a14f2f53a58fa7d015bab3",
+    "marker": "TRASC_TAKP_WINE_RAW_LOOK_V3",
+    "trace_marker": "TRASC_TAKP_CAMERA_TRACE_V1",
+    "wine": "wine-10.0",
+    "lost_physical_grab_fixture": {
+      "cached_rect_unchanged": true,
+      "native_focus_button_gate_preserved": true,
+      "legacy_escaped_pointer": [
+        401,
+        300
+      ],
+      "same_rect_retry_recovered_pointer": [
+        400,
+        300
+      ],
+      "repair_count": 1,
+      "exact_signed_segments": 6,
+      "idle_drift": [
+        0,
+        0
+      ]
+    },
+    "scope": "Native Windows helper and real Wine fixture; physical Thor camera behavior remains unverified"
+  },
+  "physical_acceptance": {
+    "device": "AYN Thor",
+    "input_for_failed_camera_test": "Thor right stick",
+    "evidence_bundle": "logs-7353179389915178916.zip",
+    "on_0625": {
+      "existing_server_and_saved_character_before_update": "User confirmed pass",
+      "source_review_apply_compile_deploy": "User confirmed pass; operation logs support completion",
+      "incremental_compilation": {
+        "compiled_object": "zone/CMakeFiles/zone.dir/player_bot.cpp.o",
+        "linked_target": "bin/zone",
+        "jobs": 2,
+        "operation_seconds": 55,
+        "scope": "Physical log timing; no complete 375-object inventory supplied"
+      },
+      "deployment_operation_seconds": 21,
+      "server_start_operation_seconds": 6,
+      "start_scope": "Excludes client login/world entry",
+      "cleric_idle_yaulp": "User confirmed no repeated casting",
+      "mouse_look": "User reported failure; fresh game-consumer trace supplied"
+    },
+    "after_0626": {
+      "mouse_look": "Pending physical test",
+      "saved_characters_and_bots_reopening": "Pending full three-profile confirmation",
+      "external_all_profile_backup_restore": "Pending evidence",
+      "classic_skeleton_visuals_and_exact_restore": "Pending physical confirmation",
+      "repeat_no_work_rebuild_and_object_inventory": "Pending physical evidence",
+      "npc_visibility": "Separate unresolved issue",
+      "traditional_stoneui": "Separate unresolved issue"
+    }
+  }
+}
