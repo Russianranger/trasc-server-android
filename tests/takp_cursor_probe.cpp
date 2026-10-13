@@ -15,6 +15,7 @@ static HWND game_window;
 static volatile LONG mode=0; // free=0, v1 warp=1, v2 clip=2, exit=-1
 static volatile LONG swap_buttons=0;
 static volatile LONG polling=1,manual_ack=0;
+static volatile LONG verified_recovery=1;
 static LONG totals[4],buttons;
 static CRITICAL_SECTION clip_lock;
 static trasc_takp_camera::LookClip clip;
@@ -27,9 +28,16 @@ static bool set_clip(const trasc_takp_camera::Rect& value) {
 }
 static void release_clip(){EnterCriticalSection(&clip_lock);clip.release(get_clip,set_clip);LeaveCriticalSection(&clip_lock);}
 static unsigned long clip_generation(){EnterCriticalSection(&clip_lock);auto generation=clip.generation();LeaveCriticalSection(&clip_lock);return generation;}
-static void hold_clip(unsigned long generation){EnterCriticalSection(&clip_lock);
-    if(GetForegroundWindow()==game_window&&!IsIconic(game_window)&&IsWindowVisible(game_window))
-        clip.hold_since(generation,400,300,{0,0,800,600},get_clip,set_clip);
+static void hold_clip(unsigned long generation){
+    // Match production: Wine input queries may dispatch messages. Query the
+    // observed pointer outside the capture lock, then validate its generation.
+    POINT point={};const bool known=GetCursorPos(&point)!=0;
+    EnterCriticalSection(&clip_lock);
+    if(GetForegroundWindow()==game_window&&!IsIconic(game_window)&&IsWindowVisible(game_window)) {
+        if(verified_recovery)
+            clip.hold_verified_since(generation,400,300,{0,0,800,600},known,point.x,point.y,GetTickCount(),get_clip,set_clip);
+        else clip.hold_since(generation,400,300,{0,0,800,600},get_clip,set_clip);
+    }
     else clip.release(get_clip,set_clip);
     LeaveCriticalSection(&clip_lock);}
 static LRESULT CALLBACK window_proc(HWND window,UINT message,WPARAM wparam,LPARAM lparam) {
@@ -97,7 +105,7 @@ int WINAPI WinMain(HINSTANCE instance,HINSTANCE,LPSTR arguments,int) {
         if(!std::strncmp(command,"quit",4)) {
             mode=-1;if(worker)WaitForSingleObject(worker,5000);release_clip();result(command);return 0;
         }
-        if(!std::strncmp(command,"legacy",6))SetCursorPos(400,300);
+        if(!std::strncmp(command,"legacy ",7))SetCursorPos(400,300);
         else if(!std::strncmp(command,"fixed",5))
             trasc_takp_camera::legacy_center(400,300,0,800,[](int x,int y){return SetCursorPos(x,y);});
         else if(!std::strncmp(command,"input",5)) {
@@ -166,6 +174,14 @@ int WINAPI WinMain(HINSTANCE instance,HINSTANCE,LPSTR arguments,int) {
         }
         else if(!std::strncmp(command,"warp",4))mode=1;
         else if(!std::strncmp(command,"raw",3))mode=2;
+        else if(!std::strncmp(command,"legacyheld",10))InterlockedExchange(&verified_recovery,0);
+        else if(!std::strncmp(command,"verified",8))InterlockedExchange(&verified_recovery,1);
+        else if(!std::strncmp(command,"clipmetrics",11)) {
+            EnterCriticalSection(&clip_lock);
+            const unsigned long repairs=clip.repair_count();const bool ok=clip.repair_ok();const bool held=clip.held();
+            LeaveCriticalSection(&clip_lock);
+            char reply[192];std::sprintf(reply,"%s %lu %d %d",command,repairs,ok,held);result(reply);continue;
+        }
         else if(!std::strncmp(command,"free",4)) {mode=0;release_clip();}
         else if(!std::strncmp(command,"swap",4))InterlockedExchange(&swap_buttons,1);
         else if(!std::strncmp(command,"normal",6))InterlockedExchange(&swap_buttons,0);

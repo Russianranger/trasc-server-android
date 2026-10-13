@@ -27,7 +27,7 @@ def record(source, output, root):
     offset = struct.unpack_from('<I', data, 0x3c)[0]
     if data[:2] != b'MZ' or data[offset:offset+4] != b'PE\0\0' or struct.unpack_from('<H', data, offset+4)[0] != 0x14c or struct.unpack_from('<H', data, offset+24)[0] != 0x10b:
         raise ValueError('EQW camera helper must be a Windows x86 PE32 DLL')
-    if b'TRASC_TAKP_WINE_RAW_LOOK_V2' not in data:
+    if b'TRASC_TAKP_WINE_RAW_LOOK_V3' not in data:
         raise ValueError('EQW DLL is missing the camera repair identity')
     if b'TRASC_TAKP_CAMERA_TRACE_V1' not in data:
         raise ValueError('EQW DLL is missing the bounded camera diagnostics identity')
@@ -48,8 +48,8 @@ def record(source, output, root):
         'patched_game_input_sha256':digest(source/'eqw_takp/game_input.cpp'),
         'upstream_source_sha256':recipe.SOURCE_SHA,
         'patched_source_sha256':{name:digest(source/'eqw_takp'/name) for name in recipe.SOURCE_SHA},
-        'patch_files':patches, 'marker':'TRASC_TAKP_WINE_RAW_LOOK_V2',
-        'trace_marker':'TRASC_TAKP_CAMERA_TRACE_V1', 'camera_behavior':'0.6.23 V2 unchanged; format/queue/consumer diagnostics only',
+        'patch_files':patches, 'marker':'TRASC_TAKP_WINE_RAW_LOOK_V3',
+        'trace_marker':'TRASC_TAKP_CAMERA_TRACE_V1', 'camera_behavior':'V3 conditional 250ms same-rectangle recovery after an observed escaped cursor; no repeated cursor warps',
         'compiler':'Microsoft Visual C++ v143, Release x86', 'build_commit':os.environ.get('GITHUB_SHA'),
         'build_run':int(os.environ.get('GITHUB_RUN_ID','0')), 'license_sha256':digest(source/'LICENSE.txt')}
     (output/'eqw-camera-build.json').write_text(json.dumps(receipt,indent=2)+'\n')

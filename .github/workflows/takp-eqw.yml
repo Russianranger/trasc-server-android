@@ -1,8 +1,8 @@
-name: Qualify TAKP EQW input diagnostics
+name: Qualify TAKP EQW capture recovery
 
 on:
   push:
-    branches: [codex/takp-eqw-0624]
+    branches: [codex/takp-eqw-0624, codex/takp-camera-capture-0626]
   workflow_dispatch:
 
 permissions:
@@ -33,13 +33,13 @@ jobs:
       - uses: actions/upload-artifact@v4
         if: always()
         with:
-          name: takp-eqw-cursor-proof-0624
+          name: takp-eqw-cursor-proof-0626
           path: dist/cursor/*.log
           retention-days: 14
       - uses: actions/upload-artifact@v4
         if: success()
         with:
-          name: takp-eqw-cursor-receipt-0624
+          name: takp-eqw-cursor-receipt-0626
           path: dist/cursor/cursor-verification.json
           retention-days: 14
   eqw:
@@ -70,6 +70,6 @@ jobs:
           if ($LASTEXITCODE -ne 0) { throw 'EQW camera receipt verification failed' }
       - uses: actions/upload-artifact@v4
         with:
-          name: takp-eqw-camera-0624
+          name: takp-eqw-camera-0626
           path: dist/takp-eqw/
           retention-days: 14
