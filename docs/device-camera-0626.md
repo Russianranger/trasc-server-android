@@ -35,11 +35,11 @@ multi-event sums. A 19.238-second old event occurred during startup with Look
 off and does not establish held-look backlog. Releasing Look restores the
 full clip.
 
-The user supplied logs without a description of the new camera behavior.
-Recorded input signs change, but intended stick directions and camera frames
-are absent. Keep actual reversal acceptance unconfirmed. The confinement
-invariant failed on this device; do not label 0.6.26 camera acceptance passed
-because the host fixture or `ClipCursor` calls succeeded.
+The user subsequently confirmed slight improvement but still unusable camera
+behavior, similar to the previous version. Physical camera acceptance failed.
+Recorded input signs change, but synchronized intended stick directions and
+camera frames are absent. The confinement invariant also failed; do not label
+0.6.26 camera acceptance passed because the host fixture or ClipCursor succeeded.
 
 ## What the next investigation must distinguish
 

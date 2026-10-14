@@ -229,6 +229,10 @@ final class ClientRuntime {
             for(String name:new String[]{"client_runner.py","takp_client.py","takp_skeletons.py","managed_content.py","client_mouse.py","traditional_camera.py","trasc-camera-dinput8.dll","traditional-camera-bundle.json","client_presentation.py","log_retention.py","client_display.py","client_xauthority.py","client_metrics.py","client_spells.py","client_vulkan.py","client_audio.py","libasound_module_pcm_trasc.so","audio-bundle.json","graphics_probe.py","runtime_probe.py","wined3d.dll","wined3d-patch.json","wineserver","wineserver-patch.json"})
                 try(InputStream in=context.getAssets().open(name)){RuntimeManager.copy(in,new File(backend,name));}
             if(takp()) {
+                try(InputStream in=context.getAssets().open("takp_input_diagnostics.py")){RuntimeManager.copy(in,new File(backend,"takp_input_diagnostics.py"));}
+                for(String name:new String[]{"takp-xinput-observe","takp-input-observer.json"})
+                    try(InputStream in=context.getAssets().open("takp-input/"+name)){RuntimeManager.copy(in,new File(backend,name));}
+                new File(backend,"takp-xinput-observe").setExecutable(true,true);
                 new File(backend,"takp-client").mkdirs();
                 for(String name:new String[]{"bundle.json","d3d8.dll","eqgame.dll","eqw.dll"})
                     try(InputStream in=context.getAssets().open("takp-client/"+name)){RuntimeManager.copy(in,new File(backend,"takp-client/"+name));}

@@ -24,13 +24,16 @@ def wait_file(path, expected, child, timeout=30, prefix=False):
     raise RuntimeError('Wine cursor fixture did not reply: '+expected)
 
 
-def run(wine, probe, output, input_probe=None):
+def run(wine, probe, output, input_probe=None, x_observer=None, xserver_args=None):
     output=Path(output).resolve();output.mkdir(parents=True,exist_ok=True)
     prefix=output/'prefix';prefix.mkdir(exist_ok=True)
     env=dict(os.environ,DISPLAY=':33',WINEPREFIX=str(prefix),WINEARCH='win64',WINEDEBUG='-all,+cursor,+event,+dinput',WINEDLLOVERRIDES='winemenubuilder,mscoree,mshtml=')
     display_log=(output/'display.log').open('wb');wine_log=(output/'wine.log').open('wb')
-    server=subprocess.Popen(['Xtigervnc',':33','-geometry','800x600','-depth','24','-rfbport','-1','-nolisten','tcp','-nolock','-ac','-SecurityTypes','None'],stdout=display_log,stderr=subprocess.STDOUT)
-    xlib=ctypes.CDLL(ctypes.util.find_library('X11'));xtst=ctypes.CDLL(ctypes.util.find_library('Xtst'))
+    server=subprocess.Popen(['Xtigervnc',':33',*(xserver_args or ['-geometry','800x600','-depth','24','-rfbport','-1','-nolisten','tcp','-nolock','-ac','-SecurityTypes','None'])],stdout=display_log,stderr=subprocess.STDOUT)
+    xlib=ctypes.CDLL(ctypes.util.find_library('X11'))
+    # Published TRASC links Xtst statically into its verified input bridge.
+    # The preserved runtime need not contain a standalone libXtst.so.6.
+    xtst=None if input_probe else ctypes.CDLL(ctypes.util.find_library('Xtst'))
     xlib.XOpenDisplay.argtypes=[ctypes.c_char_p];xlib.XOpenDisplay.restype=ctypes.c_void_p
     xlib.XDefaultRootWindow.argtypes=[ctypes.c_void_p];xlib.XDefaultRootWindow.restype=ctypes.c_ulong
     xlib.XSync.argtypes=[ctypes.c_void_p,ctypes.c_int]
@@ -41,11 +44,12 @@ def run(wine, probe, output, input_probe=None):
     xlib.XFree.argtypes=[ctypes.c_void_p]
     xlib.XGetGeometry.argtypes=[ctypes.c_void_p,ctypes.c_ulong,ctypes.POINTER(ctypes.c_ulong),ctypes.POINTER(ctypes.c_int),ctypes.POINTER(ctypes.c_int),ctypes.POINTER(ctypes.c_uint),ctypes.POINTER(ctypes.c_uint),ctypes.POINTER(ctypes.c_uint),ctypes.POINTER(ctypes.c_uint)]
     xlib.XUnmapWindow.argtypes=[ctypes.c_void_p,ctypes.c_ulong]
-    xtst.XTestFakeRelativeMotionEvent.argtypes=[ctypes.c_void_p,ctypes.c_int,ctypes.c_int,ctypes.c_ulong]
-    xtst.XTestFakeMotionEvent.argtypes=[ctypes.c_void_p,ctypes.c_int,ctypes.c_int,ctypes.c_int,ctypes.c_ulong]
-    xtst.XTestFakeButtonEvent.argtypes=[ctypes.c_void_p,ctypes.c_uint,ctypes.c_int,ctypes.c_ulong]
+    if xtst:
+        xtst.XTestFakeRelativeMotionEvent.argtypes=[ctypes.c_void_p,ctypes.c_int,ctypes.c_int,ctypes.c_ulong]
+        xtst.XTestFakeMotionEvent.argtypes=[ctypes.c_void_p,ctypes.c_int,ctypes.c_int,ctypes.c_int,ctypes.c_ulong]
+        xtst.XTestFakeButtonEvent.argtypes=[ctypes.c_void_p,ctypes.c_uint,ctypes.c_int,ctypes.c_ulong]
     xlib.XQueryPointer.argtypes=[ctypes.c_void_p,ctypes.c_ulong,ctypes.POINTER(ctypes.c_ulong),ctypes.POINTER(ctypes.c_ulong),ctypes.POINTER(ctypes.c_int),ctypes.POINTER(ctypes.c_int),ctypes.POINTER(ctypes.c_int),ctypes.POINTER(ctypes.c_int),ctypes.POINTER(ctypes.c_uint)]
-    display=None;child=None;transport=None;diagnostics=[]
+    display=None;child=None;transport=None;observer=None;observer_log=None;diagnostics=[]
     try:
         for _ in range(100):
             display=xlib.XOpenDisplay(b':33')
@@ -53,6 +57,11 @@ def run(wine, probe, output, input_probe=None):
             if server.poll() is not None:raise RuntimeError('Xvnc exited before readiness')
             time.sleep(.05)
         if not display:raise RuntimeError('Xvnc not ready')
+        if x_observer:
+            observer_log=(output/'xinput-observer.log').open('wb')
+            observer=subprocess.Popen([str(Path(x_observer).resolve()),'300'],env=env,stdout=observer_log,stderr=subprocess.STDOUT)
+            time.sleep(.1)
+            if observer.poll() is not None:raise RuntimeError('X input observer exited before the fixture: '+str(observer.returncode))
         root=xlib.XDefaultRootWindow(display)
         def point():
             r,c=ctypes.c_ulong(),ctypes.c_ulong();x,y,wx,wy=ctypes.c_int(),ctypes.c_int(),ctypes.c_int(),ctypes.c_int();mask=ctypes.c_uint()
@@ -356,9 +365,22 @@ def run(wine, probe, output, input_probe=None):
         (output/'cursor-verification.json').write_text(json.dumps(receipt,indent=2)+'\n')
         print(json.dumps(receipt,indent=2))
         print('PASS: real Wine10/Xvnc signed raw camera input, both axes/APIs, edge travel, zero idle drift and look/focus release')
+    except Exception:
+        # Preserve the native gate and physical pointer at a failing signed
+        # segment, so a deliberate GrabPointer=N control is distinguishable
+        # from bootstrap, protocol and unrelated consumer failures.
+        if child and child.poll() is None and 'diagnose' in locals():
+            try:diagnose('fixture-failure')
+            except Exception:pass
+        raise
     finally:
         if child and child.poll() is None:child.kill();child.wait()
         if transport:transport.close()
+        if observer:
+            if observer.poll() is None:observer.terminate()
+            try:observer.wait(timeout=3)
+            except subprocess.TimeoutExpired:observer.kill();observer.wait(timeout=3)
+        if observer_log:observer_log.close()
         if display:xlib.XCloseDisplay(display)
         server.terminate();server.wait(timeout=10);display_log.close();wine_log.close()
 
@@ -367,4 +389,5 @@ if __name__=='__main__':
     parser=argparse.ArgumentParser(description=__doc__)
     parser.add_argument('--wine',type=Path,required=True);parser.add_argument('--probe',type=Path,required=True);parser.add_argument('--output',type=Path,required=True)
     parser.add_argument('--input-probe',type=Path)
-    args=parser.parse_args();run(args.wine,args.probe,args.output,args.input_probe)
+    parser.add_argument('--x-observer',type=Path)
+    args=parser.parse_args();run(args.wine,args.probe,args.output,args.input_probe,args.x_observer)

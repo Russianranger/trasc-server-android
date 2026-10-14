@@ -1,3 +1,11 @@
+# 0.6.27 diagnostic update — APK qualification pending (2026-10-14 UTC)
+
+User confirmed V3 slight improvement but unusable delayed reversal. Read docs/takp-input-0627.md. Exact published ARM64 runtime/production bridge/patched wineserver passed five controlled prefix cases in run38489151047 at3511ce6: default/Y deliver signed reversals; N reproduces API-success/physical escape. Native observer is actually qualified under held grabs; no runtime/helper/native Android rebuild. Preserve these scope boundaries: not actual proprietary game/Android/Thor success.
+
+Next package0.6.27/code76 records read-only named prefixsettings, bounded native XI2/core/focus/pointer and Android queued/sent signed packets. Native observer ELF5f5cf7e8...35744b, source/ARM/observer receipts bundled. Producer uses bounded256 queue+daemon disk writer; no key/chat capture. Same V3 DLL and21 native launcher bytes. Keep working server/Yaulp/data/prefixes/settings; no server source/build/deploy/import/reset. Native/ARM qualificationpassed; signing/APK/profile/public download gates pending. Devicecamera,NPC,StoneUI andotherpreservationchecks remainopen. No blind registry/clip/runtime changes.
+
+---
+
 # Latest device follow-up: V3 loaded, confinement still fails (2026-10-13 18:12 Chicago)
 
 Read `docs/device-camera-0626.md` / `docs/device-camera-evidence-0626.json` before earlier release history. New `logs-836710138545428717.zip` confirms 0.6.26/code75, expected V3 helper/native module, upgrade from prior official bytes and prefix reuse. Existing server and saved-character world entry logged; no new source/build/deploy/database initialization. Client still alive at export, no new crash. Full bots/inventory/three-profile preservation not proved by these logs.

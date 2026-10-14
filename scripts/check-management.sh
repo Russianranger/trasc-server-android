@@ -4,6 +4,8 @@ cc -std=c11 -Wall -Wextra -Werror tests/frame_protocol.c -o /tmp/trasc-frame-tes
 /tmp/trasc-frame-test
 cc -std=c11 -Wall -Wextra -Werror tests/frame_transfer.c -o /tmp/trasc-transfer-test
 /tmp/trasc-transfer-test
+cc -std=c11 -Wall -Wextra -Werror tests/observe_log.c -o /tmp/trasc-observe-log-test
+/tmp/trasc-observe-log-test
 g++ -std=c++14 -O2 -Wall -Wextra -Werror tests/fast_decimal.cpp -o /tmp/trasc-decimal-test
 /tmp/trasc-decimal-test
 g++ -std=c++14 -O2 -Wall -Wextra -Werror tests/takp_camera_recenter.cpp -o /tmp/trasc-takp-camera-test
@@ -38,6 +40,7 @@ if ! command -v javac >/dev/null; then compiler=(java -m jdk.compiler/com.sun.to
     tests/java/io/github/russianranger/trasc/LogRetentionHostTest.java \
     app/src/main/java/io/github/russianranger/trasc/ControllerInput.java \
     app/src/main/java/io/github/russianranger/trasc/RelativeInput.java \
+    app/src/main/java/io/github/russianranger/trasc/PointerPacketTrace.java \
     app/src/main/java/io/github/russianranger/trasc/DisplayInput.java \
     app/src/main/java/io/github/russianranger/trasc/GameCommand.java \
     tests/java/io/github/russianranger/trasc/GameCommandHostTest.java \
