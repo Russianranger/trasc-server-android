@@ -21,7 +21,9 @@ change or runtime replacement.
 The actual MSVC V4 helper and matching shared code passed 24 exact signed
 segments, including centered restore, 32 focus refusals, nine reader refusals
 and three once-only repair/refresh sequences. This is controlled runtime
-qualification; **physical Thor camera acceptance remains pending**.
+qualification. **Physical mouse-look acceptance has now passed on the tested
+AYN Thor right-stick configuration**, supported by the user's perfect-movement
+report and the fresh signed input/game trace. See `docs/device-camera-0630.md`.
 
 Camp and stop clients/servers normally, install in place without uninstalling,
 then reopen TAKP with the working Yaulp deployment. The known official V3

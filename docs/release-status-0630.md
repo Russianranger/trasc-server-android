@@ -44,10 +44,18 @@ tree `0ad1ca75e76d9fbb000c95c0b2d5fc75a067ddff`.
 Main adds documentation receipts afterward; the preview tag retains the
 qualified source. Full evidence is in [release-proof-0630.json](release-proof-0630.json).
 
-**Physical Thor camera usability remains pending.** The controlled open PE32
-consumer exercises the shipping DLL's identical shared reader/capture code
-on the published ARM runtime. It cannot execute the fixed-address proprietary
-game DLL, so this is not physical game acceptance.
+**Physical TAKP mouse-look acceptance passed on the tested AYN Thor right-stick
+configuration on October 14, 2026.** The user reports: “That worked!! It's perfect
+now.” The fresh device bundle confirms one guarded focus repair followed by
+a matching capture refresh 23 ms later, 125 exact signed native samples and
+67 exact signed game-consumer matches. See [device-camera-0630.md](device-camera-0630.md)
+and [device-camera-evidence-0630.json](device-camera-evidence-0630.json).
+
+The controlled open PE32 qualification remains separate from this actual
+proprietary-game device evidence. The publication-time
+[release-proof-0630.json](release-proof-0630.json) records camera acceptance as
+pending at publication; the later physical receipt above supersedes that
+pending status for the tested configuration.
 
 Camp and stop normally, install in place without uninstalling, then reopen
 TAKP with the working Yaulp server. The known official V3 helper upgrades
@@ -56,7 +64,7 @@ build/deploy, database import, client reimport, Prepare or prefix/runtime reset
 is needed. Existing profiles, characters, bots, client assets, runtimes and
 settings must be retained.
 
-Use [takp-camera-client1-0630.md](takp-camera-client1-0630.md) for the focused
-physical retest and exact log evidence. Keep NPC visibility, Traditional
+Use [takp-camera-client1-0630.md](takp-camera-client1-0630.md) for the retained
+installation/regression procedure and exact log evidence. Keep NPC visibility, Traditional
 StoneUI and the separate backup/bot/model/physical incremental-build acceptance
 checks separate from the confirmed server/update/Yaulp results.

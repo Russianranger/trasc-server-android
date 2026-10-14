@@ -1,4 +1,53 @@
-# Published 0.6.30 — Client1 recognition and V4 capture recovery
+# 0.6.30 physical TAKP mouse-look acceptance — PASS
+
+On October 14, 2026, the user reports: “That worked!! It's perfect now.”
+The fresh AYN Thor / Android 13 / TAKP / 1280×720 / Turnip 26 / DXVK 2.5.3 /
+Native Surface / accurate CPU / right-stick capture confirms the fix.
+Read `docs/device-camera-0630.md` and `docs/device-camera-evidence-0630.json`
+first. This supersedes the camera-pending status in the publication snapshot
+and the historical 0.6.29 camera failure for this tested configuration.
+
+Bundle `logs-1420871679027905814.zip`: 783,177 bytes, SHA-256
+`f3001e2135723deadfff8a0819a3241e68fadc52bb8ea07d95387a6049c62f9a`.
+Exported October 14 at 17:37:37.104783 UTC / 12:37:37.104783 Chicago.
+Device explicitly reports 0.6.30; code 79 is the published release mapping.
+The installed official V3 helper upgraded to exact V4 ae556d… and the V2
+focus helper fcec1f… ran. Existing Wine prefix was reused.
+
+One guarded PointerRoot → Client1 repair wrote sequence 1; the actual game
+consumed that sequence with successful same-owned-clip refresh 23 ms later.
+Twenty inspector and 44 XI2 held samples show centered capture afterward.
+125/125 sampled XI2 motions within packet-log coverage match signed input
+with 0–5 ms delivery. Of 98 physically held nonempty DI buffer samples within
+coverage, 97 reconstruct uniquely with conservative 0–8 ms endpoint delivery;
+67 same-frame game consumers match those signed sums, both signs/both axes.
+Thirty-five post-refresh zero-result consumers produce zero camera delta
+and unchanged accumulators. Six successful clip releases and Look-off records
+support leaving/reentering Look. The user's usability acceptance closes this
+camera-failure gate; retain 0.6.30 as the working baseline.
+
+Queue drops are zero. Diagnostic limits differ: pointer log hit its byte cap
+with one unwritten selected record; window inspector cap dropped two records;
+camera trace reached its inferred byte cap. XI2 is sampled. One 2 ms-old brief
+RMB press lacks camera-trace coverage; background/resume is not separately
+labeled. Five XI2 errors occur only during RMB-up teardown, not held gameplay;
+the focus helper ends with zero errors/drops. Export still said Stopping/alive,
+so there is no final fully stopped/server-shutdown receipt.
+
+The existing server started in seven seconds; saved character ID 4 entered
+Paineel and camped normally. Forty-eight selected stable configuration/runtime
+fields match the previous launch; registry bytes are not identical and
+backup binaries are not in this log bundle. No new build/import/reset is
+recorded. Server/update/deploy/Yaulp completion remains confirmed from prior
+user reports. Full inventory/saved-bot/all-profile backup persistence,
+classic skeleton visual/exact restoration, physical incremental/no-work
+receipts, NPC visibility and Traditional StoneUI remain separate checks.
+
+The records below describe publication-time status before this physical pass.
+
+---
+
+## 0.6.30 publication receipt — before physical acceptance
 
 Read `docs/release-status-0630.md`, `docs/release-proof-0630.json`,
 `docs/takp-camera-client1-0630.md` and the physical

@@ -1,0 +1,1969 @@
+{
+  "format": "trasc-device-camera-evidence-5",
+  "app_version": "0.6.30",
+  "app_version_code": 79,
+  "version_code_source": "Published 0.6.30 release mapping; export explicitly reports version string and does not contain version code.",
+  "device": "AYN Thor",
+  "android_sdk": 33,
+  "bundle": {
+    "name": "logs-1420871679027905814.zip",
+    "bytes": 783177,
+    "sha256": "f3001e2135723deadfff8a0819a3241e68fadc52bb8ea07d95387a6049c62f9a",
+    "export_utc": "2026-10-14T17:37:37.104783Z",
+    "export_chicago": "2026-10-14T12:37:37.104783-05:00"
+  },
+  "source_files": {
+    "status.json": {
+      "bytes": 14256,
+      "sha256": "de5ddd51e8540d5b8a4eba7b69daab17bb74ba3c82ca792e6dcb03a0f56df1cb"
+    },
+    "logs/client-state.json": {
+      "bytes": 10438,
+      "sha256": "3ad97f5a12cd9bb1223afe5cb78bede8d52148e6ae38b8f702bc49f6fec85a18"
+    },
+    "logs/client-state.previous.json": {
+      "bytes": 10190,
+      "sha256": "ae1be57064c09a8a63eb6148c03a559e944d5454a7dfbd0576ae6f5c235d7097"
+    },
+    "logs/client-takp-focus.log": {
+      "bytes": 1099,
+      "sha256": "bf4f9018940a305ebd5a02364f4fb6d25fddb9bd1161e46d44cfea391d2bb786"
+    },
+    "logs/client-takp-windows.log": {
+      "bytes": 129118,
+      "sha256": "d52fa04959465afa0bd22d562f066225c7bfc5f72c5568eb5ae8f1962f6ed5e6"
+    },
+    "logs/client-pointer-packets.log": {
+      "bytes": 130630,
+      "sha256": "198fcc8115418d385810cf15387526af9980b84e8153806e4a1f3b86e87ecf69"
+    },
+    "logs/client-xinput.log": {
+      "bytes": 83349,
+      "sha256": "1fff200a593855c19c62bf5df17379de233f5fc6a0016b2f889e24404a615153"
+    },
+    "client/current/eqw-camera-diagnostics.log": {
+      "bytes": 131070,
+      "sha256": "12c8e169dbc7cce734a5e4b6ca538e05bcb3c82c972b9d79897a14b9b5dfc405"
+    },
+    "client/current/dbg.txt": {
+      "bytes": 78286,
+      "sha256": "7ce850b3952ae191c905d07caea6d6d57a471c3e4f31506e8f925a750f4e5588"
+    },
+    "logs/control.log": {
+      "bytes": 15332,
+      "sha256": "a53956b34fed28c712d28cd555a281327e56c4750c15ae99355aeaf345c067b7"
+    },
+    "logs/world.log": {
+      "bytes": 20137,
+      "sha256": "9bbf485a35de585d1f874a6450e67c66bcd73271580ee7d8ee8aa5b741d18fe5"
+    },
+    "server/logs/zone-dynamic_01.log": {
+      "bytes": 31960,
+      "sha256": "2c564ec411d5d235db3de1f9a90b60de3e027edda57f721e8644ea23fc599bd4"
+    },
+    "logs/client-proot.log": {
+      "bytes": 933,
+      "sha256": "b7169d6e1ea2509c44abe9f8f73cd7d01a8945907e7d82c2c1288e330dc88cd7"
+    },
+    "logs/client-wine.log": {
+      "bytes": 50858,
+      "sha256": "8cd1238e66fdeb812fc78f7b5d4dc6d39dcc7a50f06864178e832c493c88d758"
+    },
+    "logs/client-display.log": {
+      "bytes": 1288,
+      "sha256": "0f271a52934459e40c5ac700774ddf8bb395161fd7b002b06c4f72c078daad66"
+    },
+    "logs/android-exit.log": {
+      "bytes": 1598,
+      "sha256": "ce253828d5b11021e9af86a304820e2be4d2b98da95c723050a628674fac8874"
+    },
+    "server/logs/zone/paineel_port_7000_6230.log": {
+      "bytes": 35069,
+      "sha256": "8df009a8bd7ce67f31fffd0a95847fb5921ce0b2286b02abd5dbe9c43e7c1dbe"
+    }
+  },
+  "acceptance": {
+    "camera": "PASS_USER_CONFIRMED_PHYSICAL",
+    "reported_input": "Thor right stick",
+    "user_report": "That worked!! It's perfect now. See logs",
+    "scope": "Tested TAKP / AYN Thor / 1280x720 / Turnip 26.0.0 / DXVK 2.5.3 / Native Surface / accurate CPU configuration; sampled measurements support the user-reported usability pass.",
+    "native_focus_and_owned_capture": "MEASURED_SUCCESS",
+    "signed_game_input": "MEASURED_SUCCESS",
+    "zero_result_camera_delta": "MEASURED_ZERO",
+    "look_release_reentry": "MEASURED",
+    "background_resume": "NOT_SEPARATELY_IDENTIFIED",
+    "npc_visibility": "SEPARATE_UNRESOLVED",
+    "traditional_stoneui": "SEPARATE_UNRESOLVED"
+  },
+  "launch": {
+    "start_utc": "2026-10-14T17:32:49.740836+00:00",
+    "version": "0.6.30",
+    "device": "AYN Thor",
+    "android_sdk": 33,
+    "prefix_update": "reuse",
+    "helper": {
+      "state": "upgraded",
+      "sha256": "ae556d045a0b64586b1e4f0c0957a75c99626f9f149f8e95b7bb99ed7a738fc8",
+      "previous_sha256": "875056a62d2df3c7434bf05d23d73186d6565d2bd5a14f2f53a58fa7d015bab3",
+      "changed": true,
+      "backup": "client/prefix/trasc-takp-camera-originals/eqw.original.dll"
+    },
+    "focus_helper": {
+      "state": "running",
+      "pid": 6541,
+      "sha256": "fcec1f6a4f0d1101efef56f58671b47944fd19219f0eeb3a4591a66607f5b364",
+      "prefix_settings_changed": false,
+      "guard": "held_right_button_and_pointer_over_named_game_with_no_native_focus",
+      "max_log_bytes": 131072,
+      "focus_event_protocol": 1,
+      "focus_event_max_bytes": 96,
+      "focus_event_configured": true,
+      "exit_code": null
+    },
+    "export_client_status": "Stopping Wine and the client display…",
+    "export_client_alive": true,
+    "export_native_server_alive": true,
+    "launcher_exit": null,
+    "resolution": "1280x720",
+    "renderer": "turnip",
+    "cpu_profile": "accurate",
+    "presentation": "native_surface",
+    "pointer_transport": "relative_xtest",
+    "capture_settings": {
+      "format": 1,
+      "source": "user.reg",
+      "read_only": true,
+      "values": {},
+      "source_sha256": "96a930ab9bde71da256eeb867b82e476eadedb4f7ef9d058d3fb85740d00b2b5",
+      "grab_pointer_source": "wine_default",
+      "grab_pointer_raw": null,
+      "grab_pointer_enabled": true,
+      "state": "read"
+    }
+  },
+  "physical_camera_audit": {
+    "artifact": {
+      "file": "logs-1420871679027905814.zip",
+      "bytes": 783177,
+      "sha256": "f3001e2135723deadfff8a0819a3241e68fadc52bb8ea07d95387a6049c62f9a",
+      "created_utc": "2026-10-14T17:37:37.104783Z"
+    },
+    "device": {
+      "device": "AYN Thor",
+      "android_sdk": 33,
+      "version": "0.6.30",
+      "version_code_not_explicit_in_export": true,
+      "input_user_report": "Thor right stick",
+      "user_acceptance": "That worked!! It's perfect now. See logs",
+      "config": {
+        "profile": "takp",
+        "resolution": "1280x720",
+        "renderer": "DXVK / turnip Mesa driver (Turnip Adreno (TM) 740)",
+        "presentation": "native_surface",
+        "pointer_transport": "relative_xtest",
+        "prefix_update": "reuse",
+        "grab_pointer_enabled": true,
+        "prefix_settings_changed": false
+      }
+    },
+    "binaries": {
+      "eqw": {
+        "state": "upgraded",
+        "sha256": "ae556d045a0b64586b1e4f0c0957a75c99626f9f149f8e95b7bb99ed7a738fc8",
+        "previous_sha256": "875056a62d2df3c7434bf05d23d73186d6565d2bd5a14f2f53a58fa7d015bab3",
+        "changed": true,
+        "backup": "client/prefix/trasc-takp-camera-originals/eqw.original.dll"
+      },
+      "focus": {
+        "state": "running",
+        "pid": 6541,
+        "sha256": "fcec1f6a4f0d1101efef56f58671b47944fd19219f0eeb3a4591a66607f5b364",
+        "prefix_settings_changed": false,
+        "guard": "held_right_button_and_pointer_over_named_game_with_no_native_focus",
+        "max_log_bytes": 131072,
+        "focus_event_protocol": 1,
+        "focus_event_max_bytes": 96,
+        "focus_event_configured": true,
+        "exit_code": null
+      },
+      "loaded_native_eqw": "native",
+      "trace_marker": "t=211810039 thread=292 initialize helper=TRASC_TAKP_WINE_RAW_LOOK_V4 swap_buttons=0 focus_event=TRASCFOCUS1 "
+    },
+    "focus_recovery": {
+      "native_repair": {
+        "record": "focus_repair",
+        "t_ms": 82723,
+        "before": 1,
+        "candidate": 20971521,
+        "after": 20971521,
+        "identity": "EqW-TAKP|Client1/eqgame.exe",
+        "path_depth": 3,
+        "rmb": true,
+        "attempt": 1,
+        "success": true,
+        "xerrors": 0,
+        "event_sequence": 1,
+        "event_written": true,
+        "event_error": 0
+      },
+      "native_repair_uptime_ms": 211886103,
+      "eqw_refresh": "t=211886126 thread=524 focus_clip_refresh seq=1 ok=1 frame=274 generation=272/272 count=1 held=1 look=1 physical=1 foreground=1 iconic=0 visible=1",
+      "eqw_refresh_uptime_ms": 211886126,
+      "repair_to_refresh_ms": 23,
+      "end": {
+        "record": "end",
+        "t_ms": 276884,
+        "attempts": 1,
+        "successes": 1,
+        "bytes_before_end": 994,
+        "dropped": 0,
+        "xerrors": 0
+      }
+    },
+    "packets": {
+      "recorded_packets": 1515,
+      "recorded_held_relative": 1434,
+      "recorded_held_nonzero": 1395,
+      "recorded_held_zero": 39,
+      "max_axis_pixels": [
+        3,
+        2
+      ],
+      "queued_to_sent_ms_range": [
+        0,
+        8
+      ],
+      "end_line": "end=byte_limit bytes_before_end=130488 packets=2214 selected=1516 written=1515 sampled_idle=698 dropped_queue=0 dropped_limit=1 max_pending=1"
+    },
+    "xi2": {
+      "sampled_held_raw_motion": 171,
+      "within_pointer_coverage_matching_signed_raw": 125,
+      "delivery_ms_counts": {
+        "0": 77,
+        "1": 44,
+        "2": 2,
+        "3": 1,
+        "5": 1
+      },
+      "later_than_pointer_log_cap": 46,
+      "every_unmatched_later_than_cap": true,
+      "held_snapshots": 50,
+      "held_snapshots_game_focus": 50,
+      "held_snapshots_centered": 44,
+      "held_snapshots_before_refresh_unconfined": 5,
+      "held_snapshots_late_noncentered": [
+        {
+          "record": "snapshot",
+          "t_ms": 198847,
+          "focus": 20971521,
+          "revert": 2,
+          "pointer_ok": true,
+          "root": 1305,
+          "child": 14680068,
+          "x": 563,
+          "y": 222,
+          "buttons_mask": 1024,
+          "observer_pointer": 2,
+          "observer_pointer_ok": true,
+          "focus_client_pointer": 2,
+          "focus_client_pointer_ok": true,
+          "xerrors": 0
+        }
+      ],
+      "held_snapshot_xerrors": 0,
+      "physical_rmb_intervals_ms": [
+        [
+          211886005,
+          211904657
+        ],
+        [
+          211915721,
+          211922838
+        ],
+        [
+          211939629,
+          211943874
+        ],
+        [
+          211950745,
+          211957407
+        ],
+        [
+          211959541,
+          211962550
+        ],
+        [
+          211969704,
+          211970914
+        ],
+        [
+          211991635,
+          211992339
+        ],
+        [
+          211993324,
+          211993438
+        ],
+        [
+          211994607,
+          211994732
+        ],
+        [
+          211997345,
+          211997459
+        ],
+        [
+          211998259,
+          211998363
+        ],
+        [
+          212002214,
+          212002311
+        ],
+        [
+          212003746,
+          212005704
+        ]
+      ],
+      "physical_rmb_period_count": 13,
+      "first_xerror": {
+        "record": "snapshot",
+        "t_ms": 274776,
+        "focus": 1305,
+        "revert": 0,
+        "pointer_ok": true,
+        "root": 1305,
+        "child": 0,
+        "x": 205,
+        "y": 571,
+        "buttons_mask": 0,
+        "observer_pointer": 2,
+        "observer_pointer_ok": true,
+        "focus_client_pointer": -1,
+        "focus_client_pointer_ok": false,
+        "xerrors": 1
+      },
+      "first_xerror_after_last_rmb_up_ms": 72441,
+      "end": {
+        "record": "end",
+        "t_ms": 276896,
+        "reason": "signal",
+        "bytes_before_end": 83066,
+        "records_before_end": 430,
+        "dropped": 0,
+        "raw_seen": 3258,
+        "core_seen": 1013,
+        "buttons_seen": 82,
+        "xerrors": 5,
+        "sampling_is_not_complete_event_capture": true
+      }
+    },
+    "windows": {
+      "held_snapshots": 20,
+      "held_snapshots_centered": 20,
+      "held_snapshots_game_focus": 20,
+      "end": {
+        "record": "end",
+        "t_ms": 114544,
+        "reason": "byte_limit",
+        "snapshots": 115,
+        "paths": 20,
+        "tree_nodes": 19,
+        "candidates": 3,
+        "bytes_before_end": 128957,
+        "dropped": 2,
+        "xerrors": 0
+      }
+    },
+    "game": {
+      "buffer_samples": 249,
+      "trace_look1_nonempty_buffer_samples": 113,
+      "physically_held_nonempty_buffer_samples": 111,
+      "physically_held_oldest_age_ms_range": [
+        2,
+        36
+      ],
+      "physically_held_buffer_within_packet_coverage": 98,
+      "uniquely_reconstructed_buffers_with_0_to_8ms_endpoint_delivery": 97,
+      "same_frame_consumer_exact_signed_matches": 67,
+      "reconstruction_method": "Consecutive nonzero held relative packets; first packet sent in [first DI timestamp - 8, first DI timestamp], last packet sent in [last DI timestamp - 8, last DI timestamp]. Match signed XY sum and nonzero-axis event count; require unique candidate. Same-frame logged consumer within 0-2 ms must have delta_after equal reconstructed XY.",
+      "strict_8ms_not_reconstructed": [
+        {
+          "uptime_ms": 211920300,
+          "count": 4,
+          "first_event_ms": 211920278,
+          "last_event_ms": 211920297,
+          "x": 5,
+          "y": 1,
+          "look": 1,
+          "oldest_age_ms": 22,
+          "line": "t=211920300 thread=524 buffer hr=00000000 size=20 requested=128 count=4 flags=0 data=1 look=1 inspected=4 axis_mode=1 axis_known=1 sum_values=5,1 last_values=2,1 timestamps=211920278,211920297 sequences=2422,2426 oldest_age_ms=22"
+        }
+      ],
+      "strict_8ms_not_reconstructed_note": "The one additional sample at211920300 uniquely matches seq1523/1524/1525 with signed5,1 and4axis-events when firstdelivery14ms is allowed. No inverse/opposite sign seen; kept outside conservative8ms count.",
+      "reconstructed_samples": [
+        {
+          "uptime_ms": 211886476,
+          "xy": [
+            1,
+            0
+          ],
+          "count": 1,
+          "packet_seqs": [
+            276
+          ],
+          "first_delivery_ms": 1,
+          "last_delivery_ms": 1,
+          "consumer_uptime_ms": 211886477,
+          "consumer_line": "t=211886477 thread=524 consumer result=1 look=1/1 focus=1 over=1 state_before=508,358 state_after=1,0 accum_before=508,358 accum_after=509,358 delta_before=0,0 delta_after=1,0 reset_state=508,358 reset_accum=508,358 saved=508,358"
+        },
+        {
+          "uptime_ms": 211886588,
+          "xy": [
+            2,
+            0
+          ],
+          "count": 2,
+          "packet_seqs": [
+            281,
+            282
+          ],
+          "first_delivery_ms": 1,
+          "last_delivery_ms": 2,
+          "consumer_uptime_ms": 211886589,
+          "consumer_line": "t=211886589 thread=524 consumer result=2 look=1/1 focus=1 over=1 state_before=508,358 state_after=2,0 accum_before=508,358 accum_after=510,358 delta_before=4,0 delta_after=2,0 reset_state=508,358 reset_accum=508,358 saved=508,358"
+        },
+        {
+          "uptime_ms": 211886959,
+          "xy": [
+            -1,
+            0
+          ],
+          "count": 1,
+          "packet_seqs": [
+            284
+          ],
+          "first_delivery_ms": 1,
+          "last_delivery_ms": 1,
+          "consumer_uptime_ms": 211886959,
+          "consumer_line": "t=211886959 thread=524 consumer result=1 look=1/1 focus=1 over=1 state_before=508,358 state_after=-1,0 accum_before=508,358 accum_after=507,358 delta_before=0,0 delta_after=-1,0 reset_state=508,358 reset_accum=508,358 saved=508,358"
+        },
+        {
+          "uptime_ms": 211887554,
+          "xy": [
+            1,
+            0
+          ],
+          "count": 1,
+          "packet_seqs": [
+            297
+          ],
+          "first_delivery_ms": 2,
+          "last_delivery_ms": 2,
+          "consumer_uptime_ms": 211887554,
+          "consumer_line": "t=211887554 thread=524 consumer result=1 look=1/1 focus=1 over=1 state_before=508,358 state_after=1,0 accum_before=508,358 accum_after=509,358 delta_before=0,0 delta_after=1,0 reset_state=508,358 reset_accum=508,358 saved=508,358"
+        },
+        {
+          "uptime_ms": 211887592,
+          "xy": [
+            2,
+            -2
+          ],
+          "count": 3,
+          "packet_seqs": [
+            298,
+            299
+          ],
+          "first_delivery_ms": 1,
+          "last_delivery_ms": 1,
+          "consumer_uptime_ms": 211887592,
+          "consumer_line": "t=211887592 thread=524 consumer result=3 look=1/1 focus=1 over=1 state_before=508,358 state_after=2,-2 accum_before=508,358 accum_after=510,356 delta_before=1,0 delta_after=2,-2 reset_state=508,358 reset_accum=508,358 saved=508,358"
+        },
+        {
+          "uptime_ms": 211887635,
+          "xy": [
+            0,
+            -4
+          ],
+          "count": 2,
+          "packet_seqs": [
+            300,
+            301
+          ],
+          "first_delivery_ms": 1,
+          "last_delivery_ms": 1,
+          "consumer_uptime_ms": 211887635,
+          "consumer_line": "t=211887635 thread=524 consumer result=2 look=1/1 focus=1 over=1 state_before=508,358 state_after=0,-4 accum_before=508,358 accum_after=508,354 delta_before=2,-2 delta_after=0,-4 reset_state=508,358 reset_accum=508,358 saved=508,358"
+        },
+        {
+          "uptime_ms": 211887755,
+          "xy": [
+            0,
+            -2
+          ],
+          "count": 2,
+          "packet_seqs": [
+            307,
+            308
+          ],
+          "first_delivery_ms": 1,
+          "last_delivery_ms": 1
+        },
+        {
+          "uptime_ms": 211888036,
+          "xy": [
+            0,
+            1
+          ],
+          "count": 1,
+          "packet_seqs": [
+            310
+          ],
+          "first_delivery_ms": 2,
+          "last_delivery_ms": 2,
+          "consumer_uptime_ms": 211888037,
+          "consumer_line": "t=211888037 thread=524 consumer result=1 look=1/1 focus=1 over=1 state_before=508,358 state_after=0,1 accum_before=508,358 accum_after=508,359 delta_before=0,0 delta_after=0,1 reset_state=508,358 reset_accum=508,358 saved=508,358"
+        },
+        {
+          "uptime_ms": 211888146,
+          "xy": [
+            -1,
+            4
+          ],
+          "count": 3,
+          "packet_seqs": [
+            315,
+            316
+          ],
+          "first_delivery_ms": 0,
+          "last_delivery_ms": 1,
+          "consumer_uptime_ms": 211888146,
+          "consumer_line": "t=211888146 thread=524 consumer result=3 look=1/1 focus=1 over=1 state_before=508,358 state_after=-1,4 accum_before=508,358 accum_after=507,362 delta_before=0,3 delta_after=-1,4 reset_state=508,358 reset_accum=508,358 saved=508,358"
+        },
+        {
+          "uptime_ms": 211888253,
+          "xy": [
+            0,
+            1
+          ],
+          "count": 1,
+          "packet_seqs": [
+            322
+          ],
+          "first_delivery_ms": 1,
+          "last_delivery_ms": 1,
+          "consumer_uptime_ms": 211888254,
+          "consumer_line": "t=211888254 thread=524 consumer result=1 look=1/1 focus=1 over=1 state_before=508,358 state_after=0,1 accum_before=508,358 accum_after=508,359 delta_before=-1,5 delta_after=0,1 reset_state=508,358 reset_accum=508,358 saved=508,358"
+        },
+        {
+          "uptime_ms": 211888476,
+          "xy": [
+            -3,
+            0
+          ],
+          "count": 2,
+          "packet_seqs": [
+            323,
+            324
+          ],
+          "first_delivery_ms": 1,
+          "last_delivery_ms": 1,
+          "consumer_uptime_ms": 211888477,
+          "consumer_line": "t=211888477 thread=524 consumer result=2 look=1/1 focus=1 over=1 state_before=508,358 state_after=-3,0 accum_before=508,358 accum_after=505,358 delta_before=0,0 delta_after=-3,0 reset_state=508,358 reset_accum=508,358 saved=508,358"
+        },
+        {
+          "uptime_ms": 211888901,
+          "xy": [
+            0,
+            1
+          ],
+          "count": 1,
+          "packet_seqs": [
+            347
+          ],
+          "first_delivery_ms": 1,
+          "last_delivery_ms": 1,
+          "consumer_uptime_ms": 211888901,
+          "consumer_line": "t=211888901 thread=524 consumer result=1 look=1/1 focus=1 over=1 state_before=508,358 state_after=0,1 accum_before=508,358 accum_after=508,359 delta_before=0,0 delta_after=0,1 reset_state=508,358 reset_accum=508,358 saved=508,358"
+        },
+        {
+          "uptime_ms": 211889258,
+          "xy": [
+            -3,
+            0
+          ],
+          "count": 2,
+          "packet_seqs": [
+            368,
+            369
+          ],
+          "first_delivery_ms": 1,
+          "last_delivery_ms": 1,
+          "consumer_uptime_ms": 211889258,
+          "consumer_line": "t=211889258 thread=524 consumer result=2 look=1/1 focus=1 over=1 state_before=508,358 state_after=-3,0 accum_before=508,358 accum_after=505,358 delta_before=0,1 delta_after=-3,0 reset_state=508,358 reset_accum=508,358 saved=508,358"
+        },
+        {
+          "uptime_ms": 211889440,
+          "xy": [
+            -2,
+            -1
+          ],
+          "count": 2,
+          "packet_seqs": [
+            380
+          ],
+          "first_delivery_ms": 1,
+          "last_delivery_ms": 1,
+          "consumer_uptime_ms": 211889441,
+          "consumer_line": "t=211889441 thread=524 consumer result=2 look=1/1 focus=1 over=1 state_before=508,358 state_after=-2,-1 accum_before=508,358 accum_after=506,357 delta_before=-2,0 delta_after=-2,-1 reset_state=508,358 reset_accum=508,358 saved=508,358"
+        },
+        {
+          "uptime_ms": 211889589,
+          "xy": [
+            -3,
+            -3
+          ],
+          "count": 4,
+          "packet_seqs": [
+            388,
+            389
+          ],
+          "first_delivery_ms": 1,
+          "last_delivery_ms": 0
+        },
+        {
+          "uptime_ms": 211889817,
+          "xy": [
+            -3,
+            0
+          ],
+          "count": 2,
+          "packet_seqs": [
+            402,
+            403
+          ],
+          "first_delivery_ms": 1,
+          "last_delivery_ms": 1,
+          "consumer_uptime_ms": 211889818,
+          "consumer_line": "t=211889818 thread=524 consumer result=2 look=1/1 focus=1 over=1 state_before=508,358 state_after=-3,0 accum_before=508,358 accum_after=505,358 delta_before=-3,-4 delta_after=-3,0 reset_state=508,358 reset_accum=508,358 saved=508,358"
+        },
+        {
+          "uptime_ms": 211889885,
+          "xy": [
+            -5,
+            2
+          ],
+          "count": 5,
+          "packet_seqs": [
+            405,
+            406,
+            407
+          ],
+          "first_delivery_ms": 1,
+          "last_delivery_ms": 1,
+          "consumer_uptime_ms": 211889885,
+          "consumer_line": "t=211889885 thread=524 consumer result=5 look=1/1 focus=1 over=1 state_before=508,358 state_after=-5,2 accum_before=508,358 accum_after=503,360 delta_before=-2,0 delta_after=-5,2 reset_state=508,358 reset_accum=508,358 saved=508,358"
+        },
+        {
+          "uptime_ms": 211890280,
+          "xy": [
+            -1,
+            0
+          ],
+          "count": 1,
+          "packet_seqs": [
+            416
+          ],
+          "first_delivery_ms": 1,
+          "last_delivery_ms": 1,
+          "consumer_uptime_ms": 211890280,
+          "consumer_line": "t=211890280 thread=524 consumer result=1 look=1/1 focus=1 over=1 state_before=508,358 state_after=-1,0 accum_before=508,358 accum_after=507,358 delta_before=0,0 delta_after=-1,0 reset_state=508,358 reset_accum=508,358 saved=508,358"
+        },
+        {
+          "uptime_ms": 211890540,
+          "xy": [
+            -5,
+            0
+          ],
+          "count": 2,
+          "packet_seqs": [
+            432,
+            433
+          ],
+          "first_delivery_ms": 1,
+          "last_delivery_ms": 1
+        },
+        {
+          "uptime_ms": 211890938,
+          "xy": [
+            1,
+            0
+          ],
+          "count": 1,
+          "packet_seqs": [
+            453
+          ],
+          "first_delivery_ms": 0,
+          "last_delivery_ms": 0,
+          "consumer_uptime_ms": 211890938,
+          "consumer_line": "t=211890938 thread=524 consumer result=1 look=1/1 focus=1 over=1 state_before=508,358 state_after=1,0 accum_before=508,358 accum_after=509,358 delta_before=0,0 delta_after=1,0 reset_state=508,358 reset_accum=508,358 saved=508,358"
+        },
+        {
+          "uptime_ms": 211891260,
+          "xy": [
+            4,
+            0
+          ],
+          "count": 2,
+          "packet_seqs": [
+            472,
+            473
+          ],
+          "first_delivery_ms": 1,
+          "last_delivery_ms": 1
+        },
+        {
+          "uptime_ms": 211892601,
+          "xy": [
+            0,
+            -2
+          ],
+          "count": 1,
+          "packet_seqs": [
+            531
+          ],
+          "first_delivery_ms": 1,
+          "last_delivery_ms": 1,
+          "consumer_uptime_ms": 211892601,
+          "consumer_line": "t=211892601 thread=524 consumer result=1 look=1/1 focus=1 over=1 state_before=508,358 state_after=0,-2 accum_before=508,358 accum_after=508,356 delta_before=0,0 delta_after=0,-2 reset_state=508,358 reset_accum=508,358 saved=508,358"
+        },
+        {
+          "uptime_ms": 211892635,
+          "xy": [
+            -2,
+            -3
+          ],
+          "count": 4,
+          "packet_seqs": [
+            532,
+            533
+          ],
+          "first_delivery_ms": 1,
+          "last_delivery_ms": 0,
+          "consumer_uptime_ms": 211892636,
+          "consumer_line": "t=211892636 thread=524 consumer result=4 look=1/1 focus=1 over=1 state_before=508,358 state_after=-2,-3 accum_before=508,358 accum_after=506,355 delta_before=0,-2 delta_after=-2,-3 reset_state=508,358 reset_accum=508,358 saved=508,358"
+        },
+        {
+          "uptime_ms": 211894441,
+          "xy": [
+            0,
+            -3
+          ],
+          "count": 2,
+          "packet_seqs": [
+            539,
+            540
+          ],
+          "first_delivery_ms": 3,
+          "last_delivery_ms": 2,
+          "consumer_uptime_ms": 211894442,
+          "consumer_line": "t=211894442 thread=524 consumer result=2 look=1/1 focus=1 over=1 state_before=508,358 state_after=0,-3 accum_before=508,358 accum_after=508,355 delta_before=0,0 delta_after=0,-3 reset_state=508,358 reset_accum=508,358 saved=508,358"
+        },
+        {
+          "uptime_ms": 211894477,
+          "xy": [
+            0,
+            -3
+          ],
+          "count": 2,
+          "packet_seqs": [
+            541,
+            542
+          ],
+          "first_delivery_ms": 1,
+          "last_delivery_ms": 0
+        },
+        {
+          "uptime_ms": 211894545,
+          "xy": [
+            1,
+            -3
+          ],
+          "count": 3,
+          "packet_seqs": [
+            545,
+            546
+          ],
+          "first_delivery_ms": 1,
+          "last_delivery_ms": 1,
+          "consumer_uptime_ms": 211894546,
+          "consumer_line": "t=211894546 thread=524 consumer result=3 look=1/1 focus=1 over=1 state_before=508,358 state_after=1,-3 accum_before=508,358 accum_after=509,355 delta_before=0,-4 delta_after=1,-3 reset_state=508,358 reset_accum=508,358 saved=508,358"
+        },
+        {
+          "uptime_ms": 211894581,
+          "xy": [
+            0,
+            -1
+          ],
+          "count": 1,
+          "packet_seqs": [
+            547
+          ],
+          "first_delivery_ms": 1,
+          "last_delivery_ms": 1,
+          "consumer_uptime_ms": 211894581,
+          "consumer_line": "t=211894581 thread=524 consumer result=1 look=1/1 focus=1 over=1 state_before=508,358 state_after=0,-1 accum_before=508,358 accum_after=508,357 delta_before=1,-3 delta_after=0,-1 reset_state=508,358 reset_accum=508,358 saved=508,358"
+        },
+        {
+          "uptime_ms": 211894689,
+          "xy": [
+            2,
+            0
+          ],
+          "count": 2,
+          "packet_seqs": [
+            551,
+            552
+          ],
+          "first_delivery_ms": 1,
+          "last_delivery_ms": 1,
+          "consumer_uptime_ms": 211894689,
+          "consumer_line": "t=211894689 thread=524 consumer result=2 look=1/1 focus=1 over=1 state_before=508,358 state_after=2,0 accum_before=508,358 accum_after=510,358 delta_before=0,0 delta_after=2,0 reset_state=508,358 reset_accum=508,358 saved=508,358"
+        },
+        {
+          "uptime_ms": 211895054,
+          "xy": [
+            4,
+            1
+          ],
+          "count": 3,
+          "packet_seqs": [
+            573,
+            574
+          ],
+          "first_delivery_ms": 1,
+          "last_delivery_ms": 2,
+          "consumer_uptime_ms": 211895054,
+          "consumer_line": "t=211895054 thread=524 consumer result=3 look=1/1 focus=1 over=1 state_before=508,358 state_after=4,1 accum_before=508,358 accum_after=512,359 delta_before=3,0 delta_after=4,1 reset_state=508,358 reset_accum=508,358 saved=508,358"
+        },
+        {
+          "uptime_ms": 211895085,
+          "xy": [
+            1,
+            0
+          ],
+          "count": 1,
+          "packet_seqs": [
+            575
+          ],
+          "first_delivery_ms": 1,
+          "last_delivery_ms": 1,
+          "consumer_uptime_ms": 211895085,
+          "consumer_line": "t=211895085 thread=524 consumer result=1 look=1/1 focus=1 over=1 state_before=508,358 state_after=1,0 accum_before=508,358 accum_after=509,358 delta_before=4,1 delta_after=1,0 reset_state=508,358 reset_accum=508,358 saved=508,358"
+        },
+        {
+          "uptime_ms": 211895120,
+          "xy": [
+            6,
+            2
+          ],
+          "count": 5,
+          "packet_seqs": [
+            576,
+            577,
+            578
+          ],
+          "first_delivery_ms": 1,
+          "last_delivery_ms": 1,
+          "consumer_uptime_ms": 211895120,
+          "consumer_line": "t=211895120 thread=524 consumer result=5 look=1/1 focus=1 over=1 state_before=508,358 state_after=6,2 accum_before=508,358 accum_after=514,360 delta_before=1,0 delta_after=6,2 reset_state=508,358 reset_accum=508,358 saved=508,358"
+        },
+        {
+          "uptime_ms": 211895432,
+          "xy": [
+            3,
+            3
+          ],
+          "count": 4,
+          "packet_seqs": [
+            595,
+            596
+          ],
+          "first_delivery_ms": 5,
+          "last_delivery_ms": 0
+        },
+        {
+          "uptime_ms": 211895511,
+          "xy": [
+            2,
+            0
+          ],
+          "count": 1,
+          "packet_seqs": [
+            600
+          ],
+          "first_delivery_ms": 0,
+          "last_delivery_ms": 0,
+          "consumer_uptime_ms": 211895511,
+          "consumer_line": "t=211895511 thread=524 consumer result=1 look=1/1 focus=1 over=1 state_before=508,358 state_after=2,0 accum_before=508,358 accum_after=510,358 delta_before=1,1 delta_after=2,0 reset_state=508,358 reset_accum=508,358 saved=508,358"
+        },
+        {
+          "uptime_ms": 211896203,
+          "xy": [
+            2,
+            0
+          ],
+          "count": 1,
+          "packet_seqs": [
+            630
+          ],
+          "first_delivery_ms": 1,
+          "last_delivery_ms": 1
+        },
+        {
+          "uptime_ms": 211896720,
+          "xy": [
+            -2,
+            0
+          ],
+          "count": 1,
+          "packet_seqs": [
+            640
+          ],
+          "first_delivery_ms": 2,
+          "last_delivery_ms": 2,
+          "consumer_uptime_ms": 211896720,
+          "consumer_line": "t=211896720 thread=524 consumer result=1 look=1/1 focus=1 over=1 state_before=508,358 state_after=-2,0 accum_before=508,358 accum_after=506,358 delta_before=0,0 delta_after=-2,0 reset_state=508,358 reset_accum=508,358 saved=508,358"
+        },
+        {
+          "uptime_ms": 211896940,
+          "xy": [
+            -3,
+            0
+          ],
+          "count": 2,
+          "packet_seqs": [
+            653,
+            654
+          ],
+          "first_delivery_ms": 1,
+          "last_delivery_ms": 0
+        },
+        {
+          "uptime_ms": 211897771,
+          "xy": [
+            -5,
+            0
+          ],
+          "count": 3,
+          "packet_seqs": [
+            702,
+            703,
+            704
+          ],
+          "first_delivery_ms": 0,
+          "last_delivery_ms": 1
+        },
+        {
+          "uptime_ms": 211898757,
+          "xy": [
+            -4,
+            0
+          ],
+          "count": 2,
+          "packet_seqs": [
+            762,
+            763
+          ],
+          "first_delivery_ms": 0,
+          "last_delivery_ms": 1
+        },
+        {
+          "uptime_ms": 211899516,
+          "xy": [
+            -1,
+            0
+          ],
+          "count": 1,
+          "packet_seqs": [
+            808
+          ],
+          "first_delivery_ms": 0,
+          "last_delivery_ms": 0
+        },
+        {
+          "uptime_ms": 211900154,
+          "xy": [
+            -2,
+            0
+          ],
+          "count": 1,
+          "packet_seqs": [
+            846
+          ],
+          "first_delivery_ms": 1,
+          "last_delivery_ms": 1
+        },
+        {
+          "uptime_ms": 211900753,
+          "xy": [
+            -2,
+            0
+          ],
+          "count": 1,
+          "packet_seqs": [
+            882
+          ],
+          "first_delivery_ms": 1,
+          "last_delivery_ms": 1
+        },
+        {
+          "uptime_ms": 211901300,
+          "xy": [
+            -2,
+            0
+          ],
+          "count": 1,
+          "packet_seqs": [
+            915
+          ],
+          "first_delivery_ms": 1,
+          "last_delivery_ms": 1
+        },
+        {
+          "uptime_ms": 211901853,
+          "xy": [
+            -2,
+            0
+          ],
+          "count": 1,
+          "packet_seqs": [
+            948
+          ],
+          "first_delivery_ms": 1,
+          "last_delivery_ms": 1
+        },
+        {
+          "uptime_ms": 211902428,
+          "xy": [
+            -1,
+            0
+          ],
+          "count": 1,
+          "packet_seqs": [
+            983
+          ],
+          "first_delivery_ms": 1,
+          "last_delivery_ms": 1
+        },
+        {
+          "uptime_ms": 211903085,
+          "xy": [
+            -2,
+            0
+          ],
+          "count": 1,
+          "packet_seqs": [
+            1022
+          ],
+          "first_delivery_ms": 0,
+          "last_delivery_ms": 0
+        },
+        {
+          "uptime_ms": 211903459,
+          "xy": [
+            1,
+            0
+          ],
+          "count": 1,
+          "packet_seqs": [
+            1040
+          ],
+          "first_delivery_ms": 1,
+          "last_delivery_ms": 1,
+          "consumer_uptime_ms": 211903459,
+          "consumer_line": "t=211903459 thread=524 consumer result=1 look=1/1 focus=1 over=1 state_before=508,358 state_after=1,0 accum_before=508,358 accum_after=509,358 delta_before=0,0 delta_after=1,0 reset_state=508,358 reset_accum=508,358 saved=508,358"
+        },
+        {
+          "uptime_ms": 211903713,
+          "xy": [
+            3,
+            0
+          ],
+          "count": 2,
+          "packet_seqs": [
+            1054,
+            1055
+          ],
+          "first_delivery_ms": 1,
+          "last_delivery_ms": 2
+        },
+        {
+          "uptime_ms": 211904333,
+          "xy": [
+            2,
+            0
+          ],
+          "count": 1,
+          "packet_seqs": [
+            1092
+          ],
+          "first_delivery_ms": 0,
+          "last_delivery_ms": 0
+        },
+        {
+          "uptime_ms": 211916081,
+          "xy": [
+            2,
+            0
+          ],
+          "count": 1,
+          "packet_seqs": [
+            1277
+          ],
+          "first_delivery_ms": 1,
+          "last_delivery_ms": 1,
+          "consumer_uptime_ms": 211916081,
+          "consumer_line": "t=211916081 thread=524 consumer result=1 look=1/1 focus=1 over=1 state_before=608,238 state_after=2,0 accum_before=608,238 accum_after=610,238 delta_before=0,0 delta_after=2,0 reset_state=608,238 reset_accum=608,238 saved=608,238"
+        },
+        {
+          "uptime_ms": 211916646,
+          "xy": [
+            3,
+            0
+          ],
+          "count": 2,
+          "packet_seqs": [
+            1310,
+            1311
+          ],
+          "first_delivery_ms": 3,
+          "last_delivery_ms": 1
+        },
+        {
+          "uptime_ms": 211916850,
+          "xy": [
+            4,
+            2
+          ],
+          "count": 4,
+          "packet_seqs": [
+            1322,
+            1323
+          ],
+          "first_delivery_ms": 1,
+          "last_delivery_ms": 1,
+          "consumer_uptime_ms": 211916851,
+          "consumer_line": "t=211916851 thread=524 consumer result=4 look=1/1 focus=1 over=1 state_before=608,238 state_after=4,2 accum_before=608,238 accum_after=612,240 delta_before=3,0 delta_after=4,2 reset_state=608,238 reset_accum=608,238 saved=608,238"
+        },
+        {
+          "uptime_ms": 211917006,
+          "xy": [
+            3,
+            0
+          ],
+          "count": 2,
+          "packet_seqs": [
+            1331,
+            1332
+          ],
+          "first_delivery_ms": 1,
+          "last_delivery_ms": 1,
+          "consumer_uptime_ms": 211917007,
+          "consumer_line": "t=211917007 thread=524 consumer result=2 look=1/1 focus=1 over=1 state_before=608,238 state_after=3,0 accum_before=608,238 accum_after=611,238 delta_before=4,1 delta_after=3,0 reset_state=608,238 reset_accum=608,238 saved=608,238"
+        },
+        {
+          "uptime_ms": 211917041,
+          "xy": [
+            4,
+            1
+          ],
+          "count": 3,
+          "packet_seqs": [
+            1333,
+            1334
+          ],
+          "first_delivery_ms": 1,
+          "last_delivery_ms": 1,
+          "consumer_uptime_ms": 211917042,
+          "consumer_line": "t=211917042 thread=524 consumer result=3 look=1/1 focus=1 over=1 state_before=608,238 state_after=4,1 accum_before=608,238 accum_after=612,239 delta_before=3,0 delta_after=4,1 reset_state=608,238 reset_accum=608,238 saved=608,238"
+        },
+        {
+          "uptime_ms": 211917075,
+          "xy": [
+            3,
+            0
+          ],
+          "count": 2,
+          "packet_seqs": [
+            1335,
+            1336
+          ],
+          "first_delivery_ms": 1,
+          "last_delivery_ms": 1,
+          "consumer_uptime_ms": 211917075,
+          "consumer_line": "t=211917075 thread=524 consumer result=2 look=1/1 focus=1 over=1 state_before=608,238 state_after=3,0 accum_before=608,238 accum_after=611,238 delta_before=4,1 delta_after=3,0 reset_state=608,238 reset_accum=608,238 saved=608,238"
+        },
+        {
+          "uptime_ms": 211917347,
+          "xy": [
+            -3,
+            0
+          ],
+          "count": 2,
+          "packet_seqs": [
+            1350,
+            1351
+          ],
+          "first_delivery_ms": 1,
+          "last_delivery_ms": 1,
+          "consumer_uptime_ms": 211917347,
+          "consumer_line": "t=211917347 thread=524 consumer result=2 look=1/1 focus=1 over=1 state_before=608,238 state_after=-3,0 accum_before=608,238 accum_after=605,238 delta_before=0,0 delta_after=-3,0 reset_state=608,238 reset_accum=608,238 saved=608,238"
+        },
+        {
+          "uptime_ms": 211917614,
+          "xy": [
+            -4,
+            0
+          ],
+          "count": 2,
+          "packet_seqs": [
+            1366,
+            1367
+          ],
+          "first_delivery_ms": 1,
+          "last_delivery_ms": 1
+        },
+        {
+          "uptime_ms": 211918440,
+          "xy": [
+            -4,
+            0
+          ],
+          "count": 2,
+          "packet_seqs": [
+            1415,
+            1416
+          ],
+          "first_delivery_ms": 3,
+          "last_delivery_ms": 1
+        },
+        {
+          "uptime_ms": 211919101,
+          "xy": [
+            -2,
+            0
+          ],
+          "count": 1,
+          "packet_seqs": [
+            1456
+          ],
+          "first_delivery_ms": 1,
+          "last_delivery_ms": 1
+        },
+        {
+          "uptime_ms": 211919471,
+          "xy": [
+            1,
+            0
+          ],
+          "count": 1,
+          "packet_seqs": [
+            1475
+          ],
+          "first_delivery_ms": 1,
+          "last_delivery_ms": 1,
+          "consumer_uptime_ms": 211919471,
+          "consumer_line": "t=211919471 thread=524 consumer result=1 look=1/1 focus=1 over=1 state_before=608,238 state_after=1,0 accum_before=608,238 accum_after=609,238 delta_before=0,0 delta_after=1,0 reset_state=608,238 reset_accum=608,238 saved=608,238"
+        },
+        {
+          "uptime_ms": 211919533,
+          "xy": [
+            3,
+            -1
+          ],
+          "count": 3,
+          "packet_seqs": [
+            1478,
+            1479
+          ],
+          "first_delivery_ms": 1,
+          "last_delivery_ms": 1,
+          "consumer_uptime_ms": 211919533,
+          "consumer_line": "t=211919533 thread=524 consumer result=3 look=1/1 focus=1 over=1 state_before=608,238 state_after=3,-1 accum_before=608,238 accum_after=611,237 delta_before=2,0 delta_after=3,-1 reset_state=608,238 reset_accum=608,238 saved=608,238"
+        },
+        {
+          "uptime_ms": 211919554,
+          "xy": [
+            2,
+            0
+          ],
+          "count": 1,
+          "packet_seqs": [
+            1480
+          ],
+          "first_delivery_ms": 2,
+          "last_delivery_ms": 2,
+          "consumer_uptime_ms": 211919554,
+          "consumer_line": "t=211919554 thread=524 consumer result=1 look=1/1 focus=1 over=1 state_before=608,238 state_after=2,0 accum_before=608,238 accum_after=610,238 delta_before=3,-1 delta_after=2,0 reset_state=608,238 reset_accum=608,238 saved=608,238"
+        },
+        {
+          "uptime_ms": 211919576,
+          "xy": [
+            2,
+            -1
+          ],
+          "count": 2,
+          "packet_seqs": [
+            1481
+          ],
+          "first_delivery_ms": 1,
+          "last_delivery_ms": 1,
+          "consumer_uptime_ms": 211919578,
+          "consumer_line": "t=211919578 thread=524 consumer result=2 look=1/1 focus=1 over=1 state_before=608,238 state_after=2,-1 accum_before=608,238 accum_after=610,237 delta_before=2,0 delta_after=2,-1 reset_state=608,238 reset_accum=608,238 saved=608,238"
+        },
+        {
+          "uptime_ms": 211919620,
+          "xy": [
+            2,
+            0
+          ],
+          "count": 1,
+          "packet_seqs": [
+            1484
+          ],
+          "first_delivery_ms": 1,
+          "last_delivery_ms": 1,
+          "consumer_uptime_ms": 211919620,
+          "consumer_line": "t=211919620 thread=524 consumer result=1 look=1/1 focus=1 over=1 state_before=608,238 state_after=2,0 accum_before=608,238 accum_after=610,238 delta_before=3,-1 delta_after=2,0 reset_state=608,238 reset_accum=608,238 saved=608,238"
+        },
+        {
+          "uptime_ms": 211919643,
+          "xy": [
+            2,
+            -1
+          ],
+          "count": 2,
+          "packet_seqs": [
+            1485
+          ],
+          "first_delivery_ms": 1,
+          "last_delivery_ms": 1,
+          "consumer_uptime_ms": 211919645,
+          "consumer_line": "t=211919645 thread=524 consumer result=2 look=1/1 focus=1 over=1 state_before=608,238 state_after=2,-1 accum_before=608,238 accum_after=610,237 delta_before=2,0 delta_after=2,-1 reset_state=608,238 reset_accum=608,238 saved=608,238"
+        },
+        {
+          "uptime_ms": 211919686,
+          "xy": [
+            2,
+            0
+          ],
+          "count": 1,
+          "packet_seqs": [
+            1488
+          ],
+          "first_delivery_ms": 2,
+          "last_delivery_ms": 2,
+          "consumer_uptime_ms": 211919687,
+          "consumer_line": "t=211919687 thread=524 consumer result=1 look=1/1 focus=1 over=1 state_before=608,238 state_after=2,0 accum_before=608,238 accum_after=610,238 delta_before=3,-1 delta_after=2,0 reset_state=608,238 reset_accum=608,238 saved=608,238"
+        },
+        {
+          "uptime_ms": 211919708,
+          "xy": [
+            2,
+            -1
+          ],
+          "count": 2,
+          "packet_seqs": [
+            1489
+          ],
+          "first_delivery_ms": 1,
+          "last_delivery_ms": 1,
+          "consumer_uptime_ms": 211919708,
+          "consumer_line": "t=211919708 thread=524 consumer result=2 look=1/1 focus=1 over=1 state_before=608,238 state_after=2,-1 accum_before=608,238 accum_after=610,237 delta_before=2,0 delta_after=2,-1 reset_state=608,238 reset_accum=608,238 saved=608,238"
+        },
+        {
+          "uptime_ms": 211919729,
+          "xy": [
+            1,
+            0
+          ],
+          "count": 1,
+          "packet_seqs": [
+            1490
+          ],
+          "first_delivery_ms": 1,
+          "last_delivery_ms": 1,
+          "consumer_uptime_ms": 211919730,
+          "consumer_line": "t=211919730 thread=524 consumer result=1 look=1/1 focus=1 over=1 state_before=608,238 state_after=1,0 accum_before=608,238 accum_after=609,238 delta_before=2,-1 delta_after=1,0 reset_state=608,238 reset_accum=608,238 saved=608,238"
+        },
+        {
+          "uptime_ms": 211919751,
+          "xy": [
+            4,
+            -1
+          ],
+          "count": 3,
+          "packet_seqs": [
+            1491,
+            1492
+          ],
+          "first_delivery_ms": 1,
+          "last_delivery_ms": 1,
+          "consumer_uptime_ms": 211919751,
+          "consumer_line": "t=211919751 thread=524 consumer result=3 look=1/1 focus=1 over=1 state_before=608,238 state_after=4,-1 accum_before=608,238 accum_after=612,237 delta_before=1,0 delta_after=4,-1 reset_state=608,238 reset_accum=608,238 saved=608,238"
+        },
+        {
+          "uptime_ms": 211919772,
+          "xy": [
+            2,
+            0
+          ],
+          "count": 1,
+          "packet_seqs": [
+            1493
+          ],
+          "first_delivery_ms": 1,
+          "last_delivery_ms": 1,
+          "consumer_uptime_ms": 211919773,
+          "consumer_line": "t=211919773 thread=524 consumer result=1 look=1/1 focus=1 over=1 state_before=608,238 state_after=2,0 accum_before=608,238 accum_after=610,238 delta_before=4,-1 delta_after=2,0 reset_state=608,238 reset_accum=608,238 saved=608,238"
+        },
+        {
+          "uptime_ms": 211919795,
+          "xy": [
+            2,
+            -1
+          ],
+          "count": 2,
+          "packet_seqs": [
+            1494
+          ],
+          "first_delivery_ms": 0,
+          "last_delivery_ms": 0,
+          "consumer_uptime_ms": 211919795,
+          "consumer_line": "t=211919795 thread=524 consumer result=2 look=1/1 focus=1 over=1 state_before=608,238 state_after=2,-1 accum_before=608,238 accum_after=610,237 delta_before=2,0 delta_after=2,-1 reset_state=608,238 reset_accum=608,238 saved=608,238"
+        },
+        {
+          "uptime_ms": 211919815,
+          "xy": [
+            2,
+            0
+          ],
+          "count": 1,
+          "packet_seqs": [
+            1495
+          ],
+          "first_delivery_ms": 1,
+          "last_delivery_ms": 1,
+          "consumer_uptime_ms": 211919815,
+          "consumer_line": "t=211919815 thread=524 consumer result=1 look=1/1 focus=1 over=1 state_before=608,238 state_after=2,0 accum_before=608,238 accum_after=610,238 delta_before=2,-1 delta_after=2,0 reset_state=608,238 reset_accum=608,238 saved=608,238"
+        },
+        {
+          "uptime_ms": 211919855,
+          "xy": [
+            4,
+            -1
+          ],
+          "count": 3,
+          "packet_seqs": [
+            1497,
+            1498
+          ],
+          "first_delivery_ms": 1,
+          "last_delivery_ms": 1,
+          "consumer_uptime_ms": 211919855,
+          "consumer_line": "t=211919855 thread=524 consumer result=3 look=1/1 focus=1 over=1 state_before=608,238 state_after=4,-1 accum_before=608,238 accum_after=612,237 delta_before=1,0 delta_after=4,-1 reset_state=608,238 reset_accum=608,238 saved=608,238"
+        },
+        {
+          "uptime_ms": 211919873,
+          "xy": [
+            2,
+            0
+          ],
+          "count": 1,
+          "packet_seqs": [
+            1499
+          ],
+          "first_delivery_ms": 0,
+          "last_delivery_ms": 0,
+          "consumer_uptime_ms": 211919873,
+          "consumer_line": "t=211919873 thread=524 consumer result=1 look=1/1 focus=1 over=1 state_before=608,238 state_after=2,0 accum_before=608,238 accum_after=610,238 delta_before=4,-1 delta_after=2,0 reset_state=608,238 reset_accum=608,238 saved=608,238"
+        },
+        {
+          "uptime_ms": 211919997,
+          "xy": [
+            2,
+            1
+          ],
+          "count": 2,
+          "packet_seqs": [
+            1506
+          ],
+          "first_delivery_ms": 0,
+          "last_delivery_ms": 0,
+          "consumer_uptime_ms": 211919997,
+          "consumer_line": "t=211919997 thread=524 consumer result=2 look=1/1 focus=1 over=1 state_before=608,238 state_after=2,1 accum_before=608,238 accum_after=610,239 delta_before=2,0 delta_after=2,1 reset_state=608,238 reset_accum=608,238 saved=608,238"
+        },
+        {
+          "uptime_ms": 211920063,
+          "xy": [
+            2,
+            0
+          ],
+          "count": 1,
+          "packet_seqs": [
+            1510
+          ],
+          "first_delivery_ms": 1,
+          "last_delivery_ms": 1,
+          "consumer_uptime_ms": 211920064,
+          "consumer_line": "t=211920064 thread=524 consumer result=1 look=1/1 focus=1 over=1 state_before=608,238 state_after=2,0 accum_before=608,238 accum_after=610,238 delta_before=2,1 delta_after=2,0 reset_state=608,238 reset_accum=608,238 saved=608,238"
+        },
+        {
+          "uptime_ms": 211920085,
+          "xy": [
+            3,
+            1
+          ],
+          "count": 3,
+          "packet_seqs": [
+            1511,
+            1512
+          ],
+          "first_delivery_ms": 1,
+          "last_delivery_ms": 1,
+          "consumer_uptime_ms": 211920085,
+          "consumer_line": "t=211920085 thread=524 consumer result=3 look=1/1 focus=1 over=1 state_before=608,238 state_after=3,1 accum_before=608,238 accum_after=611,239 delta_before=2,0 delta_after=3,1 reset_state=608,238 reset_accum=608,238 saved=608,238"
+        },
+        {
+          "uptime_ms": 211920104,
+          "xy": [
+            2,
+            0
+          ],
+          "count": 1,
+          "packet_seqs": [
+            1513
+          ],
+          "first_delivery_ms": 1,
+          "last_delivery_ms": 1,
+          "consumer_uptime_ms": 211920105,
+          "consumer_line": "t=211920105 thread=524 consumer result=1 look=1/1 focus=1 over=1 state_before=608,238 state_after=2,0 accum_before=608,238 accum_after=610,238 delta_before=3,1 delta_after=2,0 reset_state=608,238 reset_accum=608,238 saved=608,238"
+        },
+        {
+          "uptime_ms": 211920125,
+          "xy": [
+            2,
+            1
+          ],
+          "count": 2,
+          "packet_seqs": [
+            1514
+          ],
+          "first_delivery_ms": 0,
+          "last_delivery_ms": 1,
+          "consumer_uptime_ms": 211920126,
+          "consumer_line": "t=211920126 thread=524 consumer result=2 look=1/1 focus=1 over=1 state_before=608,238 state_after=2,1 accum_before=608,238 accum_after=610,239 delta_before=2,0 delta_after=2,1 reset_state=608,238 reset_accum=608,238 saved=608,238"
+        },
+        {
+          "uptime_ms": 211920147,
+          "xy": [
+            2,
+            0
+          ],
+          "count": 1,
+          "packet_seqs": [
+            1515
+          ],
+          "first_delivery_ms": 1,
+          "last_delivery_ms": 1,
+          "consumer_uptime_ms": 211920148,
+          "consumer_line": "t=211920148 thread=524 consumer result=1 look=1/1 focus=1 over=1 state_before=608,238 state_after=2,0 accum_before=608,238 accum_after=610,238 delta_before=2,1 delta_after=2,0 reset_state=608,238 reset_accum=608,238 saved=608,238"
+        },
+        {
+          "uptime_ms": 211920168,
+          "xy": [
+            3,
+            1
+          ],
+          "count": 3,
+          "packet_seqs": [
+            1516,
+            1517
+          ],
+          "first_delivery_ms": 1,
+          "last_delivery_ms": 1,
+          "consumer_uptime_ms": 211920168,
+          "consumer_line": "t=211920168 thread=524 consumer result=3 look=1/1 focus=1 over=1 state_before=608,238 state_after=3,1 accum_before=608,238 accum_after=611,239 delta_before=2,0 delta_after=3,1 reset_state=608,238 reset_accum=608,238 saved=608,238"
+        },
+        {
+          "uptime_ms": 211920240,
+          "xy": [
+            2,
+            0
+          ],
+          "count": 1,
+          "packet_seqs": [
+            1521
+          ],
+          "first_delivery_ms": 1,
+          "last_delivery_ms": 1,
+          "consumer_uptime_ms": 211920241,
+          "consumer_line": "t=211920241 thread=524 consumer result=1 look=1/1 focus=1 over=1 state_before=608,238 state_after=2,0 accum_before=608,238 accum_after=610,238 delta_before=3,1 delta_after=2,0 reset_state=608,238 reset_accum=608,238 saved=608,238"
+        },
+        {
+          "uptime_ms": 211920322,
+          "xy": [
+            1,
+            0
+          ],
+          "count": 1,
+          "packet_seqs": [
+            1526
+          ],
+          "first_delivery_ms": 1,
+          "last_delivery_ms": 1,
+          "consumer_uptime_ms": 211920323,
+          "consumer_line": "t=211920323 thread=524 consumer result=1 look=1/1 focus=1 over=1 state_before=608,238 state_after=1,0 accum_before=608,238 accum_after=609,238 delta_before=5,1 delta_after=1,0 reset_state=608,238 reset_accum=608,238 saved=608,238"
+        },
+        {
+          "uptime_ms": 211920414,
+          "xy": [
+            4,
+            0
+          ],
+          "count": 2,
+          "packet_seqs": [
+            1531,
+            1532
+          ],
+          "first_delivery_ms": 0,
+          "last_delivery_ms": 1
+        },
+        {
+          "uptime_ms": 211921263,
+          "xy": [
+            4,
+            0
+          ],
+          "count": 2,
+          "packet_seqs": [
+            1582,
+            1583
+          ],
+          "first_delivery_ms": 1,
+          "last_delivery_ms": 3
+        },
+        {
+          "uptime_ms": 211922323,
+          "xy": [
+            -3,
+            0
+          ],
+          "count": 2,
+          "packet_seqs": [
+            1629,
+            1630
+          ],
+          "first_delivery_ms": 0,
+          "last_delivery_ms": 1,
+          "consumer_uptime_ms": 211922323,
+          "consumer_line": "t=211922323 thread=524 consumer result=2 look=1/1 focus=1 over=1 state_before=608,238 state_after=-3,0 accum_before=608,238 accum_after=605,238 delta_before=0,0 delta_after=-3,0 reset_state=608,238 reset_accum=608,238 saved=608,238"
+        },
+        {
+          "uptime_ms": 211922448,
+          "xy": [
+            -4,
+            1
+          ],
+          "count": 3,
+          "packet_seqs": [
+            1637,
+            1638
+          ],
+          "first_delivery_ms": 1,
+          "last_delivery_ms": 1,
+          "consumer_uptime_ms": 211922449,
+          "consumer_line": "t=211922449 thread=524 consumer result=3 look=1/1 focus=1 over=1 state_before=608,238 state_after=-4,1 accum_before=608,238 accum_after=604,239 delta_before=-4,0 delta_after=-4,1 reset_state=608,238 reset_accum=608,238 saved=608,238"
+        },
+        {
+          "uptime_ms": 211922514,
+          "xy": [
+            -1,
+            0
+          ],
+          "count": 1,
+          "packet_seqs": [
+            1641
+          ],
+          "first_delivery_ms": 1,
+          "last_delivery_ms": 1,
+          "consumer_uptime_ms": 211922514,
+          "consumer_line": "t=211922514 thread=524 consumer result=1 look=1/1 focus=1 over=1 state_before=608,238 state_after=-1,0 accum_before=608,238 accum_after=607,238 delta_before=-3,1 delta_after=-1,0 reset_state=608,238 reset_accum=608,238 saved=608,238"
+        },
+        {
+          "uptime_ms": 211939687,
+          "xy": [
+            -2,
+            0
+          ],
+          "count": 2,
+          "packet_seqs": [
+            1825,
+            1826
+          ],
+          "first_delivery_ms": 0,
+          "last_delivery_ms": 1,
+          "consumer_uptime_ms": 211939687,
+          "consumer_line": "t=211939687 thread=524 consumer result=2 look=1/1 focus=1 over=1 state_before=651,325 state_after=-2,0 accum_before=651,325 accum_after=649,325 delta_before=0,0 delta_after=-2,0 reset_state=651,325 reset_accum=651,325 saved=651,325"
+        },
+        {
+          "uptime_ms": 211940022,
+          "xy": [
+            1,
+            0
+          ],
+          "count": 1,
+          "packet_seqs": [
+            1831
+          ],
+          "first_delivery_ms": 2,
+          "last_delivery_ms": 2,
+          "consumer_uptime_ms": 211940023,
+          "consumer_line": "t=211940023 thread=524 consumer result=1 look=1/1 focus=1 over=1 state_before=651,325 state_after=1,0 accum_before=651,325 accum_after=652,325 delta_before=0,0 delta_after=1,0 reset_state=651,325 reset_accum=651,325 saved=651,325"
+        },
+        {
+          "uptime_ms": 211940388,
+          "xy": [
+            3,
+            0
+          ],
+          "count": 2,
+          "packet_seqs": [
+            1852,
+            1853
+          ],
+          "first_delivery_ms": 0,
+          "last_delivery_ms": 1
+        },
+        {
+          "uptime_ms": 211941133,
+          "xy": [
+            1,
+            0
+          ],
+          "count": 1,
+          "packet_seqs": [
+            1898
+          ],
+          "first_delivery_ms": 1,
+          "last_delivery_ms": 1
+        },
+        {
+          "uptime_ms": 211941820,
+          "xy": [
+            4,
+            0
+          ],
+          "count": 2,
+          "packet_seqs": [
+            1939,
+            1940
+          ],
+          "first_delivery_ms": 1,
+          "last_delivery_ms": 1
+        },
+        {
+          "uptime_ms": 211942501,
+          "xy": [
+            2,
+            0
+          ],
+          "count": 1,
+          "packet_seqs": [
+            1980
+          ],
+          "first_delivery_ms": 2,
+          "last_delivery_ms": 2
+        },
+        {
+          "uptime_ms": 211942897,
+          "xy": [
+            -1,
+            0
+          ],
+          "count": 1,
+          "packet_seqs": [
+            1986
+          ],
+          "first_delivery_ms": 1,
+          "last_delivery_ms": 1,
+          "consumer_uptime_ms": 211942898,
+          "consumer_line": "t=211942898 thread=524 consumer result=1 look=1/1 focus=1 over=1 state_before=651,325 state_after=-1,0 accum_before=651,325 accum_after=650,325 delta_before=0,0 delta_after=-1,0 reset_state=651,325 reset_accum=651,325 saved=651,325"
+        },
+        {
+          "uptime_ms": 211943198,
+          "xy": [
+            -2,
+            0
+          ],
+          "count": 1,
+          "packet_seqs": [
+            2004
+          ],
+          "first_delivery_ms": 1,
+          "last_delivery_ms": 1
+        },
+        {
+          "uptime_ms": 211950849,
+          "xy": [
+            0,
+            1
+          ],
+          "count": 1,
+          "packet_seqs": [
+            2201
+          ],
+          "first_delivery_ms": 1,
+          "last_delivery_ms": 1,
+          "consumer_uptime_ms": 211950849,
+          "consumer_line": "t=211950849 thread=524 consumer result=1 look=1/1 focus=1 over=1 state_before=571,258 state_after=0,1 accum_before=571,258 accum_after=571,259 delta_before=0,0 delta_after=0,1 reset_state=571,258 reset_accum=571,258 saved=571,258"
+        },
+        {
+          "uptime_ms": 211951055,
+          "xy": [
+            -3,
+            0
+          ],
+          "count": 2,
+          "packet_seqs": [
+            2205,
+            2206
+          ],
+          "first_delivery_ms": 6,
+          "last_delivery_ms": 1,
+          "consumer_uptime_ms": 211951055,
+          "consumer_line": "t=211951055 thread=524 consumer result=2 look=1/1 focus=1 over=1 state_before=571,258 state_after=-3,0 accum_before=571,258 accum_after=568,258 delta_before=0,0 delta_after=-3,0 reset_state=571,258 reset_accum=571,258 saved=571,258"
+        }
+      ],
+      "zero_consumer_count": 37,
+      "zero_consumer_after_refresh": 35,
+      "all_zero_consumer_has_zero_xy_delta": true,
+      "zero_consumer_examples": [
+        "t=211886048 thread=524 consumer result=0 look=1/1 focus=1 over=1 state_before=508,358 state_after=0,0 accum_before=508,358 accum_after=508,358 delta_before=0,0 delta_after=0,0 reset_state=508,358 reset_accum=508,358 saved=508,358",
+        "t=211961646 thread=524 consumer result=0 look=1/1 focus=1 over=1 state_before=714,334 state_after=0,0 accum_before=714,334 accum_after=714,334 delta_before=0,0 delta_after=0,0 reset_state=714,334 reset_accum=714,334 saved=714,334"
+      ],
+      "clip_release_count": 6,
+      "clip_release_lines": [
+        "t=211904658 thread=292 clip_release ok=1",
+        "t=211922840 thread=292 clip_release ok=1",
+        "t=211943876 thread=292 clip_release ok=1",
+        "t=211957408 thread=292 clip_release ok=1",
+        "t=211962555 thread=292 clip_release ok=1",
+        "t=211970917 thread=292 clip_release ok=1"
+      ],
+      "clip_hold_count": 81,
+      "clip_hold_true_count": 76,
+      "clip_hold_false_count": 5,
+      "look_off_buffer_count": 127,
+      "trace_bytes": 131070,
+      "trace_first_uptime_ms": 211810039,
+      "trace_last_uptime_ms": 211970917,
+      "trace_inferred_byte_cap_131072": true,
+      "zero_consumer_with_zero_state_after": 36,
+      "post_refresh_zero_consumer_with_zero_state_after": 34,
+      "all_zero_consumer_has_unchanged_accum": true,
+      "zero_consumer_with_retained_nonzero_state_after": [
+        "t=211939720 thread=524 consumer result=0 look=1/1 focus=1 over=1 state_before=651,325 state_after=-1,0 accum_before=651,325 accum_after=651,325 delta_before=-2,0 delta_after=0,0 reset_state=651,325 reset_accum=651,325 saved=651,325"
+      ],
+      "zero_consumer_retained_state_note": "At uptime211939720 result0 has state_after−1,0 retained from preceding state, but delta_after0,0 and accumunchanged651,325. Camera delta iszero; cannot claim every neutral state_after zero."
+    },
+    "limits": [
+      "User report accepts mouse look for tested AYN Thor right-stick/TAKP configuration; measurements support immediate signed input and successful scoped focus/capture recovery.",
+      "XI2 is explicitly sampled, not a complete event capture. Android idle logging is sampled; pointer log reached byte limit; game camera trace inferred to reach131072-byte cap. Do not claim full-session everypacket proof.",
+      "No explicit Android background/resume event labels present; do not infer a background/resume acceptance gate from FPS or rendering gaps.",
+      "Look0 DirectInput records,13nativeRMBhold/release periods,6successfulclipreleases and5releasedclipobservations show leaving/reentering Look/freepointer; logs do not identify tile vs physicalbutton source.",
+      "One late nativeheld snapshot atuptime212002216 points563,222 immediately2ms afterRMBpress and95ms beforeRMBrelease, beyondEQWtracecap; cannotestablishLookclipwasactive for that briefpress. AllheldXIsnapshots hadpropergamefocus and0Xerrors.",
+      "Nativefocus helper zeroXerrors; XIobserver5Xerrors occuronlyduringteardown withRMBup, firstat212078145 afterlastRMBup212005704.",
+      "Export17:37:37Z occurredwhileclientstatusStopping/alive; helperendalreadyreceivedsignal. Do notclaim afinalstoppedreceipt.",
+      "Version0.6.30 is explicit; code79 is a published-release mapping and is not present as an explicit exportfield.",
+      "No proof for NPCvisibility, TraditionalStoneUI, allprofilebackup/restoration, classicmodelassetreversal, or botinventorypersistence is supplied by these mouseacceptance facts."
+    ],
+    "log_hashes": {
+      "status.json": {
+        "bytes": 14256,
+        "sha256": "de5ddd51e8540d5b8a4eba7b69daab17bb74ba3c82ca792e6dcb03a0f56df1cb"
+      },
+      "logs/client-state.json": {
+        "bytes": 10438,
+        "sha256": "3ad97f5a12cd9bb1223afe5cb78bede8d52148e6ae38b8f702bc49f6fec85a18"
+      },
+      "logs/client-pointer-packets.log": {
+        "bytes": 130630,
+        "sha256": "198fcc8115418d385810cf15387526af9980b84e8153806e4a1f3b86e87ecf69"
+      },
+      "logs/client-xinput.log": {
+        "bytes": 83349,
+        "sha256": "1fff200a593855c19c62bf5df17379de233f5fc6a0016b2f889e24404a615153"
+      },
+      "logs/client-takp-focus.log": {
+        "bytes": 1099,
+        "sha256": "bf4f9018940a305ebd5a02364f4fb6d25fddb9bd1161e46d44cfea391d2bb786"
+      },
+      "logs/client-takp-windows.log": {
+        "bytes": 129118,
+        "sha256": "d52fa04959465afa0bd22d562f066225c7bfc5f72c5568eb5ae8f1962f6ed5e6"
+      },
+      "client/current/eqw-camera-diagnostics.log": {
+        "bytes": 131070,
+        "sha256": "12c8e169dbc7cce734a5e4b6ca538e05bcb3c82c972b9d79897a14b9b5dfc405"
+      },
+      "logs/client-wine.log": {
+        "bytes": 50858,
+        "sha256": "8cd1238e66fdeb812fc78f7b5d4dc6d39dcc7a50f06864178e832c493c88d758"
+      },
+      "logs/client-prefix.json": {
+        "bytes": 1410,
+        "sha256": "bcc8028b07d3921c2b78e8d6b407d9d28f247681326a9cc6343aebcd0f63b3d0"
+      },
+      "logs/control.log": {
+        "bytes": 15332,
+        "sha256": "a53956b34fed28c712d28cd555a281327e56c4750c15ae99355aeaf345c067b7"
+      }
+    }
+  },
+  "preservation": {
+    "existing_server_start_utc": "2026-10-14T17:32:34Z",
+    "existing_server_ready_utc": "2026-10-14T17:32:41Z",
+    "existing_server_start_seconds": 7,
+    "existing_character_id": 4,
+    "zone": "Paineel",
+    "character_zone_entry_utc": "2026-10-14T17:33:54Z",
+    "character_camp_utc": "2026-10-14T17:37:05Z",
+    "character_session_seconds": 191,
+    "returned_to_character_select_utc": "2026-10-14T17:37:25Z",
+    "game_quitting_normally_utc": "2026-10-14T17:37:28Z",
+    "display_normal_shutdown_utc": "2026-10-14T17:37:35Z",
+    "prefix_update": "reuse",
+    "selected_stable_configuration_runtime_fields_equal_previous": 48,
+    "user_registry_bytes_equal_previous": false,
+    "helper_reports_prefix_settings_changed": false,
+    "backup_original_path_reported": "client/prefix/trasc-takp-camera-originals/eqw.original.dll",
+    "backup_binaries_in_bundle": false,
+    "new_source_build_deployment_import_reset_recorded": false,
+    "export_during_stopping": true,
+    "final_fully_stopped_or_server_shutdown_receipt": false,
+    "full_inventory_saved_bots_all_profile_persistence": false,
+    "classic_skeleton_visual_and_exact_restore": false,
+    "physical_incremental_and_no_work_build_receipts": false,
+    "idle_cleric_yaulp": "Previously user-confirmed fixed; this camera bundle is not a new cleric test."
+  },
+  "publication": {
+    "qualified_source_commit": "875e9dcc68f7aae10cc372077d00b3da2c7e84a3",
+    "apk_sha256": "ef0237e0d0d767f7a6e0e37403803b5de0b7bc1d765e496930d422a57fd9fb31",
+    "publication_snapshot": "docs/release-proof-0630.json",
+    "snapshot_physical_status": "PENDING_AT_PUBLICATION",
+    "this_receipt_supersedes_snapshot_camera_pending_status": true
+  }
+}
+

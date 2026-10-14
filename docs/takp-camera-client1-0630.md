@@ -5,7 +5,12 @@ Published **0.6.30 / code 79** passed
 and independent verification of the actual public APK, signature, source
 archive and native payload. See [release-status-0630.md](release-status-0630.md)
 and [release-proof-0630.json](release-proof-0630.json) for hashes and receipts.
-**Physical Thor camera usability remains unaccepted until a device retest.**
+**Physical TAKP mouse-look acceptance passed on the tested AYN Thor right-stick
+configuration on October 14, 2026.** The user reports perfect movement and the
+fresh device logs confirm the repair/refresh path and signed game input.
+See [device-camera-0630.md](device-camera-0630.md) and its
+[physical receipt](device-camera-evidence-0630.json). The procedure below is
+retained for installation and future regression checks.
 
 The 0.6.29 Thor capture identifies the exact rejected predicate. Its visible
 1280×720 whole game window is titled `Client1`: XA_STRING, format 8, exactly
@@ -57,7 +62,8 @@ including centered restore, 32 focus refusals and nine event-reader refusals.
 The actual MSVC DLL, shared headers and successful CI artifacts match the APK.
 The open PE32 consumer exercises those shared headers on the published ARM
 runtime; the fixed-address proprietary game DLL cannot run in that fixture.
-This is controlled qualification, not Thor camera acceptance.
+These are controlled qualification results. The later physical acceptance
+is recorded separately in the device evidence linked above.
 
 ## Installation and physical acceptance
 
