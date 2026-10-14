@@ -20,7 +20,7 @@ class WindowDiagnosticsTests(unittest.TestCase):
         struct.pack_into('<H', self.elf, 18, 183)
         self.receipt = {'format': 1, 'marker': windows.MARKER, 'bytes': len(self.elf),
             'sha256': hashlib.sha256(self.elf).hexdigest(), 'read_only': True,
-            'bounded_output_bytes': 128*1024, 'maximum_seconds': 300}
+            'bounded_output_bytes': 128*1024, 'max_seconds': 300}
         (self.root/'takp-window-inspect').write_bytes(self.elf)
         self.write_receipt()
 
@@ -37,7 +37,7 @@ class WindowDiagnosticsTests(unittest.TestCase):
         self.assertTrue(result['takp_window_inspector']['read_only'])
 
     def test_invalid_receipt_or_linked_binary_is_nonfatal_and_not_spawned(self):
-        for field, value in [('sha256', 'wrong'), ('read_only', False), ('maximum_seconds', 0),
+        for field, value in [('sha256', 'wrong'), ('read_only', False), ('max_seconds', 0),
                              ('marker', 'unknown'), ('bounded_output_bytes', 0)]:
             with self.subTest(field=field):
                 original = self.receipt[field]

@@ -1,0 +1,582 @@
+{
+  "format": 1,
+  "github_commit": "50ae39a550a6597a294f92502693e28b625ef993",
+  "github_run_id": "38505023364",
+  "inspector_sha256": "e1df07509f870d35f8feea87e64f20101597bd14dbc5ed0632335906b312d21c",
+  "marker": "TRASC_TAKP_WINDOW_INSPECT_V1",
+  "published_inputs": {
+    "format": 1,
+    "runtime_asset_id": 617421976,
+    "runtime_manifest_asset_id": 617422429,
+    "runtime": {
+      "format": 1,
+      "architecture": "arm64",
+      "file": "client-runtime-arm64.tar.gz",
+      "sha256": "2f130c07683e50bc606af111d5c35c4f503c1427772c1f9b0f45e1e4b75c76c4",
+      "bytes": 353710680,
+      "runtime": "client-1.0",
+      "source_commit": "270b0bbb485e80397148112ebca66a5d98c0f69e",
+      "wine": "10.0-wow64",
+      "box64": "0.4.4",
+      "renderer": "wined3d-llvmpipe"
+    },
+    "apk_asset_id": 638977793,
+    "apk_sha256": "0073d46cc5b58c2a7f27c68d11e5fd3cc58a0b6afb8f208d19c7615bbba02859",
+    "apk_bytes": 18936371,
+    "native_payload_sha256": {
+      "x11-frame-bridge": "c7244f755d9e473a6a8931cc7d330e6a7c2efd909313b5f0cf634558562b2917",
+      "presentation-bundle.json": "d67c2cea490d4448e5901daddd92682301bf6d6326a8bea512fde85ee1c26a74",
+      "wineserver": "09933d17ab07fe9c79245b22c9b8f4ff3fbc42d237595bb693271d168c8cb7d3",
+      "wineserver-patch.json": "e0dc2af26cfcda8ae57ef5a1eb26a31aa1edba9a91c554591e6a6e07fe0875fe"
+    },
+    "runtime_rebuilt": false,
+    "production_input_bridge_rebuilt": false,
+    "runtime_overlay": "/opt/wine/bin/wineserver from verified APK",
+    "apk_version": "0.6.28",
+    "apk_version_code": 77,
+    "preserved_companions_sha256": {
+      "takp-xinput-focus": "90dda77cb0b0fe1d18d4fa7b39bedda7dad67af6c342d7b23c74d0129f666865",
+      "takp-xinput-observe": "5f5cf7e8f8d2d3df475284f72fa0f2944e1cadb9ba334927021799615b35744b"
+    },
+    "focus_helper_rebuilt": false,
+    "observer_rebuilt": false
+  },
+  "fixture_sha256": {
+    "tests/integration_takp_window.py": "59d0e425daee8c814740dedec4567c0db5434b70ea826538f06f0b97cf172d27",
+    "tests/takp_focus_probe.cpp": "ea43bbc90e85ecf424c73cb6360c6356167e886f16a9947fa92f5e18759a3650",
+    "tests/takp_cursor_probe.cpp": "68e23c167c481c35b759f593d3a3c3844c7dd6ef8efbe78f6544ce82d80069a1",
+    "tests/integration_takp_cursor.py": "b3ee99473cbcb5bb638e722e8cb1af3412f7cb3afc942ed445931b09d36f0716",
+    "tests/takp_box64_wine.py": "6407aada984e00fb8d6986768ddf869b8d65e9d0c37b086eef951795a7427e74",
+    "tests/takp_input_transport.py": "5b77b8c0610be48ed3148997de2c069345ad846c5c82edc909f1a14400761ec1",
+    "scripts/prepare-takp-window-runtime.py": "8c912e3e49597b82477e5c5ba72ca9e1fc696da01b7e5ca0dde167fbde109972",
+    "scripts/prepare-takp-camera-runtime.py": "a221870b9952b3e2b28bd8ed122a954b9b61c15bc5e16c7201b8bbbf80d4588b",
+    "backend/client_xauthority.py": "1aaaf71661c3b40fedf3bb8a25cfcbdb2ede9babd1573eec8bb2046cb49e75a9",
+    "native/presentation/takp-window-inspect.c": "41b7ffa4f5866070bf43b508a9ff6f3dc4c0744a6a348a8c10cfb4a330ec039c",
+    "native/presentation/observe-log.h": "40ecb76a1096bca0f2ecac8f194a029bf720550f9462f2fcded6299fc14f4b2d",
+    "tests/takp_window_tools.Dockerfile": "65dc37c1cff27cb553a28aafce25f920b229115f5036a2e6583cb7d57f41d2ca"
+  },
+  "cases": [
+    {
+      "case": "natural-wine-identity",
+      "before": {
+        "focus": 16777217,
+        "pointer": [
+          400,
+          300
+        ],
+        "buttons_mask": 1024
+      },
+      "after": {
+        "focus": 16777217,
+        "pointer": [
+          400,
+          300
+        ],
+        "buttons_mask": 1024
+      },
+      "inspector_log_sha256": "eedf112b0a0edfeb24e6c7fa79e7fd4985e236f50f9334d6be320d52d47059cf",
+      "bytes": 13448,
+      "records": 43,
+      "completion": {
+        "record": "end",
+        "t_ms": 2004,
+        "reason": "duration",
+        "snapshots": 2,
+        "paths": 2,
+        "tree_nodes": 25,
+        "candidates": 3,
+        "bytes_before_end": 13295,
+        "dropped": 0,
+        "xerrors": 0
+      }
+    },
+    {
+      "case": "title-optional-nul",
+      "before": {
+        "focus": 1,
+        "pointer": [
+          400,
+          300
+        ],
+        "buttons_mask": 1024
+      },
+      "after": {
+        "focus": 1,
+        "pointer": [
+          400,
+          300
+        ],
+        "buttons_mask": 1024
+      },
+      "inspector_log_sha256": "75c302ba25c9f1a53a7c3680f0c07b7fcc52f79841d32937f0c87f9681bfc5c6",
+      "bytes": 13464,
+      "records": 43,
+      "completion": {
+        "record": "end",
+        "t_ms": 2005,
+        "reason": "duration",
+        "snapshots": 2,
+        "paths": 2,
+        "tree_nodes": 25,
+        "candidates": 3,
+        "bytes_before_end": 13311,
+        "dropped": 0,
+        "xerrors": 0
+      }
+    },
+    {
+      "case": "class-optional-nul",
+      "before": {
+        "focus": 1,
+        "pointer": [
+          400,
+          300
+        ],
+        "buttons_mask": 1024
+      },
+      "after": {
+        "focus": 1,
+        "pointer": [
+          400,
+          300
+        ],
+        "buttons_mask": 1024
+      },
+      "inspector_log_sha256": "03bf6a5890e79fa29956560702859d9670f14e41dac284423693255f40c4381b",
+      "bytes": 13464,
+      "records": 43,
+      "completion": {
+        "record": "end",
+        "t_ms": 2017,
+        "reason": "duration",
+        "snapshots": 2,
+        "paths": 2,
+        "tree_nodes": 25,
+        "candidates": 3,
+        "bytes_before_end": 13311,
+        "dropped": 0,
+        "xerrors": 0
+      }
+    },
+    {
+      "case": "title-wrong-type",
+      "before": {
+        "focus": 1,
+        "pointer": [
+          400,
+          300
+        ],
+        "buttons_mask": 1024
+      },
+      "after": {
+        "focus": 1,
+        "pointer": [
+          400,
+          300
+        ],
+        "buttons_mask": 1024
+      },
+      "inspector_log_sha256": "9d1384d0c4067c4c58f20e842bd17e18205cc888899b17df3a8249474529c241",
+      "bytes": 13455,
+      "records": 43,
+      "completion": {
+        "record": "end",
+        "t_ms": 2005,
+        "reason": "duration",
+        "snapshots": 2,
+        "paths": 2,
+        "tree_nodes": 25,
+        "candidates": 3,
+        "bytes_before_end": 13302,
+        "dropped": 0,
+        "xerrors": 0
+      }
+    },
+    {
+      "case": "class-wrong-type",
+      "before": {
+        "focus": 1,
+        "pointer": [
+          400,
+          300
+        ],
+        "buttons_mask": 1024
+      },
+      "after": {
+        "focus": 1,
+        "pointer": [
+          400,
+          300
+        ],
+        "buttons_mask": 1024
+      },
+      "inspector_log_sha256": "11040e1d8e0ea914ffc2a895462d75e833aa44e8deae1896c1c0d90cc664a32b",
+      "bytes": 13455,
+      "records": 43,
+      "completion": {
+        "record": "end",
+        "t_ms": 2004,
+        "reason": "duration",
+        "snapshots": 2,
+        "paths": 2,
+        "tree_nodes": 25,
+        "candidates": 3,
+        "bytes_before_end": 13302,
+        "dropped": 0,
+        "xerrors": 0
+      }
+    },
+    {
+      "case": "missing-title",
+      "before": {
+        "focus": 1,
+        "pointer": [
+          400,
+          300
+        ],
+        "buttons_mask": 1024
+      },
+      "after": {
+        "focus": 1,
+        "pointer": [
+          400,
+          300
+        ],
+        "buttons_mask": 1024
+      },
+      "inspector_log_sha256": "edff9f380d166e406aed8a7f491620fcbff43977b2b4a875adb19216d3ec92da",
+      "bytes": 13362,
+      "records": 43,
+      "completion": {
+        "record": "end",
+        "t_ms": 2004,
+        "reason": "duration",
+        "snapshots": 2,
+        "paths": 2,
+        "tree_nodes": 25,
+        "candidates": 3,
+        "bytes_before_end": 13209,
+        "dropped": 0,
+        "xerrors": 0
+      }
+    },
+    {
+      "case": "missing-class",
+      "before": {
+        "focus": 1,
+        "pointer": [
+          400,
+          300
+        ],
+        "buttons_mask": 1024
+      },
+      "after": {
+        "focus": 1,
+        "pointer": [
+          400,
+          300
+        ],
+        "buttons_mask": 1024
+      },
+      "inspector_log_sha256": "1c796eeda19921ea457dff3e1ec9462c028b343d7227d2eb1280cced5d3fb5f9",
+      "bytes": 13200,
+      "records": 43,
+      "completion": {
+        "record": "end",
+        "t_ms": 2004,
+        "reason": "duration",
+        "snapshots": 2,
+        "paths": 2,
+        "tree_nodes": 25,
+        "candidates": 3,
+        "bytes_before_end": 13047,
+        "dropped": 0,
+        "xerrors": 0
+      }
+    },
+    {
+      "case": "title-format-16",
+      "before": {
+        "focus": 1,
+        "pointer": [
+          400,
+          300
+        ],
+        "buttons_mask": 1024
+      },
+      "after": {
+        "focus": 1,
+        "pointer": [
+          400,
+          300
+        ],
+        "buttons_mask": 1024
+      },
+      "inspector_log_sha256": "db9e0dac5c68031ff4f5a6e46d2c7892ed04bd11dd0465d2cd1675bf6f70acac",
+      "bytes": 13458,
+      "records": 43,
+      "completion": {
+        "record": "end",
+        "t_ms": 2004,
+        "reason": "duration",
+        "snapshots": 2,
+        "paths": 2,
+        "tree_nodes": 25,
+        "candidates": 3,
+        "bytes_before_end": 13305,
+        "dropped": 0,
+        "xerrors": 0
+      }
+    },
+    {
+      "case": "title-format-32",
+      "before": {
+        "focus": 1,
+        "pointer": [
+          400,
+          300
+        ],
+        "buttons_mask": 1024
+      },
+      "after": {
+        "focus": 1,
+        "pointer": [
+          400,
+          300
+        ],
+        "buttons_mask": 1024
+      },
+      "inspector_log_sha256": "65c0855a989cd83ffb7d20487e5fd97685092b7f20eec6a7e8290f617f2d1352",
+      "bytes": 13509,
+      "records": 43,
+      "completion": {
+        "record": "end",
+        "t_ms": 2004,
+        "reason": "duration",
+        "snapshots": 2,
+        "paths": 2,
+        "tree_nodes": 25,
+        "candidates": 3,
+        "bytes_before_end": 13356,
+        "dropped": 0,
+        "xerrors": 0
+      }
+    },
+    {
+      "case": "oversized-high-byte-title",
+      "before": {
+        "focus": 1,
+        "pointer": [
+          400,
+          300
+        ],
+        "buttons_mask": 1024
+      },
+      "after": {
+        "focus": 1,
+        "pointer": [
+          400,
+          300
+        ],
+        "buttons_mask": 1024
+      },
+      "inspector_log_sha256": "ae78a783750486cd9211b2954b41adc502b233be574e5334d5647a9d4020fe10",
+      "bytes": 14556,
+      "records": 43,
+      "completion": {
+        "record": "end",
+        "t_ms": 2004,
+        "reason": "duration",
+        "snapshots": 2,
+        "paths": 2,
+        "tree_nodes": 25,
+        "candidates": 3,
+        "bytes_before_end": 14403,
+        "dropped": 0,
+        "xerrors": 0
+      }
+    },
+    {
+      "case": "render-child-path",
+      "before": {
+        "focus": 16777217,
+        "pointer": [
+          400,
+          300
+        ],
+        "buttons_mask": 1024
+      },
+      "after": {
+        "focus": 16777217,
+        "pointer": [
+          400,
+          300
+        ],
+        "buttons_mask": 1024
+      },
+      "inspector_log_sha256": "0b68cfa50539db62a668c02611bf0670cc56da44b820bd7567f65da8148b75c4",
+      "bytes": 15928,
+      "records": 51,
+      "completion": {
+        "record": "end",
+        "t_ms": 2005,
+        "reason": "duration",
+        "snapshots": 2,
+        "paths": 2,
+        "tree_nodes": 26,
+        "candidates": 3,
+        "bytes_before_end": 15775,
+        "dropped": 0,
+        "xerrors": 0
+      }
+    },
+    {
+      "case": "candidate-outside-covered-pointer-path",
+      "before": {
+        "focus": 1,
+        "pointer": [
+          400,
+          300
+        ],
+        "buttons_mask": 1024
+      },
+      "after": {
+        "focus": 1,
+        "pointer": [
+          400,
+          300
+        ],
+        "buttons_mask": 1024
+      },
+      "inspector_log_sha256": "9be85136fa3dc3e54841e06154cb02a2eb8ebbccd9940cafb5eaa02d7e29e12c",
+      "bytes": 10226,
+      "records": 35,
+      "completion": {
+        "record": "end",
+        "t_ms": 2003,
+        "reason": "duration",
+        "snapshots": 2,
+        "paths": 2,
+        "tree_nodes": 26,
+        "candidates": 3,
+        "bytes_before_end": 10073,
+        "dropped": 0,
+        "xerrors": 0
+      }
+    },
+    {
+      "case": "candidate-outside-screen-layout",
+      "before": {
+        "focus": 1,
+        "pointer": [
+          400,
+          300
+        ],
+        "buttons_mask": 1024
+      },
+      "after": {
+        "focus": 1,
+        "pointer": [
+          400,
+          300
+        ],
+        "buttons_mask": 1024
+      },
+      "inspector_log_sha256": "f0308635fc03ba77015f40f44a2f7e72af3c319cd7043bc8b4897ed83e5672b5",
+      "bytes": 10681,
+      "records": 35,
+      "completion": {
+        "record": "end",
+        "t_ms": 2004,
+        "reason": "duration",
+        "snapshots": 2,
+        "paths": 2,
+        "tree_nodes": 25,
+        "candidates": 3,
+        "bytes_before_end": 10528,
+        "dropped": 0,
+        "xerrors": 0
+      }
+    },
+    {
+      "case": "idle-no-rmb",
+      "before": {
+        "focus": 16777217,
+        "pointer": [
+          400,
+          300
+        ],
+        "buttons_mask": 0
+      },
+      "after": {
+        "focus": 16777217,
+        "pointer": [
+          400,
+          300
+        ],
+        "buttons_mask": 0
+      },
+      "inspector_log_sha256": "d9aac8bc6d098ee173dde55f4f0d03ad93947202829004ec48941a6b15a6bdb4",
+      "bytes": 801,
+      "records": 4,
+      "completion": {
+        "record": "end",
+        "t_ms": 2002,
+        "reason": "duration",
+        "snapshots": 2,
+        "paths": 0,
+        "tree_nodes": 0,
+        "candidates": 0,
+        "bytes_before_end": 651,
+        "dropped": 0,
+        "xerrors": 0
+      }
+    }
+  ],
+  "read_only_state_preserved": true,
+  "invalid_cli_rejected": true,
+  "signal_completion": {
+    "record": "end",
+    "t_ms": 299,
+    "reason": "signal",
+    "snapshots": 1,
+    "paths": 0,
+    "tree_nodes": 0,
+    "candidates": 0,
+    "bytes_before_end": 490,
+    "dropped": 0,
+    "xerrors": 0
+  },
+  "transport": {
+    "packets": 2,
+    "relative": 0,
+    "absolute": 0,
+    "buttons": 2,
+    "zero_relative": 0,
+    "relative_sum": [
+      0,
+      0
+    ],
+    "positive_axes": [
+      0,
+      0
+    ],
+    "negative_axes": [
+      0,
+      0
+    ],
+    "wire_bytes": 32,
+    "writes": 2,
+    "mask": 0,
+    "seconds": 32.837900969,
+    "protocol": "TRASCIN1",
+    "pipeline": "production parser; per-packet XFlush",
+    "closed": true,
+    "native_decoded": {
+      "relative": 0,
+      "absolute": 0,
+      "buttons": 2
+    }
+  },
+  "scope": "Diagnostic-only actual published ARM64 runtime/open PE32 fixture; no new focus repair and physical Thor identity remains unmeasured"
+}

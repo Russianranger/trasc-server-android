@@ -1,3 +1,17 @@
+# 0.6.29 window discovery diagnostics — APK gates pending (October13 Chicago)
+
+Read docs/device-camera-0628.md and device-camera-evidence-0628.json first. Latest physical 0.6.28 test FAIL: user mouse weird/not functioning; qualified90dda77c focuscompanion ran but end attempts0/successes0/errors0. HeldRMB+PointerRoot gates pass; actual target discovery returns no_exact_visible_game_under_pointer. Unknown title/type/length/class/visibility/layout predicate. Prior openPE32 fixture did not model actual game layout. Do not broaden ownership or claim XSetInputFocus failed—it was never called.
+
+All31 nativeheld snapshots PointerRoot;113sampledXI2 motions exactly match1230Androidpackets0–3ms/max3px/queuedelay<=5ms/zero drops. Physical719,326 minus7left pixels -> buffered72,-34 atcenter640,360;3moreleft ->consumer69,-34. Events0–21ms; no held backlog. Same character Paineel entry/camp, prefix/runtime/server/deployment reused; no newcrash. Expired session key aftercamp separate. Teardown status previously stale running; newfinalpoll fixes reporting only.
+
+0.6.29/code78 adds NEWreadonlynativewindowinspector and supervised launcher assets. Old V3/focus/observer/all21native components/settings remain unchanged. Bounded16node pointerpath/128node once-held candidate tree,128byte property values+hex/type/count/after,geometry/parents/PID, exact/optional-NUL matchflags. Resolves atoms at readtime; no focus/warp/grab/injection/propertywrite/atomcreation. Duration300/hard301/log128KiB. Collection failures do not blockclient. No server build/deploy/database/client import/prefix/runtime reset.
+
+ARM run38505023364 at50ae39a550a6597a294f92502693e28b625ef993 passed14actualproperty/layout cases, preservedfocus/pointer/buttons, normalends/drop0/Xerror0/max15928B, CLI0/301/NaN denial andSIGTERM. Exact published0.6.28APK+originalruntime/focus/observer/bridge/wineserver reused. InspectorELF72,232B/SHAe1df07509f870d35f8feea87e64f20101597bd14dbc5ed0632335906b312d21c; build4sources+fixture12hashes match. Current module uses buildreceipt max_seconds300; four newlauncher tests pass. Existing all prior fixture fingerprints unchanged. This is diagnostic qualification; actualgame identity/physicalcamera remainunmeasured.
+
+Next APK/profile/signing/publicdownload gates, then independentaudit. Device: camp/stop clients+servers normally, updateinplace/reopenTAKP, keepdata/settings/Yaulp, entercharacter promptly andenableLook/rightstickreproduction10s withinfirst5min, Lookoff/stop/exportfresh bundle withclient-takp-windows.log plusfocus/XI/packet/state/EQW. Use actual windowfacts for smallest scoped matcher correction; do not infer usablecamera. NPC/StoneUI/postcamp sessionkey/allprofilebackup/bots/skeleton/no-workobjects separate.
+
+---
+
 # Published 0.6.28 — scoped TAKP native focus recovery (October13 evening Chicago)
 
 Read `docs/release-status-0628.md`, `docs/release-proof-0628.json`, `docs/takp-camera-focus-0628.md` and `docs/device-camera-0627.md` and `docs/device-camera-evidence-0627.json` first. Public APK0.6.28/code77:18,936,371B, SHA-256 `0073d46cc5b58c2a7f27c68d11e5fd3cc58a0b6afb8f208d19c7615bbba02859`; uploaded2026-10-14T02:38:02Z/October13at21:38:02Chicago. Source`8d650b2537acbb2ca3a05b34e5a98e9c2e9a7225`, tree`589bf58ce3f5cdd4c3b1554b554c0aac724f3ed3`; PR35mergedas`42781b8d1799c88110a92a9f5f2203830d93d579` with exacttree. Preview remainsqualifiedsource; main adds docsreceipt only.

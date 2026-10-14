@@ -1,0 +1,25 @@
+{
+  "format": 1,
+  "architecture": "arm64-glibc",
+  "distribution": "debian-bookworm",
+  "marker": "TRASC_TAKP_WINDOW_INSPECT_V1",
+  "sha256": "e1df07509f870d35f8feea87e64f20101597bd14dbc5ed0632335906b312d21c",
+  "bytes": 72232,
+  "bounded_output_bytes": 131072,
+  "max_seconds": 300,
+  "property_bytes": 128,
+  "path_limit": 16,
+  "tree_node_limit": 128,
+  "read_only": true,
+  "changes_focus_pointer_properties": false,
+  "github_commit": "50ae39a550a6597a294f92502693e28b625ef993",
+  "github_run_id": "38505023364",
+  "source_sha256": {
+    "native/presentation/takp-window-inspect.c": "41b7ffa4f5866070bf43b508a9ff6f3dc4c0744a6a348a8c10cfb4a330ec039c",
+    "native/presentation/observe-log.h": "40ecb76a1096bca0f2ecac8f194a029bf720550f9462f2fcded6299fc14f4b2d",
+    "tests/takp_window_tools.Dockerfile": "65dc37c1cff27cb553a28aafce25f920b229115f5036a2e6583cb7d57f41d2ca",
+    "tests/takp_window_inspect_property.c": "960cbd8668e0c08d7ae045257206e85f5b4bf44c603c3505c0a28779913ee198"
+  },
+  "compiler_flags": "gcc -std=c11 -O2 -Wall -Wextra -Werror -lX11",
+  "scope": "Diagnostic-only bounded X metadata reads; old focus/observer/input bridge/runtime reused unchanged"
+}

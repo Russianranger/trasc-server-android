@@ -1,24 +1,30 @@
-# TRASC Android preview 0.6.28 · code 77
+# TRASC Android preview 0.6.29 · code 78
 
-The physical 0.6.27 logs identify missing native X focus: Android's signed stick
-packets reach XI2 correctly, but Wine reports foreground while X remains on
-PointerRoot. The escaped cursor offset then produces wrong-direction input.
-This update restores missing focus only during held right mouse over the exact
-visible TAKP game window. It preserves concrete foreign focus, menus, hidden
-windows and existing prefix settings. The existing V3 helper then confines the
-pointer. No warps, injected movement, runtime replacement or registry edits.
+This is a diagnostic update for the unresolved TAKP camera. On the latest
+Thor test, the 0.6.28 focus companion ran but made zero focus requests because
+it did not recognize the actual game window in the pointer path. The next
+correction requires the real window properties and layout; capture behavior
+and its strict ownership checks are unchanged in this release.
 
-The exact published ARM64 Box64/Wine/TigerVNC path reproduced PointerRoot with
-wrong fresh reversal input, then passed physical confinement, ten exact signed
-motion segments through both DirectInput APIs, zero idle drift, menu release,
-six refusal guards and resume recovery. These controlled results do not prove
-camera usability on Thor. APK signing/profile/publication gates must also pass.
+A bounded read-only native inspector records short window title/class bytes,
+property types/counts, visibility, geometry, parents, PIDs and pointer-path
+relationships. It can identify matching candidates outside that path without
+changing focus, pointer or properties. Final helper liveness also refreshes
+after teardown. Existing V3, focus companion, observer, input transport,
+runtimes, settings and all 21 native launcher components remain unchanged.
 
-Install as an update and restart only the TAKP client. Keep the working server
-and Yaulp deployment. After a short right-stick reversal test, stop the client
-and export logs. Server source/database/characters/bots, client assets, Wine
-prefixes, runtimes, settings and all-profile backup remain in place. No new
-server update/build/deployment, client import or prefix reset is required.
+Actual ARM64 qualification passed 14 property/layout cases with unchanged
+focus/pointer/buttons, normal bounded logs and zero drops/X errors. It qualifies
+collection, not physical camera repair. APK/profile/publication gates also
+must pass before this candidate is a published release.
 
-Camera acceptance remains open. NPC visibility and Traditional StoneUI remain
-separate issues. See docs/takp-camera-focus-0628.md for qualification and test scope.
+Camp and stop clients/servers normally; install as an Android update without
+uninstalling, then reopen TAKP. Keep the working Yaulp deployment and data;
+no server rebuild, database import, client reimport or prefix reset is needed.
+Enter the saved character within five minutes of client launch, enable Look,
+reproduce right-stick motion for ten seconds, turn Look off, stop normally
+and export a fresh bundle including client-takp-windows.log.
+
+Camera remains unaccepted. NPC visibility, Traditional StoneUI, the separate
+expired post-camp session-key observation and backup/bot/model/object-reuse
+checks remain separate. See docs/takp-window-0629.md and device-camera-0628.md.

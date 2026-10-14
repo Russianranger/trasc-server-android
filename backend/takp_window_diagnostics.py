@@ -22,7 +22,7 @@ def start(supervisor, logs, root=None):
             raise ValueError('Invalid window inspector receipt object')
         data = binary.read_bytes() if binary.is_file() and not binary.is_symlink() and binary.stat().st_size <= 256*1024 else b''
         if (receipt.get('format') != 1 or receipt.get('marker') != MARKER
-                or receipt.get('read_only') is not True or receipt.get('maximum_seconds') != 300
+                or receipt.get('read_only') is not True or receipt.get('max_seconds') != 300
                 or receipt.get('bounded_output_bytes') != 128*1024
                 or len(data) != receipt.get('bytes') or len(data) < 64
                 or hashlib.sha256(data).hexdigest() != receipt.get('sha256')

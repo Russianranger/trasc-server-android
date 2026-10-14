@@ -1,6 +1,8 @@
 # 0.6.29: identify the real TAKP window before changing recovery scope
 
-Source candidate 0.6.29/code78. Qualification and publication are pending.
+Source candidate 0.6.29/code78. Native qualification passed
+[run 38505023364](https://github.com/Russianranger/trasc-server-android/actions/runs/38505023364).
+APK qualification and publication are pending.
 This is a diagnostic update; it does not claim another camera correction.
 
 The latest Thor test failed. The 0.6.28 focus companion started correctly but
@@ -25,10 +27,21 @@ failure does not block the client. Existing focus/clip behavior is unchanged.
 Process state also refreshes after teardown so ended helpers do not remain
 labelled running in final status.
 
+The inspector ran through the exact published ARM64 Wine/Box64/TigerVNC path
+with original focus/observer/input bridge/wineserver bytes. Fourteen property
+and layout cases passed, including actual Wine identity, optional NULs, missing
+properties, UTF8 type mismatch, formats16/32, bounded high-byte values, render
+children and candidates outside the pointer path. Actual focus/pointer/buttons
+stayed unchanged; logs completed normally with zero drops/X errors, at most
+15,928 bytes. Invalid CLI and normal SIGTERM checks passed. These tests qualify
+the read-only collection, not the proprietary game's actual window identity
+or physical camera usability. Exact build/runtime receipts ship with the ELF.
+
 ## One short device capture
 
-1. Stop the TAKP client and install the signed update in place without
-   uninstalling. Keep the existing server, Yaulp deployment, database, client
+1. Camp and stop clients/servers normally before installing the signed update
+   in place without uninstalling. Reopen TAKP normally. Keep the server's
+   Yaulp deployment, database, client
    assets, prefix, runtimes and settings; no rebuild/import/reset is needed.
 2. Enter the saved character promptly within five minutes of client launch.
    Enable Look and reproduce right-stick right/left/up/down for about ten
