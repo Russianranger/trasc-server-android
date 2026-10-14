@@ -1,6 +1,10 @@
 # 0.6.30: recognize the physical TAKP game window
 
-Source candidate 0.6.30/code79. Native and APK qualification are pending.
+Source candidate 0.6.30/code79. Native qualification passed
+[run38590631222](https://github.com/Russianranger/trasc-server-android/actions/runs/38590631222)
+with three scoped repair/refresh sequences,24 exact signed segments including
+centered restore,32 focus refusals and9 event-reader refusals. Actual MSVC DLL
+and shared V4 header provenance match. APK/publication gates remain pending.
 Physical camera usability remains unaccepted.
 
 The 0.6.29 Thor diagnostic capture identifies the exact rejected predicate.

@@ -13,7 +13,7 @@ WINDOWS_FILES = ('eqgame.exe', 'eqmain.dll', 'eqgfx_dx8.dll')
 PATCHES = {
     'd3d8.dll': '122928cfe225c25d30decf7184a5d37e490cecf3b58256ba3206c7e1853f8ab8',
     'eqgame.dll': 'f0ca8e4bdcf3875419ecb1067a95bd6dbf8197e564f9d51ff4dec98a30f14b97',
-    'eqw.dll': '875056a62d2df3c7434bf05d23d73186d6565d2bd5a14f2f53a58fa7d015bab3',
+    'eqw.dll': 'ae556d045a0b64586b1e4f0c0957a75c99626f9f149f8e95b7bb99ed7a738fc8',
 }
 LEGACY_EQW_SHA = 'dffb97ac1f47d41f450614c8d6d4da30f3f47b7ed5046dbdbd111b3ba1fbe5ba'
 PREVIOUS_EQW_SHA = 'b739dfe64b7f69be2ffebf13a1cf794bcfd9e37fe143a75134ca6359e60ef584'
