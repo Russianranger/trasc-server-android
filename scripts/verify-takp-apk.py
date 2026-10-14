@@ -16,6 +16,68 @@ TAKP_HELPERS = {
 }
 TAKP_OBSERVER_SHA = '5f5cf7e8f8d2d3df475284f72fa0f2944e1cadb9ba334927021799615b35744b'
 TAKP_FOCUS_SHA = '90dda77cb0b0fe1d18d4fa7b39bedda7dad67af6c342d7b23c74d0129f666865'
+TAKP_WINDOW_SHA = 'e1df07509f870d35f8feea87e64f20101597bd14dbc5ed0632335906b312d21c'
+
+
+def verify_window_inspector(archive, root):
+    binary = archive.read('assets/takp-input/takp-window-inspect')
+    build = json.loads(archive.read('assets/takp-input/takp-window-inspector.json'))
+    if (not isinstance(build, dict) or build.get('format') != 1
+            or build.get('sha256') != TAKP_WINDOW_SHA or hashlib.sha256(binary).hexdigest() != TAKP_WINDOW_SHA
+            or build.get('bytes') != len(binary) or len(binary) < 64
+            or binary[:6] != b'\x7fELF\x02\x01' or struct.unpack_from('<H', binary, 18)[0] != 183
+            or build.get('marker') != 'TRASC_TAKP_WINDOW_INSPECT_V1' or build['marker'].encode() not in binary
+            or build.get('read_only') is not True or build.get('changes_focus_pointer_properties') is not False
+            or build.get('bounded_output_bytes') != 128*1024 or build.get('max_seconds') != 300
+            or build.get('property_bytes') != 128 or build.get('path_limit') != 16 or build.get('tree_node_limit') != 128):
+        raise ValueError('TAKP read-only window inspector differs from qualified bounded ARM64 bytes')
+    sources = {'native/presentation/takp-window-inspect.c', 'native/presentation/observe-log.h',
+               'tests/takp_window_tools.Dockerfile', 'tests/takp_window_inspect_property.c'}
+    if set(build.get('source_sha256', {})) != sources:
+        raise ValueError('TAKP window inspector build provenance is incomplete')
+    for name, digest in build['source_sha256'].items():
+        if hashlib.sha256((root/name).read_bytes()).hexdigest() != digest:
+            raise ValueError('TAKP window inspector source differs: ' + name)
+    for name in ('takp-window-inspect', 'takp-window-inspector.json', 'window-qualification.json'):
+        if archive.read('assets/takp-input/'+name) != (root/'backend/takp-input'/name).read_bytes():
+            raise ValueError('TAKP window inspection asset differs: ' + name)
+    if archive.read('assets/takp_window_diagnostics.py') != (root/'backend/takp_window_diagnostics.py').read_bytes():
+        raise ValueError('TAKP read-only window inspector launcher differs')
+    proof = json.loads(archive.read('assets/takp-input/window-qualification.json'))
+    if (proof.get('format') != 1 or proof.get('inspector_sha256') != TAKP_WINDOW_SHA
+            or proof.get('marker') != build['marker'] or proof.get('github_commit') != build.get('github_commit')
+            or proof.get('github_run_id') != build.get('github_run_id')
+            or proof.get('read_only_state_preserved') is not True or proof.get('invalid_cli_rejected') is not True
+            or proof.get('signal_completion', {}).get('reason') != 'signal'):
+        raise ValueError('TAKP window inspection runtime identity/completion is incomplete')
+    fixtures = {'tests/integration_takp_window.py', 'tests/takp_focus_probe.cpp', 'tests/takp_cursor_probe.cpp',
+                'tests/integration_takp_cursor.py', 'tests/takp_box64_wine.py', 'tests/takp_input_transport.py',
+                'scripts/prepare-takp-window-runtime.py', 'scripts/prepare-takp-camera-runtime.py', 'backend/client_xauthority.py',
+                'native/presentation/takp-window-inspect.c', 'native/presentation/observe-log.h', 'tests/takp_window_tools.Dockerfile'}
+    if set(proof.get('fixture_sha256', {})) != fixtures:
+        raise ValueError('TAKP window inspection fixture provenance is incomplete')
+    for name, digest in proof['fixture_sha256'].items():
+        if hashlib.sha256((root/name).read_bytes()).hexdigest() != digest:
+            raise ValueError('TAKP window inspection fixture differs: ' + name)
+    inputs = proof.get('published_inputs', {})
+    if (inputs.get('apk_sha256') != '0073d46cc5b58c2a7f27c68d11e5fd3cc58a0b6afb8f208d19c7615bbba02859'
+            or inputs.get('runtime', {}).get('sha256') != '2f130c07683e50bc606af111d5c35c4f503c1427772c1f9b0f45e1e4b75c76c4'
+            or any(inputs.get(name) is not False for name in ('runtime_rebuilt', 'production_input_bridge_rebuilt', 'focus_helper_rebuilt', 'observer_rebuilt'))
+            or inputs.get('preserved_companions_sha256') != {'takp-xinput-focus': TAKP_FOCUS_SHA, 'takp-xinput-observe': TAKP_OBSERVER_SHA}):
+        raise ValueError('TAKP window inspector did not reuse the published input path and original companions')
+    expected = {'natural-wine-identity', 'title-optional-nul', 'class-optional-nul', 'title-wrong-type', 'class-wrong-type',
+                'missing-title', 'missing-class', 'title-format-16', 'title-format-32', 'oversized-high-byte-title',
+                'render-child-path', 'candidate-outside-covered-pointer-path', 'candidate-outside-screen-layout', 'idle-no-rmb'}
+    cases = proof.get('cases', [])
+    if (len(cases) != 14 or {row.get('case') for row in cases} != expected
+            or any(row.get('before') != row.get('after') or not 0 < row.get('bytes', 0) <= 128*1024
+                   or row.get('completion', {}).get('reason') != 'duration'
+                   or row.get('completion', {}).get('dropped') != 0 for row in cases)):
+        raise ValueError('TAKP property/layout/read-only diagnosis qualification is incomplete')
+    transport = proof.get('transport', {})
+    if (transport.get('protocol') != 'TRASCIN1' or not transport.get('closed')
+            or transport.get('native_decoded') != {key: transport.get(key) for key in ('relative', 'absolute', 'buttons')}):
+        raise ValueError('TAKP window diagnostic fixture transport verification is incomplete')
 
 
 def verify_focus(archive, root):
@@ -98,6 +160,7 @@ def verify(apk, signing_report, root):
     if not match or match.group(1) != expected_certificate:
         raise ValueError('APK signing certificate changed; this is not a compatible update')
     with zipfile.ZipFile(apk) as archive:
+        verify_window_inspector(archive, root)
         verify_focus(archive, root)
         observer = archive.read('assets/takp-input/takp-xinput-observe')
         observer_record = json.loads(archive.read('assets/takp-input/takp-input-observer.json'))

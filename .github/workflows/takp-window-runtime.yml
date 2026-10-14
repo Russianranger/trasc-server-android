@@ -1,0 +1,98 @@
+name: Qualify TAKP read-only window diagnostics
+
+on:
+  push:
+    branches: [codex/takp-window-0629]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  published-arm64-window:
+    runs-on: ubuntu-24.04-arm
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+      - name: Reuse exact published runtime and original 0.6.28 companions
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          mkdir -p runtime-work/window/assets dist/window-proof dist/window-tools
+          gh api repos/Russianranger/trasc-server-android/releases/assets/617421976 > runtime-work/window/runtime-asset.json
+          gh api repos/Russianranger/trasc-server-android/releases/assets/638977793 > runtime-work/window/apk-asset.json
+          python3 - <<'PY'
+          import json
+          from pathlib import Path
+          root=Path('runtime-work/window')
+          for name,asset,size,digest in (
+              ('runtime',617421976,353710680,'2f130c07683e50bc606af111d5c35c4f503c1427772c1f9b0f45e1e4b75c76c4'),
+              ('apk',638977793,18936371,'0073d46cc5b58c2a7f27c68d11e5fd3cc58a0b6afb8f208d19c7615bbba02859')):
+              value=json.loads((root/(name+'-asset.json')).read_text())
+              assert (value['id'],value['size'],value['digest'])==(asset,size,'sha256:'+digest),value
+          PY
+          gh api -H 'Accept: application/octet-stream' repos/Russianranger/trasc-server-android/releases/assets/617421976 > runtime-work/window/runtime.tar.gz
+          gh api -H 'Accept: application/octet-stream' repos/Russianranger/trasc-server-android/releases/assets/617422429 > runtime-work/window/manifest.json
+          gh api -H 'Accept: application/octet-stream' repos/Russianranger/trasc-server-android/releases/assets/638977793 > runtime-work/window/baseline.apk
+          python3 scripts/prepare-takp-window-runtime.py \
+            --runtime runtime-work/window/runtime.tar.gz --manifest runtime-work/window/manifest.json \
+            --apk runtime-work/window/baseline.apk --output runtime-work/window/assets
+          docker import runtime-work/window/runtime.tar.gz trasc-window-published:0628
+      - name: Build open consumer and new inspector; verify C property serialization
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y --no-install-recommends g++-mingw-w64-i686
+          i686-w64-mingw32-g++ -std=c++14 -O2 -static -mwindows tests/takp_focus_probe.cpp -o runtime-work/window/cursor-probe.exe -ldinput8 -ldxguid
+          docker build --platform linux/arm64 -f tests/takp_window_tools.Dockerfile -t trasc-window-tools:0629 .
+          container=$(docker create trasc-window-tools:0629)
+          docker cp "$container:/out/takp-window-inspect" dist/window-tools/takp-window-inspect
+          docker rm "$container"
+          chmod +x tests/takp_box64_wine.py dist/window-tools/takp-window-inspect
+          python3 - <<'PY'
+          import hashlib,json,os,struct
+          from pathlib import Path
+          sources=('native/presentation/takp-window-inspect.c','native/presentation/observe-log.h',
+                   'tests/takp_window_tools.Dockerfile','tests/takp_window_inspect_property.c')
+          p=Path('dist/window-tools/takp-window-inspect');binary=p.read_bytes()
+          assert binary[:6]==b'\x7fELF\x02\x01' and struct.unpack_from('<H',binary,18)[0]==183,'Expected ARM64 ELF64'
+          receipt={'format':1,'architecture':'arm64-glibc','distribution':'debian-bookworm',
+              'marker':'TRASC_TAKP_WINDOW_INSPECT_V1','sha256':hashlib.sha256(binary).hexdigest(),'bytes':len(binary),
+              'bounded_output_bytes':131072,'max_seconds':300,'property_bytes':128,'path_limit':16,'tree_node_limit':128,
+              'read_only':True,'changes_focus_pointer_properties':False,
+              'github_commit':os.environ['GITHUB_SHA'],'github_run_id':os.environ['GITHUB_RUN_ID'],
+              'source_sha256':{name:hashlib.sha256(Path(name).read_bytes()).hexdigest() for name in sources},
+              'compiler_flags':'gcc -std=c11 -O2 -Wall -Wextra -Werror -lX11',
+              'scope':'Diagnostic-only bounded X metadata reads; old focus/observer/input bridge/runtime reused unchanged'}
+          p.with_name('takp-window-inspector.json').write_text(json.dumps(receipt,indent=2)+'\n')
+          PY
+      - name: Qualify real Wine properties, path/layout variants and read-only completion
+        env:
+          GITHUB_SHA: ${{ github.sha }}
+          GITHUB_RUN_ID: ${{ github.run_id }}
+        run: |
+          docker run --rm --network none -e GITHUB_SHA -e GITHUB_RUN_ID \
+            -v "$PWD:/repo:ro" -v "$PWD/runtime-work/window/assets:/qualify/assets:ro" \
+            -v "$PWD/runtime-work/window/cursor-probe.exe:/qualify/cursor-probe.exe:ro" \
+            -v "$PWD/dist/window-tools:/qualify/tools:ro" \
+            -v "$PWD/runtime-work/window/assets/wineserver:/opt/wine/bin/wineserver:ro" \
+            -v "$PWD/dist/window-proof:/out" \
+            trasc-window-published:0628 /usr/bin/python3 /repo/tests/integration_takp_window.py \
+              --wine /repo/tests/takp_box64_wine.py --probe /qualify/cursor-probe.exe \
+              --inspector /qualify/tools/takp-window-inspect --assets /qualify/assets --output /out
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: takp-published-arm64-window-proof-0629
+          path: |
+            dist/window-proof/*.json
+            dist/window-proof/*.log
+            runtime-work/window/assets/published-inputs.json
+            runtime-work/window/runtime-asset.json
+            runtime-work/window/apk-asset.json
+          retention-days: 14
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: takp-bookworm-arm64-window-tools-0629
+          path: dist/window-tools/
+          retention-days: 14

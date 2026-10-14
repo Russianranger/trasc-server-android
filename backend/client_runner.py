@@ -697,6 +697,8 @@ class Supervisor:
             self.update(**takp_input_diagnostics.start(self, PREFIX, LOGS))
             import takp_focus
             self.update(**takp_focus.start(self, LOGS))
+            import takp_window_diagnostics
+            self.update(**takp_window_diagnostics.start(self, LOGS))
         if self.request.get('renderer') == 'turnip':
             self.update(dxvk_d3d9_sha256=client_vulkan.install_d3d9(Path(__file__).parent, PREFIX, CLIENT))
         devices = PREFIX / 'dosdevices'; devices.mkdir(exist_ok=True)
@@ -745,10 +747,9 @@ class Supervisor:
             observed, fatal = self.wine_log.snapshot()
             if fatal: raise RuntimeError(fatal)
             focus_process = getattr(self, 'takp_focus_process', None)
-            if focus_process is not None:
-                focus_status = self.status['takp_focus_recovery']
-                focus_status['exit_code'] = focus_process.poll()
-                focus_status['state'] = 'running' if focus_status['exit_code'] is None else 'exited'
+            if focus_process is not None or getattr(self, 'takp_window_inspector_process', None) is not None:
+                import takp_window_diagnostics
+                self.status.update(takp_window_diagnostics.process_status(self))
             if time.monotonic() - self.last_thread_sample >= 10:
                 self.last_thread_sample = time.monotonic()
                 before = time.monotonic()
@@ -797,6 +798,9 @@ class Supervisor:
                 self.update('error', error='Camera settings restore failed: ' + str(error))
                 print('Camera settings restore failed: ' + str(error), flush=True)
         (SESSION / 'display.sock').unlink(missing_ok=True)
+        if getattr(self, 'takp_focus_process', None) is not None or getattr(self, 'takp_window_inspector_process', None) is not None:
+            import takp_window_diagnostics
+            self.status.update(takp_window_diagnostics.process_status(self))
         self.update(display_ready=False)
 
 
