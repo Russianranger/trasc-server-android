@@ -8,7 +8,8 @@
 #include <dinput.h>
 #include <cstdio>
 #include <cstring>
-#include "../native/takp_camera_recenter.h"
+#include "../native/takp_camera_recenter_v4.h"
+#include "../native/takp_camera_focus_event.h"
 #define TRASC_TAKP_TRACE_IMPLEMENTATION
 #include "../native/takp_camera_trace.h"
 #include "../native/takp_dinput_observation.h"
@@ -22,6 +23,8 @@ static volatile LONG verified_recovery=1;
 static LONG totals[4],buttons;
 static CRITICAL_SECTION clip_lock;
 static trasc_takp_camera::LookClip clip;
+static trasc_takp_focus_event::Win32Reader focus_events;
+static CRITICAL_SECTION focus_event_lock;
 static bool get_clip(trasc_takp_camera::Rect& value) {
     RECT rect;if(!GetClipCursor(&rect))return false;
     value={rect.left,rect.top,rect.right,rect.bottom};return true;
@@ -31,12 +34,22 @@ static bool set_clip(const trasc_takp_camera::Rect& value) {
 }
 static void release_clip(){EnterCriticalSection(&clip_lock);clip.release(get_clip,set_clip);LeaveCriticalSection(&clip_lock);}
 static unsigned long clip_generation(){EnterCriticalSection(&clip_lock);auto generation=clip.generation();LeaveCriticalSection(&clip_lock);return generation;}
+static void refresh_focus_clip(unsigned long generation){
+    const bool active=mode==2&&(GetAsyncKeyState(swap_buttons?VK_LBUTTON:VK_RBUTTON)&0x8000)&&
+        GetForegroundWindow()==game_window&&!IsIconic(game_window)&&IsWindowVisible(game_window);
+    if(!active)return;
+    EnterCriticalSection(&clip_lock);
+    clip.force_refresh_since(generation,get_clip,set_clip);
+    LeaveCriticalSection(&clip_lock);
+}
 static void hold_clip(unsigned long generation){
     // Match production: Wine input queries may dispatch messages. Query the
     // observed pointer outside the capture lock, then validate its generation.
     POINT point={};const bool known=GetCursorPos(&point)!=0;
+    const bool active=(GetAsyncKeyState(swap_buttons?VK_LBUTTON:VK_RBUTTON)&0x8000)&&
+        GetForegroundWindow()==game_window&&!IsIconic(game_window)&&IsWindowVisible(game_window);
     EnterCriticalSection(&clip_lock);
-    if(GetForegroundWindow()==game_window&&!IsIconic(game_window)&&IsWindowVisible(game_window)) {
+    if(active) {
         if(verified_recovery)
             clip.hold_verified_since(generation,640,360,{0,0,1280,720},known,point.x,point.y,GetTickCount(),get_clip,set_clip);
         else clip.hold_since(generation,640,360,{0,0,1280,720},get_clip,set_clip);
@@ -50,8 +63,20 @@ static LRESULT CALLBACK window_proc(HWND window,UINT message,WPARAM wparam,LPARA
 }
 static DWORD WINAPI input_frame(void*) {
     while(mode>=0) {
-        auto generation=clip_generation();
+        const auto focus_generation=clip_generation();
+        trasc_takp_focus_event::Sequence focus_sequence=0;
+        EnterCriticalSection(&focus_event_lock);
+        const bool focus_notification=focus_events.poll(GetTickCount(),focus_sequence);
+        LeaveCriticalSection(&focus_event_lock);
+        // The product handles the event before the ordinary input consumer:
+        // a notification cannot refresh a capture acquired later this frame.
+        if(focus_notification)refresh_focus_clip(focus_generation);
+        const auto generation=clip_generation();
         if(mode==2 && (GetAsyncKeyState(swap_buttons?VK_LBUTTON:VK_RBUTTON)&0x8000))hold_clip(generation);else release_clip();
+        if(focus_notification) {
+            EnterCriticalSection(&clip_lock);const auto refreshes=clip.focus_refresh_count();LeaveCriticalSection(&clip_lock);
+            trasc_takp_trace::write("focus_event sequence=%llu refreshes=%lu",focus_sequence,refreshes);
+        }
         if(!polling){InterlockedExchange(&manual_ack,1);Sleep(5);continue;}
         InterlockedExchange(&manual_ack,0);
         DIMOUSESTATE2 state={};mouse->Acquire();
@@ -89,6 +114,7 @@ int WINAPI WinMain(HINSTANCE instance,HINSTANCE,LPSTR arguments,int) {
         return 0;
     }
     InitializeCriticalSection(&clip_lock);
+    InitializeCriticalSection(&focus_event_lock);
     WNDCLASSA cls={};cls.lpfnWndProc=window_proc;cls.hInstance=instance;cls.lpszClassName="TrascCursorProbe";
     if(!RegisterClassA(&cls))return 10;
     HWND window=CreateWindowA(cls.lpszClassName,"Client1",WS_POPUP|WS_VISIBLE,
@@ -184,6 +210,11 @@ int WINAPI WinMain(HINSTANCE instance,HINSTANCE,LPSTR arguments,int) {
             const unsigned long repairs=clip.repair_count();const bool ok=clip.repair_ok();const bool held=clip.held();
             LeaveCriticalSection(&clip_lock);
             char reply[192];std::sprintf(reply,"%s %lu %d %d",command,repairs,ok,held);result(reply);continue;
+        }
+        else if(!std::strncmp(command,"focusmetrics",12)) {
+            EnterCriticalSection(&clip_lock);const auto refreshes=clip.focus_refresh_count();LeaveCriticalSection(&clip_lock);
+            EnterCriticalSection(&focus_event_lock);const auto sequence=focus_events.sequence();LeaveCriticalSection(&focus_event_lock);
+            char reply[192];std::sprintf(reply,"%s %llu %lu",command,sequence,refreshes);result(reply);continue;
         }
         else if(!std::strncmp(command,"free",4)) {mode=0;release_clip();}
         else if(!std::strncmp(command,"swap",4))InterlockedExchange(&swap_buttons,1);

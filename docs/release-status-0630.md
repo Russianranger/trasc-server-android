@@ -1,9 +1,16 @@
 # 0.6.30 exact Client1 focus recovery — qualification pending
 
 Candidate 0.6.30/code79 adds the exact physical game-window title `Client1`
-to scoped TAKP native focus recovery. The 0.6.29 Thor logs show this title
+to scoped TAKP native focus recovery and V4 notification-driven refresh of
+the same owned capture rectangle after a verified repair. The 0.6.29 Thor logs show this title
 was the sole failing identity predicate: type/format/length and exact process
 class, visibility, geometry and pointer path are measured and valid.
+
+The stricter centered-focus runtime test exposed Wine cached cursor reads
+masking native capture loss during continuous input. V4 reasserts capture once
+after a bounded private launch-scoped success event; no warp/drain/axis
+conversion or runtime replacement. Known official V3 helpers upgrade with
+exact backups preserved; changed helpers/backups refuse replacement.
 
 Native runtime qualification, APK/signing/profile gates, publication and
 independent actual public download verification are pending. Do not install

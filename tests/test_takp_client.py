@@ -412,6 +412,77 @@ class TakpClientTests(unittest.TestCase):
             self.assertFalse((backup/'eqw.original.dll').exists())
         self.assertEqual({p.name:p.read_bytes() for p in self.client.iterdir() if p.is_file()},client_before)
 
+    def test_camera_focus_upgrade_from_v3_preserves_all_previous_helpers_and_is_idempotent(self):
+        self.import_zip(self.content(self.root/'source'))
+        old_original=pe32()+b'original pre0622';old_v1=pe32()+b'official0622'
+        old_v2=pe32()+b'official0623';old_diagnostics=pe32()+b'official0626 V3 capture'
+        old_capture=pe32()+b'official0624 saved capture'
+        target=self.client/'eqw.dll';target.write_bytes(old_diagnostics)
+        replacement=pe32()+b'qualified capture recovery';folder=self.root/'capture-recovery';folder.mkdir()
+        (folder/'eqw.dll').write_bytes(replacement)
+        patches=dict(takp_client.PATCHES);patches['eqw.dll']=hashlib.sha256(replacement).hexdigest()
+        prefix=self.engine.work/'client/prefix';backup=prefix/'trasc-takp-camera-originals';backup.mkdir(parents=True)
+        originals={'eqw.original.dll':old_original,'eqw.0622.dll':old_v1,'eqw.0623.dll':old_v2,'eqw.0624.dll':old_capture}
+        for name,data in originals.items():(backup/name).write_bytes(data)
+        stamps={name:(backup/name).stat().st_mtime_ns for name in originals}
+        (prefix/'user.reg').write_bytes(b'preserved Wine settings')
+        client_before={p.name:p.read_bytes() for p in self.client.iterdir() if p.is_file()}
+        with patch.object(takp_client,'PATCHES',patches), \
+             patch.object(takp_client,'LEGACY_EQW_SHA',hashlib.sha256(old_original).hexdigest()), \
+             patch.object(takp_client,'PREVIOUS_EQW_SHA',hashlib.sha256(old_v1).hexdigest()), \
+             patch.object(takp_client,'OFFICIAL_0623_EQW_SHA',hashlib.sha256(old_v2).hexdigest()), \
+             patch.object(takp_client,'OFFICIAL_0624_EQW_SHA',hashlib.sha256(old_capture).hexdigest()), \
+             patch.object(takp_client,'OFFICIAL_0626_EQW_SHA',hashlib.sha256(old_diagnostics).hexdigest()), \
+             patch.object(takp_client,'verify_bundle',return_value=folder):
+            result=takp_client.upgrade_camera_helper(self.client,prefix)
+            self.assertTrue(result['changed']);self.assertEqual(result['state'],'upgraded')
+            self.assertEqual(result['previous_sha256'],hashlib.sha256(old_diagnostics).hexdigest())
+            self.assertEqual(target.read_bytes(),replacement)
+            for name,data in originals.items():
+                self.assertEqual((backup/name).read_bytes(),data)
+                self.assertEqual((backup/name).stat().st_mtime_ns,stamps[name])
+            previous=backup/'eqw.0626.dll';self.assertEqual(previous.read_bytes(),old_diagnostics)
+            backup_stamps={p.name:p.stat().st_mtime_ns for p in backup.iterdir()}
+            with patch.object(client_display,'atomic_bytes') as write:
+                repeated=takp_client.upgrade_camera_helper(self.client,prefix)
+                self.assertFalse(repeated['changed']);self.assertEqual(repeated['state'],'current')
+                write.assert_not_called()
+            self.assertEqual({p.name:p.read_bytes() for p in backup.iterdir()},
+                             {**originals,'eqw.0626.dll':old_diagnostics})
+            self.assertEqual({p.name:p.stat().st_mtime_ns for p in backup.iterdir()},backup_stamps)
+        self.assertEqual({p.name:p.read_bytes() for p in self.client.iterdir() if p.is_file()},
+                         {**client_before,'eqw.dll':replacement})
+        self.assertEqual((prefix/'user.reg').read_bytes(),b'preserved Wine settings')
+
+    def test_camera_focus_upgrade_refuses_corrupt_or_linked_v3_backup_before_any_dll_write(self):
+        self.import_zip(self.content(self.root/'source'))
+        old_diagnostics=pe32()+b'official0626 V3 capture'
+        target=self.client/'eqw.dll';target.write_bytes(old_diagnostics)
+        replacement=pe32()+b'qualified capture recovery';folder=self.root/'capture-recovery';folder.mkdir()
+        (folder/'eqw.dll').write_bytes(replacement)
+        patches=dict(takp_client.PATCHES);patches['eqw.dll']=hashlib.sha256(replacement).hexdigest()
+        prefix=self.engine.work/'client/prefix';backup=prefix/'trasc-takp-camera-originals';backup.mkdir(parents=True)
+        previous=backup/'eqw.0626.dll';previous.write_bytes(b'corrupt saved helper')
+        client_before={p.name:p.read_bytes() for p in self.client.iterdir() if p.is_file()}
+        outside=self.root/'outside.dll';outside.write_bytes(pe32()+b'outside client file')
+        outside_before=outside.read_bytes()
+        with patch.object(takp_client,'PATCHES',patches), \
+             patch.object(takp_client,'OFFICIAL_0626_EQW_SHA',hashlib.sha256(old_diagnostics).hexdigest()), \
+             patch.object(takp_client,'verify_bundle',return_value=folder), \
+             patch.object(client_display,'atomic_bytes') as write:
+            with self.assertRaisesRegex(ValueError,'V3 backup changed'):
+                takp_client.upgrade_camera_helper(self.client,prefix)
+            write.assert_not_called()
+            self.assertEqual(previous.read_bytes(),b'corrupt saved helper')
+            self.assertFalse((backup/'eqw.original.dll').exists())
+            previous.unlink();previous.symlink_to(outside)
+            with self.assertRaisesRegex(ValueError,'ordinary file'):
+                takp_client.upgrade_camera_helper(self.client,prefix)
+            write.assert_not_called()
+            self.assertTrue(previous.is_symlink());self.assertEqual(outside.read_bytes(),outside_before)
+            self.assertFalse((backup/'eqw.original.dll').exists())
+        self.assertEqual({p.name:p.read_bytes() for p in self.client.iterdir() if p.is_file()},client_before)
+
     def test_accurate_default_is_takp_only_and_retains_explicit_cpu_choices(self):
         request = {'profile':'takp','mode':'client','resolution':'800x600'}
         supervisor = client_runner.Supervisor(request)

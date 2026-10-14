@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Apply the Wine-only raw mouse-look repair to exact upstream EQW 1.0.2."""
+"""Apply the session-scoped Wine focus/capture repair to exact upstream EQW 1.0.2."""
 import argparse
 import hashlib
 from pathlib import Path
@@ -18,6 +18,9 @@ CLIP_SUPPORT = '''// Wine 10's clipped path supplies true XI2 relative input. Ke
 // state synchronized because EQW's game-input and window threads differ.
 static SRWLOCK camera_clip_lock = SRWLOCK_INIT;
 static trasc_takp_camera::LookClip camera_clip;
+static SRWLOCK camera_focus_event_lock = SRWLOCK_INIT;
+static trasc_takp_focus_event::Win32Reader focus_event_reader;
+static volatile LONG camera_input_frame = 0;
 bool IsWine() {
   static const bool wine = ::GetProcAddress(::GetModuleHandleW(L"ntdll.dll"), "wine_get_version") != nullptr;
   return wine;
@@ -31,6 +34,38 @@ bool GetCameraClip(trasc_takp_camera::Rect& value) {
 bool SetCameraClip(const trasc_takp_camera::Rect& value) {
   RECT rect = {value.left, value.top, value.right, value.bottom};
   return ::ClipCursor(&rect) != 0;
+}
+// The native helper publishes only a verified successful focus repair. Read a
+// tiny regular session file; malformed, missing and foreign records are inert.
+// Consume valid events even with Look off, so an old event cannot acquire a new
+// clip after a lifecycle release. A failed refresh never falls back to a warp.
+void PollCameraFocusEvent(unsigned long frame) {
+  if (!IsWine()) return;
+  ::AcquireSRWLockShared(&camera_clip_lock);
+  const unsigned long generation = camera_clip.generation();
+  ::ReleaseSRWLockShared(&camera_clip_lock);
+  trasc_takp_focus_event::Sequence sequence = 0;
+  // File I/O and notification parsing use a separate lock; Wine input/window
+  // queries must never execute while the lifecycle clip lock is held.
+  ::AcquireSRWLockExclusive(&camera_focus_event_lock);
+  const bool fresh = focus_event_reader.poll(::GetTickCount(), sequence);
+  ::ReleaseSRWLockExclusive(&camera_focus_event_lock);
+  if (!fresh) return;
+  // Query outside the clip lock because Wine can dispatch lifecycle messages.
+  const bool physical = (::GetAsyncKeyState(swap_mouse_buttons_ ? VK_LBUTTON : VK_RBUTTON) & 0x8000) != 0;
+  const bool foreground = ::GetForegroundWindow() == hwnd_;
+  const bool iconic = ::IsIconic(hwnd_) != 0;
+  const bool visible = ::IsWindowVisible(hwnd_) != 0;
+  const bool look = *g_mouse_rmb_down_mouse_look != 0;
+  ::AcquireSRWLockExclusive(&camera_clip_lock);
+  const bool owned = camera_clip.held();
+  const bool active = look && physical && foreground && !iconic && visible;
+  const bool refreshed = active && camera_clip.force_refresh_since(generation, GetCameraClip, SetCameraClip);
+  const unsigned long current_generation = camera_clip.generation();
+  const unsigned long refresh_count = camera_clip.focus_refresh_count();
+  ::ReleaseSRWLockExclusive(&camera_clip_lock);
+  trasc_takp_trace::write("focus_clip_refresh seq=%llu ok=%d frame=%lu generation=%lu/%lu count=%lu held=%d look=%d physical=%d foreground=%d iconic=%d visible=%d",
+    sequence, refreshed, frame, generation, current_generation, refresh_count, owned, look, physical, foreground, iconic, visible);
 }
 void ReleaseCameraClip() {
   if (!IsWine()) return;
@@ -163,12 +198,13 @@ def prepare(source, root):
         texts[name] = original.decode('utf-8')
     changes = {
         'game_input.cpp': [
-            ('#include "game_input.h"', '#include "game_input.h"\n#include "trasc_camera_recenter.h"\n#define TRASC_TAKP_TRACE_IMPLEMENTATION\n#include "takp_camera_trace.h"'),
+            ('#include "game_input.h"', '#include "game_input.h"\n#include "trasc_camera_recenter.h"\n#include "takp_camera_focus_event.h"\n#define TRASC_TAKP_TRACE_IMPLEMENTATION\n#include "takp_camera_trace.h"'),
             ('// Synchronizes the win32 cursor to the internal cursor position.', CLIP_SUPPORT + '// Synchronizes the win32 cursor to the internal cursor position.'),
             ('void SetWin32CursorToClientPosition(POINT pt) {', 'void SetWin32CursorToClientPosition(POINT pt, bool camera_center = false) {'),
             ('  ::SetCursorPos(pt.x, pt.y);', '  if (!camera_center || !HoldCameraClip(pt.x, pt.y)) ::SetCursorPos(pt.x, pt.y);'),
             ('  SetWin32CursorToClientPosition(center);', '  SetWin32CursorToClientPosition(center, true);'),
             ('  if (!internal_mode) {', '  if (!internal_mode) {\n    ReleaseCameraClip();'),
+            ('  static bool prev_has_focus = false;', '  static bool prev_has_focus = false;\n\n  PollCameraFocusEvent(static_cast<unsigned long>(::InterlockedIncrement(&camera_input_frame)));'),
             ('    mouse_disabled = true;', '    trasc_takp_trace::frame(false);\n    mouse_disabled = true;'),
             ('  unsigned int result = hook_get_mouse_data_rel_.original(GetMouseDataRelHook)();', CONSUMER_BEFORE),
             ('  return result;\n}\n\nvoid __fastcall RightMouseUpHook', CONSUMER_AFTER),
@@ -184,7 +220,7 @@ def prepare(source, root):
 
 void GameInput::HandleLossOfFocus() {
   GameInputInt::ReleaseCameraClip();'''),
-            ('  hwnd_ = hwnd;', '  hwnd_ = hwnd;\n  trasc_takp_trace::write("initialize helper=%s swap_buttons=%d", trasc_takp_camera::marker, swap_mouse_buttons);'),
+            ('  hwnd_ = hwnd;', '  hwnd_ = hwnd;\n  trasc_takp_trace::write("initialize helper=%s swap_buttons=%d focus_event=%s", trasc_takp_camera::marker, swap_mouse_buttons, trasc_takp_focus_event::prefix);'),
         ],
         'game_input.h': [('void HandleLossOfFocus();', 'void ReleaseCameraCursor(UINT message);  // Wine-only look clipping; release even if game input is paused.\nvoid HandleLossOfFocus();')],
         'eq_game.cpp': [
@@ -223,10 +259,11 @@ void GameInput::HandleLossOfFocus() {
             texts[name] = texts[name].replace(old, new)
     for name, value in texts.items():
         (source/'eqw_takp'/name).write_bytes(value.encode('utf-8'))
-    (source/'eqw_takp/trasc_camera_recenter.h').write_bytes((root/'native/takp_camera_recenter.h').read_bytes())
+    (source/'eqw_takp/trasc_camera_recenter.h').write_bytes((root/'native/takp_camera_recenter_v4.h').read_bytes())
+    (source/'eqw_takp/takp_camera_focus_event.h').write_bytes((root/'native/takp_camera_focus_event.h').read_bytes())
     (source/'eqw_takp/takp_camera_trace.h').write_bytes((root/'native/takp_camera_trace.h').read_bytes())
     (source/'eqw_takp/takp_dinput_observation.h').write_bytes((root/'native/takp_dinput_observation.h').read_bytes())
-    print('PASS: exact EQW source patched; escaped Wine capture retries the same clip at a bounded rate without cursor warps')
+    print('PASS: exact EQW source patched; session-scoped successful native focus events refresh only the same owned look clip; no new cursor warps or input conversion')
 
 
 if __name__ == '__main__':

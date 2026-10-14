@@ -23,11 +23,25 @@ MARKER = 'TRASC_TAKP_X_FOCUS_RECOVERY_V2'
 TITLE = b'Client1'
 LEGACY_TITLE = b'EqW-TAKP'
 CLASS = b'eqgame.exe\0eqgame.exe\0'
+LAUNCH_TOKEN = '0123456789abcdef0123456789abcdef'
 
 
 def run(args):
     out = args.output.resolve()
     out.mkdir(parents=True, exist_ok=True)
+    source_root=Path(__file__).resolve().parents[1]
+    eqw_dll=(args.eqw_build/'eqw.dll').read_bytes()
+    eqw_build=json.loads((args.eqw_build/'eqw-camera-build.json').read_text())
+    assert eqw_build['marker']=='TRASC_TAKP_WINE_RAW_LOOK_V4' and eqw_build['architecture']=='x86'
+    assert eqw_build['sha256']==hashlib.sha256(eqw_dll).hexdigest() and eqw_build['bytes']==len(eqw_dll)
+    assert eqw_build['build_commit']==os.environ['GITHUB_SHA'] and eqw_build['build_run']==int(os.environ['GITHUB_RUN_ID'])
+    assert all(hashlib.sha256((source_root/name).read_bytes()).hexdigest()==digest for name,digest in eqw_build['patch_files'].items())
+    shared_headers={}
+    for native_name,build_name in (('takp_camera_recenter_v4.h','trasc_camera_recenter.h'),('takp_camera_focus_event.h','takp_camera_focus_event.h')):
+        shared=(source_root/'native'/native_name).read_bytes()
+        assert shared==(args.eqw_build/'source/eqw_takp'/build_name).read_bytes()
+        shared_headers[native_name]=hashlib.sha256(shared).hexdigest()
+    (out/'shipping-eqw-camera-build.json').write_text(json.dumps(eqw_build,indent=2)+'\n')
     prefix = out / 'prefix'
     prefix.mkdir(exist_ok=True)
     authority = out / 'Xauthority'
@@ -44,6 +58,8 @@ def run(args):
         BOX64_PATH='/opt/wine/bin', BOX64_RCFILE=str(out / 'box64.rc'),
         BOX64_LD_LIBRARY_PATH='/usr/lib/x86_64-linux-gnu:/lib/x86_64-linux-gnu:/opt/wine/lib/wine/x86_64-unix',
         TRASC_FIXTURE_CONFIGURATION=str(out / 'prefix-configuration.json'))
+    env.update(TRASC_CLIENT_LAUNCH=LAUNCH_TOKEN,TRASC_TAKP_FOCUS_EVENT=r'D:\focus.event',
+        TRASC_TAKP_FOCUS_EVENT_NATIVE=str(out/'focus.event'))
     env.pop('TRASC_FIXTURE_GLOBAL_GRAB', None)
     env.pop('TRASC_FIXTURE_APP_GRAB', None)
     os.environ['DISPLAY'], os.environ['XAUTHORITY'] = ':33', str(authority)
@@ -127,7 +143,7 @@ def run(args):
             nonlocal sequence
             sequence += 1; value = f'{mode} {sequence}'
             temporary = out / 'command.new'; temporary.write_text(value); temporary.replace(out / 'command.txt')
-            return wait_file(out / 'reply.txt',value,child,prefix=mode in ('sample','clipmetrics'))
+            return wait_file(out / 'reply.txt',value,child,prefix=mode in ('sample','clipmetrics','focusmetrics'))
         def sample():
             v = list(map(int,command('sample').split()[2:])); assert len(v)==14,v
             return {'state':v[:2],'buffered':v[2:4],'rmb':bool(v[4]),'cursor':v[5:7],
@@ -140,6 +156,16 @@ def run(args):
         def repair_rows():
             return [json.loads(line) for line in (out / 'focus.log').read_text().splitlines()
                     if line.startswith('{') and json.loads(line).get('record')=='focus_repair']
+        def focus_metrics():
+            values=list(map(int,command('focusmetrics').split()[2:]));assert len(values)==2,values
+            return {'sequence':values[0],'refreshes':values[1]}
+        def wait_refresh(expected):
+            until=time.monotonic()+3
+            while time.monotonic()<until:
+                value=focus_metrics()
+                if value=={'sequence':expected,'refreshes':expected}:return value
+                time.sleep(.02)
+            raise RuntimeError('Native focus event did not refresh exact owned clip: '+str(value))
         def release_button():
             transport.button(False)
             until=time.monotonic()+1
@@ -195,6 +221,7 @@ def run(args):
         fixed=record('scoped-focus-recovered')
         assert fixed['x_focus']==game_window and fixed['x_pointer']==(640,360),fixed
         assert any(row['success'] and row['before']==1 for row in repair_rows()),repair_rows()
+        initial_notification=wait_refresh(1)
         signed=[]
         for dx,dy in ((1,0),(-1,0),(2,0),(-2,0),(0,1),(0,-1),(0,2),(0,-2),(2,-1),(-2,1)):
             before=sample()
@@ -224,12 +251,37 @@ def run(args):
         assert menu_normalized['pointer']==[640,360] and not menu_normalized['rmb'],menu_normalized
         assert menu_normalized['clip']==original_clip,menu_normalized
         assert menu_normalized['polled']==[0,0] and menu_normalized['buffered']==[0,0],menu_normalized
+        event_reader_guards=[]
+        def reject_event(label,payload):
+            path=out/'focus.event';path.unlink(missing_ok=True)
+            if payload is not None:path.write_bytes(payload)
+            time.sleep(.06);value=focus_metrics()
+            assert value=={'sequence':1,'refreshes':1},(label,value)
+            event_reader_guards.append({'case':label,'sequence':value['sequence'],'refreshes_added':0})
+        for label,payload in (
+            ('missing-file',None),('empty-file',b''),
+            ('truncated-record',('TRASCFOCUS1 '+LAUNCH_TOKEN+' 2').encode()),
+            ('foreign-session',b'TRASCFOCUS1 ffffffffffffffffffffffffffffffff 2\n'),
+            ('wrong-protocol',('TRASCFOCUS2 '+LAUNCH_TOKEN+' 2\n').encode()),
+            ('stale-zero',('TRASCFOCUS1 '+LAUNCH_TOKEN+' 0\n').encode()),
+            ('duplicate-sequence',('TRASCFOCUS1 '+LAUNCH_TOKEN+' 1\n').encode()),
+            ('oversized-record',b'x'*97)):
+            reject_event(label,payload)
+        (out/'focus.event').write_bytes(('TRASCFOCUS1 '+LAUNCH_TOKEN+' 2\n').encode())
+        event_link=out/'focus-event-link';event_link.hardlink_to(out/'focus.event')
+        time.sleep(.06);assert focus_metrics()=={'sequence':1,'refreshes':1}
+        event_reader_guards.append({'case':'multiple-hard-links','sequence':1,'refreshes_added':0})
+        event_link.unlink();(out/'focus.event').write_bytes(('TRASCFOCUS1 '+LAUNCH_TOKEN+' 1\n').encode())
+        # Each observer remains unchanged and bounded. End the first input
+        # phase before the many focus/property guards consume its byte budget.
+        observer.terminate();assert observer.wait(timeout=3)==0
         guards=[]
         def guard(name,expected_focus):
             count=len(repair_rows()); time.sleep(.35)
             value=record(name)
             assert value['x_focus']==expected_focus and len(repair_rows())==count,(value,repair_rows())
-            guards.append({'case':name,'focus':expected_focus,'repairs_added':0})
+            assert (out/'focus.event').read_bytes()==('TRASCFOCUS1 '+LAUNCH_TOKEN+' 1\n').encode(),name
+            guards.append({'case':name,'focus':expected_focus,'repairs_added':0,'event_sequence_unchanged':1})
         def property(atom,value,kind=string,fmt=8,window=game_window):
             if value is None:x.XDeleteProperty(display,window,atom)
             else:
@@ -290,6 +342,8 @@ def run(args):
         held(); command('blur'); time.sleep(.15); set_focus(1); guard('minimized-game-does-not-focus',1)
         assert sample()['clip']==original_clip
         release_button(); command('resume'); time.sleep(.15)
+        logs['observer-resume']=(out/'observer-resume.log').open('wb')
+        observer=subprocess.Popen([str(args.observer),'300'],env=env,stdout=logs['observer-resume'],stderr=subprocess.STDOUT)
         # Retain exact legacy EqW support in the same real published runtime.
         held(); property(name,LEGACY_TITLE); set_focus(1)
         until=time.monotonic()+3
@@ -298,6 +352,7 @@ def run(args):
             time.sleep(.02)
         legacy=record('legacy-eqw-focus-recovered')
         assert legacy['x_focus']==game_window and legacy['x_pointer']==(640,360),legacy
+        legacy_notification=wait_refresh(2)
         legacy_before=sample();time.sleep(.3);legacy_after=sample()
         legacy_quiet={'polled':difference(legacy_before,legacy_after,'state'),
             'buffered':difference(legacy_before,legacy_after,'buffered'),'quiet_ms':300,
@@ -317,14 +372,30 @@ def run(args):
         restored=record('none-focus-recovered-after-resume')
         assert restored['x_focus']==game_window and restored['x_pointer']==(640,360),restored
         assert any(row['success'] and row['before']==0 for row in repair_rows()),repair_rows()
+        resume_notification=wait_refresh(3)
+        resume_signed=[]
+        for dx,dy in ((1,0),(-1,0),(2,0),(-2,0),(0,1),(0,-1),(0,2),(0,-2),(2,-1),(-2,1)):
+            before=sample();transport.paced(((dx,dy) for _ in range(12)),.016)
+            time.sleep(.12);after=sample();expected=[12*dx,12*dy]
+            row={'injected':expected,'polled':difference(before,after,'state'),'buffered':difference(before,after,'buffered')}
+            assert row['polled']==expected and row['buffered']==expected,row
+            assert point()[0]==(640,360),point()
+            resume_signed.append(row)
         release_button(); time.sleep(.15); assert sample()['clip']==original_clip
         companion.terminate(); assert companion.wait(timeout=3)==0
+        observer.terminate(); assert observer.wait(timeout=3)==0
         command('quit'); assert child.wait(timeout=15)==0
         transport.close()
         counts=transport.summary()
         assert counts['native_decoded']=={key:counts[key] for key in ('relative','absolute','buttons')},counts
-        observer.terminate(); assert observer.wait(timeout=3)==0
         for stream in logs.values(): stream.flush()
+        observer_phases=[]
+        for name in ('observer.log','observer-resume.log'):
+            path=out/name;rows=[json.loads(line) for line in path.read_text().splitlines()]
+            assert rows[-1]['record']=='end' and rows[-1]['reason']=='signal' and rows[-1]['dropped']==0,rows[-1]
+            assert path.stat().st_size<=131072
+            observer_phases.append({'file':name,'sha256':hashlib.sha256(path.read_bytes()).hexdigest(),
+                'bytes':path.stat().st_size,'completion':rows[-1]})
         focus_rows=[json.loads(line) for line in (out / 'focus.log').read_text().splitlines()]
         assert focus_rows[0]['marker']==MARKER and focus_rows[-1]['record']=='end',focus_rows
         assert focus_rows[0]['window_titles']==['EqW-TAKP','Client1'],focus_rows[0]
@@ -332,20 +403,26 @@ def run(args):
         repairs=repair_rows()
         assert len(repairs)==3 and all(row['success'] and row['candidate']==game_window and
             row['after']==game_window and row['identity']=='EqW-TAKP|Client1/eqgame.exe' and
-            row['path_depth']==3 and row['rmb'] and row['xerrors']==0 for row in repairs),repairs
+            row['path_depth']==3 and row['rmb'] and row['xerrors']==0 and row['event_written'] for row in repairs),repairs
         assert [row['before'] for row in repairs]==[1,1,0],repairs
+        assert [row['event_sequence'] for row in repairs]==[1,2,3],repairs
+        event_bytes=(out/'focus.event').read_bytes()
+        assert event_bytes==('TRASCFOCUS1 '+LAUNCH_TOKEN+' 3\n').encode() and len(event_bytes)<=96,event_bytes
         assert (out / 'focus.log').stat().st_size<=131072
-        source_root=Path(__file__).resolve().parents[1]
         sources=('tests/integration_takp_focus.py','tests/takp_focus_probe_0630.cpp','tests/takp_focus_probe.cpp','tests/takp_cursor_probe.cpp',
             'tests/takp_box64_wine.py','tests/takp_input_transport.py','scripts/prepare-takp-focus-runtime.py',
             'scripts/prepare-takp-camera-runtime.py','native/takp_camera_recenter.h','native/takp_camera_trace.h',
-            'native/takp_dinput_observation.h','native/presentation/input.h','native/presentation/takp-xinput-focus.c',
-            'native/presentation/takp-xinput-observe.c','native/presentation/observe-log.h','tests/takp_focus_tools.Dockerfile')
+            'native/takp_dinput_observation.h','native/takp_camera_recenter_v4.h','native/takp_camera_focus_event.h',
+            'native/presentation/takp-focus-event.h','native/presentation/input.h','native/presentation/takp-xinput-focus.c',
+            'native/presentation/takp-xinput-observe.c','native/presentation/observe-log.h','tests/takp_focus_tools.Dockerfile',
+            'tests/takp_camera_focus_event.cpp','scripts/prepare-takp-eqw.py','scripts/record-takp-eqw.py')
         receipt={'format':1,'github_commit':os.environ.get('GITHUB_SHA'),'github_run_id':os.environ.get('GITHUB_RUN_ID'),
             'published_inputs':json.loads((args.assets / 'published-inputs.json').read_text()),
             'fixture_sha256':{name:hashlib.sha256((source_root / name).read_bytes()).hexdigest() for name in sources},
             'focus_helper_sha256':hashlib.sha256(args.focus_helper.read_bytes()).hexdigest(),
             'observer_sha256':hashlib.sha256(args.observer.read_bytes()).hexdigest(),
+            'shipping_eqw_build':eqw_build,'shipping_eqw_shared_headers_sha256':shared_headers,
+            'observer_phases':observer_phases,
             'pointer_root_reproduction':{'native_foreground_preserved':True,'cached_clip_preserved':True,
                 'pointer_escaped':escaped['x_pointer'],'negative_reversal':broken},
             'recovery':{'candidate':game_window,'signed_segments':signed,'idle_drift':[0,0],
@@ -354,9 +431,14 @@ def run(args):
                 'pointer_path':measured_path,'propertyless_render_child':render,
                 'natural_title_property':title_property,'natural_class_property':class_property,
                 'menu_normalization':menu_normalized,'legacy_quiet_baseline':legacy_quiet,
-                'legacy_title':'EqW-TAKP','legacy_signed_segments':legacy_signed},
+                'legacy_title':'EqW-TAKP','legacy_signed_segments':legacy_signed,
+                'centered_focus_loss_before_motion':True,'centered_resume_signed_segments':resume_signed,
+                'focus_notifications':[initial_notification,legacy_notification,resume_notification],
+                'focus_event_tail':event_bytes.decode(),'focus_event_bytes':len(event_bytes),
+                'focus_event_mtime_ns':(out/'focus.event').stat().st_mtime_ns,
+                'event_reader_guards':event_reader_guards},
             'negative_guards':guards,'focus_repairs':repairs,'focus_completion':focus_rows[-1],'transport':counts,
-            'scope':'Published ARM64 runtime/open PE32 consumer with exact game identity; physical Thor acceptance pending'}
+            'scope':'Published ARM64 runtime/open PE32 consumer shares exact V4 event-reader and ownership headers with certified MSVC shipping DLL; fixed-address game DLL itself cannot run in the open fixture; physical Thor acceptance pending'}
         (out / 'focus-verification.json').write_text(json.dumps(receipt,indent=2)+'\n')
         print(json.dumps(receipt,indent=2))
     finally:
@@ -373,10 +455,10 @@ def run(args):
 
 if __name__=='__main__':
     parser=argparse.ArgumentParser(description=__doc__)
-    for name in ('wine','probe','observer','focus-helper','assets','output'):
+    for name in ('wine','probe','observer','focus-helper','assets','eqw-build','output'):
         parser.add_argument('--'+name,type=Path,required=True)
     args=parser.parse_args()
-    for name in ('wine','probe','observer','focus_helper','assets','output'):
+    for name in ('wine','probe','observer','focus_helper','assets','eqw_build','output'):
         setattr(args,name,getattr(args,name).resolve())
     if platform.machine() not in ('aarch64','arm64'): raise RuntimeError('Native ARM64 runner required')
     run(args)

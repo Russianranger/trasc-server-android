@@ -28,8 +28,31 @@ mismatches and duplicate matching ancestors remain refused. It never searches
 globally for a focus target, warps, grabs, injects input or writes properties.
 Disabled or unknown Wine capture settings still prevent companion startup.
 
-The existing V3 cursor DLL, runtime, input transport, observer, read-only window
-inspector, all21 native launcher components and camera/input settings remain.
+The exact ARM Wine qualification also exposed a centered recovery gap:
+FocusOut ungrabs the native pointer, but FocusIn alone need not reapply it.
+Twelve fresh +1 packets then become +1…+12 (total78). Wine10 returns its shared
+cached cursor during continuous motion and queries the graphics driver's
+physical pointer only after over100ms idle. The logical cursor can therefore
+remain at center while physical capture is lost.
+
+V4 adds a bounded per-launch focus-success notification. After a verified
+native repair, the companion atomically replaces a tiny private session record
+containing the32-hex launch identity and increasing sequence. The EQW input
+hook reads at most96 bytes, at most once per20ms, from an ordinary one-link
+file. Missing, malformed, old, duplicate, foreign-launch and linked records
+are ignored. A new valid sequence requests one submission of the SAME owned
+clip, only with physical Look held, the game foreground/visible, matching
+clip generation and the current rectangle still owned. It adds no warp,
+input drain, axis conversion, registry change or periodic forced reclip.
+This covers the cached-position gap independently of an idle pause.
+
+The qualified official V3 DLL is upgraded in place at normal TAKP launch.
+Its exact bytes are saved as `client/prefix/trasc-takp-camera-originals/eqw.0626.dll`;
+the first original and earlier backups remain. Unknown helpers or changed/
+linked backups are refused before replacement. No client reimport or Prepare
+is required for a known official helper. The runtime, input transport,
+observer, read-only window inspector, all21 native launcher components and
+camera/input settings remain.
 The unchanged inspector's `exact_identity` flag describes its historical
 EqW-only diagnosis; a false flag for `Client1` is expected. V2 focus repair
 receipts are the evidence for the new matcher. Its128KiB bounded window log
@@ -51,7 +74,8 @@ may finish before five minutes if full; that cap is separate from input loss.
    the stick immediately reverses the camera and neutral stops movement.
 
 Expected objective evidence: V2 marker and exact qualified hash, at least one
-successful scoped `focus_repair` from None/PointerRoot, a concrete game focus
+successful scoped `focus_repair` from None/PointerRoot with `event_written=true`,
+a matching V4 `focus_clip_refresh` success/sequence, a concrete game focus
 after repair, actual cursor confinement during Look, signed packets/native
 motion/game deltas that agree on reversals, zero neutral drift, free pointer
 after Look release and no foreign-focus takeover. A successful X request or
