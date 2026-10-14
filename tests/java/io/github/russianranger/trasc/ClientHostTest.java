@@ -16,7 +16,7 @@ public final class ClientHostTest {
         return data.toByteArray();
     }
     public static void main(String[] args)throws Exception {
-        relativeInput();takpCameraInput();mouseLookLatch();mouseLookControllerEdges();frameMeasurements();reusedPixels();controllerLayers();namedLayers();
+        relativeInput();pointerPacketTrace();takpCameraInput();mouseLookLatch();mouseLookControllerEdges();frameMeasurements();reusedPixels();controllerLayers();namedLayers();
         int[] pixels=new int[6];ByteArrayOutputStream wire=new ByteArrayOutputStream();
         RfbConnection.Screen screen=new RfbConnection.Screen(){public void resize(int w,int h){check(w==3&&h==2,"Display dimensions");}public void pixels(int x,int y,int w,int h,int[] colors){System.arraycopy(colors,0,pixels,0,6);}public void copy(int x,int y,int w,int h,int sx,int sy){}public void updated(){}};
         RfbConnection r=new RfbConnection(new ByteArrayInputStream(server(false)),wire,screen);r.handshake();r.readUpdate();
@@ -64,6 +64,88 @@ public final class ClientHostTest {
         check(dx[0]==6000&&held[0]==4&&absolute[0]==0,"Stick deltas accumulate past screen bounds without absolute recenter jumps");
         input.position(25,40);check(absolute[0]==1,"Touch remains absolute");input.releaseAll();check(held[0]==0,"Focus loss releases relative mouse buttons");
         System.out.println("PASS: relative mouse wire, fractional deltas beyond screen bounds, absolute touch and held-button release");
+    }
+    static void pointerPacketTrace()throws Exception {
+        Path folder=Files.createTempDirectory("trasc-pointer-trace");
+        try {
+            File file=folder.resolve("logs/packets.log").toFile();
+            PointerPacketTrace trace=new PointerPacketTrace(file);
+            trace.sent(100,140,1000000,1,-3,2,4);trace.sent(150,150,1000010,2,0,0,0);trace.close();
+            check(trace.awaitClosed(3000),"Closed observations drain asynchronously");
+            String text=Files.readString(file.toPath());
+            check(text.contains("queued=100 sent=140")&&text.contains("x=-3 y=2 buttons=4")&&text.contains("buttons=0"),"Trace preserves signed sent values, queue times and release");
+            check(text.contains("end=closed")&&text.contains("written=2")&&text.contains("dropped_queue=0"),"End receipt distinguishes recorded packets and drops");
+            byte[] old=Files.readAllBytes(file.toPath());trace=new PointerPacketTrace(file);
+            // Let the independent writer drain between bursts. Queue overflow
+            // alone must not be confused with exercising the byte budget.
+            for(int batch=0;batch<100&&!trace.awaitClosed(1);batch++) {
+                for(int i=0;i<128;i++)trace.sent(Long.MAX_VALUE-i,Long.MAX_VALUE,Long.MAX_VALUE,1,i%7-3,-2,4);
+                Thread.sleep(10);
+            }
+            trace.close();
+            check(trace.awaitClosed(3000),"Byte-limited worker terminates");
+            check(file.length()<=PointerPacketTrace.LIMIT&&Files.readString(file.toPath()).contains("end=byte_limit"),"Pointer observation has a hard size bound and explicit truncation");
+            check(Arrays.equals(old,Files.readAllBytes(folder.resolve("logs/packets.previous.log"))),"The preceding bounded trace is retained");
+
+            // Deliberately stall file opening. No producer call may perform
+            // storage work, and exactly 256 selected rows fit in the queue.
+            File queuedFile=folder.resolve("logs/queued.log").toFile();
+            java.util.concurrent.CountDownLatch opening=new java.util.concurrent.CountDownLatch(1),resume=new java.util.concurrent.CountDownLatch(1);
+            PointerPacketTrace queuedTrace=new PointerPacketTrace(queuedFile,p->{
+                opening.countDown();
+                try{resume.await();}catch(InterruptedException interrupted){Thread.currentThread().interrupt();throw new IOException(interrupted);}
+                return new FileOutputStream(p);
+            });
+            check(opening.await(3,java.util.concurrent.TimeUnit.SECONDS),"Observation worker reaches the blocked storage operation");
+            java.util.concurrent.CountDownLatch produced=new java.util.concurrent.CountDownLatch(1);
+            Thread producer=new Thread(()->{for(int i=1;i<=1000;i++)queuedTrace.sent(i,i+1,1000000+i,1,-1,2,4);produced.countDown();});
+            producer.start();
+            try {
+                check(produced.await(2,java.util.concurrent.TimeUnit.SECONDS),"Blocked storage does not block sent input observations");
+                check(!queuedFile.exists(),"Storage is exclusively owned by the asynchronous worker");
+            } finally {resume.countDown();}
+            producer.join(3000);
+            // Live export receives buffered output even without another packet
+            // or close. The worker schedules a flush at most one second apart.
+            long deadline=System.nanoTime()+3_000_000_000L;
+            while(System.nanoTime()<deadline&&(!queuedFile.exists()||!Files.readString(queuedFile.toPath()).contains("seq=256 ")))Thread.sleep(10);
+            check(Files.readString(queuedFile.toPath()).contains("seq=256 "),"Live observations flush without a close or subsequent packet");
+            queuedTrace.sent(1001,1002,1001001,1,-2,1,4);queuedTrace.sent(1002,1003,1001002,2,0,0,0);
+            queuedTrace.close();check(queuedTrace.awaitClosed(3000),"Pressure observations drain and close");
+            String queuedText=Files.readString(queuedFile.toPath());
+            check(queuedText.contains("dropped_queue=744")&&queuedText.contains("max_pending=256"),"Queue capacity and drop accounting remain bounded under storage pressure");
+            check(queuedText.contains("seq=1001 ")&&!queuedText.contains("seq=257 ")&&queuedText.contains("buttons=0"),"Sequence gaps expose omitted observations while later signed input and release survive");
+
+            // close() has a short bounded join even when its worker cannot yet
+            // open storage. It still drains accepted observations when unblocked.
+            File closingFile=folder.resolve("logs/closing.log").toFile();
+            java.util.concurrent.CountDownLatch closeOpening=new java.util.concurrent.CountDownLatch(1),closeResume=new java.util.concurrent.CountDownLatch(1),closeReturned=new java.util.concurrent.CountDownLatch(1);
+            PointerPacketTrace closingTrace=new PointerPacketTrace(closingFile,p->{
+                closeOpening.countDown();
+                try{closeResume.await();}catch(InterruptedException interrupted){Thread.currentThread().interrupt();throw new IOException(interrupted);}
+                return new FileOutputStream(p);
+            });
+            check(closeOpening.await(3,java.util.concurrent.TimeUnit.SECONDS),"Close regression reaches blocked storage");
+            closingTrace.sent(1,2,3,1,-1,0,4);
+            Thread closer=new Thread(()->{closingTrace.close();closeReturned.countDown();});closer.start();
+            try{check(closeReturned.await(1,java.util.concurrent.TimeUnit.SECONDS),"Closing observations never waits for blocked storage");}
+            finally{closeResume.countDown();}
+            check(closingTrace.awaitClosed(3000),"Accepted rows drain after a bounded close");closer.join(3000);
+            check(Files.readString(closingFile.toPath()).contains("end=closed")&&Files.readString(closingFile.toPath()).contains("x=-1 y=0"),"Bounded close preserves accepted observations");
+
+            Path outside=folder.resolve("outside");Files.writeString(outside,"unrelated");Path linked=folder.resolve("logs/linked.log");Files.createSymbolicLink(linked,outside);
+            trace=new PointerPacketTrace(linked.toFile());trace.sent(1,2,3,1,1,0,4);trace.close();
+            check(trace.awaitClosed(3000),"Linked destination refusal terminates without affecting input");
+            check(Files.readString(outside).equals("unrelated"),"Optional logging refuses a linked destination");
+            trace=new PointerPacketTrace(folder.toFile());trace.sent(1,2,3,1,1,0,4);trace.close();
+            check(trace.awaitClosed(3000),"Nonregular destination refusal terminates");
+            check(Files.isDirectory(folder),"Optional tracing never replaces a directory");
+            File protectedFile=folder.resolve("logs/protected.log").toFile();Files.writeString(protectedFile.toPath(),"retain old observations");
+            Files.createSymbolicLink(folder.resolve("logs/protected.previous.2.log"),outside);
+            trace=new PointerPacketTrace(protectedFile);trace.close();check(trace.awaitClosed(3000),"Unsafe history refusal terminates");
+            check(Files.readString(protectedFile.toPath()).equals("retain old observations")&&Files.readString(outside).equals("unrelated"),"Unsafe history is refused before rotation or replacement");
+            System.out.println("PASS: asynchronous bounded pointer observations, pressure/drop receipts, live flushing, retained history and nonblocking refusal/close");
+        } finally {TarExtractor.remove(folder.toFile());}
     }
     static void takpCameraInput(){
         for(String profile:Arrays.asList("custom","traditional","takp")){

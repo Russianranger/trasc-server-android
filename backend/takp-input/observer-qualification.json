@@ -1,0 +1,321 @@
+{
+  "format": 1,
+  "run": "38489151047",
+  "qualified_source": "3511ce6260ccef33478983d79356a205b8b43c5d",
+  "original_runtime_receipt_sha256": "186a684edcdaa437ae6fbbcb853cc751920a0f96165c036e550e50006ade06a6",
+  "verifier_sha256": "6d4bc92a6a02f188ae07e91cc4e6319ff796661f078c57ba194aef768d8c286c",
+  "all_observers_qualified": true,
+  "cases": {
+    "default": {
+      "qualified": true,
+      "log_sha256": "70b670cbfff45d5d413915785943584299ff8581f6a04e187ce12eea611b5eaf",
+      "checks": {
+        "valid_clock_anchors": true,
+        "xi2_raw_under_grab_negotiated": true,
+        "inventory_with_valuators": true,
+        "pointer_and_focus_observed": true,
+        "held_signed_raw_both_axes": true,
+        "normal_bounded_completion": true
+      },
+      "bytes": 27432,
+      "clock_anchors": {
+        "monotonic_ms": 822356,
+        "epoch_ms": 1791937002938
+      },
+      "extension": {
+        "record": "extension",
+        "xi2": true,
+        "opcode": 132,
+        "major": 2,
+        "minor": 2,
+        "requested_major": 2,
+        "requested_minor": 2,
+        "raw_grab_delivery_supported": true,
+        "xerrors": 0
+      },
+      "device_count": 6,
+      "valuator_count": 6,
+      "pointer_snapshots": 42,
+      "focus_ancestors": 5,
+      "held_raw_samples": 57,
+      "master_source_ids": [
+        [
+          2,
+          4
+        ]
+      ],
+      "raw_axis_signs": {
+        "0": [
+          -1,
+          1
+        ],
+        "1": [
+          -1,
+          1
+        ]
+      },
+      "end": {
+        "record": "end",
+        "t_ms": 39222,
+        "reason": "signal",
+        "bytes_before_end": 27215,
+        "records_before_end": 140,
+        "dropped": 0,
+        "raw_seen": 2011,
+        "core_seen": 13,
+        "buttons_seen": 10,
+        "xerrors": 0,
+        "sampling_is_not_complete_event_capture": true
+      }
+    },
+    "global-disabled": {
+      "qualified": true,
+      "log_sha256": "98280ab5d4cd683d2274661c1a42a4ae76dc86bab9bc418f6722299473c6e21c",
+      "checks": {
+        "valid_clock_anchors": true,
+        "xi2_raw_under_grab_negotiated": true,
+        "inventory_with_valuators": true,
+        "pointer_and_focus_observed": true,
+        "held_signed_raw_both_axes": true,
+        "normal_bounded_completion": true
+      },
+      "bytes": 9999,
+      "clock_anchors": {
+        "monotonic_ms": 863998,
+        "epoch_ms": 1791937044580
+      },
+      "extension": {
+        "record": "extension",
+        "xi2": true,
+        "opcode": 132,
+        "major": 2,
+        "minor": 2,
+        "requested_major": 2,
+        "requested_minor": 2,
+        "raw_grab_delivery_supported": true,
+        "xerrors": 0
+      },
+      "device_count": 6,
+      "valuator_count": 6,
+      "pointer_snapshots": 21,
+      "focus_ancestors": 3,
+      "held_raw_samples": 6,
+      "master_source_ids": [
+        [
+          2,
+          4
+        ]
+      ],
+      "raw_axis_signs": {
+        "0": [
+          -1,
+          1
+        ],
+        "1": [
+          -1,
+          1
+        ]
+      },
+      "end": {
+        "record": "end",
+        "t_ms": 18403,
+        "reason": "signal",
+        "bytes_before_end": 9787,
+        "records_before_end": 51,
+        "dropped": 0,
+        "raw_seen": 124,
+        "core_seen": 4,
+        "buttons_seen": 2,
+        "xerrors": 0,
+        "sampling_is_not_complete_event_capture": true
+      }
+    },
+    "global-enabled": {
+      "qualified": true,
+      "log_sha256": "bfa3b5aed26b512f700d4839bda12e8e4c5cac6227b7531ed7b15046355a2a94",
+      "checks": {
+        "valid_clock_anchors": true,
+        "xi2_raw_under_grab_negotiated": true,
+        "inventory_with_valuators": true,
+        "pointer_and_focus_observed": true,
+        "held_signed_raw_both_axes": true,
+        "normal_bounded_completion": true
+      },
+      "bytes": 28866,
+      "clock_anchors": {
+        "monotonic_ms": 884772,
+        "epoch_ms": 1791937065355
+      },
+      "extension": {
+        "record": "extension",
+        "xi2": true,
+        "opcode": 132,
+        "major": 2,
+        "minor": 2,
+        "requested_major": 2,
+        "requested_minor": 2,
+        "raw_grab_delivery_supported": true,
+        "xerrors": 0
+      },
+      "device_count": 6,
+      "valuator_count": 6,
+      "pointer_snapshots": 46,
+      "focus_ancestors": 5,
+      "held_raw_samples": 57,
+      "master_source_ids": [
+        [
+          2,
+          4
+        ]
+      ],
+      "raw_axis_signs": {
+        "0": [
+          -1,
+          1
+        ],
+        "1": [
+          -1,
+          1
+        ]
+      },
+      "end": {
+        "record": "end",
+        "t_ms": 37463,
+        "reason": "signal",
+        "bytes_before_end": 28649,
+        "records_before_end": 149,
+        "dropped": 0,
+        "raw_seen": 2011,
+        "core_seen": 13,
+        "buttons_seen": 10,
+        "xerrors": 1,
+        "sampling_is_not_complete_event_capture": true
+      }
+    },
+    "app-disables-global": {
+      "qualified": true,
+      "log_sha256": "ef2c668cc09aed190c2aa07192cb7010c7c6ce693bdbf0c4512862f73374d26e",
+      "checks": {
+        "valid_clock_anchors": true,
+        "xi2_raw_under_grab_negotiated": true,
+        "inventory_with_valuators": true,
+        "pointer_and_focus_observed": true,
+        "held_signed_raw_both_axes": true,
+        "normal_bounded_completion": true
+      },
+      "bytes": 9992,
+      "clock_anchors": {
+        "monotonic_ms": 924650,
+        "epoch_ms": 1791937105233
+      },
+      "extension": {
+        "record": "extension",
+        "xi2": true,
+        "opcode": 132,
+        "major": 2,
+        "minor": 2,
+        "requested_major": 2,
+        "requested_minor": 2,
+        "raw_grab_delivery_supported": true,
+        "xerrors": 0
+      },
+      "device_count": 6,
+      "valuator_count": 6,
+      "pointer_snapshots": 21,
+      "focus_ancestors": 3,
+      "held_raw_samples": 6,
+      "master_source_ids": [
+        [
+          2,
+          4
+        ]
+      ],
+      "raw_axis_signs": {
+        "0": [
+          -1,
+          1
+        ],
+        "1": [
+          -1,
+          1
+        ]
+      },
+      "end": {
+        "record": "end",
+        "t_ms": 18202,
+        "reason": "signal",
+        "bytes_before_end": 9780,
+        "records_before_end": 51,
+        "dropped": 0,
+        "raw_seen": 124,
+        "core_seen": 4,
+        "buttons_seen": 2,
+        "xerrors": 0,
+        "sampling_is_not_complete_event_capture": true
+      }
+    },
+    "app-enables-global": {
+      "qualified": true,
+      "log_sha256": "6991b3b3116204a1b8d6e935bc5febe715e5eaac8b266eb676f7c2be6b5c186f",
+      "checks": {
+        "valid_clock_anchors": true,
+        "xi2_raw_under_grab_negotiated": true,
+        "inventory_with_valuators": true,
+        "pointer_and_focus_observed": true,
+        "held_signed_raw_both_axes": true,
+        "normal_bounded_completion": true
+      },
+      "bytes": 28175,
+      "clock_anchors": {
+        "monotonic_ms": 945228,
+        "epoch_ms": 1791937125811
+      },
+      "extension": {
+        "record": "extension",
+        "xi2": true,
+        "opcode": 132,
+        "major": 2,
+        "minor": 2,
+        "requested_major": 2,
+        "requested_minor": 2,
+        "raw_grab_delivery_supported": true,
+        "xerrors": 0
+      },
+      "device_count": 6,
+      "valuator_count": 6,
+      "pointer_snapshots": 44,
+      "focus_ancestors": 5,
+      "held_raw_samples": 57,
+      "master_source_ids": [
+        [
+          2,
+          4
+        ]
+      ],
+      "raw_axis_signs": {
+        "0": [
+          -1,
+          1
+        ],
+        "1": [
+          -1,
+          1
+        ]
+      },
+      "end": {
+        "record": "end",
+        "t_ms": 37769,
+        "reason": "signal",
+        "bytes_before_end": 27958,
+        "records_before_end": 145,
+        "dropped": 0,
+        "raw_seen": 2011,
+        "core_seen": 13,
+        "buttons_seen": 10,
+        "xerrors": 1,
+        "sampling_is_not_complete_event_capture": true
+      }
+    }
+  },
+  "scope": "Actual published ARM64 CI observer logs; fixture source unchanged; physical Thor acceptance remains open"
+}

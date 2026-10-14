@@ -66,7 +66,7 @@
   },
   "conclusions": {
     "capture_invariant": "Failed: successful ClipCursor requests did not establish observed confinement",
-    "camera_reversal_physical_acceptance": "Still unconfirmed; user supplied no description or synchronized stick directions/video",
+    "camera_reversal_physical_acceptance": "Failed by user observation: slight improvement but still unusable, similar to previous behavior",
     "mechanism": "Unresolved: accepted ClipCursor alone cannot distinguish suppressed/refused confinement, wrong X pointer/device or missing/malformed XI2 raw motion",
     "controlled_wine_fixture": "Remains valid for its host mechanism; does not reproduce this Thor result",
     "no_supported_abs_conversion_or_held_queue_backlog_fix": true
@@ -85,5 +85,9 @@
     "Classic skeleton visual appearance and exact revert not verified",
     "Physical repeat no-work rebuild and per-object/receipt inventory absent",
     "NPC visibility and Traditional StoneUI remain separate"
-  ]
+  ],
+  "user_followup": {
+    "reported_chicago": "2026-10-13T19:01:19-05:00",
+    "camera": "Slight improvement but still unusable, similar to previous behavior"
+  }
 }

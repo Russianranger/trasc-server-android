@@ -14,6 +14,7 @@ TAKP_HELPERS = {
     'eqgame.dll': 'f0ca8e4bdcf3875419ecb1067a95bd6dbf8197e564f9d51ff4dec98a30f14b97',
     'eqw.dll': '875056a62d2df3c7434bf05d23d73186d6565d2bd5a14f2f53a58fa7d015bab3',
 }
+TAKP_OBSERVER_SHA = '5f5cf7e8f8d2d3df475284f72fa0f2944e1cadb9ba334927021799615b35744b'
 
 
 def verify(apk, signing_report, root):
@@ -23,6 +24,41 @@ def verify(apk, signing_report, root):
     if not match or match.group(1) != expected_certificate:
         raise ValueError('APK signing certificate changed; this is not a compatible update')
     with zipfile.ZipFile(apk) as archive:
+        observer = archive.read('assets/takp-input/takp-xinput-observe')
+        observer_record = json.loads(archive.read('assets/takp-input/takp-input-observer.json'))
+        if (hashlib.sha256(observer).hexdigest() != TAKP_OBSERVER_SHA
+                or observer_record.get('sha256') != TAKP_OBSERVER_SHA
+                or len(observer) != observer_record.get('bytes')
+                or observer[:6] != b'\x7fELF\x02\x01'
+                or struct.unpack_from('<H', observer, 18)[0] != 183
+                or observer_record.get('bounded_output_bytes') != 128*1024
+                or observer_record.get('maximum_seconds') != 300):
+            raise ValueError('TAKP native input observer differs from its bounded ARM64 qualification')
+        for name, digest in observer_record['source_sha256'].items():
+            if hashlib.sha256((root/name).read_bytes()).hexdigest() != digest:
+                raise ValueError('TAKP native observer source differs from qualified build: ' + name)
+        for name in ('takp-xinput-observe', 'takp-input-observer.json', 'observer-qualification.json'):
+            if archive.read('assets/takp-input/'+name) != (root/'backend/takp-input'/name).read_bytes():
+                raise ValueError('TAKP input diagnostic asset differs: ' + name)
+        observer_proof = json.loads(archive.read('assets/takp-input/observer-qualification.json'))
+        if (not observer_proof.get('all_observers_qualified') or len(observer_proof.get('cases', {})) != 5
+                or observer_proof.get('verifier_sha256') != hashlib.sha256((root/'scripts/verify-takp-runtime-observer-evidence.py').read_bytes()).hexdigest()
+                or any(not row.get('qualified') or row.get('bytes', 0) > 128*1024 for row in observer_proof['cases'].values())):
+            raise ValueError('TAKP native observer lacks actual bounded XI2 qualification')
+        runtime_proof_data = archive.read('assets/takp-client/runtime-camera-verification.json')
+        if (runtime_proof_data != (root/'backend/takp-client/runtime-camera-verification.json').read_bytes()
+                or hashlib.sha256(runtime_proof_data).hexdigest() != observer_proof['original_runtime_receipt_sha256']):
+            raise ValueError('TAKP published-runtime receipt differs from measured input proof')
+        runtime_proof = json.loads(runtime_proof_data)
+        if (not runtime_proof.get('all_cases_accepted') or len(runtime_proof.get('cases', [])) != 5
+                or runtime_proof.get('runtime_rebuilt') or runtime_proof.get('production_input_bridge_rebuilt')
+                or runtime_proof.get('observer_sha256') != TAKP_OBSERVER_SHA):
+            raise ValueError('TAKP published ARM64 input qualification is incomplete')
+        for name, digest in runtime_proof['fixture_sha256'].items():
+            if hashlib.sha256((root/name).read_bytes()).hexdigest() != digest:
+                raise ValueError('TAKP actual runtime fixture differs: ' + name)
+        if archive.read('assets/takp_input_diagnostics.py') != (root/'backend/takp_input_diagnostics.py').read_bytes():
+            raise ValueError('TAKP read-only input settings inspector differs')
         for name in ('engine.py', 'takp_build.py', 'takp_runtime.py', 'takp_client.py',
                      'bots.py', 'bot_socials.py', 'modern_bot_bridge.py', 'modern_bot_bridge.h'):
             if archive.read('assets/' + name) != (root / 'backend' / name).read_bytes():
@@ -115,7 +151,7 @@ def verify(apk, signing_report, root):
                 raise ValueError('TAKP helper license is missing or changed: ' + name)
         if 'assets/takp-client/eqw.pdb' in archive.namelist():
             raise ValueError('The debug symbol file must not inflate the runtime APK')
-    print('PASS: preserved certificate, exact x86 TAKP helpers, camera source/proof and Bots modules')
+    print('PASS: preserved certificate, exact TAKP helpers, published ARM64 input/observer proof and Bots modules')
 
 
 if __name__ == '__main__':

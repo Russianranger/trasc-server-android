@@ -1,10 +1,10 @@
 {
   "wine": "wine-10.0",
-  "github_commit": "688ff50b6a4f6c25ef7dcfb2e3a632c39adbd394",
-  "github_run_id": "38349508008",
+  "github_commit": "3511ce6260ccef33478983d79356a205b8b43c5d",
+  "github_run_id": "38489151047",
   "fixture_sha256": {
     "tests/takp_cursor_probe.cpp": "68e23c167c481c35b759f593d3a3c3844c7dd6ef8efbe78f6544ce82d80069a1",
-    "tests/integration_takp_cursor.py": "155026f602020482ed9fd079c1d669ca9b67c9bf696874f01ce1444e00e84f05",
+    "tests/integration_takp_cursor.py": "b3ee99473cbcb5bb638e722e8cb1af3412f7cb3afc942ed445931b09d36f0716",
     "native/takp_camera_recenter.h": "77f669b54196ebc24f02a20c87ec1f44973b9ee82c4c576bb5fd1bf02d697cc2",
     "native/takp_camera_trace.h": "c0301f87a3077c6065bda204fc63c262141cd13a041653f910655b4e55c9e519",
     "native/takp_dinput_observation.h": "325b56bcb220400da5ae83d4656dbc50d90c6dd9ec3ee7eca51068e2ff483d5a",
@@ -25,11 +25,11 @@
         0
       ],
       "polled": [
-        3939,
+        3859,
         0
       ],
       "buffered": [
-        3939,
+        3859,
         0
       ]
     },
@@ -39,11 +39,11 @@
         0
       ],
       "polled": [
-        5591,
+        5580,
         0
       ],
       "buffered": [
-        5591,
+        5580,
         0
       ]
     },
@@ -54,11 +54,11 @@
       ],
       "polled": [
         3582,
-        3575
+        3335
       ],
       "buffered": [
         3582,
-        3575
+        3335
       ]
     },
     {
@@ -67,12 +67,12 @@
         -200
       ],
       "polled": [
-        3581,
-        3342
+        3582,
+        3582
       ],
       "buffered": [
-        3581,
-        3342
+        3582,
+        3582
       ]
     },
     {
@@ -81,12 +81,12 @@
         200
       ],
       "polled": [
-        6002,
-        3513
+        6681,
+        3851
       ],
       "buffered": [
-        6002,
-        3513
+        6681,
+        3851
       ]
     },
     {
@@ -95,12 +95,12 @@
         -400
       ],
       "polled": [
-        5539,
-        1601
+        5621,
+        1761
       ],
       "buffered": [
-        5539,
-        1601
+        5621,
+        1761
       ]
     }
   ],
@@ -461,15 +461,15 @@
       1,
       8,
       0,
-      2767,
-      2767
+      2758,
+      2758
     ],
     "remaining_consumed": [
       14,
       32,
       0,
-      2769,
-      2795
+      2760,
+      2786
     ],
     "actual_game_contract": "unknown until device helper diagnostics",
     "custom_format_axis_offsets": [
@@ -612,7 +612,7 @@
   },
   "diagnostic_trace": {
     "marker": "TRASC_TAKP_CAMERA_TRACE_V1",
-    "bounded_bytes": 54454,
+    "bounded_bytes": 54122,
     "foreign_file_preserved": true,
     "owned_session_rotated": true
   },
@@ -637,7 +637,7 @@
     "wire_bytes": 32336,
     "writes": 1903,
     "mask": 0,
-    "seconds": 22.54979806099999,
+    "seconds": 22.484593914000016,
     "protocol": "TRASCIN1",
     "pipeline": "production parser; per-packet XFlush",
     "closed": true,

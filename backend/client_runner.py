@@ -692,6 +692,9 @@ class Supervisor:
         self.prepare_prefix()
         self.configure_mouse()
         self.configure_loading()
+        if self.request.get('profile') == 'takp' and self.request['mode'] == 'client':
+            import takp_input_diagnostics
+            self.update(**takp_input_diagnostics.start(self, PREFIX, LOGS))
         if self.request.get('renderer') == 'turnip':
             self.update(dxvk_d3d9_sha256=client_vulkan.install_d3d9(Path(__file__).parent, PREFIX, CLIENT))
         devices = PREFIX / 'dosdevices'; devices.mkdir(exist_ok=True)

@@ -1,0 +1,26 @@
+{
+  "format": 1,
+  "architecture": "arm64-glibc",
+  "distribution": "debian-bookworm",
+  "elf_machine": 183,
+  "compiler_flags": "gcc -std=c11 -O2 -Wall -Wextra -Werror -lX11 -ldl",
+  "github_commit": "3511ce6260ccef33478983d79356a205b8b43c5d",
+  "github_run_id": "38489151047",
+  "source_sha256": {
+    "native/presentation/takp-xinput-observe.c": "41e00c7db8f1d8099c4aa49be6658536baaf951c1fbbe80e49af680d5c9356c8",
+    "native/presentation/observe-log.h": "40ecb76a1096bca0f2ecac8f194a029bf720550f9462f2fcded6299fc14f4b2d",
+    "tests/takp_runtime_observer.Dockerfile": "1fe27f30d9a07a1ab7f7af2d4edd47bb6c0189160c2706b71b87c9cfbf3c27d7"
+  },
+  "sha256": "5f5cf7e8f8d2d3df475284f72fa0f2944e1cadb9ba334927021799615b35744b",
+  "bytes": 72416,
+  "behavior": "read-only separate X connection; no XTest, warp, focus or grab",
+  "marker": "TRASC_TAKP_XINPUT_OBSERVE_V1",
+  "bounded_output_bytes": 131072,
+  "maximum_seconds": 300,
+  "hard_timeout_seconds": 301,
+  "held_sample_ms": 200,
+  "idle_sample_ms": 1000,
+  "idle_byte_soft_limit": 32768,
+  "xi_client_requested": "2.2",
+  "runtime_libXi": "dlopen libXi.so.6"
+}

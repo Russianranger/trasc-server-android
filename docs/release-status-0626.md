@@ -85,4 +85,6 @@ not passed.** The native host qualification remains scoped to its fixture;
 successful ClipCursor calls do not prove device confinement. See
 [device-camera-0626.md](device-camera-0626.md) and
 [device-camera-evidence-0626.json](device-camera-evidence-0626.json).
-The user's new camera observations/direction sequence are not supplied.
+The user subsequently confirmed slight improvement but still unusable camera
+behavior, similar to the previous version. Camera acceptance failed; synchronized
+direction/event evidence is the next diagnostic gate.

@@ -298,6 +298,7 @@ public final class ClientActivity extends Activity {
         private volatile RfbConnection connection;
         private volatile LocalSocket inputSocket;
         private volatile RelativeInput relative;
+        private volatile PointerPacketTrace pointerTrace;
         private volatile boolean closed;
         private boolean mousePositionKnown;
         private boolean releasingLookCapture;
@@ -314,9 +315,10 @@ public final class ClientActivity extends Activity {
         void send(Send send){if(!closed)writer.execute(()->{try{RfbConnection r=connection;if(r!=null)send.write(r);}catch(IOException e){failure(e);}});}
         boolean sendRelative(int type,int x,int y,int mask){
             if(closed||relative==null)return false;
-            writer.execute(()->{try{RelativeInput target=relative;if(target!=null)target.send(type,x,y,mask);}catch(IOException e){closeInput();post(()->Toast.makeText(ClientActivity.this,"Relative input disconnected; reopen the display to restore mouse look",Toast.LENGTH_LONG).show());}});return true;
+            final long queued=android.os.SystemClock.uptimeMillis();
+            writer.execute(()->{try{RelativeInput target=relative;if(target!=null){target.send(type,x,y,mask);PointerPacketTrace trace=pointerTrace;if(trace!=null)trace.sent(queued,android.os.SystemClock.uptimeMillis(),System.currentTimeMillis(),type,x,y,mask);}}catch(IOException e){closeInput();post(()->Toast.makeText(ClientActivity.this,"Relative input disconnected; reopen the display to restore mouse look",Toast.LENGTH_LONG).show());}});return true;
         }
-        void closeInput(){relative=null;try{if(inputSocket!=null)inputSocket.close();}catch(IOException ignored){}inputSocket=null;post(()->{input.setMouseLook(false);updateLookControls();});}
+        void closeInput(){relative=null;PointerPacketTrace trace=pointerTrace;pointerTrace=null;if(trace!=null)trace.close();try{if(inputSocket!=null)inputSocket.close();}catch(IOException ignored){}inputSocket=null;post(()->{input.setMouseLook(false);updateLookControls();});}
         void connect(){new Thread(()->{
             try {
                 LocalSocket local=new LocalSocket();socket=local;
@@ -330,7 +332,9 @@ public final class ClientActivity extends Activity {
                     LocalSocket control=new LocalSocket();inputSocket=control;
                     File inputPath=new File(profileRun,"input.sock");ClientTransientPaths.validateSocket(inputPath);
                     control.connect(new LocalSocketAddress(inputPath.getPath(),LocalSocketAddress.Namespace.FILESYSTEM));control.setSoTimeout(3000);
-                    relative=new RelativeInput(control.getInputStream(),control.getOutputStream());control.setSoTimeout(0);
+                    RelativeInput channel=new RelativeInput(control.getInputStream(),control.getOutputStream());control.setSoTimeout(0);
+                    if(runtime.server.profiles.current().equals("takp"))pointerTrace=new PointerPacketTrace(new File(profileWork,"logs/client-pointer-packets.log"));
+                    relative=channel;
                 }catch(IOException inputError){closeInput();RuntimeManager.recordFailure(profileWork,"client_relative_input",inputError);}
                 // A native failure can happen during the input-only handshake.
                 if(!frames&&!nativeActive){resize(r.width,r.height);r.request(false);}
