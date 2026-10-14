@@ -1,9 +1,12 @@
 # 0.6.28: recover the missing native TAKP focus
 
-Source candidate 0.6.28/code77. Exact published-runtime qualification passed
-[run 38500575431](https://github.com/Russianranger/trasc-server-android/actions/runs/38500575431).
-APK qualification and publication must finish before installing this candidate
-as a verified release.
+Published 0.6.28/code77. [Download the verified APK](https://github.com/Russianranger/trasc-server-android/releases/download/preview/trasc-server-android-preview.apk?v=0.6.28).
+All five release gates and independent public signature/source/native checks
+passed. Exact published-runtime qualification passed
+[run 38500575431](https://github.com/Russianranger/trasc-server-android/actions/runs/38500575431). See
+[release-status-0628.md](release-status-0628.md) and
+[release-proof-0628.json](release-proof-0628.json). Physical camera usability
+remains open until the Thor test passes.
 
 The runtime fixture uses the original published ARM64 client-1.0 archive
 (353,710,680 bytes; SHA-256
