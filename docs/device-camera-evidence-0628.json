@@ -1,0 +1,355 @@
+{
+  "format": "trasc-device-camera-evidence-3",
+  "app_version": "0.6.28",
+  "app_version_code": 77,
+  "device": "AYN Thor",
+  "bundle": {
+    "name": "logs-6030031043376332005.zip",
+    "bytes": 732562,
+    "sha256": "5a36f20480340a0c0beb1143002c70a9dc51879a3e875d2aef9825d754da1fed",
+    "export_utc": "2026-10-14T02:51:10.782942Z",
+    "export_chicago": "2026-10-13T21:51:10.782942-05:00"
+  },
+  "source_files": {
+    "status.json": {
+      "bytes": 13681,
+      "sha256": "9e6b37f3b04871a97b536c6a5eba59855d1342a3dce7b14c0945cb69b82d4675"
+    },
+    "logs/client-state.json": {
+      "bytes": 9922,
+      "sha256": "03fe71afdcaf4e4ff4015706bc6bd3612fa1510f90009ead40abd44cf8357507"
+    },
+    "logs/client-pointer-packets.log": {
+      "bytes": 109769,
+      "sha256": "5e114468ffdcbf91d878176d2db01d8924bd7d327c8f18427ada249a315297c2"
+    },
+    "logs/client-xinput.log": {
+      "bytes": 58880,
+      "sha256": "e6068b83784a321d95a0e475e7f07caabe7c49bcf78a35137b7bc0acf6bd8f80"
+    },
+    "logs/client-takp-focus.log": {
+      "bytes": 1088,
+      "sha256": "4648954eb2e0cc2a6fee1205a43d32e277c5fd178f172bc452f8a92d6dd2d426"
+    },
+    "client/current/eqw-camera-diagnostics.log": {
+      "bytes": 99745,
+      "sha256": "78a0a5abac1814016d62a970fb560db8c24922736995c150fe81e65835203ae9"
+    },
+    "logs/control.log": {
+      "bytes": 13925,
+      "sha256": "e282625a24be7e3a386c26c771e852c0139738d43882d52c95617e81a088d0a9"
+    },
+    "logs/world.log": {
+      "bytes": 20512,
+      "sha256": "c9096b707741f0eaf5fa1847336e641ef6111996cc0c7b185141c51be0c8b32f"
+    },
+    "server/logs/zone-dynamic_01.log": {
+      "bytes": 31907,
+      "sha256": "aad1eeefe5bccc9499884c98e28593a5ac52ce4c07260fa31f2a08e1df9e3a5f"
+    },
+    "logs/android-exit.log": {
+      "bytes": 1599,
+      "sha256": "a124d9b1c5f7516052cc2a192ef2bfc4f9be6d7946c517b107fa6d7d71aa8146"
+    },
+    "logs/client-proot.log": {
+      "bytes": 932,
+      "sha256": "fa989bd2e19da545044ce3c18d9757fb4149efc22c77cc43c2b77834e76d7433"
+    },
+    "logs/client-wine.log": {
+      "bytes": 45198,
+      "sha256": "92f0d76ca78b374ba64ec3d50075b6d870e74b8a9a2a001cf13b0e2a787c9ed3"
+    }
+  },
+  "session": {
+    "client_started_utc": "2026-10-14T02:48:05.877484+00:00",
+    "resolution": "1280x720",
+    "cpu_profile": "accurate",
+    "prefix_update": "reuse",
+    "pointer_transport": "relative_xtest",
+    "server_start_utc": "2026-10-14T02:47:57Z",
+    "server_start_completed_utc": "2026-10-14T02:48:03Z",
+    "server_start_seconds": 6,
+    "new_source_build_deployment_database_initialization_after_latest_start": false,
+    "existing_character_zone": "Paineel",
+    "existing_character_id": 4,
+    "character_world_entry_request_utc": "2026-10-14T02:49:07Z",
+    "character_zone_transport_utc": "2026-10-14T02:49:08Z",
+    "character_camp_utc": "2026-10-14T02:50:57Z",
+    "character_zone_connection_duration_seconds": 109,
+    "camp_disposition": "camp / ServerCloseRequested",
+    "current_client_crash_record_identified": false,
+    "android_exit_records_before_current_launch": true,
+    "launcher_exit": null,
+    "full_inventory_bot_all_profile_acceptance": false
+  },
+  "eqw_helper": {
+    "marker": "TRASC_TAKP_WINE_RAW_LOOK_V3",
+    "sha256": "875056a62d2df3c7434bf05d23d73186d6565d2bd5a14f2f53a58fa7d015bab3",
+    "state": "current",
+    "native_loaded": true,
+    "unchanged_from_0626": true
+  },
+  "focus_recovery": {
+    "marker": "TRASC_TAKP_X_FOCUS_RECOVERY_V1",
+    "sha256": "90dda77cb0b0fe1d18d4fa7b39bedda7dad67af6c342d7b23c74d0129f666865",
+    "matches_qualified_0628_receipt": true,
+    "launch_state": "running",
+    "prefix_settings_changed": false,
+    "guard": "held_right_button_and_pointer_over_named_game_with_no_native_focus",
+    "pid": 28962,
+    "begin_monotonic_ms": 200725946,
+    "held_gate_records": [
+      {
+        "record": "gate",
+        "t_ms": 80140,
+        "state": "no_exact_visible_game_under_pointer",
+        "focus": 1,
+        "buttons_mask": 1024,
+        "candidate": 0,
+        "xerrors": 0
+      },
+      {
+        "record": "gate",
+        "t_ms": 104440,
+        "state": "no_exact_visible_game_under_pointer",
+        "focus": 1,
+        "buttons_mask": 1024,
+        "candidate": 0,
+        "xerrors": 0
+      }
+    ],
+    "end": {
+      "record": "end",
+      "t_ms": 175743,
+      "attempts": 0,
+      "successes": 0,
+      "bytes_before_end": 983,
+      "dropped": 0,
+      "xerrors": 0
+    },
+    "repair_records": 0,
+    "conclusion": "Helper ran, but discovery/identity guard rejected the target before any XSetInputFocus attempt. Which exact title/class/hierarchy requirement rejected the game is not in this log."
+  },
+  "capture_settings": {
+    "format": 1,
+    "source": "user.reg",
+    "read_only": true,
+    "values": {},
+    "source_sha256": "61f50935b4bf04510b10cab1a496db6f4a78f09c677e5e7319d62b0789bc12cb",
+    "grab_pointer_source": "wine_default",
+    "grab_pointer_raw": null,
+    "grab_pointer_enabled": true,
+    "state": "read"
+  },
+  "android_packets": {
+    "marker": "TRASC_POINTER_PACKETS_V1",
+    "stage": "socket_flush_complete",
+    "selected_rows": 1270,
+    "total_packets": 1745,
+    "sampled_idle_packets": 475,
+    "dropped_queue": 0,
+    "dropped_limit": 0,
+    "held_motion_rows": 1230,
+    "held_maximum_absolute_axis_pixels": 3,
+    "maximum_selected_queue_delay_ms": 5,
+    "end_reason": "closed"
+  },
+  "native_xinput": {
+    "marker": "TRASC_TAKP_XINPUT_OBSERVE_V1",
+    "begin_monotonic_ms": 200725937,
+    "xi2_version": [
+      2,
+      2
+    ],
+    "master_pointer": 2,
+    "xtest_source_pointer": 4,
+    "master_axes": "relative",
+    "held_raw_samples": 113,
+    "held_raw_packet_exact_matches": 113,
+    "matching_timestamp_delay_counts_ms": {
+      "0": 82,
+      "1": 28,
+      "2": 2,
+      "3": 1
+    },
+    "held_maximum_absolute_sampled_axis_pixels": 2,
+    "held_snapshot_samples": 31,
+    "held_focus_values": {
+      "1": 31
+    },
+    "held_focus_interpretation": "PointerRoot (X constant 1)",
+    "held_snapshot_xerrors": [
+      0
+    ],
+    "held_pointer_x_range": [
+      559,
+      746
+    ],
+    "held_pointer_y_range": [
+      308,
+      595
+    ],
+    "end": {
+      "record": "end",
+      "t_ms": 175752,
+      "reason": "signal",
+      "bytes_before_end": 58662,
+      "records_before_end": 286,
+      "dropped": 0,
+      "raw_seen": 1719,
+      "core_seen": 24,
+      "buttons_seen": 18,
+      "xerrors": 5,
+      "sampling_is_not_complete_event_capture": true
+    },
+    "teardown_xerrors_scope": "End receipt reports five X errors after late window teardown; held snapshots and focus helper have zero X errors."
+  },
+  "eqw_trace": {
+    "format_flags": 2,
+    "axis_mode": 1,
+    "axis_interpretation": "REL",
+    "held_clip_samples": 83,
+    "escaped_cursor_samples": 24,
+    "cached_clip": [
+      640,
+      360,
+      641,
+      361
+    ],
+    "all_held_samples_foreground_visible_physical_button": true,
+    "clip_repair_calls": 52,
+    "all_clip_repair_api_results_ok": true,
+    "repair_span_ms": 34010,
+    "minimum_retry_interval_ms": 250,
+    "held_nonempty_buffer_samples": 78,
+    "held_nonempty_buffer_oldest_age_ms": [
+      0,
+      21
+    ],
+    "held_buffer_flags": [
+      0
+    ],
+    "held_individual_last_axis_ranges": {
+      "x": [
+        -78,
+        102
+      ],
+      "y": [
+        -52,
+        250
+      ]
+    },
+    "last_trace_ms": 200891122,
+    "last_record": "unacquire",
+    "startup_only_old_event": {
+      "age_ms": 19033,
+      "look": 0,
+      "scope": "Not part of held-look reproduction"
+    }
+  },
+  "decisive_reversal": {
+    "native_snapshot_uptime_ms": 200808140,
+    "native_pointer": [
+      719,
+      326
+    ],
+    "native_focus": 1,
+    "cached_center": [
+      640,
+      360
+    ],
+    "android_packets": [
+      {
+        "seq": 426,
+        "sent_ms": 200808152,
+        "x": -1,
+        "y": 0
+      },
+      {
+        "seq": 427,
+        "sent_ms": 200808168,
+        "x": -1,
+        "y": 0
+      },
+      {
+        "seq": 428,
+        "sent_ms": 200808185,
+        "x": -2,
+        "y": 0
+      },
+      {
+        "seq": 429,
+        "sent_ms": 200808201,
+        "x": -1,
+        "y": 0
+      },
+      {
+        "seq": 430,
+        "sent_ms": 200808217,
+        "x": -2,
+        "y": 0
+      }
+    ],
+    "android_sum": [
+      -7,
+      0
+    ],
+    "sampled_native_confirmation": {
+      "packet_seq": 426,
+      "server_ms": 200808152,
+      "x": -1,
+      "y": 0
+    },
+    "buffer_event_timestamp_ms": 200808217,
+    "buffer_read_timestamp_ms": 200808227,
+    "oldest_event_age_ms": 10,
+    "buffer_individual_and_sum": [
+      72,
+      -34
+    ],
+    "arithmetic": "(719 - 7, 326) - (640, 360) = (72, -34)",
+    "subsequent_android_sum": [
+      -3,
+      0
+    ],
+    "game_consumer_timestamp_ms": 200808259,
+    "game_consumer_state_and_delta": [
+      69,
+      -34
+    ],
+    "meaning": "Requested left movement remains rightward, with false vertical input; fresh Wine/game values equal escaped pointer-to-clipped-center offsets."
+  },
+  "conclusions": {
+    "physical_camera_acceptance": "FAIL: user still reports weird / not functioning correctly",
+    "new_focus_repair_attempted": false,
+    "failure_stage": "Guard / target discovery before focus request",
+    "specific_guard_mismatch": "Unknown: rejected title/class/map-state/pointer-path details were not collected",
+    "not_a_failed_xsetinputfocus_call": true,
+    "android_to_native_signed_transport": "113/113 sampled held events match with 0-3 ms timestamp difference",
+    "remaining_native_focus": "PointerRoot during all 31 held snapshots",
+    "divergence": "After native transport, consistent with Wine core MotionNotify converted to REL cursor-to-center offset",
+    "supported_next_step": "Planned 0.6.29 read-only window-layout probe records rejected pointer path, title/class/geometry/map-state and ownership evidence while retaining strict focus checks. This is diagnosis, not a claimed camera fix.",
+    "no_supported_abs_conversion_queue_drain_blind_retry_or_disabling_strict_checks": true
+  },
+  "caveats": [
+    "Native raw events are sampled, not a complete event dump; all selected held Android packet rows are logged.",
+    "No synchronized camera video exists, so actual visual reversal latency is not measured.",
+    "No rejected-window identity/property/path dump exists; do not assume the mismatch or broaden the exact matcher blindly.",
+    "Five observer errors appear around final window teardown; no held X error was observed and focus helper errors remain zero.",
+    "Current log records camp and input-device unacquire, with no identified native client crash; this does not prove absence of every possible failure.",
+    "Existing character entry/camp demonstrates continuity only; full bot/inventory/all-profile persistence and external restore are not verified."
+  ],
+  "separate_open_checks": [
+    "NPC visibility",
+    "Traditional StoneUI",
+    "Full all-profile character/bot reopening",
+    "External backup/restore",
+    "Classic skeleton appearance and exact reversion",
+    "Physical no-work rebuild and object/receipt inventory"
+  ],
+  "primary_sources": {
+    "wine_native_x_focus": "https://github.com/wine-mirror/wine/blob/wine-10.0/dlls/winex11.drv/event.c",
+    "wine_x_grab_and_motion": "https://github.com/wine-mirror/wine/blob/wine-10.0/dlls/winex11.drv/mouse.c",
+    "wine_core_to_raw_conversion": "https://github.com/wine-mirror/wine/blob/wine-10.0/server/queue.c"
+  }
+}
