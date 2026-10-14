@@ -30,7 +30,10 @@ def run(wine, probe, output, input_probe=None, x_observer=None, xserver_args=Non
     env=dict(os.environ,DISPLAY=':33',WINEPREFIX=str(prefix),WINEARCH='win64',WINEDEBUG='-all,+cursor,+event,+dinput',WINEDLLOVERRIDES='winemenubuilder,mscoree,mshtml=')
     display_log=(output/'display.log').open('wb');wine_log=(output/'wine.log').open('wb')
     server=subprocess.Popen(['Xtigervnc',':33',*(xserver_args or ['-geometry','800x600','-depth','24','-rfbport','-1','-nolisten','tcp','-nolock','-ac','-SecurityTypes','None'])],stdout=display_log,stderr=subprocess.STDOUT)
-    xlib=ctypes.CDLL(ctypes.util.find_library('X11'));xtst=ctypes.CDLL(ctypes.util.find_library('Xtst'))
+    xlib=ctypes.CDLL(ctypes.util.find_library('X11'))
+    # Published TRASC links Xtst statically into its verified input bridge.
+    # The preserved runtime need not contain a standalone libXtst.so.6.
+    xtst=None if input_probe else ctypes.CDLL(ctypes.util.find_library('Xtst'))
     xlib.XOpenDisplay.argtypes=[ctypes.c_char_p];xlib.XOpenDisplay.restype=ctypes.c_void_p
     xlib.XDefaultRootWindow.argtypes=[ctypes.c_void_p];xlib.XDefaultRootWindow.restype=ctypes.c_ulong
     xlib.XSync.argtypes=[ctypes.c_void_p,ctypes.c_int]
@@ -41,9 +44,10 @@ def run(wine, probe, output, input_probe=None, x_observer=None, xserver_args=Non
     xlib.XFree.argtypes=[ctypes.c_void_p]
     xlib.XGetGeometry.argtypes=[ctypes.c_void_p,ctypes.c_ulong,ctypes.POINTER(ctypes.c_ulong),ctypes.POINTER(ctypes.c_int),ctypes.POINTER(ctypes.c_int),ctypes.POINTER(ctypes.c_uint),ctypes.POINTER(ctypes.c_uint),ctypes.POINTER(ctypes.c_uint),ctypes.POINTER(ctypes.c_uint)]
     xlib.XUnmapWindow.argtypes=[ctypes.c_void_p,ctypes.c_ulong]
-    xtst.XTestFakeRelativeMotionEvent.argtypes=[ctypes.c_void_p,ctypes.c_int,ctypes.c_int,ctypes.c_ulong]
-    xtst.XTestFakeMotionEvent.argtypes=[ctypes.c_void_p,ctypes.c_int,ctypes.c_int,ctypes.c_int,ctypes.c_ulong]
-    xtst.XTestFakeButtonEvent.argtypes=[ctypes.c_void_p,ctypes.c_uint,ctypes.c_int,ctypes.c_ulong]
+    if xtst:
+        xtst.XTestFakeRelativeMotionEvent.argtypes=[ctypes.c_void_p,ctypes.c_int,ctypes.c_int,ctypes.c_ulong]
+        xtst.XTestFakeMotionEvent.argtypes=[ctypes.c_void_p,ctypes.c_int,ctypes.c_int,ctypes.c_int,ctypes.c_ulong]
+        xtst.XTestFakeButtonEvent.argtypes=[ctypes.c_void_p,ctypes.c_uint,ctypes.c_int,ctypes.c_ulong]
     xlib.XQueryPointer.argtypes=[ctypes.c_void_p,ctypes.c_ulong,ctypes.POINTER(ctypes.c_ulong),ctypes.POINTER(ctypes.c_ulong),ctypes.POINTER(ctypes.c_int),ctypes.POINTER(ctypes.c_int),ctypes.POINTER(ctypes.c_int),ctypes.POINTER(ctypes.c_int),ctypes.POINTER(ctypes.c_uint)]
     display=None;child=None;transport=None;observer=None;observer_log=None;diagnostics=[]
     try:

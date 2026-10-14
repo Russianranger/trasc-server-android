@@ -117,8 +117,12 @@ def main():
     if platform.machine() not in ('aarch64', 'arm64'):
         raise RuntimeError('The published input path requires a native ARM64 CI runner')
     args.output.mkdir(parents=True, exist_ok=True)
-    (args.output / 'runtime-packages.log').write_text(subprocess.check_output(
-        ['dpkg-query', '-W', 'tigervnc-standalone-server', 'libx11-6', 'libxi6', 'libxtst6'], text=True))
+    packages = subprocess.run(['dpkg-query', '-W', 'tigervnc-standalone-server',
+                               'libx11-6', 'libxi6', 'libxtst6'],
+                              stdout=subprocess.PIPE, stderr=subprocess.STDOUT, text=True)
+    # libXtst is linked statically in the actual published input bridge;
+    # record a missing optional package without adding it to the rootfs.
+    (args.output / 'runtime-packages.log').write_text(packages.stdout)
     results = [run_case(*case, args) for case in CASES]
     sources = ('tests/integration_takp_cursor.py', 'tests/integration_takp_runtime_cursor.py',
                'tests/takp_box64_wine.py', 'tests/takp_cursor_probe.cpp',

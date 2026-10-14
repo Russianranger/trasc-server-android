@@ -24,7 +24,9 @@ versions, including TigerVNC, are retained in `runtime-packages.log`.
 
 The APK's exact ARM64 `x11-frame-bridge --input` handles the fixture's TRASCIN1
 socket, including its production packet parser and per-packet XFlush. Its
-SHA-256 must match the embedded presentation receipt. The actual patched
+SHA-256 must match the embedded presentation receipt. The production input
+bridge links Xtst statically; qualification does not install a
+standalone Xtst library into the published runtime. The actual patched
 wineserver is overlaid at `/opt/wine/bin/wineserver`; its hash must be
 `09933d17ab07fe9c79245b22c9b8f4ff3fbc42d237595bb693271d168c8cb7d3`.
 Only the open PE32 consumer and a separate read-only ARM64 observation tool are
