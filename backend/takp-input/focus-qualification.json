@@ -1,0 +1,400 @@
+{
+  "format": 1,
+  "github_commit": "d0bd98e387727a7eae14a728eea4541c05610674",
+  "github_run_id": "38500575431",
+  "published_inputs": {
+    "format": 1,
+    "runtime_asset_id": 617421976,
+    "runtime_manifest_asset_id": 617422429,
+    "runtime": {
+      "format": 1,
+      "architecture": "arm64",
+      "file": "client-runtime-arm64.tar.gz",
+      "sha256": "2f130c07683e50bc606af111d5c35c4f503c1427772c1f9b0f45e1e4b75c76c4",
+      "bytes": 353710680,
+      "runtime": "client-1.0",
+      "source_commit": "270b0bbb485e80397148112ebca66a5d98c0f69e",
+      "wine": "10.0-wow64",
+      "box64": "0.4.4",
+      "renderer": "wined3d-llvmpipe"
+    },
+    "apk_asset_id": 638709306,
+    "apk_sha256": "603776458fb2d245262bb36febdec5380557270cc39f5bc476267e21095f5595",
+    "apk_bytes": 18923551,
+    "native_payload_sha256": {
+      "x11-frame-bridge": "c7244f755d9e473a6a8931cc7d330e6a7c2efd909313b5f0cf634558562b2917",
+      "presentation-bundle.json": "d67c2cea490d4448e5901daddd92682301bf6d6326a8bea512fde85ee1c26a74",
+      "wineserver": "09933d17ab07fe9c79245b22c9b8f4ff3fbc42d237595bb693271d168c8cb7d3",
+      "wineserver-patch.json": "e0dc2af26cfcda8ae57ef5a1eb26a31aa1edba9a91c554591e6a6e07fe0875fe"
+    },
+    "runtime_rebuilt": false,
+    "production_input_bridge_rebuilt": false,
+    "runtime_overlay": "/opt/wine/bin/wineserver from verified APK",
+    "apk_version": "0.6.27",
+    "apk_version_code": 76
+  },
+  "fixture_sha256": {
+    "tests/integration_takp_focus.py": "9e916a86d4d3666ea505a5d0872f37583588291e41e339905e44ea227cb60892",
+    "tests/takp_focus_probe.cpp": "ea43bbc90e85ecf424c73cb6360c6356167e886f16a9947fa92f5e18759a3650",
+    "tests/takp_cursor_probe.cpp": "68e23c167c481c35b759f593d3a3c3844c7dd6ef8efbe78f6544ce82d80069a1",
+    "tests/takp_box64_wine.py": "6407aada984e00fb8d6986768ddf869b8d65e9d0c37b086eef951795a7427e74",
+    "tests/takp_input_transport.py": "5b77b8c0610be48ed3148997de2c069345ad846c5c82edc909f1a14400761ec1",
+    "scripts/prepare-takp-focus-runtime.py": "37c0f64dbbbe77681503ca696e64db93b6457ac93af5479fc6e36a66198877cd",
+    "scripts/prepare-takp-camera-runtime.py": "a221870b9952b3e2b28bd8ed122a954b9b61c15bc5e16c7201b8bbbf80d4588b",
+    "native/takp_camera_recenter.h": "77f669b54196ebc24f02a20c87ec1f44973b9ee82c4c576bb5fd1bf02d697cc2",
+    "native/takp_camera_trace.h": "c0301f87a3077c6065bda204fc63c262141cd13a041653f910655b4e55c9e519",
+    "native/takp_dinput_observation.h": "325b56bcb220400da5ae83d4656dbc50d90c6dd9ec3ee7eca51068e2ff483d5a",
+    "native/presentation/input.h": "1da77135b5d468b08ba7d3b6551aad3a4449c3e417b006e8de0e8f26b03b6fc3",
+    "native/presentation/takp-xinput-focus.c": "49b1cfc685bba593b9ca097b0c074a4278d09ec523cf059f542d7b783f3ed1fa",
+    "native/presentation/takp-xinput-observe.c": "41e00c7db8f1d8099c4aa49be6658536baaf951c1fbbe80e49af680d5c9356c8",
+    "native/presentation/observe-log.h": "40ecb76a1096bca0f2ecac8f194a029bf720550f9462f2fcded6299fc14f4b2d",
+    "tests/takp_focus_tools.Dockerfile": "53642add4814ab299ba490cdfe8e64d461abc369726d4012a9ac6ebf4a7bed74"
+  },
+  "focus_helper_sha256": "90dda77cb0b0fe1d18d4fa7b39bedda7dad67af6c342d7b23c74d0129f666865",
+  "observer_sha256": "5f5cf7e8f8d2d3df475284f72fa0f2944e1cadb9ba334927021799615b35744b",
+  "pointer_root_reproduction": {
+    "native_foreground_preserved": true,
+    "cached_clip_preserved": true,
+    "pointer_escaped": [
+      402,
+      300
+    ],
+    "negative_reversal": {
+      "injected": [
+        -1,
+        0
+      ],
+      "polled": [
+        2,
+        0
+      ],
+      "buffered": [
+        2,
+        0
+      ]
+    }
+  },
+  "recovery": {
+    "candidate": 18874369,
+    "signed_segments": [
+      {
+        "injected": [
+          12,
+          0
+        ],
+        "polled": [
+          12,
+          0
+        ],
+        "buffered": [
+          12,
+          0
+        ]
+      },
+      {
+        "injected": [
+          -12,
+          0
+        ],
+        "polled": [
+          -12,
+          0
+        ],
+        "buffered": [
+          -12,
+          0
+        ]
+      },
+      {
+        "injected": [
+          24,
+          0
+        ],
+        "polled": [
+          24,
+          0
+        ],
+        "buffered": [
+          24,
+          0
+        ]
+      },
+      {
+        "injected": [
+          -24,
+          0
+        ],
+        "polled": [
+          -24,
+          0
+        ],
+        "buffered": [
+          -24,
+          0
+        ]
+      },
+      {
+        "injected": [
+          0,
+          12
+        ],
+        "polled": [
+          0,
+          12
+        ],
+        "buffered": [
+          0,
+          12
+        ]
+      },
+      {
+        "injected": [
+          0,
+          -12
+        ],
+        "polled": [
+          0,
+          -12
+        ],
+        "buffered": [
+          0,
+          -12
+        ]
+      },
+      {
+        "injected": [
+          0,
+          24
+        ],
+        "polled": [
+          0,
+          24
+        ],
+        "buffered": [
+          0,
+          24
+        ]
+      },
+      {
+        "injected": [
+          0,
+          -24
+        ],
+        "polled": [
+          0,
+          -24
+        ],
+        "buffered": [
+          0,
+          -24
+        ]
+      },
+      {
+        "injected": [
+          24,
+          -12
+        ],
+        "polled": [
+          24,
+          -12
+        ],
+        "buffered": [
+          24,
+          -12
+        ]
+      },
+      {
+        "injected": [
+          -24,
+          12
+        ],
+        "polled": [
+          -24,
+          12
+        ],
+        "buffered": [
+          -24,
+          12
+        ]
+      }
+    ],
+    "idle_drift": [
+      0,
+      0
+    ],
+    "physical_cursor_confined": true,
+    "focus_none_after_resume": true,
+    "rmb_release_restores_clip": true,
+    "menu_pointer_free": true
+  },
+  "negative_guards": [
+    {
+      "case": "released-button-does-not-focus",
+      "focus": 1,
+      "repairs_added": 0
+    },
+    {
+      "case": "concrete-foreign-focus-preserved",
+      "focus": 2097153,
+      "repairs_added": 0
+    },
+    {
+      "case": "wrong-title-does-not-focus",
+      "focus": 1,
+      "repairs_added": 0
+    },
+    {
+      "case": "wrong-class-does-not-focus",
+      "focus": 1,
+      "repairs_added": 0
+    },
+    {
+      "case": "foreign-pointer-window-does-not-focus",
+      "focus": 1,
+      "repairs_added": 0
+    },
+    {
+      "case": "minimized-game-does-not-focus",
+      "focus": 1,
+      "repairs_added": 0
+    }
+  ],
+  "focus_repairs": [
+    {
+      "record": "focus_repair",
+      "t_ms": 1,
+      "before": 1,
+      "candidate": 18874369,
+      "after": 18874369,
+      "identity": "EqW-TAKP/eqgame.exe",
+      "path_depth": 2,
+      "rmb": true,
+      "attempt": 1,
+      "success": true,
+      "xerrors": 0
+    },
+    {
+      "record": "focus_repair",
+      "t_ms": 4505,
+      "before": 1,
+      "candidate": 18874369,
+      "after": 18874369,
+      "identity": "EqW-TAKP/eqgame.exe",
+      "path_depth": 2,
+      "rmb": true,
+      "attempt": 2,
+      "success": true,
+      "xerrors": 0
+    },
+    {
+      "record": "focus_repair",
+      "t_ms": 5306,
+      "before": 1,
+      "candidate": 18874369,
+      "after": 18874369,
+      "identity": "EqW-TAKP/eqgame.exe",
+      "path_depth": 2,
+      "rmb": true,
+      "attempt": 3,
+      "success": true,
+      "xerrors": 0
+    },
+    {
+      "record": "focus_repair",
+      "t_ms": 6109,
+      "before": 1,
+      "candidate": 18874369,
+      "after": 18874369,
+      "identity": "EqW-TAKP/eqgame.exe",
+      "path_depth": 2,
+      "rmb": true,
+      "attempt": 4,
+      "success": true,
+      "xerrors": 0
+    },
+    {
+      "record": "focus_repair",
+      "t_ms": 7011,
+      "before": 1,
+      "candidate": 18874369,
+      "after": 18874369,
+      "identity": "EqW-TAKP/eqgame.exe",
+      "path_depth": 2,
+      "rmb": true,
+      "attempt": 5,
+      "success": true,
+      "xerrors": 0
+    },
+    {
+      "record": "focus_repair",
+      "t_ms": 7813,
+      "before": 1,
+      "candidate": 18874369,
+      "after": 18874369,
+      "identity": "EqW-TAKP/eqgame.exe",
+      "path_depth": 2,
+      "rmb": true,
+      "attempt": 6,
+      "success": true,
+      "xerrors": 0
+    },
+    {
+      "record": "focus_repair",
+      "t_ms": 9015,
+      "before": 1,
+      "candidate": 18874369,
+      "after": 18874369,
+      "identity": "EqW-TAKP/eqgame.exe",
+      "path_depth": 2,
+      "rmb": true,
+      "attempt": 7,
+      "success": true,
+      "xerrors": 0
+    },
+    {
+      "record": "focus_repair",
+      "t_ms": 9516,
+      "before": 0,
+      "candidate": 18874369,
+      "after": 18874369,
+      "identity": "EqW-TAKP/eqgame.exe",
+      "path_depth": 2,
+      "rmb": true,
+      "attempt": 8,
+      "success": true,
+      "xerrors": 0
+    }
+  ],
+  "transport": {
+    "packets": 145,
+    "relative": 123,
+    "absolute": 1,
+    "buttons": 21,
+    "zero_relative": 0,
+    "relative_sum": [
+      32,
+      -20
+    ],
+    "positive_axes": [
+      38,
+      36
+    ],
+    "negative_axes": [
+      37,
+      37
+    ],
+    "wire_bytes": 2320,
+    "writes": 145,
+    "mask": 0,
+    "seconds": 12.164257265000003,
+    "protocol": "TRASCIN1",
+    "pipeline": "production parser; per-packet XFlush",
+    "closed": true,
+    "native_decoded": {
+      "relative": 123,
+      "absolute": 1,
+      "buttons": 21
+    }
+  },
+  "scope": "Published ARM64 runtime/open PE32 consumer with exact game identity; physical Thor acceptance pending"
+}

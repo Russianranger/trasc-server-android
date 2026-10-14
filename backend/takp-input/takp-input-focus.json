@@ -1,0 +1,20 @@
+{
+  "format": 1,
+  "architecture": "arm64-glibc",
+  "distribution": "debian-bookworm",
+  "marker": "TRASC_TAKP_X_FOCUS_RECOVERY_V1",
+  "sha256": "90dda77cb0b0fe1d18d4fa7b39bedda7dad67af6c342d7b23c74d0129f666865",
+  "bytes": 72232,
+  "window_title": "EqW-TAKP",
+  "window_class": "eqgame.exe",
+  "bounded_output_bytes": 131072,
+  "github_commit": "d0bd98e387727a7eae14a728eea4541c05610674",
+  "github_run_id": "38500575431",
+  "source_sha256": {
+    "native/presentation/takp-xinput-focus.c": "49b1cfc685bba593b9ca097b0c074a4278d09ec523cf059f542d7b783f3ed1fa",
+    "native/presentation/observe-log.h": "40ecb76a1096bca0f2ecac8f194a029bf720550f9462f2fcded6299fc14f4b2d",
+    "tests/takp_focus_tools.Dockerfile": "53642add4814ab299ba490cdfe8e64d461abc369726d4012a9ac6ebf4a7bed74"
+  },
+  "compiler_flags": "gcc -std=c11 -O2 -Wall -Wextra -Werror -lX11",
+  "scope": "Focus only exact visible game under pointer during physical RMB and None/PointerRoot; no warp/grab/registry writes"
+}

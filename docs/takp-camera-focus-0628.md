@@ -1,7 +1,24 @@
 # 0.6.28: recover the missing native TAKP focus
 
-Source candidate 0.6.28/code77. Runtime qualification, APK qualification and
-publication must finish before installing this candidate as a verified release.
+Source candidate 0.6.28/code77. Exact published-runtime qualification passed
+[run 38500575431](https://github.com/Russianranger/trasc-server-android/actions/runs/38500575431).
+APK qualification and publication must finish before installing this candidate
+as a verified release.
+
+The runtime fixture uses the original published ARM64 client-1.0 archive
+(353,710,680 bytes; SHA-256
+`2f130c07683e50bc606af111d5c35c4f503c1427772c1f9b0f45e1e4b75c76c4`)
+and actual 0.6.27 APK input bridge/patched wineserver. Original V3 and observer
+bytes remain. Its open PE32 window supplies the exact EqW title/Wine class at
+800×600, while Thor is 1280×720. A native PointerRoot fault after RMB hold
+preserves Windows foreground and cached clip; fresh (-1,0) instead becomes
+(+2,0) through both DirectInput paths. The companion then restores actual focus
+and pointer confinement; ten signed segments, neutral, menu release, six
+refusal guards and None-focus recovery after resume pass. This fixture does
+not run proprietary game code or Android/PRoot/GPU and is not Thor acceptance.
+Qualified focus ELF: 72,232 bytes, SHA-256
+`90dda77cb0b0fe1d18d4fa7b39bedda7dad67af6c342d7b23c74d0129f666865`.
+Exact build/source/runtime receipts ship in the APK.
 
 The physical 0.6.27 trace identified a specific failure: all 40 held-look native
 snapshots leave X focus on PointerRoot, while Wine reports the game active.
