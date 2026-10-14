@@ -1,0 +1,220 @@
+{
+  "format": "trasc-device-camera-evidence-2",
+  "app_version": "0.6.27",
+  "app_version_code": 76,
+  "device": "AYN Thor",
+  "bundle": {
+    "name": "logs-6791455423678849935.zip",
+    "bytes": 757059,
+    "sha256": "104bf1e57cad56f6d9e5dfcaaf51beff4128e44c10c05687f915d1b213cceda6",
+    "export_utc": "2026-10-14T02:04:06.917080Z",
+    "export_chicago": "2026-10-13T21:04:06.917080-05:00"
+  },
+  "source_files": {
+    "status.json": {
+      "bytes": 13417,
+      "sha256": "fa00537a007469619b80c3eb9f42d6f0c72b42a206fd497d5959a96877e3979f"
+    },
+    "logs/client-state.json": {
+      "bytes": 9642,
+      "sha256": "6893330c4fd6eb4c05898df6dcc26df2c775c4cc3dd03d672abcd95386a13daf"
+    },
+    "logs/client-pointer-packets.log": {
+      "bytes": 72009,
+      "sha256": "ec0c36d08a6dbf4b82dfb8b87b51f47f979d7bafd41f089c61b0bf5537ce2df8"
+    },
+    "logs/client-xinput.log": {
+      "bytes": 57239,
+      "sha256": "b3ea0310b9aae01a5a2ee1615e08262da3e28ab95f99c9739c4e018764430c47"
+    },
+    "client/current/eqw-camera-diagnostics.log": {
+      "bytes": 130096,
+      "sha256": "b588b224f94102f432ecb0349de6861145f04bfea774d4a7d083753996fb63e3"
+    }
+  },
+  "session": {
+    "client_started_utc": "2026-10-14T01:59:58.368154+00:00",
+    "resolution": "1280x720",
+    "renderer": "turnip",
+    "cpu_profile": "accurate",
+    "presentation": "native_surface",
+    "prefix_update": "reuse",
+    "pointer_transport": "relative_xtest"
+  },
+  "helper": {
+    "marker": "TRASC_TAKP_WINE_RAW_LOOK_V3",
+    "sha256": "875056a62d2df3c7434bf05d23d73186d6565d2bd5a14f2f53a58fa7d015bab3",
+    "state": "current",
+    "native_loaded": true,
+    "unchanged_from_0626": true
+  },
+  "capture_settings": {
+    "format": 1,
+    "source": "user.reg",
+    "read_only": true,
+    "values": {},
+    "source_sha256": "9c9aaa3adaa6165129ab02d4bf20d14c030c73f7c5b3647235fa2a4c41dc29e4",
+    "grab_pointer_source": "wine_default",
+    "grab_pointer_raw": null,
+    "grab_pointer_enabled": true,
+    "state": "read"
+  },
+  "android_packets": {
+    "marker": "TRASC_POINTER_PACKETS_V1",
+    "clock": "android_uptime_ms",
+    "stage": "socket_flush_complete",
+    "selected_rows": 837,
+    "total_packets": 1736,
+    "sampled_idle_packets": 899,
+    "dropped_queue": 0,
+    "dropped_limit": 0,
+    "held_motion_rows": 754,
+    "held_maximum_absolute_axis_pixels": 2,
+    "maximum_selected_queue_delay_ms": 7,
+    "first_sent_ms": 198483891,
+    "last_sent_ms": 198708952,
+    "end_reason": "closed"
+  },
+  "native_xinput": {
+    "marker": "TRASC_TAKP_XINPUT_OBSERVE_V1",
+    "begin_monotonic_ms": 198472286,
+    "xi2_version": [
+      2,
+      2
+    ],
+    "master_pointer": 2,
+    "xtest_source_pointer": 4,
+    "master_axes": "relative",
+    "held_raw_samples": 71,
+    "held_raw_packet_exact_matches": 71,
+    "matching_timestamp_delay_counts_ms": {
+      "0": 52,
+      "1": 16,
+      "2": 3
+    },
+    "held_maximum_absolute_sampled_axis_pixels": 2,
+    "held_snapshot_samples": 40,
+    "held_focus_values": {
+      "1": 40
+    },
+    "held_focus_interpretation": "PointerRoot (X constant 1), not a Wine-owned X window",
+    "held_pointer_x_range": [
+      593,
+      690
+    ],
+    "held_pointer_y_range": [
+      264,
+      423
+    ],
+    "maximum_xerrors": 0,
+    "end_record_present": false
+  },
+  "eqw_trace": {
+    "format_flags": 2,
+    "axis_mode": 1,
+    "axis_interpretation": "REL",
+    "held_clip_samples": 94,
+    "escaped_cursor_samples": 61,
+    "cached_clip": [
+      640,
+      360,
+      641,
+      361
+    ],
+    "all_held_samples_foreground_visible_physical_button": true,
+    "clip_repair_calls": 111,
+    "all_clip_repair_api_results_ok": true,
+    "repair_span_ms": 39918,
+    "minimum_retry_interval_ms": 250,
+    "held_nonempty_buffer_samples": 45,
+    "held_nonempty_buffer_oldest_age_ms": [
+      0,
+      27
+    ],
+    "held_buffer_flags": [
+      0
+    ],
+    "held_individual_last_axis_ranges": {
+      "x": [
+        -48,
+        51
+      ],
+      "y": [
+        -96,
+        45
+      ]
+    },
+    "last_trace_ms": 198705955,
+    "last_record": "unacquire",
+    "trace_byte_limit": 131072,
+    "startup_only_old_event": {
+      "age_ms": 19108,
+      "look": 0,
+      "scope": "Not part of held-look reproduction"
+    }
+  },
+  "decisive_example": {
+    "android_packet": {
+      "sequence": 306,
+      "queued_ms": 198566744,
+      "sent_ms": 198566745,
+      "x": -1,
+      "y": 0,
+      "buttons": 4
+    },
+    "preexisting_escaped_pointer": [
+      657,
+      264
+    ],
+    "cached_center": [
+      640,
+      360
+    ],
+    "cursor_minus_center": [
+      17,
+      -96
+    ],
+    "expected_cursor_offset_after_packet": [
+      16,
+      -96
+    ],
+    "buffer_event_timestamp_ms": 198566746,
+    "game_consumer_timestamp_ms": 198566758,
+    "buffer_and_state_and_game_delta": [
+      16,
+      -96
+    ],
+    "buffer_oldest_age_ms": 11,
+    "meaning": "Fresh requested left movement becomes right movement plus unrequested vertical movement after native transport; the result equals escaped pointer-to-clipped-center offset."
+  },
+  "conclusions": {
+    "physical_camera_acceptance": "Failed by user report: mouse look still weird/unwieldy",
+    "android_to_native_xi2_signed_transport": "Matched all 71 sampled held motion records with 0-2 ms timestamp delay",
+    "wine_x_focus_gate": "Observed PointerRoot native X focus disagrees with Wine foreground; Wine10 is_current_process_focused rejects PointerRoot and grab_clipping_window returns success without grabbing",
+    "magnitude_and_reversal_divergence": "After native XTest/XI2 transport, consistent with unclipped core MotionNotify converted to REL cursor-to-center offsets",
+    "supported_next_candidate": "Repair actual X focus to the verified active Wine game window within the foreground client lifecycle, then prove confinement and signed deltas before claiming camera correction",
+    "no_supported_abs_conversion_queue_drain_or_additional_blind_retry": true
+  },
+  "caveats": [
+    "XI raw events are sampled, not a complete native event dump; Android held packet logging is complete for its selected scope.",
+    "Native X focus identifies the skipped-grab gate; these files do not dump Wine internal clipping/RawMotion selection state or every core MotionNotify event.",
+    "No synchronized camera video is present, so actual visual reversal latency is not measured.",
+    "Native observer has no terminal end record; bounded records still cover the held reproduction and X focus observations.",
+    "The final consumer saved-position restoration is not a camera movement measurement and must not be counted as a 657-pixel camera delta.",
+    "No physical success is claimed for a proposed X focus correction; a fresh device test remains required."
+  ],
+  "separate_open_checks": [
+    "NPC visibility",
+    "Traditional StoneUI",
+    "Full all-profile character/bot reopening",
+    "External backup/restore",
+    "Classic skeleton appearance and exact reversion",
+    "Physical no-work rebuild and object/receipt inventory"
+  ],
+  "primary_sources": {
+    "wine_cursor_and_clip": "https://github.com/wine-mirror/wine/blob/wine-10.0/dlls/win32u/input.c",
+    "wine_x_grab_and_motion": "https://github.com/wine-mirror/wine/blob/wine-10.0/dlls/winex11.drv/mouse.c",
+    "wine_native_x_focus": "https://github.com/wine-mirror/wine/blob/wine-10.0/dlls/winex11.drv/event.c",
+    "wine_core_to_raw_conversion": "https://github.com/wine-mirror/wine/blob/wine-10.0/server/queue.c"
+  }
+}

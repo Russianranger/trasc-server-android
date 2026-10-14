@@ -230,9 +230,11 @@ final class ClientRuntime {
                 try(InputStream in=context.getAssets().open(name)){RuntimeManager.copy(in,new File(backend,name));}
             if(takp()) {
                 try(InputStream in=context.getAssets().open("takp_input_diagnostics.py")){RuntimeManager.copy(in,new File(backend,"takp_input_diagnostics.py"));}
-                for(String name:new String[]{"takp-xinput-observe","takp-input-observer.json"})
+                try(InputStream in=context.getAssets().open("takp_focus.py")){RuntimeManager.copy(in,new File(backend,"takp_focus.py"));}
+                for(String name:new String[]{"takp-xinput-observe","takp-input-observer.json","takp-xinput-focus","takp-input-focus.json"})
                     try(InputStream in=context.getAssets().open("takp-input/"+name)){RuntimeManager.copy(in,new File(backend,name));}
                 new File(backend,"takp-xinput-observe").setExecutable(true,true);
+                new File(backend,"takp-xinput-focus").setExecutable(true,true);
                 new File(backend,"takp-client").mkdirs();
                 for(String name:new String[]{"bundle.json","d3d8.dll","eqgame.dll","eqw.dll"})
                     try(InputStream in=context.getAssets().open("takp-client/"+name)){RuntimeManager.copy(in,new File(backend,"takp-client/"+name));}
