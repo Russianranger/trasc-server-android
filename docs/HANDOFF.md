@@ -1,12 +1,74 @@
-# 0.6.30 Client1 + V4 notification capture recovery — APK gates pending
+# Published 0.6.30 — Client1 recognition and V4 capture recovery
 
-Read docs/device-camera-0629.md / device-camera-evidence-0629.json, takp-camera-client1-0630.md and release-status-0630.md first. Physical0.6.29 FAIL: usermouseweird; actualvisible1280x720 windowClient1/STRING8/7 with exact22-byteeqgame.exe class, root→WineDesktop→game→propertylessrenderchild; PID8047 matchesgameprocess.20gamesamples/19completepaths; focushelper0requests becausewrongtitle.1404heldsignedAndroidpackets/130sampledXI2 exact0–5ms/0drops;35heldPointerRoot.66reconstructablefreshpairedDIbuffers allphysicalpointer+packets-center,32oppositesign. Packet272+1right→game-30,-37. CharacterID4/Paineel/camp andpreservedserver6sstart; fullallprofile/bots/backups/assets/objectreuse notphysicallyproved. Inspectorcap2diagnosticdrops separatefrom0inputloss; exportduringstoptransition.
+Read `docs/release-status-0630.md`, `docs/release-proof-0630.json`,
+`docs/takp-camera-client1-0630.md` and the physical
+`docs/device-camera-0629.md` / `device-camera-evidence-0629.json` first.
 
-FullnativeV4 qualification38590631222 at08f373040e7e0a4dbc59c14f7858868ddd620062 passed/independentauditPASS. ActualMSVCEQW95,232B/SHAae556d045a0b64586b1e4f0c0957a75c99626f9f149f8e95b7bb99ed7a738fc8; ARMfocus72,744B/SHAfcec1f6a4f0d1101efef56f58671b47944fd19219f0eeb3a4591a66607f5b364.5build/22fixturepins/sharedV4headers matched; three scopedfocusrepairs+atomicnotifications andonce-onlyownedCliprefreshes;24exactsignsegments(10initial+4legacy+10centeredrestore),32focus+9readerrefusals. Observerphases16517/16685B normalSIGTERM/drop0; onefirstphaseRMBupstartupXerrorbeforehelper, nonefocusactions/resume. Eightexports/elevenimportlibraries matchofficialV3: nonewruntimedependency. ActualDLL fixedgameaddressescan'truninopenfixture; sharedcapture/readercode exercisedactualpublishedARMpath. Physicalcamera remainspending.
+APK 0.6.30/code 79: 18,959,432 bytes, SHA-256
+`ef0237e0d0d767f7a6e0e37403803b5de0b7bc1d765e496930d422a57fd9fb31`.
+Published October 14 at 16:03:22 UTC / 11:03:22 Chicago.
+Source/tag `875e9dcc68f7aae10cc372077d00b3da2c7e84a3`, tree
+`0ad1ca75e76d9fbb000c95c0b2d5fc75a067ddff`; PR 37 merged as
+`e0da75f45dbdc3882212ec564c82224b53a3b5d9` with the exact qualified tree.
+Main adds documentation receipts only; preview keeps the qualified source.
 
-ImportantwhyV4: barecenteredFocusOut→FocusIn leavesnativeclipungrabbed;12fresh+1=>78(1+...+12), Winewin32uGetCursorPos queriesnativeonlyafter>100msidle. Don'tmaskwithqueueflush/longquiet/sensitivity. ExactClient1alias retainsexistingguards. C publishescanonical<=96B private/session nonce+seq onlyaftersuccessfulfocus, atomic/exclusivetemp/no-follow/nlink/type/sizeguard/0600/2stimeout/noDurableFlush. V4 sharedreader<=96B/20mspoll validatesregularone-link/currentlaunch/freshseq; SAMEalready-ownedclip/currentgeneration/physicalLook/FG/visible only. No warp/grab/injection/propertywrite bynativecompanion; noaddedDLLwarps/drains/conversions. Eventshavenoagebinding: pausedhookmaylaterrefreshcurrentlyownedcliponce, cannotacquirefresh/foreigncapture. Otherprofiles/unknownorNcaptureprefixsettings preserved; envreset allprofiles. Oldruntime/bridge/wineserver/observer/inspector/all21native unchanged. NewDLL knownofficialV3 upgradednormalclientlaunch, exactV3eqw.0626.dllbackup, allfirst/olderoriginalspreserved; unsafechangedbackups/customhelpersrefusebeforewrite. No server/db/clientimport/prefix/runtime/settings reset.
+All five release jobs in run 38593150423 passed: 569 Python tests, zero skips,
+management JVM/C/browser/controller, assembly/lint/signature and all three
+production profiles. Independent actual public audit verified all four
+asset digests, cryptographic v2 signature with original certificate/no
+errors or warnings, 132 source assets, 610 archived Git files, all 21 retained
+native components and exact successful CI helpers/proofs.
 
-Nextall5APK/profile/signing/publicationgates,actualpublicsignature/source/archive/payload audit,mergequalifiedtree+docsreceipt. Then normalcamp/stop/updateinplace(no uninstall), reopenTAKPwithoutbuild/import/Prepare, retainYaulp/data. PromptshortThorrightstickbothaxesreversals/neutral/Lookoffon/backgroundresume; freshbundle afterstopped includesV2focus_repair event_written +V4focus_clip_refresh sequence/ok/generation +signedpackets/XI/gamephysicalclip. Onlyusablehardwarefeedback plusmeasurementsacceptcamera. NPC/StoneUI/postcamp sessionkey/allprofilebackup/savedbots/fullcharacters/classicskeleton/exactrestore/physicalno-workobjects separate.
+Native run 38590631222 at `08f373040e7e0a4dbc59c14f7858868ddd620062`
+passed three scoped repair/notification/owned-refresh sequences, 24 exact
+signed segments including centered restore, 32 focus refusals and nine reader
+refusals. Actual MSVC EQW: 95,232 bytes /
+`ae556d045a0b64586b1e4f0c0957a75c99626f9f149f8e95b7bb99ed7a738fc8`;
+ARM focus: 72,744 bytes /
+`fcec1f6a4f0d1101efef56f58671b47944fd19219f0eeb3a4591a66607f5b364`.
+Five build/22 fixture fingerprints and shared V4 headers match. Observer
+phases end normally/drop 0; one RMB-up startup X error precedes the helper,
+none during focus actions/resume. Eight exports/11 DLL dependencies match V3.
+The fixed-address game DLL cannot run in the open PE32 fixture; shared
+capture/reader code was exercised on the actual published ARM runtime.
+Exact Wine 10 source review confirms normal explorer launch passes current
+event paths and nonce despite desktop reuse. Five protected known-V3 upgrade/
+repeat/no-write refusal transaction checks passed.
+
+Latest physical 0.6.29 result remains FAIL: user reports weird right-stick
+movement. Exact visible Client1/STRING8/7 window and 22-byte eqgame.exe class,
+correct pointer ancestry and PID were captured. The old title-only mismatch
+caused zero requests. Native input retains sign/timing; escaped physical cursor
+offsets explain reconstructed fresh wrong/opposite game deltas. Full facts,
+14 source-log hashes and limitations are in the physical evidence documents.
+
+V4 addresses the centered-focus capture gap found by stricter qualification:
+12 fresh +1 became 78 while Wine returned a cached centered cursor. The
+companion writes a canonical private <=96-byte launch-token/sequence event
+only after scoped native focus success; the reader polls <=once/20 ms.
+One same already-owned clip submission requires current generation, physical
+Look, foreground and visibility. No added warp/drain/axis conversion,
+registry change or runtime replacement. Events have no age binding: a paused
+hook can later refresh its currently owned clip once, never acquire foreign
+capture. Capture-disabled/unknown prefixes remain preserved. Known official
+V3 upgrades with exact eqw.0626.dll backup and earlier originals retained;
+changed/custom helpers or unsafe/changed backups refuse before writes.
+
+Next gate is PHYSICAL CAMERA ACCEPTANCE, not another source/build/import/reset.
+Camp/stop normally; update in place without uninstalling; reopen TAKP with
+the working server/Yaulp/data. Keep settings and test short right-stick both-axis
+reversals/neutral/Look off-on/background-resume within five minutes. Camp/stop,
+wait stopped, export fresh bundle. Check V2 focus_repair/event_written and
+matching V4 focus_clip_refresh plus native physical confinement, signed game
+reversals, neutral stop and free menu pointer. No usability claim before
+device behavior and measurements agree.
+
+Confirmed server start/saved-character load, source update/build/deployment
+and Yaulp correction remain separate from unresolved camera acceptance.
+NPC visibility, Traditional StoneUI, post-camp expired session key,
+all-profile external backup/restore, saved-bot/full-character persistence,
+classic skeleton visual/exact restoration and physical incremental/no-work
+object receipts remain separate. No release build remains running.
 
 ---
 
