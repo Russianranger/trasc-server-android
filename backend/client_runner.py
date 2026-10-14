@@ -695,6 +695,8 @@ class Supervisor:
         if self.request.get('profile') == 'takp' and self.request['mode'] == 'client':
             import takp_input_diagnostics
             self.update(**takp_input_diagnostics.start(self, PREFIX, LOGS))
+            import takp_focus
+            self.update(**takp_focus.start(self, LOGS))
         if self.request.get('renderer') == 'turnip':
             self.update(dxvk_d3d9_sha256=client_vulkan.install_d3d9(Path(__file__).parent, PREFIX, CLIENT))
         devices = PREFIX / 'dosdevices'; devices.mkdir(exist_ok=True)
@@ -742,6 +744,11 @@ class Supervisor:
             if xserver.poll() is not None: raise RuntimeError('Display exited; see client-display.log')
             observed, fatal = self.wine_log.snapshot()
             if fatal: raise RuntimeError(fatal)
+            focus_process = getattr(self, 'takp_focus_process', None)
+            if focus_process is not None:
+                focus_status = self.status['takp_focus_recovery']
+                focus_status['exit_code'] = focus_process.poll()
+                focus_status['state'] = 'running' if focus_status['exit_code'] is None else 'exited'
             if time.monotonic() - self.last_thread_sample >= 10:
                 self.last_thread_sample = time.monotonic()
                 before = time.monotonic()

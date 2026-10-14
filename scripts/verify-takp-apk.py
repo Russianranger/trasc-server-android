@@ -15,6 +15,80 @@ TAKP_HELPERS = {
     'eqw.dll': '875056a62d2df3c7434bf05d23d73186d6565d2bd5a14f2f53a58fa7d015bab3',
 }
 TAKP_OBSERVER_SHA = '5f5cf7e8f8d2d3df475284f72fa0f2944e1cadb9ba334927021799615b35744b'
+TAKP_FOCUS_SHA = '90dda77cb0b0fe1d18d4fa7b39bedda7dad67af6c342d7b23c74d0129f666865'
+
+
+def verify_focus(archive, root):
+    binary = archive.read('assets/takp-input/takp-xinput-focus')
+    build = json.loads(archive.read('assets/takp-input/takp-input-focus.json'))
+    if (not isinstance(build, dict) or build.get('format') != 1
+            or build.get('sha256') != TAKP_FOCUS_SHA
+            or hashlib.sha256(binary).hexdigest() != TAKP_FOCUS_SHA
+            or build.get('bytes') != len(binary) or len(binary) < 64
+            or binary[:6] != b'\x7fELF\x02\x01' or struct.unpack_from('<H', binary, 18)[0] != 183
+            or build.get('marker') != 'TRASC_TAKP_X_FOCUS_RECOVERY_V1'
+            or build['marker'].encode() not in binary
+            or build.get('window_title') != 'EqW-TAKP' or build.get('window_class') != 'eqgame.exe'
+            or build.get('bounded_output_bytes') != 128*1024):
+        raise ValueError('TAKP scoped focus helper differs from qualified ARM64 bytes')
+    expected_sources = {'native/presentation/takp-xinput-focus.c',
+                        'native/presentation/observe-log.h', 'tests/takp_focus_tools.Dockerfile'}
+    if set(build.get('source_sha256', {})) != expected_sources:
+        raise ValueError('TAKP native focus source provenance is incomplete')
+    for name, digest in build['source_sha256'].items():
+        if hashlib.sha256((root/name).read_bytes()).hexdigest() != digest:
+            raise ValueError('TAKP native focus source differs: ' + name)
+    for name in ('takp-xinput-focus', 'takp-input-focus.json', 'focus-qualification.json'):
+        if archive.read('assets/takp-input/'+name) != (root/'backend/takp-input'/name).read_bytes():
+            raise ValueError('TAKP qualified focus asset differs: ' + name)
+    if archive.read('assets/takp_focus.py') != (root/'backend/takp_focus.py').read_bytes():
+        raise ValueError('TAKP scoped focus launcher differs')
+    proof = json.loads(archive.read('assets/takp-input/focus-qualification.json'))
+    if (proof.get('format') != 1 or proof.get('focus_helper_sha256') != TAKP_FOCUS_SHA
+            or proof.get('observer_sha256') != TAKP_OBSERVER_SHA
+            or proof.get('github_commit') != build.get('github_commit')
+            or proof.get('github_run_id') != build.get('github_run_id')):
+        raise ValueError('TAKP scoped focus runtime identity is incomplete')
+    sources = {'tests/integration_takp_focus.py', 'tests/takp_focus_probe.cpp', 'tests/takp_cursor_probe.cpp',
+               'tests/takp_box64_wine.py', 'tests/takp_input_transport.py', 'scripts/prepare-takp-focus-runtime.py',
+               'scripts/prepare-takp-camera-runtime.py', 'native/takp_camera_recenter.h', 'native/takp_camera_trace.h',
+               'native/takp_dinput_observation.h', 'native/presentation/input.h', 'native/presentation/takp-xinput-focus.c',
+               'native/presentation/takp-xinput-observe.c', 'native/presentation/observe-log.h', 'tests/takp_focus_tools.Dockerfile'}
+    if set(proof.get('fixture_sha256', {})) != sources:
+        raise ValueError('TAKP scoped focus fixture provenance is incomplete')
+    for name, digest in proof['fixture_sha256'].items():
+        if hashlib.sha256((root/name).read_bytes()).hexdigest() != digest:
+            raise ValueError('TAKP scoped focus fixture differs: ' + name)
+    inputs = proof.get('published_inputs', {})
+    if (inputs.get('runtime', {}).get('sha256') != '2f130c07683e50bc606af111d5c35c4f503c1427772c1f9b0f45e1e4b75c76c4'
+            or inputs.get('apk_sha256') != '603776458fb2d245262bb36febdec5380557270cc39f5bc476267e21095f5595'
+            or inputs.get('runtime_rebuilt') is not False or inputs.get('production_input_bridge_rebuilt') is not False):
+        raise ValueError('TAKP native focus was not tested through the preserved published input path')
+    reproduction = proof.get('pointer_root_reproduction', {})
+    wrong = reproduction.get('negative_reversal', {})
+    if (not reproduction.get('native_foreground_preserved') or not reproduction.get('cached_clip_preserved')
+            or reproduction.get('pointer_escaped') == [400, 300]
+            or wrong.get('injected') != [-1, 0] or len(wrong.get('polled', [])) != 2
+            or len(wrong.get('buffered', [])) != 2 or wrong['polled'][0] < 0 or wrong['buffered'][0] < 0):
+        raise ValueError('TAKP PointerRoot physical failure was not reproduced')
+    recovery = proof.get('recovery', {})
+    signed = recovery.get('signed_segments', [])
+    expected = [[12, 0], [-12, 0], [24, 0], [-24, 0], [0, 12], [0, -12], [0, 24], [0, -24], [24, -12], [-24, 12]]
+    if (len(signed) != 10 or [row.get('injected') for row in signed] != expected
+            or any(row.get('polled') != row.get('injected') or row.get('buffered') != row.get('injected') for row in signed)
+            or recovery.get('idle_drift') != [0, 0] or not recovery.get('physical_cursor_confined')
+            or not recovery.get('focus_none_after_resume') or not recovery.get('rmb_release_restores_clip')
+            or not recovery.get('menu_pointer_free')):
+        raise ValueError('TAKP physical focus/capture recovery and signed input qualification is incomplete')
+    guards = proof.get('negative_guards', [])
+    required = {'released-button-does-not-focus', 'concrete-foreign-focus-preserved', 'wrong-title-does-not-focus',
+                'wrong-class-does-not-focus', 'foreign-pointer-window-does-not-focus', 'minimized-game-does-not-focus'}
+    if (len(guards) != 6 or {row.get('case') for row in guards} != required
+            or any(row.get('repairs_added') != 0 for row in guards)):
+        raise ValueError('TAKP focus recovery refusal guards are incomplete')
+    repairs = proof.get('focus_repairs', [])
+    if not all(any(row.get('success') and row.get('before') == origin for row in repairs) for origin in (0, 1)):
+        raise ValueError('TAKP None and PointerRoot focus recovery were not both measured')
 
 
 def verify(apk, signing_report, root):
@@ -24,6 +98,7 @@ def verify(apk, signing_report, root):
     if not match or match.group(1) != expected_certificate:
         raise ValueError('APK signing certificate changed; this is not a compatible update')
     with zipfile.ZipFile(apk) as archive:
+        verify_focus(archive, root)
         observer = archive.read('assets/takp-input/takp-xinput-observe')
         observer_record = json.loads(archive.read('assets/takp-input/takp-input-observer.json'))
         if (hashlib.sha256(observer).hexdigest() != TAKP_OBSERVER_SHA
@@ -151,7 +226,7 @@ def verify(apk, signing_report, root):
                 raise ValueError('TAKP helper license is missing or changed: ' + name)
         if 'assets/takp-client/eqw.pdb' in archive.namelist():
             raise ValueError('The debug symbol file must not inflate the runtime APK')
-    print('PASS: preserved certificate, exact TAKP helpers, published ARM64 input/observer proof and Bots modules')
+    print('PASS: preserved certificate, exact TAKP helpers, published ARM64 scoped focus/input/observer proof and Bots modules')
 
 
 if __name__ == '__main__':

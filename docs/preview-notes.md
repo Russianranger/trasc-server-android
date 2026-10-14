@@ -1,16 +1,18 @@
-# TRASC Android preview 0.6.27 · code 76
+# TRASC Android preview 0.6.28 · code 77
 
-This is a diagnostic update for the still-unusable TAKP right-stick camera.
-The existing V3 helper remains unchanged. It automatically records bounded,
-read-only capture settings, native X focus/pointer/raw events, and the actual
-Android pointer packets with queue/send timestamps. File I/O runs off the input
-writer. No focus changes, pointer warps, injected movements or registry changes
-are performed by the observers.
+The physical 0.6.27 logs identify missing native X focus: Android's signed stick
+packets reach XI2 correctly, but Wine reports foreground while X remains on
+PointerRoot. The escaped cursor offset then produces wrong-direction input.
+This update restores missing focus only during held right mouse over the exact
+visible TAKP game window. It preserves concrete foreign focus, menus, hidden
+windows and existing prefix settings. The existing V3 helper then confines the
+pointer. No warps, injected movement, runtime replacement or registry edits.
 
-The exact published ARM64 Box64/Wine/TigerVNC runtime passed signed motion and
-reversals in controlled qualification. Disabled-capture controls reproduced
-successful ClipCursor calls with an escaped pointer. This narrows the device
-investigation; it does not establish the user's setting or a physical fix.
+The exact published ARM64 Box64/Wine/TigerVNC path reproduced PointerRoot with
+wrong fresh reversal input, then passed physical confinement, ten exact signed
+motion segments through both DirectInput APIs, zero idle drift, menu release,
+six refusal guards and resume recovery. These controlled results do not prove
+camera usability on Thor. APK signing/profile/publication gates must also pass.
 
 Install as an update and restart only the TAKP client. Keep the working server
 and Yaulp deployment. After a short right-stick reversal test, stop the client
@@ -19,4 +21,4 @@ prefixes, runtimes, settings and all-profile backup remain in place. No new
 server update/build/deployment, client import or prefix reset is required.
 
 Camera acceptance remains open. NPC visibility and Traditional StoneUI remain
-separate issues. See docs/takp-input-0627.md for qualification and test scope.
+separate issues. See docs/takp-camera-focus-0628.md for qualification and test scope.

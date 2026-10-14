@@ -1,3 +1,13 @@
+# 0.6.28 scoped native focus repair — APK gates pending (2026-10-14 UTC)
+
+Read `docs/device-camera-0627.md` and exact JSON evidence first: user says mouse look still weird/unwieldy; all40 held native snapshots retain PointerRoot while Wineforeground=true. All71 sampled native XI2 motions match Android's signed packets0–2ms; packet306(-1,0) becomes game(+16,-96), exactly escapedcursor-minuscenter. Registry capture uses enableddefault, source/master/REL format valid, held events fresh. Not Android accumulation or sensitivity; do not retry clip blindly.
+
+New0.6.28/code77 adds separate native focus companion only for None/PointerRoot + physicalRMB + pointerdescendant through exact visible EqW-TAKP/eqgame.exe. Revalidatesbeforefocus; no global search,warps/grabs/injection/propertywrites/registrychanges; preservesconcreteforeignfocus anddisabled/unknowncaptureconfig. Lifecycle-supervised,100ms polling/500ms retry/2s Xrequest timeout/128KiB logs; observationcapdoesnotstoprepair. Original V3,21nativecomponents,runtime/inputbridge/wineserver andread-onlyobserver unchanged. Keepserver/Yaulp/data/prefixes/runtimes/settings; no rebuild/import/reset.
+
+ExactARM run38500575431 atd0bd98e387727a7eae14a728eea4541c05610674 passed actualPointerRoot/wrongfreshnegativeinput reproduction, focus/physicalcapture restoration,10signedsegments via state+buffer,zeroidle,menu release,6refusalguards andNonefocusresume. Newbuild+runtime receipts mustshipwith exactARMhelper. Source fixture only openPE32; doesnotclaimproprietarygame/Android/Thor usability. NextAPKsigning/all3profile/publicdownloadgates andindependentaudit; then shortThor rightstickreversal/neutral/menu/resume andfreshlogs includingclient-takp-focus.log. NPC/StoneUI/all-profilebackup/bots/skeleton/no-workobjectreceipts separate.
+
+---
+
 # Published 0.6.27 diagnostic update (2026-10-14 UTC)
 
 Read `docs/release-status-0627.md`, `docs/release-proof-0627.json` and `docs/takp-input-0627.md` first. Published APK 0.6.27/code76: 18,923,551 bytes, SHA-256 `603776458fb2d245262bb36febdec5380557270cc39f5bc476267e21095f5595`, uploaded 00:41:48 UTC (October 13, 19:41:48 Chicago). Source `8086fc2bc5a13a4c385bdf7910f7d941310da233`, tree `e685e2f149ac3358d842744cd3647e3f1b69e3f2`; PR #34 merged as `bca4328715625a11f64071c42217d8155d0c4017` with the exact tree. Preview remains on the qualified source; main adds only documentation receipts.
