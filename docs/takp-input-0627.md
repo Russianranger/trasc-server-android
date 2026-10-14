@@ -1,7 +1,10 @@
 # 0.6.27: measure the remaining Thor capture failure
 
-Package: 0.6.27/code76. APK assembly/signing/publication are pending until the
-release gate completes; do not describe this source draft as a published APK.
+Published 0.6.27/code76 on 2026-10-14 UTC. [Download the verified diagnostic APK](https://github.com/Russianranger/trasc-server-android/releases/download/preview/trasc-server-android-preview.apk?v=0.6.27).
+All five release jobs and independent public APK/signature/source checks passed;
+see [release-status-0627.md](release-status-0627.md) and
+[release-proof-0627.json](release-proof-0627.json). Physical camera acceptance
+remains open; the existing camera delivery implementation is unchanged.
 
 The user confirmed 0.6.26 slightly improved mouse look but remains unusable,
 with the previous delayed-reversal behavior. Its V3 helper loaded correctly;
