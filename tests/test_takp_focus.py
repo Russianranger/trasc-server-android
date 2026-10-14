@@ -21,7 +21,7 @@ class TakpFocusTests(unittest.TestCase):
         struct.pack_into('<H', self.elf, 18, 183)
         self.receipt = {'format': 1, 'marker': takp_focus.MARKER, 'bytes': len(self.elf),
             'sha256': hashlib.sha256(self.elf).hexdigest(), 'bounded_output_bytes': 128*1024,
-            'window_title': 'EqW-TAKP', 'window_class': 'eqgame.exe'}
+            'window_titles': ['EqW-TAKP', 'Client1'], 'window_class': 'eqgame.exe'}
         (self.root/'takp-xinput-focus').write_bytes(self.elf)
         self.write_receipt()
 
@@ -39,7 +39,8 @@ class TakpFocusTests(unittest.TestCase):
         self.assertFalse(result['takp_focus_recovery']['prefix_settings_changed'])
 
     def test_unqualified_or_broadened_identity_refuses_without_blocking_client(self):
-        for field, value in [('sha256', 'wrong'), ('window_class', 'wine'), ('window_title', '*'),
+        for field, value in [('sha256', 'wrong'), ('window_class', 'wine'), ('window_titles', ['*']),
+                             ('window_titles', ['EqW-TAKP', 'Client1', 'Client2']),
                              ('marker', 'unknown'), ('bounded_output_bytes', 0)]:
             with self.subTest(field=field):
                 original = self.receipt[field]

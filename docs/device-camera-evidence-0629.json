@@ -1,0 +1,672 @@
+{
+  "format": "trasc-device-camera-evidence-4",
+  "app_version": "0.6.29",
+  "app_version_code": 78,
+  "version_code_source": "Published 0.6.29 release; status.json reports version string only.",
+  "device": "AYN Thor",
+  "android_sdk": 33,
+  "bundle": {
+    "name": "logs-214347772381917203.zip",
+    "bytes": 742058,
+    "sha256": "9c46b6b579eae944a027787b5b78fbdc4c0cab6498a559ca725a375e388e49f7",
+    "export_utc": "2026-10-14T14:42:48.486879Z",
+    "export_chicago": "2026-10-14T09:42:48.486879-05:00"
+  },
+  "source_files": {
+    "status.json": {
+      "bytes": 13964,
+      "sha256": "c41e5110efc923d2c2edc2e7396b1bff34f0c12cc25f388fc4c9fb295f648841"
+    },
+    "logs/client-state.json": {
+      "bytes": 10169,
+      "sha256": "0f95e7bc1a27b22b1fc8498138a6507afca8c48f2befc99d7774a93f39cf7c4d"
+    },
+    "logs/client-pointer-packets.log": {
+      "bytes": 125715,
+      "sha256": "92b2ab7d1cca768a164c82ef462c2f3613d1670949fbe073e40f42cdb22f1a8b"
+    },
+    "logs/client-xinput.log": {
+      "bytes": 64762,
+      "sha256": "dbf223fa8cad307aad1e048e15683334eb9cd273936ed6d05c1e09d8f990cb7c"
+    },
+    "logs/client-takp-focus.log": {
+      "bytes": 1087,
+      "sha256": "3d1068b56e95cf9f0e324bb6ab456fdac576a35ded9cee8f088b62ec9851456b"
+    },
+    "logs/client-takp-windows.log": {
+      "bytes": 129113,
+      "sha256": "fed5f9601144ebcb2b6a38890e5f9126f1f0a10e579035e99911f33f62091c0a"
+    },
+    "client/current/eqw-camera-diagnostics.log": {
+      "bytes": 122135,
+      "sha256": "e9342d8c8ad1d35696fb7a5bf057571c4c4251a878381d533a370a3d40c25a04"
+    },
+    "logs/control.log": {
+      "bytes": 14667,
+      "sha256": "56d951c468515d470fac35b1af2c2e9cbd6eb0dfe2351a458d48bb2e83939900"
+    },
+    "logs/world.log": {
+      "bytes": 20137,
+      "sha256": "7f56eb120b6aa05dce19e773964de6a2baacf39b571d9216aac97b0404989534"
+    },
+    "server/logs/zone-dynamic_01.log": {
+      "bytes": 31778,
+      "sha256": "1441bde3959a783b4642297f2498bf34d64d5e948bd4f6d6a5a979e44bfce53f"
+    },
+    "logs/android-exit.log": {
+      "bytes": 1599,
+      "sha256": "44455ec65f4424c287c46532ce394023810ef87382892ca20a955b7701bbc016"
+    },
+    "logs/client-proot.log": {
+      "bytes": 932,
+      "sha256": "e31840cd05b27ec4029ebf60f1775ed7688e775b535bc7e267f3d1d52c10b7bf"
+    },
+    "logs/client-wine.log": {
+      "bytes": 45662,
+      "sha256": "0e35b4156ef96df42d4da475bf6142f486abc80b2873e58ace03a312ad1df5e7"
+    },
+    "logs/client-threads.log": {
+      "bytes": 248082,
+      "sha256": "8da22a2ffcebf17f94e3933d3981d5317351ed469bbd37c5d0225e47def2ec6a"
+    }
+  },
+  "acceptance": {
+    "camera": "FAIL",
+    "reported_input": "Thor right stick (established in previous user report)",
+    "user_report": "See logs - mouse still weird movement",
+    "window_identity_collection": "CAPTURED",
+    "physical_focus_repair": "NOT_ATTEMPTED",
+    "next_release_camera": "PENDING_DEVICE_VALIDATION",
+    "npc_visibility": "SEPARATE_UNRESOLVED",
+    "traditional_stoneui": "SEPARATE_UNRESOLVED"
+  },
+  "session": {
+    "client_started_utc": "2026-10-14T14:39:21.526804+00:00",
+    "resolution": "1280x720",
+    "cpu_profile": "accurate",
+    "prefix_update": "reuse",
+    "pointer_transport": "relative_xtest",
+    "server_start_utc": "2026-10-14T14:39:12Z",
+    "server_start_completed_utc": "2026-10-14T14:39:18Z",
+    "server_start_seconds": 6,
+    "new_source_build_deployment_database_initialization_after_latest_start": false,
+    "existing_character_zone": "Paineel",
+    "existing_character_id": 4,
+    "character_world_entry_request_utc": "2026-10-14T14:40:27Z",
+    "character_zone_transport_utc": "2026-10-14T14:40:28Z",
+    "character_camp_utc": "2026-10-14T14:42:14Z",
+    "character_zone_connection_duration_seconds": 106,
+    "camp_disposition": "camp / ServerCloseRequested",
+    "full_inventory_bot_all_profile_acceptance": false,
+    "export_during_stopping": true,
+    "persisted_client_phase": "launch_requested",
+    "persisted_focus_child_state": "running",
+    "focus_end_log_is_authoritative_for_helper_exit": true,
+    "no_current_native_client_crash_record_identified": true,
+    "android_exit_records_before_current_launch": true,
+    "launcher_exit": null,
+    "export_native_client_alive": true,
+    "export_client_status": "Stopping Wine and the client display\u2026",
+    "export_display_ready": false
+  },
+  "eqw_helper": {
+    "marker": "TRASC_TAKP_WINE_RAW_LOOK_V3",
+    "sha256": "875056a62d2df3c7434bf05d23d73186d6565d2bd5a14f2f53a58fa7d015bab3",
+    "state": "current",
+    "changed": false,
+    "native_loaded": true
+  },
+  "focus_recovery": {
+    "marker": "TRASC_TAKP_X_FOCUS_RECOVERY_V1",
+    "sha256": "90dda77cb0b0fe1d18d4fa7b39bedda7dad67af6c342d7b23c74d0129f666865",
+    "pid": 8016,
+    "begin_monotonic_ms": 203328144,
+    "prefix_settings_changed": false,
+    "held_gate_records": [
+      {
+        "record": "gate",
+        "t_ms": 86300,
+        "state": "no_exact_visible_game_under_pointer",
+        "focus": 1,
+        "buttons_mask": 1024,
+        "candidate": 0,
+        "xerrors": 0
+      },
+      {
+        "record": "gate",
+        "t_ms": 116218,
+        "state": "no_exact_visible_game_under_pointer",
+        "focus": 1,
+        "buttons_mask": 1024,
+        "candidate": 0,
+        "xerrors": 0
+      }
+    ],
+    "repair_records": 0,
+    "end": {
+      "record": "end",
+      "t_ms": 198765,
+      "attempts": 0,
+      "successes": 0,
+      "bytes_before_end": 982,
+      "dropped": 0,
+      "xerrors": 0
+    },
+    "conclusion": "Both held phases fail strict title equality. No XSetInputFocus request was made. Focus repair and camera behavior after accepting the observed title remain physically untested."
+  },
+  "window_inspector": {
+    "marker": "TRASC_TAKP_WINDOW_INSPECT_V1",
+    "sha256": "e1df07509f870d35f8feea87e64f20101597bd14dbc5ed0632335906b312d21c",
+    "pid": 8017,
+    "begin": {
+      "record": "begin",
+      "marker": "TRASC_TAKP_WINDOW_INSPECT_V1",
+      "pid": 8017,
+      "monotonic_ms": 203328154,
+      "epoch_ms": 1791988768446,
+      "max_seconds": 300,
+      "hard_timeout_seconds": 301,
+      "max_bytes": 131072,
+      "property_bytes": 128,
+      "path_limit": 16,
+      "tree_node_limit": 128,
+      "poll_ms": 200,
+      "sample_ms": 1000,
+      "read_only": true,
+      "changes_focus_pointer_properties": false
+    },
+    "begin_monotonic_ms": 203328154,
+    "device_state": {
+      "state": "exited",
+      "pid": 8017,
+      "sha256": "e1df07509f870d35f8feea87e64f20101597bd14dbc5ed0632335906b312d21c",
+      "read_only": true,
+      "max_seconds": 300,
+      "max_log_bytes": 131072,
+      "exit_code": 0
+    },
+    "end": {
+      "record": "end",
+      "t_ms": 106500,
+      "reason": "byte_limit",
+      "snapshots": 107,
+      "paths": 20,
+      "tree_nodes": 19,
+      "candidates": 3,
+      "bytes_before_end": 128952,
+      "dropped": 2,
+      "xerrors": 0
+    },
+    "file_bytes": 129113,
+    "held_snapshot_count": 20,
+    "held_snapshot_first": {
+      "record": "snapshot",
+      "t_ms": 87154,
+      "focus": 1,
+      "revert": 0,
+      "pointer_ok": true,
+      "root": 1305,
+      "child": 14680068,
+      "x": 588,
+      "y": 325,
+      "buttons_mask": 1024,
+      "rmb": true,
+      "xerrors": 0
+    },
+    "held_snapshot_last": {
+      "record": "snapshot",
+      "t_ms": 106295,
+      "focus": 1,
+      "revert": 0,
+      "pointer_ok": true,
+      "root": 1305,
+      "child": 14680068,
+      "x": 609,
+      "y": 308,
+      "buttons_mask": 1024,
+      "rmb": true,
+      "xerrors": 0
+    },
+    "complete_path_count": 19,
+    "path_attempt_count": 20,
+    "game_window_sample_count": 20,
+    "game_wm_name_sample_count": 20,
+    "game_wm_class_sample_count": 20,
+    "game_net_wm_name_sample_count": 19,
+    "first_pointer_path_windows": [
+      {
+        "record": "window",
+        "t_ms": 87158,
+        "source": "pointer_path",
+        "index": 0,
+        "window": 1305,
+        "parent": 0,
+        "root": 1305,
+        "tree_ok": true,
+        "children": 1,
+        "attributes_ok": true,
+        "map_state": 2,
+        "window_class": 1,
+        "x": 0,
+        "y": 0,
+        "width": 1280,
+        "height": 720,
+        "border": 0,
+        "depth": 24,
+        "pid_present": false,
+        "pid": 0,
+        "exact_identity": false,
+        "focus_guard_viewable": true
+      },
+      {
+        "record": "window",
+        "t_ms": 87161,
+        "source": "pointer_path",
+        "index": 1,
+        "window": 14680068,
+        "parent": 1305,
+        "root": 1305,
+        "tree_ok": true,
+        "children": 15,
+        "attributes_ok": true,
+        "map_state": 2,
+        "window_class": 1,
+        "x": 0,
+        "y": 0,
+        "width": 1280,
+        "height": 720,
+        "border": 0,
+        "depth": 24,
+        "pid_present": true,
+        "pid": 8031,
+        "exact_identity": false,
+        "focus_guard_viewable": true
+      },
+      {
+        "record": "window",
+        "t_ms": 87164,
+        "source": "pointer_path",
+        "index": 2,
+        "window": 20971521,
+        "parent": 14680068,
+        "root": 1305,
+        "tree_ok": true,
+        "children": 1,
+        "attributes_ok": true,
+        "map_state": 2,
+        "window_class": 1,
+        "x": 0,
+        "y": 0,
+        "width": 1280,
+        "height": 720,
+        "border": 0,
+        "depth": 24,
+        "pid_present": true,
+        "pid": 8047,
+        "exact_identity": false,
+        "focus_guard_viewable": true
+      },
+      {
+        "record": "window",
+        "t_ms": 87165,
+        "source": "pointer_path",
+        "index": 3,
+        "window": 18874978,
+        "parent": 20971521,
+        "root": 1305,
+        "tree_ok": true,
+        "children": 0,
+        "attributes_ok": true,
+        "map_state": 2,
+        "window_class": 1,
+        "x": 0,
+        "y": 0,
+        "width": 1280,
+        "height": 720,
+        "border": 0,
+        "depth": 24,
+        "pid_present": false,
+        "pid": 0,
+        "exact_identity": false,
+        "focus_guard_viewable": true
+      }
+    ],
+    "first_game_properties": [
+      {
+        "record": "property",
+        "t_ms": 87164,
+        "source": "pointer_path",
+        "window": 20971521,
+        "property": "WM_NAME",
+        "status": 0,
+        "type": 31,
+        "type_name": "STRING",
+        "format": 8,
+        "count": 7,
+        "after": 0,
+        "returned_bytes": 7,
+        "limit_bytes": 128,
+        "raw": "Client1",
+        "hex": "436c69656e7431",
+        "bytes_exact": false,
+        "bytes_optional_terminal_nul": false,
+        "focus_guard_exact": false
+      },
+      {
+        "record": "property",
+        "t_ms": 87164,
+        "source": "pointer_path",
+        "window": 20971521,
+        "property": "WM_CLASS",
+        "status": 0,
+        "type": 31,
+        "type_name": "STRING",
+        "format": 8,
+        "count": 22,
+        "after": 0,
+        "returned_bytes": 22,
+        "limit_bytes": 128,
+        "raw": "eqgame.exe\u0000eqgame.exe\u0000",
+        "hex": "657167616d652e65786500657167616d652e65786500",
+        "bytes_exact": true,
+        "bytes_optional_terminal_nul": false,
+        "focus_guard_exact": true
+      },
+      {
+        "record": "property",
+        "t_ms": 87164,
+        "source": "pointer_path",
+        "window": 20971521,
+        "property": "_NET_WM_NAME",
+        "status": 0,
+        "type": 74,
+        "type_name": "UTF8_STRING",
+        "format": 8,
+        "count": 7,
+        "after": 0,
+        "returned_bytes": 7,
+        "limit_bytes": 128,
+        "raw": "Client1",
+        "hex": "436c69656e7431",
+        "bytes_exact": false,
+        "bytes_optional_terminal_nul": false,
+        "focus_guard_exact": false
+      }
+    ],
+    "candidate_tree_end": {
+      "record": "candidate_tree_end",
+      "t_ms": 87176,
+      "nodes_read": 19,
+      "nodes_enqueued": 19,
+      "node_limit": 128,
+      "depth_limit": 16,
+      "candidates": 3,
+      "node_limit_reached": false
+    },
+    "other_eqgame_class_windows": [
+      {
+        "record": "window",
+        "t_ms": 87171,
+        "source": "bounded_candidate_tree",
+        "index": 2,
+        "window": 20971522,
+        "parent": 14680068,
+        "root": 1305,
+        "tree_ok": true,
+        "children": 0,
+        "attributes_ok": true,
+        "map_state": 0,
+        "window_class": 1,
+        "x": 0,
+        "y": 0,
+        "width": 1,
+        "height": 1,
+        "border": 0,
+        "depth": 24,
+        "pid_present": true,
+        "pid": 8047,
+        "exact_identity": false,
+        "focus_guard_viewable": false
+      },
+      {
+        "record": "window",
+        "t_ms": 87172,
+        "source": "bounded_candidate_tree",
+        "index": 2,
+        "window": 20971523,
+        "parent": 14680068,
+        "root": 1305,
+        "tree_ok": true,
+        "children": 0,
+        "attributes_ok": true,
+        "map_state": 0,
+        "window_class": 1,
+        "x": 0,
+        "y": 0,
+        "width": 1,
+        "height": 1,
+        "border": 0,
+        "depth": 24,
+        "pid_present": true,
+        "pid": 8047,
+        "exact_identity": false,
+        "focus_guard_viewable": false
+      }
+    ],
+    "cap_limitation": "The byte cap ends collection at 106.500 seconds after 20 held snapshots. Nineteen paths are complete; the twentieth ends during property output (two records dropped). No window hierarchy error is implied. The later held phase is absent from this inspector log."
+  },
+  "predicate_mismatch": {
+    "expected_title": "EqW-TAKP",
+    "observed_title": "Client1",
+    "wm_name_type": "STRING",
+    "wm_name_format": 8,
+    "wm_name_count": 7,
+    "wm_name_after": 0,
+    "wm_name_hex": "436c69656e7431",
+    "wm_name_terminal_nul": false,
+    "class_guard_passes": true,
+    "class_type": "STRING",
+    "class_format": 8,
+    "class_count": 22,
+    "class_after": 0,
+    "class_hex": "657167616d652e65786500657167616d652e65786500",
+    "viewability_guard_passes": true,
+    "game_window": 20971521,
+    "game_pid": 8047,
+    "pointer_path": [
+      1305,
+      14680068,
+      20971521,
+      18874978
+    ],
+    "render_child_properties": "Absent; outer game ancestor carries title, class and PID.",
+    "minimal_supported_correction": "Accept the exact additional title Client1 while retaining exact eqgame.exe class, viewability, Button3, current pointer descendant path, absent native focus and immediate pre-request rechecks. Keep legacy exact EqW-TAKP.",
+    "unsupported_broadening": [
+      "arbitrary Client prefix",
+      "class-only identity",
+      "global-tree focus selection",
+      "desktop focus target",
+      "ignoring a concrete existing focus"
+    ],
+    "pid_scope": "PID is ownership corroboration from this device; the existing focus helper does not enforce a PID predicate.",
+    "pid_thread_corroboration": {
+      "sampled_at": 1791988778.9200997,
+      "main_thread": {
+        "pid": 8047,
+        "tid": 8047,
+        "name": "eqgame.exe",
+        "state": "R",
+        "start_ticks": 49466753,
+        "cpu_ticks": 521,
+        "last_cpu": 3,
+        "allowed_cpus": "0-5"
+      }
+    }
+  },
+  "capture_settings": {
+    "format": 1,
+    "source": "user.reg",
+    "read_only": true,
+    "values": {},
+    "source_sha256": "36953926679bdf10f5d8d6266b4fd537c5fb5f788e49fce691aa1cb075ac65c2",
+    "grab_pointer_source": "wine_default",
+    "grab_pointer_raw": null,
+    "grab_pointer_enabled": true,
+    "state": "read"
+  },
+  "input_measurements": {
+    "held_android_motion_packets": 1404,
+    "held_android_max_absolute_axis_pixels": 2,
+    "maximum_selected_queue_delay_ms": 8,
+    "sender_drops": 0,
+    "held_raw_xi2_samples": 130,
+    "held_raw_xi2_exact_signed_packet_matches": 130,
+    "xi2_packet_delay_ms_range": [
+      0,
+      5
+    ],
+    "held_native_snapshots": 35,
+    "held_focus_values": {
+      "1": 35
+    },
+    "held_focus_interpretation": "PointerRoot",
+    "held_pointer_x_range": [
+      523,
+      757
+    ],
+    "held_pointer_y_range": [
+      275,
+      419
+    ],
+    "held_xerrors": 0,
+    "native_button3_periods_monotonic_ms": [
+      [
+        203414348,
+        203443753
+      ],
+      [
+        203444312,
+        203451768
+      ]
+    ],
+    "eqw_held_buffer_samples": 122,
+    "eqw_nonempty_held_buffer_samples": 92,
+    "eqw_nonempty_event_age_ms_range": [
+      1,
+      20
+    ],
+    "eqw_buffer_flags": 0,
+    "eqw_peek_reads": false,
+    "eqw_held_clip_samples": 93,
+    "eqw_escaped_clip_samples": 32,
+    "eqw_accepted_clip_retries": 60,
+    "eqw_clip_retry_first_monotonic_ms": 203414617,
+    "eqw_clip_retry_last_monotonic_ms": 203451623,
+    "eqw_clip_retry_span_seconds": 37.006,
+    "visual_reversal_latency_measured": false,
+    "native_xinput_end": {
+      "record": "end",
+      "t_ms": 198775,
+      "reason": "signal",
+      "bytes_before_end": 64405,
+      "records_before_end": 316,
+      "dropped": 0,
+      "raw_seen": 1944,
+      "core_seen": 0,
+      "buttons_seen": 26,
+      "xerrors": 5,
+      "sampling_is_not_complete_event_capture": true
+    },
+    "native_xinput_teardown_xerrors": "Five X errors are reported only after game teardown; first affected snapshot t_ms=196547, none during held-Look sampling. XIO Interrupted system call diagnostic follows the normal signal/end receipt.",
+    "sample_scope": "Android held packet trace is recorded; native raw and game consumer diagnostics are sampled. Counts cannot be generalized to every delivered/consumed event.",
+    "xi2_packet_delay_counts_ms": {
+      "0": 86,
+      "1": 41,
+      "2": 2,
+      "5": 1
+    },
+    "exact_wrong_direction_example": {
+      "native_snapshot_monotonic_ms": 203416271,
+      "native_pointer": [
+        609,
+        323
+      ],
+      "native_focus": 1,
+      "native_buttons_mask": 1024,
+      "clip_center": [
+        640,
+        360
+      ],
+      "first_android_packet": {
+        "sequence": 272,
+        "uptime_ms": 203416533,
+        "delta": [
+          1,
+          0
+        ]
+      },
+      "sampled_xi2": {
+        "server_ms": 203416534,
+        "delta": [
+          1,
+          0
+        ]
+      },
+      "game_consumer": {
+        "uptime_ms": 203416541,
+        "delta_after": [
+          -30,
+          -37
+        ],
+        "age_after_sampled_native_event_ms": 7,
+        "identity": "(609 + 1, 323) - (640, 360) = (-30, -37)"
+      },
+      "packet_window": {
+        "sequence_start": 272,
+        "sequence_end": 280,
+        "last_packet_uptime_ms": 203416662,
+        "delta_sum": [
+          14,
+          -2
+        ]
+      },
+      "buffered_game_event": {
+        "event_uptime_ms": 203416663,
+        "read_uptime_ms": 203416666,
+        "age_ms": 3,
+        "delta": [
+          -17,
+          -39
+        ],
+        "identity": "(609 + 14, 323 - 2) - (640, 360) = (-17, -39)"
+      },
+      "fresh_paired_axis_subset": {
+        "android_matched_same_timestamp_di_buffers": 67,
+        "continuous_hold_origin_qualified_buffers": 66,
+        "pointer_plus_packet_minus_clip_center_exact_equalities": 66,
+        "opposite_sign_samples": 32,
+        "excluded_buffer_event_ms": 203444813,
+        "exclusion_reason": "Crosses first release/second hold; saved-pointer restoration changes origin.",
+        "scope": "Fresh paired-axis same-timestamp DI buffer subset; not a complete motion capture."
+      },
+      "interpretation": "Small fresh rightward native packets are consumed as larger leftward cursor-to-center offsets. This is downstream of signed native delivery and cannot be explained by a long queued event."
+    }
+  },
+  "preservation_limits": {
+    "working_yaulp_fix": "Previously user-confirmed; do not require another source build/deployment for this client focus correction. Not independently requalified by this bundle.",
+    "saved_character": "Same character ID 4 enters Paineel and camps; inventory contents and a subsequent new reopen are not fully audited.",
+    "saved_bots": "No saved-bot inventory/reopen measurement in this bundle.",
+    "other_profiles": "Custom and Traditional are not opened in this bundle.",
+    "external_all_profile_backup": "No external backup/restore qualification in this bundle.",
+    "classic_skeleton_models": "No model enable/revert asset checksum qualification in this bundle.",
+    "incremental_compile": "No new physical object-retention or no-work rebuild measurement in this camera session.",
+    "settings_and_runtimes": "Wine prefix reuse and unchanged EQW helper are recorded; a full byte-for-byte settings/runtime census is not collected."
+  },
+  "required_next_measurement": [
+    "Qualified helper must log a successful focus_repair for the observed Client1 game ancestor while Look is held.",
+    "Held native snapshots must show concrete game focus, current focus_client_pointer and relative XI2 delivery.",
+    "Direction reversal should remain small, fresh signed events; escaped cursor offsets and repeated clip retries should disappear.",
+    "User must confirm usable Thor right-stick camera; software fixture success cannot establish physical acceptance.",
+    "Look off, menus, camping/reopen and non-TAKP profiles must retain expected behavior."
+  ]
+}

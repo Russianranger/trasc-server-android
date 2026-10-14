@@ -5,7 +5,7 @@ from pathlib import Path
 import struct
 
 
-MARKER = 'TRASC_TAKP_X_FOCUS_RECOVERY_V1'
+MARKER = 'TRASC_TAKP_X_FOCUS_RECOVERY_V2'
 
 
 def start(supervisor, logs, root=None):
@@ -32,7 +32,7 @@ def start(supervisor, logs, root=None):
                 or data[:6] != b'\x7fELF\x02\x01' or struct.unpack_from('<H', data, 18)[0] != 183
                 or MARKER.encode() not in data
                 or receipt.get('bounded_output_bytes') != 128*1024
-                or receipt.get('window_title') != 'EqW-TAKP'
+                or receipt.get('window_titles') != ['EqW-TAKP', 'Client1']
                 or receipt.get('window_class') != 'eqgame.exe'):
             raise ValueError('Native-focus helper differs from qualified ARM64 bytes')
         from log_retention import rotate
