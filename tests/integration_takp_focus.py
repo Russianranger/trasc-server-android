@@ -146,7 +146,12 @@ def run(args):
             while time.monotonic()<until and point()[1]&1024:time.sleep(.01)
             assert not point()[1]&1024,point()
         def held():
-            release_button(); command('focus'); command('raw'); time.sleep(.15)
+            release_button(); command('focus')
+            # Wine's cached foreground can already equal the game while actual
+            # X focus is still PointerRoot after a refusal case. Establish a
+            # healthy native baseline explicitly during setup, before RMB.
+            # Only the later injected loss is allowed to request helper repair.
+            set_focus(game_window); command('raw'); time.sleep(.15)
             transport.button(True); time.sleep(.3)
             value=record('healthy-held')
             assert value['native']['foreground'] and value['native']['rmb'] and value['native']['visible'],value
@@ -204,6 +209,21 @@ def run(args):
         release_button(); time.sleep(.15); assert sample()['clip']==original_clip
         transport.absolute(640,360); transport.motion(30,-20); time.sleep(.15)
         assert point()[0]==(670,340),point()
+        menu_displaced=list(point()[0])
+        # End the intentionally free menu phase at its original position while
+        # Look is off. Starting each subsequent held guard from the displaced
+        # UI pointer made ClipCursor recentering part of the next input segment.
+        # Keep the real DirectInput worker running; do not reset or drain it.
+        command('free');transport.absolute(640,360);time.sleep(.15)
+        menu_before=sample();time.sleep(.3);menu_after=sample()
+        menu_normalized={'before_pointer':menu_displaced,'free_menu_motion':[30,-20],
+            'normalization_while_look_off':True,'consumer_reset_or_drain':False,
+            'pointer':list(point()[0]),'rmb':menu_after['rmb'],
+            'clip':menu_after['clip'],'polled':difference(menu_before,menu_after,'state'),
+            'buffered':difference(menu_before,menu_after,'buffered'),'quiet_ms':300}
+        assert menu_normalized['pointer']==[640,360] and not menu_normalized['rmb'],menu_normalized
+        assert menu_normalized['clip']==original_clip,menu_normalized
+        assert menu_normalized['polled']==[0,0] and menu_normalized['buffered']==[0,0],menu_normalized
         guards=[]
         def guard(name,expected_focus):
             count=len(repair_rows()); time.sleep(.35)
@@ -278,6 +298,12 @@ def run(args):
             time.sleep(.02)
         legacy=record('legacy-eqw-focus-recovered')
         assert legacy['x_focus']==game_window and legacy['x_pointer']==(640,360),legacy
+        legacy_before=sample();time.sleep(.3);legacy_after=sample()
+        legacy_quiet={'polled':difference(legacy_before,legacy_after,'state'),
+            'buffered':difference(legacy_before,legacy_after,'buffered'),'quiet_ms':300,
+            'pointer':list(point()[0]),'clip':legacy_after['clip'],'rmb':legacy_after['rmb']}
+        assert legacy_quiet['polled']==[0,0] and legacy_quiet['buffered']==[0,0],legacy_quiet
+        assert legacy_quiet['pointer']==[640,360] and legacy_quiet['clip']==[640,360,641,361] and legacy_quiet['rmb'],legacy_quiet
         legacy_signed=[]
         for dx,dy in ((1,0),(-1,0),(0,1),(0,-1)):
             before=sample();transport.paced(((dx,dy) for _ in range(12)),.016)
@@ -327,6 +353,7 @@ def run(args):
                 'title':'Client1','viewport':[1280,720],'center':[640,360],
                 'pointer_path':measured_path,'propertyless_render_child':render,
                 'natural_title_property':title_property,'natural_class_property':class_property,
+                'menu_normalization':menu_normalized,'legacy_quiet_baseline':legacy_quiet,
                 'legacy_title':'EqW-TAKP','legacy_signed_segments':legacy_signed},
             'negative_guards':guards,'focus_repairs':repairs,'focus_completion':focus_rows[-1],'transport':counts,
             'scope':'Published ARM64 runtime/open PE32 consumer with exact game identity; physical Thor acceptance pending'}
