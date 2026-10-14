@@ -1,0 +1,1753 @@
+{
+  "format": 1,
+  "version": "0.6.29",
+  "version_code": 78,
+  "scope": "Read-only TAKP window discovery diagnostics; no new focus repair or physical camera acceptance",
+  "published_apk_at": "2026-10-14T03:32:36Z",
+  "published_apk_chicago": "2026-10-13T22:32:36-05:00",
+  "qualified_source": {
+    "commit": "aff675a1564c1bfee850dc5400de2b4cbed410bb",
+    "tree": "b7995938db2dfc8324c3e966d0b3651c98021bcf",
+    "preview_tag_commit": "aff675a1564c1bfee850dc5400de2b4cbed410bb"
+  },
+  "main_merge": {
+    "pull_request": 36,
+    "url": "https://github.com/Russianranger/trasc-server-android/pull/36",
+    "commit": "4032f5922e07f9278706b947c02b03dfee0d8148",
+    "tree": "b7995938db2dfc8324c3e966d0b3651c98021bcf",
+    "merged_at": "2026-10-14T03:36:27Z",
+    "qualified_tree_equal": true
+  },
+  "release_qualification": {
+    "run_id": 38505887209,
+    "url": "https://github.com/Russianranger/trasc-server-android/actions/runs/38505887209",
+    "head_sha": "aff675a1564c1bfee850dc5400de2b4cbed410bb",
+    "conclusion": "success",
+    "created_at": "2026-10-14T03:22:09Z",
+    "completed_at": "2026-10-14T03:32:48Z",
+    "python_tests": 566,
+    "python_skips": 0,
+    "other_checks": "Management JVM/C, launcher browser/controller/DirectX regressions, assembly/lint/signing, exact helper/native payload gates and all three server profiles",
+    "jobs": [
+      {
+        "id": 115663180258,
+        "name": "apk",
+        "conclusion": "success",
+        "started_at": "2026-10-14T03:22:12Z",
+        "completed_at": "2026-10-14T03:31:11Z"
+      },
+      {
+        "id": 115663180479,
+        "name": "modern-bots (traditional, Russianranger/Server, 4aceae18b94ffaafc08e2b17bc41cd72c77f795d, .)",
+        "conclusion": "success",
+        "started_at": "2026-10-14T03:22:15Z",
+        "completed_at": "2026-10-14T03:24:26Z"
+      },
+      {
+        "id": 115663180504,
+        "name": "modern-bots (custom, Russianranger/Triptych-Triumvirate, 8f6ca0795f424a7b4eab750ff38fc6473d48375c...",
+        "conclusion": "success",
+        "started_at": "2026-10-14T03:22:15Z",
+        "completed_at": "2026-10-14T03:25:03Z"
+      },
+      {
+        "id": 115663180515,
+        "name": "takp-server",
+        "conclusion": "success",
+        "started_at": "2026-10-14T03:22:15Z",
+        "completed_at": "2026-10-14T03:32:17Z"
+      },
+      {
+        "id": 115665940081,
+        "name": "preview",
+        "conclusion": "success",
+        "started_at": "2026-10-14T03:32:21Z",
+        "completed_at": "2026-10-14T03:32:47Z"
+      }
+    ]
+  },
+  "window_runtime_qualification": {
+    "run_id": 38505023364,
+    "url": "https://github.com/Russianranger/trasc-server-android/actions/runs/38505023364",
+    "head_sha": "50ae39a550a6597a294f92502693e28b625ef993",
+    "conclusion": "success",
+    "case_count": 14,
+    "maximum_log_bytes": 15928,
+    "all_cases_focus_pointer_buttons_unchanged": true,
+    "all_normal_ends_zero_drops_xerrors": true,
+    "invalid_cli_and_sigterm_passed": true,
+    "proof_sha256": "d5146d4a3c54c630a328e4fda3fdbf57d69b7512dfe910e84866b39981eea736",
+    "original_runtime_input_focus_observer_reused": true,
+    "physical_camera_fix_claimed": false
+  },
+  "independent_public_audit": {
+    "commit": "aff675a1564c1bfee850dc5400de2b4cbed410bb",
+    "tree": "b7995938db2dfc8324c3e966d0b3651c98021bcf",
+    "build_run": 38505887209,
+    "public_assets": {
+      "launcher-sources.tar.gz": {
+        "asset_id": 639098525,
+        "bytes": 247689264,
+        "sha256": "76616bf3df6c0277b47bc66d63f5d7e0aa5ef08c679f1901f317d0c856e8bd13",
+        "created_at": "2026-10-14T03:32:34Z",
+        "updated_at": "2026-10-14T03:32:43Z",
+        "url": "https://github.com/Russianranger/trasc-server-android/releases/download/preview/launcher-sources.tar.gz?v=0.6.29"
+      },
+      "native-reuse.json": {
+        "asset_id": 639098522,
+        "bytes": 4817,
+        "sha256": "696c29700f4aa312af973d0bfaf9c73733a1a13c80b68e6eefc5f9e4e4c043ff",
+        "created_at": "2026-10-14T03:32:34Z",
+        "updated_at": "2026-10-14T03:32:34Z",
+        "url": "https://github.com/Russianranger/trasc-server-android/releases/download/preview/native-reuse.json?v=0.6.29"
+      },
+      "preview-build.json": {
+        "asset_id": 639098524,
+        "bytes": 765,
+        "sha256": "3ddf297a65bf60f31803445117aaf8689369a7079b838445d37cbbe36f3d584a",
+        "created_at": "2026-10-14T03:32:34Z",
+        "updated_at": "2026-10-14T03:32:34Z",
+        "url": "https://github.com/Russianranger/trasc-server-android/releases/download/preview/preview-build.json?v=0.6.29"
+      },
+      "trasc-server-android-preview.apk": {
+        "asset_id": 639098532,
+        "bytes": 18952880,
+        "sha256": "e81e6afe2ac639a292d7c048cc7575a9cbd1af6a19f2cfe4a934f2c723e40fcf",
+        "created_at": "2026-10-14T03:32:34Z",
+        "updated_at": "2026-10-14T03:32:36Z",
+        "url": "https://github.com/Russianranger/trasc-server-android/releases/download/preview/trasc-server-android-preview.apk?v=0.6.29"
+      }
+    },
+    "binary_manifest": {
+      "versionCode": 78,
+      "versionName": "0.6.29",
+      "compileSdkVersion": 35,
+      "compileSdkVersionCodename": "15",
+      "package": "io.github.russianranger.trasc.preview",
+      "platformBuildVersionCode": 35,
+      "platformBuildVersionName": 15
+    },
+    "apk_zip_crc_valid": true,
+    "apk_entries_unique": true,
+    "source_assets_verified": 132,
+    "native_components_byte_equal_actual_0628": 21,
+    "native_component_entries": [
+      "lib/arm64-v8a/libcabextract.so",
+      "lib/arm64-v8a/libproot-loader.so",
+      "lib/arm64-v8a/libproot.so",
+      "lib/arm64-v8a/libtrasc-presentation.so",
+      "lib/arm64-v8a/libvirgl-server.so",
+      "assets/audio-bundle.json",
+      "assets/dxvk-d3d9.dll",
+      "assets/libasound_module_pcm_trasc.so",
+      "assets/presentation-bundle.json",
+      "assets/presentation-notices.txt",
+      "assets/turnip-26.0.0.so",
+      "assets/turnip.so",
+      "assets/vulkan-bundle.json",
+      "assets/vulkan-probe",
+      "assets/wined3d-patch.json",
+      "assets/wined3d.dll",
+      "assets/wineserver-patch.json",
+      "assets/wineserver",
+      "assets/x11-frame-bridge",
+      "assets/trasc-camera-dinput8.dll",
+      "assets/traditional-camera-bundle.json"
+    ],
+    "eqw_helper": {
+      "bytes": 93696,
+      "sha256": "875056a62d2df3c7434bf05d23d73186d6565d2bd5a14f2f53a58fa7d015bab3",
+      "byte_equal_actual_0628": true
+    },
+    "window_inspector": {
+      "bytes": 72232,
+      "sha256": "e1df07509f870d35f8feea87e64f20101597bd14dbc5ed0632335906b312d21c",
+      "elf_machine": 183,
+      "x_imports": [
+        "XCloseDisplay",
+        "XFree",
+        "XGetInputFocus",
+        "XGetWindowAttributes",
+        "XGetWindowProperty",
+        "XInternAtom",
+        "XOpenDisplay",
+        "XQueryPointer",
+        "XQueryTree",
+        "XSetErrorHandler"
+      ],
+      "only_read_only_x_imports": true,
+      "source_fingerprint_count": 4,
+      "fixture_fingerprint_count": 12,
+      "qualification_sha256": "d5146d4a3c54c630a328e4fda3fdbf57d69b7512dfe910e84866b39981eea736",
+      "proof_and_binary_byte_equal_actual_ci": true,
+      "all_14_actual_logs_verified": true,
+      "case_count": 14,
+      "cases": [
+        {
+          "case": "natural-wine-identity",
+          "bytes": 13448,
+          "records": 43,
+          "properties": 27,
+          "state_unchanged": true,
+          "property_bounds_valid": true,
+          "normal_end_zero_drops_errors": true
+        },
+        {
+          "case": "title-optional-nul",
+          "bytes": 13464,
+          "records": 43,
+          "properties": 27,
+          "state_unchanged": true,
+          "property_bounds_valid": true,
+          "normal_end_zero_drops_errors": true
+        },
+        {
+          "case": "class-optional-nul",
+          "bytes": 13464,
+          "records": 43,
+          "properties": 27,
+          "state_unchanged": true,
+          "property_bounds_valid": true,
+          "normal_end_zero_drops_errors": true
+        },
+        {
+          "case": "title-wrong-type",
+          "bytes": 13455,
+          "records": 43,
+          "properties": 27,
+          "state_unchanged": true,
+          "property_bounds_valid": true,
+          "normal_end_zero_drops_errors": true
+        },
+        {
+          "case": "class-wrong-type",
+          "bytes": 13455,
+          "records": 43,
+          "properties": 27,
+          "state_unchanged": true,
+          "property_bounds_valid": true,
+          "normal_end_zero_drops_errors": true
+        },
+        {
+          "case": "missing-title",
+          "bytes": 13362,
+          "records": 43,
+          "properties": 27,
+          "state_unchanged": true,
+          "property_bounds_valid": true,
+          "normal_end_zero_drops_errors": true
+        },
+        {
+          "case": "missing-class",
+          "bytes": 13200,
+          "records": 43,
+          "properties": 27,
+          "state_unchanged": true,
+          "property_bounds_valid": true,
+          "normal_end_zero_drops_errors": true
+        },
+        {
+          "case": "title-format-16",
+          "bytes": 13458,
+          "records": 43,
+          "properties": 27,
+          "state_unchanged": true,
+          "property_bounds_valid": true,
+          "normal_end_zero_drops_errors": true
+        },
+        {
+          "case": "title-format-32",
+          "bytes": 13509,
+          "records": 43,
+          "properties": 27,
+          "state_unchanged": true,
+          "property_bounds_valid": true,
+          "normal_end_zero_drops_errors": true
+        },
+        {
+          "case": "oversized-high-byte-title",
+          "bytes": 14556,
+          "records": 43,
+          "properties": 27,
+          "state_unchanged": true,
+          "property_bounds_valid": true,
+          "normal_end_zero_drops_errors": true
+        },
+        {
+          "case": "render-child-path",
+          "bytes": 15928,
+          "records": 51,
+          "properties": 33,
+          "state_unchanged": true,
+          "property_bounds_valid": true,
+          "normal_end_zero_drops_errors": true
+        },
+        {
+          "case": "candidate-outside-covered-pointer-path",
+          "bytes": 10226,
+          "records": 35,
+          "properties": 21,
+          "state_unchanged": true,
+          "property_bounds_valid": true,
+          "normal_end_zero_drops_errors": true
+        },
+        {
+          "case": "candidate-outside-screen-layout",
+          "bytes": 10681,
+          "records": 35,
+          "properties": 21,
+          "state_unchanged": true,
+          "property_bounds_valid": true,
+          "normal_end_zero_drops_errors": true
+        },
+        {
+          "case": "idle-no-rmb",
+          "bytes": 801,
+          "records": 4,
+          "properties": 0,
+          "state_unchanged": true,
+          "property_bounds_valid": true,
+          "normal_end_zero_drops_errors": true
+        }
+      ],
+      "maximum_actual_log_bytes": 15928,
+      "normal_signal_completion_verified": true,
+      "before_after_state_equal_all_cases": true,
+      "physical_camera_fix_claimed": false,
+      "receipt": {
+        "format": 1,
+        "architecture": "arm64-glibc",
+        "distribution": "debian-bookworm",
+        "marker": "TRASC_TAKP_WINDOW_INSPECT_V1",
+        "sha256": "e1df07509f870d35f8feea87e64f20101597bd14dbc5ed0632335906b312d21c",
+        "bytes": 72232,
+        "bounded_output_bytes": 131072,
+        "max_seconds": 300,
+        "property_bytes": 128,
+        "path_limit": 16,
+        "tree_node_limit": 128,
+        "read_only": true,
+        "changes_focus_pointer_properties": false,
+        "github_commit": "50ae39a550a6597a294f92502693e28b625ef993",
+        "github_run_id": "38505023364",
+        "source_sha256": {
+          "native/presentation/takp-window-inspect.c": "41b7ffa4f5866070bf43b508a9ff6f3dc4c0744a6a348a8c10cfb4a330ec039c",
+          "native/presentation/observe-log.h": "40ecb76a1096bca0f2ecac8f194a029bf720550f9462f2fcded6299fc14f4b2d",
+          "tests/takp_window_tools.Dockerfile": "65dc37c1cff27cb553a28aafce25f920b229115f5036a2e6583cb7d57f41d2ca",
+          "tests/takp_window_inspect_property.c": "960cbd8668e0c08d7ae045257206e85f5b4bf44c603c3505c0a28779913ee198"
+        },
+        "compiler_flags": "gcc -std=c11 -O2 -Wall -Wextra -Werror -lX11",
+        "scope": "Diagnostic-only bounded X metadata reads; old focus/observer/input bridge/runtime reused unchanged"
+      },
+      "qualification": {
+        "format": 1,
+        "github_commit": "50ae39a550a6597a294f92502693e28b625ef993",
+        "github_run_id": "38505023364",
+        "inspector_sha256": "e1df07509f870d35f8feea87e64f20101597bd14dbc5ed0632335906b312d21c",
+        "marker": "TRASC_TAKP_WINDOW_INSPECT_V1",
+        "published_inputs": {
+          "format": 1,
+          "runtime_asset_id": 617421976,
+          "runtime_manifest_asset_id": 617422429,
+          "runtime": {
+            "format": 1,
+            "architecture": "arm64",
+            "file": "client-runtime-arm64.tar.gz",
+            "sha256": "2f130c07683e50bc606af111d5c35c4f503c1427772c1f9b0f45e1e4b75c76c4",
+            "bytes": 353710680,
+            "runtime": "client-1.0",
+            "source_commit": "270b0bbb485e80397148112ebca66a5d98c0f69e",
+            "wine": "10.0-wow64",
+            "box64": "0.4.4",
+            "renderer": "wined3d-llvmpipe"
+          },
+          "apk_asset_id": 638977793,
+          "apk_sha256": "0073d46cc5b58c2a7f27c68d11e5fd3cc58a0b6afb8f208d19c7615bbba02859",
+          "apk_bytes": 18936371,
+          "native_payload_sha256": {
+            "x11-frame-bridge": "c7244f755d9e473a6a8931cc7d330e6a7c2efd909313b5f0cf634558562b2917",
+            "presentation-bundle.json": "d67c2cea490d4448e5901daddd92682301bf6d6326a8bea512fde85ee1c26a74",
+            "wineserver": "09933d17ab07fe9c79245b22c9b8f4ff3fbc42d237595bb693271d168c8cb7d3",
+            "wineserver-patch.json": "e0dc2af26cfcda8ae57ef5a1eb26a31aa1edba9a91c554591e6a6e07fe0875fe"
+          },
+          "runtime_rebuilt": false,
+          "production_input_bridge_rebuilt": false,
+          "runtime_overlay": "/opt/wine/bin/wineserver from verified APK",
+          "apk_version": "0.6.28",
+          "apk_version_code": 77,
+          "preserved_companions_sha256": {
+            "takp-xinput-focus": "90dda77cb0b0fe1d18d4fa7b39bedda7dad67af6c342d7b23c74d0129f666865",
+            "takp-xinput-observe": "5f5cf7e8f8d2d3df475284f72fa0f2944e1cadb9ba334927021799615b35744b"
+          },
+          "focus_helper_rebuilt": false,
+          "observer_rebuilt": false
+        },
+        "fixture_sha256": {
+          "tests/integration_takp_window.py": "59d0e425daee8c814740dedec4567c0db5434b70ea826538f06f0b97cf172d27",
+          "tests/takp_focus_probe.cpp": "ea43bbc90e85ecf424c73cb6360c6356167e886f16a9947fa92f5e18759a3650",
+          "tests/takp_cursor_probe.cpp": "68e23c167c481c35b759f593d3a3c3844c7dd6ef8efbe78f6544ce82d80069a1",
+          "tests/integration_takp_cursor.py": "b3ee99473cbcb5bb638e722e8cb1af3412f7cb3afc942ed445931b09d36f0716",
+          "tests/takp_box64_wine.py": "6407aada984e00fb8d6986768ddf869b8d65e9d0c37b086eef951795a7427e74",
+          "tests/takp_input_transport.py": "5b77b8c0610be48ed3148997de2c069345ad846c5c82edc909f1a14400761ec1",
+          "scripts/prepare-takp-window-runtime.py": "8c912e3e49597b82477e5c5ba72ca9e1fc696da01b7e5ca0dde167fbde109972",
+          "scripts/prepare-takp-camera-runtime.py": "a221870b9952b3e2b28bd8ed122a954b9b61c15bc5e16c7201b8bbbf80d4588b",
+          "backend/client_xauthority.py": "1aaaf71661c3b40fedf3bb8a25cfcbdb2ede9babd1573eec8bb2046cb49e75a9",
+          "native/presentation/takp-window-inspect.c": "41b7ffa4f5866070bf43b508a9ff6f3dc4c0744a6a348a8c10cfb4a330ec039c",
+          "native/presentation/observe-log.h": "40ecb76a1096bca0f2ecac8f194a029bf720550f9462f2fcded6299fc14f4b2d",
+          "tests/takp_window_tools.Dockerfile": "65dc37c1cff27cb553a28aafce25f920b229115f5036a2e6583cb7d57f41d2ca"
+        },
+        "cases": [
+          {
+            "case": "natural-wine-identity",
+            "before": {
+              "focus": 16777217,
+              "pointer": [
+                400,
+                300
+              ],
+              "buttons_mask": 1024
+            },
+            "after": {
+              "focus": 16777217,
+              "pointer": [
+                400,
+                300
+              ],
+              "buttons_mask": 1024
+            },
+            "inspector_log_sha256": "eedf112b0a0edfeb24e6c7fa79e7fd4985e236f50f9334d6be320d52d47059cf",
+            "bytes": 13448,
+            "records": 43,
+            "completion": {
+              "record": "end",
+              "t_ms": 2004,
+              "reason": "duration",
+              "snapshots": 2,
+              "paths": 2,
+              "tree_nodes": 25,
+              "candidates": 3,
+              "bytes_before_end": 13295,
+              "dropped": 0,
+              "xerrors": 0
+            }
+          },
+          {
+            "case": "title-optional-nul",
+            "before": {
+              "focus": 1,
+              "pointer": [
+                400,
+                300
+              ],
+              "buttons_mask": 1024
+            },
+            "after": {
+              "focus": 1,
+              "pointer": [
+                400,
+                300
+              ],
+              "buttons_mask": 1024
+            },
+            "inspector_log_sha256": "75c302ba25c9f1a53a7c3680f0c07b7fcc52f79841d32937f0c87f9681bfc5c6",
+            "bytes": 13464,
+            "records": 43,
+            "completion": {
+              "record": "end",
+              "t_ms": 2005,
+              "reason": "duration",
+              "snapshots": 2,
+              "paths": 2,
+              "tree_nodes": 25,
+              "candidates": 3,
+              "bytes_before_end": 13311,
+              "dropped": 0,
+              "xerrors": 0
+            }
+          },
+          {
+            "case": "class-optional-nul",
+            "before": {
+              "focus": 1,
+              "pointer": [
+                400,
+                300
+              ],
+              "buttons_mask": 1024
+            },
+            "after": {
+              "focus": 1,
+              "pointer": [
+                400,
+                300
+              ],
+              "buttons_mask": 1024
+            },
+            "inspector_log_sha256": "03bf6a5890e79fa29956560702859d9670f14e41dac284423693255f40c4381b",
+            "bytes": 13464,
+            "records": 43,
+            "completion": {
+              "record": "end",
+              "t_ms": 2017,
+              "reason": "duration",
+              "snapshots": 2,
+              "paths": 2,
+              "tree_nodes": 25,
+              "candidates": 3,
+              "bytes_before_end": 13311,
+              "dropped": 0,
+              "xerrors": 0
+            }
+          },
+          {
+            "case": "title-wrong-type",
+            "before": {
+              "focus": 1,
+              "pointer": [
+                400,
+                300
+              ],
+              "buttons_mask": 1024
+            },
+            "after": {
+              "focus": 1,
+              "pointer": [
+                400,
+                300
+              ],
+              "buttons_mask": 1024
+            },
+            "inspector_log_sha256": "9d1384d0c4067c4c58f20e842bd17e18205cc888899b17df3a8249474529c241",
+            "bytes": 13455,
+            "records": 43,
+            "completion": {
+              "record": "end",
+              "t_ms": 2005,
+              "reason": "duration",
+              "snapshots": 2,
+              "paths": 2,
+              "tree_nodes": 25,
+              "candidates": 3,
+              "bytes_before_end": 13302,
+              "dropped": 0,
+              "xerrors": 0
+            }
+          },
+          {
+            "case": "class-wrong-type",
+            "before": {
+              "focus": 1,
+              "pointer": [
+                400,
+                300
+              ],
+              "buttons_mask": 1024
+            },
+            "after": {
+              "focus": 1,
+              "pointer": [
+                400,
+                300
+              ],
+              "buttons_mask": 1024
+            },
+            "inspector_log_sha256": "11040e1d8e0ea914ffc2a895462d75e833aa44e8deae1896c1c0d90cc664a32b",
+            "bytes": 13455,
+            "records": 43,
+            "completion": {
+              "record": "end",
+              "t_ms": 2004,
+              "reason": "duration",
+              "snapshots": 2,
+              "paths": 2,
+              "tree_nodes": 25,
+              "candidates": 3,
+              "bytes_before_end": 13302,
+              "dropped": 0,
+              "xerrors": 0
+            }
+          },
+          {
+            "case": "missing-title",
+            "before": {
+              "focus": 1,
+              "pointer": [
+                400,
+                300
+              ],
+              "buttons_mask": 1024
+            },
+            "after": {
+              "focus": 1,
+              "pointer": [
+                400,
+                300
+              ],
+              "buttons_mask": 1024
+            },
+            "inspector_log_sha256": "edff9f380d166e406aed8a7f491620fcbff43977b2b4a875adb19216d3ec92da",
+            "bytes": 13362,
+            "records": 43,
+            "completion": {
+              "record": "end",
+              "t_ms": 2004,
+              "reason": "duration",
+              "snapshots": 2,
+              "paths": 2,
+              "tree_nodes": 25,
+              "candidates": 3,
+              "bytes_before_end": 13209,
+              "dropped": 0,
+              "xerrors": 0
+            }
+          },
+          {
+            "case": "missing-class",
+            "before": {
+              "focus": 1,
+              "pointer": [
+                400,
+                300
+              ],
+              "buttons_mask": 1024
+            },
+            "after": {
+              "focus": 1,
+              "pointer": [
+                400,
+                300
+              ],
+              "buttons_mask": 1024
+            },
+            "inspector_log_sha256": "1c796eeda19921ea457dff3e1ec9462c028b343d7227d2eb1280cced5d3fb5f9",
+            "bytes": 13200,
+            "records": 43,
+            "completion": {
+              "record": "end",
+              "t_ms": 2004,
+              "reason": "duration",
+              "snapshots": 2,
+              "paths": 2,
+              "tree_nodes": 25,
+              "candidates": 3,
+              "bytes_before_end": 13047,
+              "dropped": 0,
+              "xerrors": 0
+            }
+          },
+          {
+            "case": "title-format-16",
+            "before": {
+              "focus": 1,
+              "pointer": [
+                400,
+                300
+              ],
+              "buttons_mask": 1024
+            },
+            "after": {
+              "focus": 1,
+              "pointer": [
+                400,
+                300
+              ],
+              "buttons_mask": 1024
+            },
+            "inspector_log_sha256": "db9e0dac5c68031ff4f5a6e46d2c7892ed04bd11dd0465d2cd1675bf6f70acac",
+            "bytes": 13458,
+            "records": 43,
+            "completion": {
+              "record": "end",
+              "t_ms": 2004,
+              "reason": "duration",
+              "snapshots": 2,
+              "paths": 2,
+              "tree_nodes": 25,
+              "candidates": 3,
+              "bytes_before_end": 13305,
+              "dropped": 0,
+              "xerrors": 0
+            }
+          },
+          {
+            "case": "title-format-32",
+            "before": {
+              "focus": 1,
+              "pointer": [
+                400,
+                300
+              ],
+              "buttons_mask": 1024
+            },
+            "after": {
+              "focus": 1,
+              "pointer": [
+                400,
+                300
+              ],
+              "buttons_mask": 1024
+            },
+            "inspector_log_sha256": "65c0855a989cd83ffb7d20487e5fd97685092b7f20eec6a7e8290f617f2d1352",
+            "bytes": 13509,
+            "records": 43,
+            "completion": {
+              "record": "end",
+              "t_ms": 2004,
+              "reason": "duration",
+              "snapshots": 2,
+              "paths": 2,
+              "tree_nodes": 25,
+              "candidates": 3,
+              "bytes_before_end": 13356,
+              "dropped": 0,
+              "xerrors": 0
+            }
+          },
+          {
+            "case": "oversized-high-byte-title",
+            "before": {
+              "focus": 1,
+              "pointer": [
+                400,
+                300
+              ],
+              "buttons_mask": 1024
+            },
+            "after": {
+              "focus": 1,
+              "pointer": [
+                400,
+                300
+              ],
+              "buttons_mask": 1024
+            },
+            "inspector_log_sha256": "ae78a783750486cd9211b2954b41adc502b233be574e5334d5647a9d4020fe10",
+            "bytes": 14556,
+            "records": 43,
+            "completion": {
+              "record": "end",
+              "t_ms": 2004,
+              "reason": "duration",
+              "snapshots": 2,
+              "paths": 2,
+              "tree_nodes": 25,
+              "candidates": 3,
+              "bytes_before_end": 14403,
+              "dropped": 0,
+              "xerrors": 0
+            }
+          },
+          {
+            "case": "render-child-path",
+            "before": {
+              "focus": 16777217,
+              "pointer": [
+                400,
+                300
+              ],
+              "buttons_mask": 1024
+            },
+            "after": {
+              "focus": 16777217,
+              "pointer": [
+                400,
+                300
+              ],
+              "buttons_mask": 1024
+            },
+            "inspector_log_sha256": "0b68cfa50539db62a668c02611bf0670cc56da44b820bd7567f65da8148b75c4",
+            "bytes": 15928,
+            "records": 51,
+            "completion": {
+              "record": "end",
+              "t_ms": 2005,
+              "reason": "duration",
+              "snapshots": 2,
+              "paths": 2,
+              "tree_nodes": 26,
+              "candidates": 3,
+              "bytes_before_end": 15775,
+              "dropped": 0,
+              "xerrors": 0
+            }
+          },
+          {
+            "case": "candidate-outside-covered-pointer-path",
+            "before": {
+              "focus": 1,
+              "pointer": [
+                400,
+                300
+              ],
+              "buttons_mask": 1024
+            },
+            "after": {
+              "focus": 1,
+              "pointer": [
+                400,
+                300
+              ],
+              "buttons_mask": 1024
+            },
+            "inspector_log_sha256": "9be85136fa3dc3e54841e06154cb02a2eb8ebbccd9940cafb5eaa02d7e29e12c",
+            "bytes": 10226,
+            "records": 35,
+            "completion": {
+              "record": "end",
+              "t_ms": 2003,
+              "reason": "duration",
+              "snapshots": 2,
+              "paths": 2,
+              "tree_nodes": 26,
+              "candidates": 3,
+              "bytes_before_end": 10073,
+              "dropped": 0,
+              "xerrors": 0
+            }
+          },
+          {
+            "case": "candidate-outside-screen-layout",
+            "before": {
+              "focus": 1,
+              "pointer": [
+                400,
+                300
+              ],
+              "buttons_mask": 1024
+            },
+            "after": {
+              "focus": 1,
+              "pointer": [
+                400,
+                300
+              ],
+              "buttons_mask": 1024
+            },
+            "inspector_log_sha256": "f0308635fc03ba77015f40f44a2f7e72af3c319cd7043bc8b4897ed83e5672b5",
+            "bytes": 10681,
+            "records": 35,
+            "completion": {
+              "record": "end",
+              "t_ms": 2004,
+              "reason": "duration",
+              "snapshots": 2,
+              "paths": 2,
+              "tree_nodes": 25,
+              "candidates": 3,
+              "bytes_before_end": 10528,
+              "dropped": 0,
+              "xerrors": 0
+            }
+          },
+          {
+            "case": "idle-no-rmb",
+            "before": {
+              "focus": 16777217,
+              "pointer": [
+                400,
+                300
+              ],
+              "buttons_mask": 0
+            },
+            "after": {
+              "focus": 16777217,
+              "pointer": [
+                400,
+                300
+              ],
+              "buttons_mask": 0
+            },
+            "inspector_log_sha256": "d9aac8bc6d098ee173dde55f4f0d03ad93947202829004ec48941a6b15a6bdb4",
+            "bytes": 801,
+            "records": 4,
+            "completion": {
+              "record": "end",
+              "t_ms": 2002,
+              "reason": "duration",
+              "snapshots": 2,
+              "paths": 0,
+              "tree_nodes": 0,
+              "candidates": 0,
+              "bytes_before_end": 651,
+              "dropped": 0,
+              "xerrors": 0
+            }
+          }
+        ],
+        "read_only_state_preserved": true,
+        "invalid_cli_rejected": true,
+        "signal_completion": {
+          "record": "end",
+          "t_ms": 299,
+          "reason": "signal",
+          "snapshots": 1,
+          "paths": 0,
+          "tree_nodes": 0,
+          "candidates": 0,
+          "bytes_before_end": 490,
+          "dropped": 0,
+          "xerrors": 0
+        },
+        "transport": {
+          "packets": 2,
+          "relative": 0,
+          "absolute": 0,
+          "buttons": 2,
+          "zero_relative": 0,
+          "relative_sum": [
+            0,
+            0
+          ],
+          "positive_axes": [
+            0,
+            0
+          ],
+          "negative_axes": [
+            0,
+            0
+          ],
+          "wire_bytes": 32,
+          "writes": 2,
+          "mask": 0,
+          "seconds": 32.837900969,
+          "protocol": "TRASCIN1",
+          "pipeline": "production parser; per-packet XFlush",
+          "closed": true,
+          "native_decoded": {
+            "relative": 0,
+            "absolute": 0,
+            "buttons": 2
+          }
+        },
+        "scope": "Diagnostic-only actual published ARM64 runtime/open PE32 fixture; no new focus repair and physical Thor identity remains unmeasured"
+      }
+    },
+    "focus": {
+      "bytes": 72232,
+      "sha256": "90dda77cb0b0fe1d18d4fa7b39bedda7dad67af6c342d7b23c74d0129f666865",
+      "elf_machine": 183,
+      "receipt": {
+        "format": 1,
+        "architecture": "arm64-glibc",
+        "distribution": "debian-bookworm",
+        "marker": "TRASC_TAKP_X_FOCUS_RECOVERY_V1",
+        "sha256": "90dda77cb0b0fe1d18d4fa7b39bedda7dad67af6c342d7b23c74d0129f666865",
+        "bytes": 72232,
+        "window_title": "EqW-TAKP",
+        "window_class": "eqgame.exe",
+        "bounded_output_bytes": 131072,
+        "github_commit": "d0bd98e387727a7eae14a728eea4541c05610674",
+        "github_run_id": "38500575431",
+        "source_sha256": {
+          "native/presentation/takp-xinput-focus.c": "49b1cfc685bba593b9ca097b0c074a4278d09ec523cf059f542d7b783f3ed1fa",
+          "native/presentation/observe-log.h": "40ecb76a1096bca0f2ecac8f194a029bf720550f9462f2fcded6299fc14f4b2d",
+          "tests/takp_focus_tools.Dockerfile": "53642add4814ab299ba490cdfe8e64d461abc369726d4012a9ac6ebf4a7bed74"
+        },
+        "compiler_flags": "gcc -std=c11 -O2 -Wall -Wextra -Werror -lX11",
+        "scope": "Focus only exact visible game under pointer during physical RMB and None/PointerRoot; no warp/grab/registry writes"
+      },
+      "qualification_sha256": "b6cdd0d68b5f2c67548531e204dc414054c4be8b0cb4c824c68bd2275ed0baad",
+      "proof_byte_equal_actual_ci": true,
+      "qualification": {
+        "format": 1,
+        "github_commit": "d0bd98e387727a7eae14a728eea4541c05610674",
+        "github_run_id": "38500575431",
+        "published_inputs": {
+          "format": 1,
+          "runtime_asset_id": 617421976,
+          "runtime_manifest_asset_id": 617422429,
+          "runtime": {
+            "format": 1,
+            "architecture": "arm64",
+            "file": "client-runtime-arm64.tar.gz",
+            "sha256": "2f130c07683e50bc606af111d5c35c4f503c1427772c1f9b0f45e1e4b75c76c4",
+            "bytes": 353710680,
+            "runtime": "client-1.0",
+            "source_commit": "270b0bbb485e80397148112ebca66a5d98c0f69e",
+            "wine": "10.0-wow64",
+            "box64": "0.4.4",
+            "renderer": "wined3d-llvmpipe"
+          },
+          "apk_asset_id": 638709306,
+          "apk_sha256": "603776458fb2d245262bb36febdec5380557270cc39f5bc476267e21095f5595",
+          "apk_bytes": 18923551,
+          "native_payload_sha256": {
+            "x11-frame-bridge": "c7244f755d9e473a6a8931cc7d330e6a7c2efd909313b5f0cf634558562b2917",
+            "presentation-bundle.json": "d67c2cea490d4448e5901daddd92682301bf6d6326a8bea512fde85ee1c26a74",
+            "wineserver": "09933d17ab07fe9c79245b22c9b8f4ff3fbc42d237595bb693271d168c8cb7d3",
+            "wineserver-patch.json": "e0dc2af26cfcda8ae57ef5a1eb26a31aa1edba9a91c554591e6a6e07fe0875fe"
+          },
+          "runtime_rebuilt": false,
+          "production_input_bridge_rebuilt": false,
+          "runtime_overlay": "/opt/wine/bin/wineserver from verified APK",
+          "apk_version": "0.6.27",
+          "apk_version_code": 76
+        },
+        "fixture_sha256": {
+          "tests/integration_takp_focus.py": "9e916a86d4d3666ea505a5d0872f37583588291e41e339905e44ea227cb60892",
+          "tests/takp_focus_probe.cpp": "ea43bbc90e85ecf424c73cb6360c6356167e886f16a9947fa92f5e18759a3650",
+          "tests/takp_cursor_probe.cpp": "68e23c167c481c35b759f593d3a3c3844c7dd6ef8efbe78f6544ce82d80069a1",
+          "tests/takp_box64_wine.py": "6407aada984e00fb8d6986768ddf869b8d65e9d0c37b086eef951795a7427e74",
+          "tests/takp_input_transport.py": "5b77b8c0610be48ed3148997de2c069345ad846c5c82edc909f1a14400761ec1",
+          "scripts/prepare-takp-focus-runtime.py": "37c0f64dbbbe77681503ca696e64db93b6457ac93af5479fc6e36a66198877cd",
+          "scripts/prepare-takp-camera-runtime.py": "a221870b9952b3e2b28bd8ed122a954b9b61c15bc5e16c7201b8bbbf80d4588b",
+          "native/takp_camera_recenter.h": "77f669b54196ebc24f02a20c87ec1f44973b9ee82c4c576bb5fd1bf02d697cc2",
+          "native/takp_camera_trace.h": "c0301f87a3077c6065bda204fc63c262141cd13a041653f910655b4e55c9e519",
+          "native/takp_dinput_observation.h": "325b56bcb220400da5ae83d4656dbc50d90c6dd9ec3ee7eca51068e2ff483d5a",
+          "native/presentation/input.h": "1da77135b5d468b08ba7d3b6551aad3a4449c3e417b006e8de0e8f26b03b6fc3",
+          "native/presentation/takp-xinput-focus.c": "49b1cfc685bba593b9ca097b0c074a4278d09ec523cf059f542d7b783f3ed1fa",
+          "native/presentation/takp-xinput-observe.c": "41e00c7db8f1d8099c4aa49be6658536baaf951c1fbbe80e49af680d5c9356c8",
+          "native/presentation/observe-log.h": "40ecb76a1096bca0f2ecac8f194a029bf720550f9462f2fcded6299fc14f4b2d",
+          "tests/takp_focus_tools.Dockerfile": "53642add4814ab299ba490cdfe8e64d461abc369726d4012a9ac6ebf4a7bed74"
+        },
+        "focus_helper_sha256": "90dda77cb0b0fe1d18d4fa7b39bedda7dad67af6c342d7b23c74d0129f666865",
+        "observer_sha256": "5f5cf7e8f8d2d3df475284f72fa0f2944e1cadb9ba334927021799615b35744b",
+        "pointer_root_reproduction": {
+          "native_foreground_preserved": true,
+          "cached_clip_preserved": true,
+          "pointer_escaped": [
+            402,
+            300
+          ],
+          "negative_reversal": {
+            "injected": [
+              -1,
+              0
+            ],
+            "polled": [
+              2,
+              0
+            ],
+            "buffered": [
+              2,
+              0
+            ]
+          }
+        },
+        "recovery": {
+          "candidate": 18874369,
+          "signed_segments": [
+            {
+              "injected": [
+                12,
+                0
+              ],
+              "polled": [
+                12,
+                0
+              ],
+              "buffered": [
+                12,
+                0
+              ]
+            },
+            {
+              "injected": [
+                -12,
+                0
+              ],
+              "polled": [
+                -12,
+                0
+              ],
+              "buffered": [
+                -12,
+                0
+              ]
+            },
+            {
+              "injected": [
+                24,
+                0
+              ],
+              "polled": [
+                24,
+                0
+              ],
+              "buffered": [
+                24,
+                0
+              ]
+            },
+            {
+              "injected": [
+                -24,
+                0
+              ],
+              "polled": [
+                -24,
+                0
+              ],
+              "buffered": [
+                -24,
+                0
+              ]
+            },
+            {
+              "injected": [
+                0,
+                12
+              ],
+              "polled": [
+                0,
+                12
+              ],
+              "buffered": [
+                0,
+                12
+              ]
+            },
+            {
+              "injected": [
+                0,
+                -12
+              ],
+              "polled": [
+                0,
+                -12
+              ],
+              "buffered": [
+                0,
+                -12
+              ]
+            },
+            {
+              "injected": [
+                0,
+                24
+              ],
+              "polled": [
+                0,
+                24
+              ],
+              "buffered": [
+                0,
+                24
+              ]
+            },
+            {
+              "injected": [
+                0,
+                -24
+              ],
+              "polled": [
+                0,
+                -24
+              ],
+              "buffered": [
+                0,
+                -24
+              ]
+            },
+            {
+              "injected": [
+                24,
+                -12
+              ],
+              "polled": [
+                24,
+                -12
+              ],
+              "buffered": [
+                24,
+                -12
+              ]
+            },
+            {
+              "injected": [
+                -24,
+                12
+              ],
+              "polled": [
+                -24,
+                12
+              ],
+              "buffered": [
+                -24,
+                12
+              ]
+            }
+          ],
+          "idle_drift": [
+            0,
+            0
+          ],
+          "physical_cursor_confined": true,
+          "focus_none_after_resume": true,
+          "rmb_release_restores_clip": true,
+          "menu_pointer_free": true
+        },
+        "negative_guards": [
+          {
+            "case": "released-button-does-not-focus",
+            "focus": 1,
+            "repairs_added": 0
+          },
+          {
+            "case": "concrete-foreign-focus-preserved",
+            "focus": 2097153,
+            "repairs_added": 0
+          },
+          {
+            "case": "wrong-title-does-not-focus",
+            "focus": 1,
+            "repairs_added": 0
+          },
+          {
+            "case": "wrong-class-does-not-focus",
+            "focus": 1,
+            "repairs_added": 0
+          },
+          {
+            "case": "foreign-pointer-window-does-not-focus",
+            "focus": 1,
+            "repairs_added": 0
+          },
+          {
+            "case": "minimized-game-does-not-focus",
+            "focus": 1,
+            "repairs_added": 0
+          }
+        ],
+        "focus_repairs": [
+          {
+            "record": "focus_repair",
+            "t_ms": 1,
+            "before": 1,
+            "candidate": 18874369,
+            "after": 18874369,
+            "identity": "EqW-TAKP/eqgame.exe",
+            "path_depth": 2,
+            "rmb": true,
+            "attempt": 1,
+            "success": true,
+            "xerrors": 0
+          },
+          {
+            "record": "focus_repair",
+            "t_ms": 4505,
+            "before": 1,
+            "candidate": 18874369,
+            "after": 18874369,
+            "identity": "EqW-TAKP/eqgame.exe",
+            "path_depth": 2,
+            "rmb": true,
+            "attempt": 2,
+            "success": true,
+            "xerrors": 0
+          },
+          {
+            "record": "focus_repair",
+            "t_ms": 5306,
+            "before": 1,
+            "candidate": 18874369,
+            "after": 18874369,
+            "identity": "EqW-TAKP/eqgame.exe",
+            "path_depth": 2,
+            "rmb": true,
+            "attempt": 3,
+            "success": true,
+            "xerrors": 0
+          },
+          {
+            "record": "focus_repair",
+            "t_ms": 6109,
+            "before": 1,
+            "candidate": 18874369,
+            "after": 18874369,
+            "identity": "EqW-TAKP/eqgame.exe",
+            "path_depth": 2,
+            "rmb": true,
+            "attempt": 4,
+            "success": true,
+            "xerrors": 0
+          },
+          {
+            "record": "focus_repair",
+            "t_ms": 7011,
+            "before": 1,
+            "candidate": 18874369,
+            "after": 18874369,
+            "identity": "EqW-TAKP/eqgame.exe",
+            "path_depth": 2,
+            "rmb": true,
+            "attempt": 5,
+            "success": true,
+            "xerrors": 0
+          },
+          {
+            "record": "focus_repair",
+            "t_ms": 7813,
+            "before": 1,
+            "candidate": 18874369,
+            "after": 18874369,
+            "identity": "EqW-TAKP/eqgame.exe",
+            "path_depth": 2,
+            "rmb": true,
+            "attempt": 6,
+            "success": true,
+            "xerrors": 0
+          },
+          {
+            "record": "focus_repair",
+            "t_ms": 9015,
+            "before": 1,
+            "candidate": 18874369,
+            "after": 18874369,
+            "identity": "EqW-TAKP/eqgame.exe",
+            "path_depth": 2,
+            "rmb": true,
+            "attempt": 7,
+            "success": true,
+            "xerrors": 0
+          },
+          {
+            "record": "focus_repair",
+            "t_ms": 9516,
+            "before": 0,
+            "candidate": 18874369,
+            "after": 18874369,
+            "identity": "EqW-TAKP/eqgame.exe",
+            "path_depth": 2,
+            "rmb": true,
+            "attempt": 8,
+            "success": true,
+            "xerrors": 0
+          }
+        ],
+        "transport": {
+          "packets": 145,
+          "relative": 123,
+          "absolute": 1,
+          "buttons": 21,
+          "zero_relative": 0,
+          "relative_sum": [
+            32,
+            -20
+          ],
+          "positive_axes": [
+            38,
+            36
+          ],
+          "negative_axes": [
+            37,
+            37
+          ],
+          "wire_bytes": 2320,
+          "writes": 145,
+          "mask": 0,
+          "seconds": 12.164257265000003,
+          "protocol": "TRASCIN1",
+          "pipeline": "production parser; per-packet XFlush",
+          "closed": true,
+          "native_decoded": {
+            "relative": 123,
+            "absolute": 1,
+            "buttons": 21
+          }
+        },
+        "scope": "Published ARM64 runtime/open PE32 consumer with exact game identity; physical Thor acceptance pending"
+      },
+      "all_eight_repairs_scoped": true,
+      "all_six_refusal_guards_passed": true,
+      "transport_native_counts_verified": true
+    },
+    "observer": {
+      "bytes": 72416,
+      "sha256": "5f5cf7e8f8d2d3df475284f72fa0f2944e1cadb9ba334927021799615b35744b",
+      "elf_machine": 183,
+      "receipt": {
+        "format": 1,
+        "architecture": "arm64-glibc",
+        "distribution": "debian-bookworm",
+        "elf_machine": 183,
+        "compiler_flags": "gcc -std=c11 -O2 -Wall -Wextra -Werror -lX11 -ldl",
+        "github_commit": "3511ce6260ccef33478983d79356a205b8b43c5d",
+        "github_run_id": "38489151047",
+        "source_sha256": {
+          "native/presentation/takp-xinput-observe.c": "41e00c7db8f1d8099c4aa49be6658536baaf951c1fbbe80e49af680d5c9356c8",
+          "native/presentation/observe-log.h": "40ecb76a1096bca0f2ecac8f194a029bf720550f9462f2fcded6299fc14f4b2d",
+          "tests/takp_runtime_observer.Dockerfile": "1fe27f30d9a07a1ab7f7af2d4edd47bb6c0189160c2706b71b87c9cfbf3c27d7"
+        },
+        "sha256": "5f5cf7e8f8d2d3df475284f72fa0f2944e1cadb9ba334927021799615b35744b",
+        "bytes": 72416,
+        "behavior": "read-only separate X connection; no XTest, warp, focus or grab",
+        "marker": "TRASC_TAKP_XINPUT_OBSERVE_V1",
+        "bounded_output_bytes": 131072,
+        "maximum_seconds": 300,
+        "hard_timeout_seconds": 301,
+        "held_sample_ms": 200,
+        "idle_sample_ms": 1000,
+        "idle_byte_soft_limit": 32768,
+        "xi_client_requested": "2.2",
+        "runtime_libXi": "dlopen libXi.so.6"
+      },
+      "actual_observer_qualification": {
+        "format": 1,
+        "run": "38489151047",
+        "qualified_source": "3511ce6260ccef33478983d79356a205b8b43c5d",
+        "original_runtime_receipt_sha256": "186a684edcdaa437ae6fbbcb853cc751920a0f96165c036e550e50006ade06a6",
+        "verifier_sha256": "6d4bc92a6a02f188ae07e91cc4e6319ff796661f078c57ba194aef768d8c286c",
+        "all_observers_qualified": true,
+        "cases": {
+          "default": {
+            "qualified": true,
+            "log_sha256": "70b670cbfff45d5d413915785943584299ff8581f6a04e187ce12eea611b5eaf",
+            "checks": {
+              "valid_clock_anchors": true,
+              "xi2_raw_under_grab_negotiated": true,
+              "inventory_with_valuators": true,
+              "pointer_and_focus_observed": true,
+              "held_signed_raw_both_axes": true,
+              "normal_bounded_completion": true
+            },
+            "bytes": 27432,
+            "clock_anchors": {
+              "monotonic_ms": 822356,
+              "epoch_ms": 1791937002938
+            },
+            "extension": {
+              "record": "extension",
+              "xi2": true,
+              "opcode": 132,
+              "major": 2,
+              "minor": 2,
+              "requested_major": 2,
+              "requested_minor": 2,
+              "raw_grab_delivery_supported": true,
+              "xerrors": 0
+            },
+            "device_count": 6,
+            "valuator_count": 6,
+            "pointer_snapshots": 42,
+            "focus_ancestors": 5,
+            "held_raw_samples": 57,
+            "master_source_ids": [
+              [
+                2,
+                4
+              ]
+            ],
+            "raw_axis_signs": {
+              "0": [
+                -1,
+                1
+              ],
+              "1": [
+                -1,
+                1
+              ]
+            },
+            "end": {
+              "record": "end",
+              "t_ms": 39222,
+              "reason": "signal",
+              "bytes_before_end": 27215,
+              "records_before_end": 140,
+              "dropped": 0,
+              "raw_seen": 2011,
+              "core_seen": 13,
+              "buttons_seen": 10,
+              "xerrors": 0,
+              "sampling_is_not_complete_event_capture": true
+            }
+          },
+          "global-disabled": {
+            "qualified": true,
+            "log_sha256": "98280ab5d4cd683d2274661c1a42a4ae76dc86bab9bc418f6722299473c6e21c",
+            "checks": {
+              "valid_clock_anchors": true,
+              "xi2_raw_under_grab_negotiated": true,
+              "inventory_with_valuators": true,
+              "pointer_and_focus_observed": true,
+              "held_signed_raw_both_axes": true,
+              "normal_bounded_completion": true
+            },
+            "bytes": 9999,
+            "clock_anchors": {
+              "monotonic_ms": 863998,
+              "epoch_ms": 1791937044580
+            },
+            "extension": {
+              "record": "extension",
+              "xi2": true,
+              "opcode": 132,
+              "major": 2,
+              "minor": 2,
+              "requested_major": 2,
+              "requested_minor": 2,
+              "raw_grab_delivery_supported": true,
+              "xerrors": 0
+            },
+            "device_count": 6,
+            "valuator_count": 6,
+            "pointer_snapshots": 21,
+            "focus_ancestors": 3,
+            "held_raw_samples": 6,
+            "master_source_ids": [
+              [
+                2,
+                4
+              ]
+            ],
+            "raw_axis_signs": {
+              "0": [
+                -1,
+                1
+              ],
+              "1": [
+                -1,
+                1
+              ]
+            },
+            "end": {
+              "record": "end",
+              "t_ms": 18403,
+              "reason": "signal",
+              "bytes_before_end": 9787,
+              "records_before_end": 51,
+              "dropped": 0,
+              "raw_seen": 124,
+              "core_seen": 4,
+              "buttons_seen": 2,
+              "xerrors": 0,
+              "sampling_is_not_complete_event_capture": true
+            }
+          },
+          "global-enabled": {
+            "qualified": true,
+            "log_sha256": "bfa3b5aed26b512f700d4839bda12e8e4c5cac6227b7531ed7b15046355a2a94",
+            "checks": {
+              "valid_clock_anchors": true,
+              "xi2_raw_under_grab_negotiated": true,
+              "inventory_with_valuators": true,
+              "pointer_and_focus_observed": true,
+              "held_signed_raw_both_axes": true,
+              "normal_bounded_completion": true
+            },
+            "bytes": 28866,
+            "clock_anchors": {
+              "monotonic_ms": 884772,
+              "epoch_ms": 1791937065355
+            },
+            "extension": {
+              "record": "extension",
+              "xi2": true,
+              "opcode": 132,
+              "major": 2,
+              "minor": 2,
+              "requested_major": 2,
+              "requested_minor": 2,
+              "raw_grab_delivery_supported": true,
+              "xerrors": 0
+            },
+            "device_count": 6,
+            "valuator_count": 6,
+            "pointer_snapshots": 46,
+            "focus_ancestors": 5,
+            "held_raw_samples": 57,
+            "master_source_ids": [
+              [
+                2,
+                4
+              ]
+            ],
+            "raw_axis_signs": {
+              "0": [
+                -1,
+                1
+              ],
+              "1": [
+                -1,
+                1
+              ]
+            },
+            "end": {
+              "record": "end",
+              "t_ms": 37463,
+              "reason": "signal",
+              "bytes_before_end": 28649,
+              "records_before_end": 149,
+              "dropped": 0,
+              "raw_seen": 2011,
+              "core_seen": 13,
+              "buttons_seen": 10,
+              "xerrors": 1,
+              "sampling_is_not_complete_event_capture": true
+            }
+          },
+          "app-disables-global": {
+            "qualified": true,
+            "log_sha256": "ef2c668cc09aed190c2aa07192cb7010c7c6ce693bdbf0c4512862f73374d26e",
+            "checks": {
+              "valid_clock_anchors": true,
+              "xi2_raw_under_grab_negotiated": true,
+              "inventory_with_valuators": true,
+              "pointer_and_focus_observed": true,
+              "held_signed_raw_both_axes": true,
+              "normal_bounded_completion": true
+            },
+            "bytes": 9992,
+            "clock_anchors": {
+              "monotonic_ms": 924650,
+              "epoch_ms": 1791937105233
+            },
+            "extension": {
+              "record": "extension",
+              "xi2": true,
+              "opcode": 132,
+              "major": 2,
+              "minor": 2,
+              "requested_major": 2,
+              "requested_minor": 2,
+              "raw_grab_delivery_supported": true,
+              "xerrors": 0
+            },
+            "device_count": 6,
+            "valuator_count": 6,
+            "pointer_snapshots": 21,
+            "focus_ancestors": 3,
+            "held_raw_samples": 6,
+            "master_source_ids": [
+              [
+                2,
+                4
+              ]
+            ],
+            "raw_axis_signs": {
+              "0": [
+                -1,
+                1
+              ],
+              "1": [
+                -1,
+                1
+              ]
+            },
+            "end": {
+              "record": "end",
+              "t_ms": 18202,
+              "reason": "signal",
+              "bytes_before_end": 9780,
+              "records_before_end": 51,
+              "dropped": 0,
+              "raw_seen": 124,
+              "core_seen": 4,
+              "buttons_seen": 2,
+              "xerrors": 0,
+              "sampling_is_not_complete_event_capture": true
+            }
+          },
+          "app-enables-global": {
+            "qualified": true,
+            "log_sha256": "6991b3b3116204a1b8d6e935bc5febe715e5eaac8b266eb676f7c2be6b5c186f",
+            "checks": {
+              "valid_clock_anchors": true,
+              "xi2_raw_under_grab_negotiated": true,
+              "inventory_with_valuators": true,
+              "pointer_and_focus_observed": true,
+              "held_signed_raw_both_axes": true,
+              "normal_bounded_completion": true
+            },
+            "bytes": 28175,
+            "clock_anchors": {
+              "monotonic_ms": 945228,
+              "epoch_ms": 1791937125811
+            },
+            "extension": {
+              "record": "extension",
+              "xi2": true,
+              "opcode": 132,
+              "major": 2,
+              "minor": 2,
+              "requested_major": 2,
+              "requested_minor": 2,
+              "raw_grab_delivery_supported": true,
+              "xerrors": 0
+            },
+            "device_count": 6,
+            "valuator_count": 6,
+            "pointer_snapshots": 44,
+            "focus_ancestors": 5,
+            "held_raw_samples": 57,
+            "master_source_ids": [
+              [
+                2,
+                4
+              ]
+            ],
+            "raw_axis_signs": {
+              "0": [
+                -1,
+                1
+              ],
+              "1": [
+                -1,
+                1
+              ]
+            },
+            "end": {
+              "record": "end",
+              "t_ms": 37769,
+              "reason": "signal",
+              "bytes_before_end": 27958,
+              "records_before_end": 145,
+              "dropped": 0,
+              "raw_seen": 2011,
+              "core_seen": 13,
+              "buttons_seen": 10,
+              "xerrors": 1,
+              "sampling_is_not_complete_event_capture": true
+            }
+          }
+        },
+        "scope": "Actual published ARM64 CI observer logs; fixture source unchanged; physical Thor acceptance remains open"
+      },
+      "runtime_receipt_sha256": "186a684edcdaa437ae6fbbcb853cc751920a0f96165c036e550e50006ade06a6",
+      "five_published_runtime_cases_accepted": true
+    },
+    "source_archive": {
+      "outer_file_count": 5,
+      "exact_current_git_file_count": 598,
+      "preserved_0624_sha256": "8dcb8138f21c80c0056e2734d97952834e2c3a9a17f92a9c3997d8ad69f5a5d9",
+      "preserved_0624_bytes": 237596196
+    },
+    "signature": {
+      "cryptographically_verified_locally": true,
+      "verifier": "Google apksig 8.8.2 ApkVerifier",
+      "verifier_url": "https://dl.google.com/dl/android/maven2/com/android/tools/build/apksig/8.8.2/apksig-8.8.2.jar",
+      "verifier_jar_sha256": "c070ed1394629d74641aa0906f60b2ffa1ee77e6366a1f93437f59717b1aeb89",
+      "certificate_sha256": "ff9c09cdc3e2404d1d7f72d61ce2f8651464f5e03dff340f70bd4df28c70e869",
+      "output": "verified=true\nv1=false v2=true v3=false v31=false v4=false\nerrors=[]\nwarnings=[]\ncertificate_sha256=ff9c09cdc3e2404d1d7f72d61ce2f8651464f5e03dff340f70bd4df28c70e869\n"
+    }
+  },
+  "physical_acceptance": {
+    "device": "AYN Thor",
+    "input": "Thor right stick",
+    "latest_test_version": "0.6.28",
+    "latest_test_bundle": {
+      "name": "logs-6030031043376332005.zip",
+      "bytes": 732562,
+      "sha256": "5a36f20480340a0c0beb1143002c70a9dc51879a3e875d2aef9825d754da1fed"
+    },
+    "camera_0628": "FAIL: user says weird/not functioning; focus companion made zero requests because real pointer-path discovery rejected the target",
+    "focus_repair_attempts": 0,
+    "focus_repair_successes": 0,
+    "held_native_pointer_root_samples": 31,
+    "signed_sampled_xi2_packets_match": "113/113 within0–3ms",
+    "game_window_identity_layout": "Unknown; next 0.6.29 physical log required",
+    "camera_0629": "Pending physical diagnostic capture; collection qualification is not a camera fix",
+    "working_server_yaulp": "User previously confirmed start/saved-character load/source apply/build/deploy and cleric idle Yaulp fixed; preserve existing deployment",
+    "new_server_database_client_import_prefix_runtime_reset_required": false,
+    "separate_unresolved_checks": [
+      "NPC visibility",
+      "Traditional StoneUI",
+      "post-camp expired session key",
+      "all-profile external backup/restore",
+      "saved-bot/full-character persistence",
+      "classic skeleton visual acceptance/exact restore",
+      "physical no-work object/binary hash receipts"
+    ],
+    "next_capture": "Within first five minutes of TAKP client launch, enter saved character, enable Look, reproduce Thor right-stick movement10s, Lookoff, normal camp/stop, wait stopped, export fresh logs including client-takp-windows.log and existing focus/XI/packet/state/EQW traces"
+  }
+}

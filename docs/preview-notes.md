@@ -15,8 +15,9 @@ runtimes, settings and all 21 native launcher components remain unchanged.
 
 Actual ARM64 qualification passed 14 property/layout cases with unchanged
 focus/pointer/buttons, normal bounded logs and zero drops/X errors. It qualifies
-collection, not physical camera repair. APK/profile/publication gates also
-must pass before this candidate is a published release.
+collection, not physical camera repair. All five APK/profile/publication gates
+and independent public signature/source/asset verification passed. Exact
+receipts are in docs/release-status-0629.md and release-proof-0629.json.
 
 Camp and stop clients/servers normally; install as an Android update without
 uninstalling, then reopen TAKP. Keep the working Yaulp deployment and data;

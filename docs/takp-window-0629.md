@@ -1,8 +1,10 @@
 # 0.6.29: identify the real TAKP window before changing recovery scope
 
-Source candidate 0.6.29/code78. Native qualification passed
+Published 0.6.29/code78. Native qualification passed
 [run 38505023364](https://github.com/Russianranger/trasc-server-android/actions/runs/38505023364).
-APK qualification and publication are pending.
+All five release gates and independent public signature/source/asset audit passed.
+See [release-status-0629.md](release-status-0629.md) and
+[release-proof-0629.json](release-proof-0629.json).
 This is a diagnostic update; it does not claim another camera correction.
 
 The latest Thor test failed. The 0.6.28 focus companion started correctly but
@@ -46,7 +48,8 @@ or physical camera usability. Exact build/runtime receipts ship with the ELF.
 2. Enter the saved character promptly within five minutes of client launch.
    Enable Look and reproduce right-stick right/left/up/down for about ten
    seconds, then turn Look off. Keep the same input and graphics settings.
-3. Camp normally, stop the client and choose Logs → Export log bundle. Upload
+3. Camp normally, stop the client, wait for stopped status and choose
+   Logs → Export log bundle. Upload
    that fresh bundle with the observed behavior. It includes the new
    `logs/client-takp-windows.log`, marker `TRASC_TAKP_WINDOW_INSPECT_V1`, plus
    existing focus/native/packet/state/game traces.
