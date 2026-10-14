@@ -35,7 +35,7 @@ def run(args):
     assert eqw_build['marker']=='TRASC_TAKP_WINE_RAW_LOOK_V4' and eqw_build['architecture']=='x86'
     assert eqw_build['sha256']==hashlib.sha256(eqw_dll).hexdigest() and eqw_build['bytes']==len(eqw_dll)
     assert eqw_build['build_commit']==os.environ['GITHUB_SHA'] and eqw_build['build_run']==int(os.environ['GITHUB_RUN_ID'])
-    assert all(hashlib.sha256((source_root/name).read_bytes()).hexdigest()==digest for name,digest in eqw_build['patch_files'].items())
+    assert all(hashlib.sha256((source_root/name.replace('\\', '/')).read_bytes()).hexdigest()==digest for name,digest in eqw_build['patch_files'].items())
     shared_headers={}
     for native_name,build_name in (('takp_camera_recenter_v4.h','trasc_camera_recenter.h'),('takp_camera_focus_event.h','takp_camera_focus_event.h')):
         shared=(source_root/'native'/native_name).read_bytes()

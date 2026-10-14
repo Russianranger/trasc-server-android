@@ -41,7 +41,7 @@ def record(source, output, root):
     # Build products/debug symbols do not belong in the preserved source.
     for folder in (output/'source/eqw_takp/Release', output/'source/eqw_takp/x64'):
         if folder.exists(): shutil.rmtree(folder)
-    patches = {str(path.relative_to(root)):digest(path) for path in (
+    patches = {path.relative_to(root).as_posix():digest(path) for path in (
         root/'native/takp_camera_recenter_v4.h', root/'native/takp_camera_focus_event.h',
         root/'native/takp_camera_trace.h', root/'native/takp_dinput_observation.h',
         root/'scripts/prepare-takp-eqw.py', root/'scripts/record-takp-eqw.py')}
