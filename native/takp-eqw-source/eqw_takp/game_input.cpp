@@ -1,5 +1,6 @@
 #include "game_input.h"
 #include "trasc_camera_recenter.h"
+#include "takp_camera_focus_event.h"
 #define TRASC_TAKP_TRACE_IMPLEMENTATION
 #include "takp_camera_trace.h"
 
@@ -234,6 +235,9 @@ void SyncToWin32Cursor() {
 // state synchronized because EQW's game-input and window threads differ.
 static SRWLOCK camera_clip_lock = SRWLOCK_INIT;
 static trasc_takp_camera::LookClip camera_clip;
+static SRWLOCK camera_focus_event_lock = SRWLOCK_INIT;
+static trasc_takp_focus_event::Win32Reader focus_event_reader;
+static volatile LONG camera_input_frame = 0;
 bool IsWine() {
   static const bool wine = ::GetProcAddress(::GetModuleHandleW(L"ntdll.dll"), "wine_get_version") != nullptr;
   return wine;
@@ -247,6 +251,38 @@ bool GetCameraClip(trasc_takp_camera::Rect& value) {
 bool SetCameraClip(const trasc_takp_camera::Rect& value) {
   RECT rect = {value.left, value.top, value.right, value.bottom};
   return ::ClipCursor(&rect) != 0;
+}
+// The native helper publishes only a verified successful focus repair. Read a
+// tiny regular session file; malformed, missing and foreign records are inert.
+// Consume valid events even with Look off, so an old event cannot acquire a new
+// clip after a lifecycle release. A failed refresh never falls back to a warp.
+void PollCameraFocusEvent(unsigned long frame) {
+  if (!IsWine()) return;
+  ::AcquireSRWLockShared(&camera_clip_lock);
+  const unsigned long generation = camera_clip.generation();
+  ::ReleaseSRWLockShared(&camera_clip_lock);
+  trasc_takp_focus_event::Sequence sequence = 0;
+  // File I/O and notification parsing use a separate lock; Wine input/window
+  // queries must never execute while the lifecycle clip lock is held.
+  ::AcquireSRWLockExclusive(&camera_focus_event_lock);
+  const bool fresh = focus_event_reader.poll(::GetTickCount(), sequence);
+  ::ReleaseSRWLockExclusive(&camera_focus_event_lock);
+  if (!fresh) return;
+  // Query outside the clip lock because Wine can dispatch lifecycle messages.
+  const bool physical = (::GetAsyncKeyState(swap_mouse_buttons_ ? VK_LBUTTON : VK_RBUTTON) & 0x8000) != 0;
+  const bool foreground = ::GetForegroundWindow() == hwnd_;
+  const bool iconic = ::IsIconic(hwnd_) != 0;
+  const bool visible = ::IsWindowVisible(hwnd_) != 0;
+  const bool look = *g_mouse_rmb_down_mouse_look != 0;
+  ::AcquireSRWLockExclusive(&camera_clip_lock);
+  const bool owned = camera_clip.held();
+  const bool active = look && physical && foreground && !iconic && visible;
+  const bool refreshed = active && camera_clip.force_refresh_since(generation, GetCameraClip, SetCameraClip);
+  const unsigned long current_generation = camera_clip.generation();
+  const unsigned long refresh_count = camera_clip.focus_refresh_count();
+  ::ReleaseSRWLockExclusive(&camera_clip_lock);
+  trasc_takp_trace::write("focus_clip_refresh seq=%llu ok=%d frame=%lu generation=%lu/%lu count=%lu held=%d look=%d physical=%d foreground=%d iconic=%d visible=%d",
+    sequence, refreshed, frame, generation, current_generation, refresh_count, owned, look, physical, foreground, iconic, visible);
 }
 void ReleaseCameraClip() {
   if (!IsWine()) return;
@@ -355,6 +391,8 @@ int __cdecl GetMouseDataRelHook() {
   static bool mouse_disabled = true;
   static bool prev_has_focus = false;
 
+  PollCameraFocusEvent(static_cast<unsigned long>(::InterlockedIncrement(&camera_input_frame)));
+
   bool has_focus = (::GetForegroundWindow() == hwnd_ && !::IsIconic(hwnd_));
 
   UpdateGameWindowParameters();  // Updates cached values used in calls below.
@@ -447,7 +485,7 @@ void __fastcall RightMouseDownHook(void* this_ptr, int unused_edx, short x, shor
 
 void Initialize(HWND hwnd, bool swap_mouse_buttons, bool disable_keydown_clear) {
   hwnd_ = hwnd;
-  trasc_takp_trace::write("initialize helper=%s swap_buttons=%d", trasc_takp_camera::marker, swap_mouse_buttons);
+  trasc_takp_trace::write("initialize helper=%s swap_buttons=%d focus_event=%s", trasc_takp_camera::marker, swap_mouse_buttons, trasc_takp_focus_event::prefix);
   game_width_ = 640;  // Safe defaults until first hooked update.
   game_height_ = 480;
   game_rect_ = {0, 0, game_width_, game_height_};

@@ -1,7 +1,7 @@
 {
   "format": 1,
-  "github_commit": "d0bd98e387727a7eae14a728eea4541c05610674",
-  "github_run_id": "38500575431",
+  "github_commit": "08f373040e7e0a4dbc59c14f7858868ddd620062",
+  "github_run_id": "38590631222",
   "published_inputs": {
     "format": 1,
     "runtime_asset_id": 617421976,
@@ -18,9 +18,9 @@
       "box64": "0.4.4",
       "renderer": "wined3d-llvmpipe"
     },
-    "apk_asset_id": 638709306,
-    "apk_sha256": "603776458fb2d245262bb36febdec5380557270cc39f5bc476267e21095f5595",
-    "apk_bytes": 18923551,
+    "apk_asset_id": 639098532,
+    "apk_sha256": "e81e6afe2ac639a292d7c048cc7575a9cbd1af6a19f2cfe4a934f2c723e40fcf",
+    "apk_bytes": 18952880,
     "native_payload_sha256": {
       "x11-frame-bridge": "c7244f755d9e473a6a8931cc7d330e6a7c2efd909313b5f0cf634558562b2917",
       "presentation-bundle.json": "d67c2cea490d4448e5901daddd92682301bf6d6326a8bea512fde85ee1c26a74",
@@ -30,34 +30,136 @@
     "runtime_rebuilt": false,
     "production_input_bridge_rebuilt": false,
     "runtime_overlay": "/opt/wine/bin/wineserver from verified APK",
-    "apk_version": "0.6.27",
-    "apk_version_code": 76
+    "apk_version": "0.6.29",
+    "apk_version_code": 78,
+    "preserved_observer_sha256": "5f5cf7e8f8d2d3df475284f72fa0f2944e1cadb9ba334927021799615b35744b",
+    "observer_rebuilt": false
   },
   "fixture_sha256": {
-    "tests/integration_takp_focus.py": "9e916a86d4d3666ea505a5d0872f37583588291e41e339905e44ea227cb60892",
+    "tests/integration_takp_focus.py": "413feb74f287db95326bbf8d871d758772a37bc24bbf3275f3d9ff5191a0dc2b",
+    "tests/takp_focus_probe_0630.cpp": "383a3079f7d9c023b8893d473e9bb40e61480f6b0ae98e8f20a645b0a4cf2ae0",
     "tests/takp_focus_probe.cpp": "ea43bbc90e85ecf424c73cb6360c6356167e886f16a9947fa92f5e18759a3650",
     "tests/takp_cursor_probe.cpp": "68e23c167c481c35b759f593d3a3c3844c7dd6ef8efbe78f6544ce82d80069a1",
     "tests/takp_box64_wine.py": "6407aada984e00fb8d6986768ddf869b8d65e9d0c37b086eef951795a7427e74",
     "tests/takp_input_transport.py": "5b77b8c0610be48ed3148997de2c069345ad846c5c82edc909f1a14400761ec1",
-    "scripts/prepare-takp-focus-runtime.py": "37c0f64dbbbe77681503ca696e64db93b6457ac93af5479fc6e36a66198877cd",
+    "scripts/prepare-takp-focus-runtime.py": "f55bdc457cefabba6e705682fcbd586cdc7a0119a1f066b262e95bbb9b6024d6",
     "scripts/prepare-takp-camera-runtime.py": "a221870b9952b3e2b28bd8ed122a954b9b61c15bc5e16c7201b8bbbf80d4588b",
     "native/takp_camera_recenter.h": "77f669b54196ebc24f02a20c87ec1f44973b9ee82c4c576bb5fd1bf02d697cc2",
     "native/takp_camera_trace.h": "c0301f87a3077c6065bda204fc63c262141cd13a041653f910655b4e55c9e519",
     "native/takp_dinput_observation.h": "325b56bcb220400da5ae83d4656dbc50d90c6dd9ec3ee7eca51068e2ff483d5a",
+    "native/takp_camera_recenter_v4.h": "1da5bbddf1af80ae798138937844bbf36cc0b6359dd1e1d56c5a645be4670830",
+    "native/takp_camera_focus_event.h": "7f2d7fdcf59685c3282d35c651a276f925ddedd99cfc7b948e9f3730b995850b",
+    "native/presentation/takp-focus-event.h": "d04b407ce2f16ee39815352e0527aa26063e7277222a3fc6bd1eb96268fb6cfd",
     "native/presentation/input.h": "1da77135b5d468b08ba7d3b6551aad3a4449c3e417b006e8de0e8f26b03b6fc3",
-    "native/presentation/takp-xinput-focus.c": "49b1cfc685bba593b9ca097b0c074a4278d09ec523cf059f542d7b783f3ed1fa",
+    "native/presentation/takp-xinput-focus.c": "5b9cf12bc067002b2bb9c8a15a548eb6a303e2ae505ceafcb97c32747ae3ccdd",
     "native/presentation/takp-xinput-observe.c": "41e00c7db8f1d8099c4aa49be6658536baaf951c1fbbe80e49af680d5c9356c8",
     "native/presentation/observe-log.h": "40ecb76a1096bca0f2ecac8f194a029bf720550f9462f2fcded6299fc14f4b2d",
-    "tests/takp_focus_tools.Dockerfile": "53642add4814ab299ba490cdfe8e64d461abc369726d4012a9ac6ebf4a7bed74"
+    "tests/takp_focus_tools.Dockerfile": "7070ebc5b16e07ffbf5202c8acffaa3d56b97f82862cede539624654e05afee1",
+    "tests/takp_camera_focus_event.cpp": "220020c8343ebcbc8ce61b9023efd42c3b6796b072a3448bda9f05b394a9c91f",
+    "scripts/prepare-takp-eqw.py": "80ea47bd35a7236cf0b3983a7b9e8e08cefb06bb9ae9ccfc8409f3062050c5d2",
+    "scripts/record-takp-eqw.py": "808d1a287b1adbfbf05b671f6f5af4c2049f3076378403950f2b010af308d8c9"
   },
-  "focus_helper_sha256": "90dda77cb0b0fe1d18d4fa7b39bedda7dad67af6c342d7b23c74d0129f666865",
+  "focus_helper_sha256": "fcec1f6a4f0d1101efef56f58671b47944fd19219f0eeb3a4591a66607f5b364",
   "observer_sha256": "5f5cf7e8f8d2d3df475284f72fa0f2944e1cadb9ba334927021799615b35744b",
+  "shipping_eqw_build": {
+    "format": 1,
+    "architecture": "x86",
+    "helper": "eqw.dll",
+    "sha256": "ae556d045a0b64586b1e4f0c0957a75c99626f9f149f8e95b7bb99ed7a738fc8",
+    "bytes": 95232,
+    "source_repository": "https://github.com/CoastalRedwood/eqw_takp",
+    "source_commit": "3b4d43562c9dacc89349185684bb0bf0b01f9d06",
+    "source_tag": "v1.0.2",
+    "upstream_game_input_sha256": "52b450f9667530db3741a2b4ea481cc3b4bfe8b692e8c1fbb79f825863bab5f2",
+    "patched_game_input_sha256": "a7ba66bf7b768239d95103b152ff022cc1999cd7722323d208dae756839da18d",
+    "upstream_source_sha256": {
+      "game_input.cpp": "52b450f9667530db3741a2b4ea481cc3b4bfe8b692e8c1fbb79f825863bab5f2",
+      "game_input.h": "8de968691c4c4e687df6edab004669201c3a64ee0b4da48e235e0ec5cb6f2dd0",
+      "eq_game.cpp": "c853ba205558997d8c95623c2c406ad1e25b2f98193adc1f898d3ee794ada33f",
+      "dinput_manager.cpp": "f7504811532c7e8832a093c1acbbc41961a1503920fe2a784cd1219056c419de"
+    },
+    "patched_source_sha256": {
+      "game_input.cpp": "a7ba66bf7b768239d95103b152ff022cc1999cd7722323d208dae756839da18d",
+      "game_input.h": "4ff5c04b60fa42c8473472eea80666ae22217d7f28db365e93efc4824f46f1fb",
+      "eq_game.cpp": "ed4f3136d863e3868797842e2d9cd55c56109a47e45c2474e4a817569256f2cb",
+      "dinput_manager.cpp": "90ab02b96a7c457bd860ac4d79c0fb90a9fa95d97e2764c22944a9385bb6d667"
+    },
+    "patch_files": {
+      "native/takp_camera_recenter_v4.h": "1da5bbddf1af80ae798138937844bbf36cc0b6359dd1e1d56c5a645be4670830",
+      "native/takp_camera_focus_event.h": "7f2d7fdcf59685c3282d35c651a276f925ddedd99cfc7b948e9f3730b995850b",
+      "native/takp_camera_trace.h": "c0301f87a3077c6065bda204fc63c262141cd13a041653f910655b4e55c9e519",
+      "native/takp_dinput_observation.h": "325b56bcb220400da5ae83d4656dbc50d90c6dd9ec3ee7eca51068e2ff483d5a",
+      "scripts/prepare-takp-eqw.py": "80ea47bd35a7236cf0b3983a7b9e8e08cefb06bb9ae9ccfc8409f3062050c5d2",
+      "scripts/record-takp-eqw.py": "808d1a287b1adbfbf05b671f6f5af4c2049f3076378403950f2b010af308d8c9"
+    },
+    "marker": "TRASC_TAKP_WINE_RAW_LOOK_V4",
+    "trace_marker": "TRASC_TAKP_CAMERA_TRACE_V1",
+    "focus_event": {
+      "protocol": "TRASCFOCUS1",
+      "max_bytes": 96,
+      "launch_token_bytes": 32,
+      "poll_interval_ms": 20,
+      "path_environment": "TRASC_TAKP_FOCUS_EVENT",
+      "token_environment": "TRASC_CLIENT_LAUNCH",
+      "regular_file_only": true,
+      "read_only": true,
+      "consume_when_look_off": true,
+      "refresh": "once per new verified native focus-success sequence; same owned clip and generation; physical look/foreground/visible only"
+    },
+    "camera_behavior": "V4 session-scoped verified native focus-success refresh of the same owned look clip; retains bounded 250ms escaped-cursor recovery; no added cursor warps, input drains, axis or consumer conversion",
+    "compiler": "Microsoft Visual C++ v143, Release x86",
+    "build_commit": "08f373040e7e0a4dbc59c14f7858868ddd620062",
+    "build_run": 38590631222,
+    "license_sha256": "9d7bb2707921cd2717bab877f7dadd994f6fee7e3acc18a34e26a615c472df42"
+  },
+  "shipping_eqw_shared_headers_sha256": {
+    "takp_camera_recenter_v4.h": "1da5bbddf1af80ae798138937844bbf36cc0b6359dd1e1d56c5a645be4670830",
+    "takp_camera_focus_event.h": "7f2d7fdcf59685c3282d35c651a276f925ddedd99cfc7b948e9f3730b995850b"
+  },
+  "observer_phases": [
+    {
+      "file": "observer.log",
+      "sha256": "51884c3ed78b4ae9c34508f2e90522bb299214be73786aabadd28913740e018d",
+      "bytes": 16517,
+      "completion": {
+        "record": "end",
+        "t_ms": 22254,
+        "reason": "signal",
+        "bytes_before_end": 16304,
+        "records_before_end": 88,
+        "dropped": 0,
+        "raw_seen": 125,
+        "core_seen": 5,
+        "buttons_seen": 2,
+        "xerrors": 1,
+        "sampling_is_not_complete_event_capture": true
+      }
+    },
+    {
+      "file": "observer-resume.log",
+      "sha256": "33c6b2a6df6fce897e08bb877d97bd4d6973da58c10e2cd9983c5732fc84a9da",
+      "bytes": 16685,
+      "completion": {
+        "record": "end",
+        "t_ms": 6457,
+        "reason": "signal",
+        "bytes_before_end": 16473,
+        "records_before_end": 99,
+        "dropped": 0,
+        "raw_seen": 168,
+        "core_seen": 0,
+        "buttons_seen": 4,
+        "xerrors": 0,
+        "sampling_is_not_complete_event_capture": true
+      }
+    }
+  ],
   "pointer_root_reproduction": {
     "native_foreground_preserved": true,
     "cached_clip_preserved": true,
     "pointer_escaped": [
-      402,
-      300
+      642,
+      360
     ],
     "negative_reversal": {
       "injected": [
@@ -225,38 +327,550 @@
     "physical_cursor_confined": true,
     "focus_none_after_resume": true,
     "rmb_release_restores_clip": true,
-    "menu_pointer_free": true
+    "menu_pointer_free": true,
+    "title": "Client1",
+    "viewport": [
+      1280,
+      720
+    ],
+    "center": [
+      640,
+      360
+    ],
+    "pointer_path": [
+      1305,
+      10485764,
+      18874369,
+      2097153
+    ],
+    "propertyless_render_child": 2097153,
+    "natural_title_property": {
+      "type": 31,
+      "format": 8,
+      "count": 7,
+      "after": 0,
+      "hex": "436c69656e7431"
+    },
+    "natural_class_property": {
+      "type": 31,
+      "format": 8,
+      "count": 22,
+      "after": 0,
+      "hex": "657167616d652e65786500657167616d652e65786500"
+    },
+    "menu_normalization": {
+      "before_pointer": [
+        670,
+        340
+      ],
+      "free_menu_motion": [
+        30,
+        -20
+      ],
+      "normalization_while_look_off": true,
+      "consumer_reset_or_drain": false,
+      "pointer": [
+        640,
+        360
+      ],
+      "rmb": false,
+      "clip": [
+        0,
+        0,
+        1280,
+        720
+      ],
+      "polled": [
+        0,
+        0
+      ],
+      "buffered": [
+        0,
+        0
+      ],
+      "quiet_ms": 300
+    },
+    "legacy_quiet_baseline": {
+      "polled": [
+        0,
+        0
+      ],
+      "buffered": [
+        0,
+        0
+      ],
+      "quiet_ms": 300,
+      "pointer": [
+        640,
+        360
+      ],
+      "clip": [
+        640,
+        360,
+        641,
+        361
+      ],
+      "rmb": true
+    },
+    "legacy_title": "EqW-TAKP",
+    "legacy_signed_segments": [
+      {
+        "injected": [
+          12,
+          0
+        ],
+        "polled": [
+          12,
+          0
+        ],
+        "buffered": [
+          12,
+          0
+        ]
+      },
+      {
+        "injected": [
+          -12,
+          0
+        ],
+        "polled": [
+          -12,
+          0
+        ],
+        "buffered": [
+          -12,
+          0
+        ]
+      },
+      {
+        "injected": [
+          0,
+          12
+        ],
+        "polled": [
+          0,
+          12
+        ],
+        "buffered": [
+          0,
+          12
+        ]
+      },
+      {
+        "injected": [
+          0,
+          -12
+        ],
+        "polled": [
+          0,
+          -12
+        ],
+        "buffered": [
+          0,
+          -12
+        ]
+      }
+    ],
+    "centered_focus_loss_before_motion": true,
+    "centered_resume_signed_segments": [
+      {
+        "injected": [
+          12,
+          0
+        ],
+        "polled": [
+          12,
+          0
+        ],
+        "buffered": [
+          12,
+          0
+        ]
+      },
+      {
+        "injected": [
+          -12,
+          0
+        ],
+        "polled": [
+          -12,
+          0
+        ],
+        "buffered": [
+          -12,
+          0
+        ]
+      },
+      {
+        "injected": [
+          24,
+          0
+        ],
+        "polled": [
+          24,
+          0
+        ],
+        "buffered": [
+          24,
+          0
+        ]
+      },
+      {
+        "injected": [
+          -24,
+          0
+        ],
+        "polled": [
+          -24,
+          0
+        ],
+        "buffered": [
+          -24,
+          0
+        ]
+      },
+      {
+        "injected": [
+          0,
+          12
+        ],
+        "polled": [
+          0,
+          12
+        ],
+        "buffered": [
+          0,
+          12
+        ]
+      },
+      {
+        "injected": [
+          0,
+          -12
+        ],
+        "polled": [
+          0,
+          -12
+        ],
+        "buffered": [
+          0,
+          -12
+        ]
+      },
+      {
+        "injected": [
+          0,
+          24
+        ],
+        "polled": [
+          0,
+          24
+        ],
+        "buffered": [
+          0,
+          24
+        ]
+      },
+      {
+        "injected": [
+          0,
+          -24
+        ],
+        "polled": [
+          0,
+          -24
+        ],
+        "buffered": [
+          0,
+          -24
+        ]
+      },
+      {
+        "injected": [
+          24,
+          -12
+        ],
+        "polled": [
+          24,
+          -12
+        ],
+        "buffered": [
+          24,
+          -12
+        ]
+      },
+      {
+        "injected": [
+          -24,
+          12
+        ],
+        "polled": [
+          -24,
+          12
+        ],
+        "buffered": [
+          -24,
+          12
+        ]
+      }
+    ],
+    "focus_notifications": [
+      {
+        "sequence": 1,
+        "refreshes": 1
+      },
+      {
+        "sequence": 2,
+        "refreshes": 2
+      },
+      {
+        "sequence": 3,
+        "refreshes": 3
+      }
+    ],
+    "focus_event_tail": "TRASCFOCUS1 0123456789abcdef0123456789abcdef 3\n",
+    "focus_event_bytes": 47,
+    "focus_event_mtime_ns": 1791992284476050944,
+    "event_reader_guards": [
+      {
+        "case": "missing-file",
+        "sequence": 1,
+        "refreshes_added": 0
+      },
+      {
+        "case": "empty-file",
+        "sequence": 1,
+        "refreshes_added": 0
+      },
+      {
+        "case": "truncated-record",
+        "sequence": 1,
+        "refreshes_added": 0
+      },
+      {
+        "case": "foreign-session",
+        "sequence": 1,
+        "refreshes_added": 0
+      },
+      {
+        "case": "wrong-protocol",
+        "sequence": 1,
+        "refreshes_added": 0
+      },
+      {
+        "case": "stale-zero",
+        "sequence": 1,
+        "refreshes_added": 0
+      },
+      {
+        "case": "duplicate-sequence",
+        "sequence": 1,
+        "refreshes_added": 0
+      },
+      {
+        "case": "oversized-record",
+        "sequence": 1,
+        "refreshes_added": 0
+      },
+      {
+        "case": "multiple-hard-links",
+        "sequence": 1,
+        "refreshes_added": 0
+      }
+    ]
   },
   "negative_guards": [
     {
       "case": "released-button-does-not-focus",
       "focus": 1,
-      "repairs_added": 0
+      "repairs_added": 0,
+      "event_sequence_unchanged": 1
     },
     {
       "case": "concrete-foreign-focus-preserved",
-      "focus": 2097153,
-      "repairs_added": 0
+      "focus": 2097154,
+      "repairs_added": 0,
+      "event_sequence_unchanged": 1
     },
     {
       "case": "wrong-title-does-not-focus",
       "focus": 1,
-      "repairs_added": 0
+      "repairs_added": 0,
+      "event_sequence_unchanged": 1
+    },
+    {
+      "case": "title-wrong-case-does-not-focus",
+      "focus": 1,
+      "repairs_added": 0,
+      "event_sequence_unchanged": 1
+    },
+    {
+      "case": "title-prefix-does-not-focus",
+      "focus": 1,
+      "repairs_added": 0,
+      "event_sequence_unchanged": 1
+    },
+    {
+      "case": "title-suffix-does-not-focus",
+      "focus": 1,
+      "repairs_added": 0,
+      "event_sequence_unchanged": 1
+    },
+    {
+      "case": "title-optional-nul-does-not-focus",
+      "focus": 1,
+      "repairs_added": 0,
+      "event_sequence_unchanged": 1
+    },
+    {
+      "case": "title-embedded-nul-does-not-focus",
+      "focus": 1,
+      "repairs_added": 0,
+      "event_sequence_unchanged": 1
+    },
+    {
+      "case": "legacy-title-prefix-does-not-focus",
+      "focus": 1,
+      "repairs_added": 0,
+      "event_sequence_unchanged": 1
+    },
+    {
+      "case": "legacy-title-suffix-does-not-focus",
+      "focus": 1,
+      "repairs_added": 0,
+      "event_sequence_unchanged": 1
+    },
+    {
+      "case": "legacy-title-optional-nul-does-not-focus",
+      "focus": 1,
+      "repairs_added": 0,
+      "event_sequence_unchanged": 1
+    },
+    {
+      "case": "missing-title-does-not-focus",
+      "focus": 1,
+      "repairs_added": 0,
+      "event_sequence_unchanged": 1
+    },
+    {
+      "case": "empty-title-does-not-focus",
+      "focus": 1,
+      "repairs_added": 0,
+      "event_sequence_unchanged": 1
+    },
+    {
+      "case": "oversized-title-does-not-focus",
+      "focus": 1,
+      "repairs_added": 0,
+      "event_sequence_unchanged": 1
+    },
+    {
+      "case": "title-wrong-type-does-not-focus",
+      "focus": 1,
+      "repairs_added": 0,
+      "event_sequence_unchanged": 1
+    },
+    {
+      "case": "title-format16-does-not-focus",
+      "focus": 1,
+      "repairs_added": 0,
+      "event_sequence_unchanged": 1
+    },
+    {
+      "case": "title-format32-does-not-focus",
+      "focus": 1,
+      "repairs_added": 0,
+      "event_sequence_unchanged": 1
     },
     {
       "case": "wrong-class-does-not-focus",
       "focus": 1,
-      "repairs_added": 0
+      "repairs_added": 0,
+      "event_sequence_unchanged": 1
+    },
+    {
+      "case": "class-wrong-case-does-not-focus",
+      "focus": 1,
+      "repairs_added": 0,
+      "event_sequence_unchanged": 1
+    },
+    {
+      "case": "class-prefix-does-not-focus",
+      "focus": 1,
+      "repairs_added": 0,
+      "event_sequence_unchanged": 1
+    },
+    {
+      "case": "class-suffix-does-not-focus",
+      "focus": 1,
+      "repairs_added": 0,
+      "event_sequence_unchanged": 1
+    },
+    {
+      "case": "class-optional-nul-does-not-focus",
+      "focus": 1,
+      "repairs_added": 0,
+      "event_sequence_unchanged": 1
+    },
+    {
+      "case": "class-single-instance-does-not-focus",
+      "focus": 1,
+      "repairs_added": 0,
+      "event_sequence_unchanged": 1
+    },
+    {
+      "case": "missing-class-does-not-focus",
+      "focus": 1,
+      "repairs_added": 0,
+      "event_sequence_unchanged": 1
+    },
+    {
+      "case": "empty-class-does-not-focus",
+      "focus": 1,
+      "repairs_added": 0,
+      "event_sequence_unchanged": 1
+    },
+    {
+      "case": "oversized-class-does-not-focus",
+      "focus": 1,
+      "repairs_added": 0,
+      "event_sequence_unchanged": 1
+    },
+    {
+      "case": "class-wrong-type-does-not-focus",
+      "focus": 1,
+      "repairs_added": 0,
+      "event_sequence_unchanged": 1
+    },
+    {
+      "case": "class-format16-does-not-focus",
+      "focus": 1,
+      "repairs_added": 0,
+      "event_sequence_unchanged": 1
+    },
+    {
+      "case": "class-format32-does-not-focus",
+      "focus": 1,
+      "repairs_added": 0,
+      "event_sequence_unchanged": 1
+    },
+    {
+      "case": "duplicate-exact-ancestors-does-not-focus",
+      "focus": 1,
+      "repairs_added": 0,
+      "event_sequence_unchanged": 1
     },
     {
       "case": "foreign-pointer-window-does-not-focus",
       "focus": 1,
-      "repairs_added": 0
+      "repairs_added": 0,
+      "event_sequence_unchanged": 1
     },
     {
       "case": "minimized-game-does-not-focus",
       "focus": 1,
-      "repairs_added": 0
+      "repairs_added": 0,
+      "event_sequence_unchanged": 1
     }
   ],
   "focus_repairs": [
@@ -266,135 +880,88 @@
       "before": 1,
       "candidate": 18874369,
       "after": 18874369,
-      "identity": "EqW-TAKP/eqgame.exe",
-      "path_depth": 2,
+      "identity": "EqW-TAKP|Client1/eqgame.exe",
+      "path_depth": 3,
       "rmb": true,
       "attempt": 1,
       "success": true,
-      "xerrors": 0
+      "xerrors": 0,
+      "event_sequence": 1,
+      "event_written": true,
+      "event_error": 0
     },
     {
       "record": "focus_repair",
-      "t_ms": 4505,
+      "t_ms": 32583,
       "before": 1,
       "candidate": 18874369,
       "after": 18874369,
-      "identity": "EqW-TAKP/eqgame.exe",
-      "path_depth": 2,
+      "identity": "EqW-TAKP|Client1/eqgame.exe",
+      "path_depth": 3,
       "rmb": true,
       "attempt": 2,
       "success": true,
-      "xerrors": 0
+      "xerrors": 0,
+      "event_sequence": 2,
+      "event_written": true,
+      "event_error": 0
     },
     {
       "record": "focus_repair",
-      "t_ms": 5306,
-      "before": 1,
-      "candidate": 18874369,
-      "after": 18874369,
-      "identity": "EqW-TAKP/eqgame.exe",
-      "path_depth": 2,
-      "rmb": true,
-      "attempt": 3,
-      "success": true,
-      "xerrors": 0
-    },
-    {
-      "record": "focus_repair",
-      "t_ms": 6109,
-      "before": 1,
-      "candidate": 18874369,
-      "after": 18874369,
-      "identity": "EqW-TAKP/eqgame.exe",
-      "path_depth": 2,
-      "rmb": true,
-      "attempt": 4,
-      "success": true,
-      "xerrors": 0
-    },
-    {
-      "record": "focus_repair",
-      "t_ms": 7011,
-      "before": 1,
-      "candidate": 18874369,
-      "after": 18874369,
-      "identity": "EqW-TAKP/eqgame.exe",
-      "path_depth": 2,
-      "rmb": true,
-      "attempt": 5,
-      "success": true,
-      "xerrors": 0
-    },
-    {
-      "record": "focus_repair",
-      "t_ms": 7813,
-      "before": 1,
-      "candidate": 18874369,
-      "after": 18874369,
-      "identity": "EqW-TAKP/eqgame.exe",
-      "path_depth": 2,
-      "rmb": true,
-      "attempt": 6,
-      "success": true,
-      "xerrors": 0
-    },
-    {
-      "record": "focus_repair",
-      "t_ms": 9015,
-      "before": 1,
-      "candidate": 18874369,
-      "after": 18874369,
-      "identity": "EqW-TAKP/eqgame.exe",
-      "path_depth": 2,
-      "rmb": true,
-      "attempt": 7,
-      "success": true,
-      "xerrors": 0
-    },
-    {
-      "record": "focus_repair",
-      "t_ms": 9516,
+      "t_ms": 34787,
       "before": 0,
       "candidate": 18874369,
       "after": 18874369,
-      "identity": "EqW-TAKP/eqgame.exe",
-      "path_depth": 2,
+      "identity": "EqW-TAKP|Client1/eqgame.exe",
+      "path_depth": 3,
       "rmb": true,
-      "attempt": 8,
+      "attempt": 3,
       "success": true,
-      "xerrors": 0
+      "xerrors": 0,
+      "event_sequence": 3,
+      "event_written": true,
+      "event_error": 0
     }
   ],
+  "focus_completion": {
+    "record": "end",
+    "t_ms": 38466,
+    "attempts": 3,
+    "successes": 3,
+    "bytes_before_end": 10035,
+    "dropped": 0,
+    "xerrors": 0
+  },
   "transport": {
-    "packets": 145,
-    "relative": 123,
-    "absolute": 1,
-    "buttons": 21,
+    "packets": 395,
+    "relative": 291,
+    "absolute": 2,
+    "buttons": 102,
     "zero_relative": 0,
     "relative_sum": [
       32,
       -20
     ],
     "positive_axes": [
-      38,
-      36
+      86,
+      84
     ],
     "negative_axes": [
-      37,
-      37
+      85,
+      85
     ],
-    "wire_bytes": 2320,
-    "writes": 145,
+    "wire_bytes": 6320,
+    "writes": 395,
     "mask": 0,
-    "seconds": 12.164257265000003,
+    "seconds": 40.844504852,
     "protocol": "TRASCIN1",
     "pipeline": "production parser; per-packet XFlush",
     "closed": true,
     "native_decoded": {
-      "relative": 123,
-      "absolute": 1,
-      "buttons": 21
+      "relative": 291,
+      "absolute": 2,
+      "buttons": 102
     }
   },
-  "scope": "Published ARM64 runtime/open PE32 consumer with exact game identity; physical Thor acceptance pending"
+  "scope": "Published ARM64 runtime/open PE32 consumer shares exact V4 event-reader and ownership headers with certified MSVC shipping DLL; fixed-address game DLL itself cannot run in the open fixture; physical Thor acceptance pending"
 }

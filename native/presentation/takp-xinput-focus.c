@@ -13,6 +13,7 @@
 #include <time.h>
 #include <unistd.h>
 #include "observe-log.h"
+#include "takp-focus-event.h"
 
 #define TRASC_FOCUS_PATH_LIMIT 16u
 #define TRASC_FOCUS_REQUEST_TIMEOUT 2u
@@ -47,7 +48,8 @@ static int pointer(Display *display, Window window, Window *child, unsigned *mas
 }
 
 /* Wine10 sets both WM_CLASS strings to the lowercase process basename on each
- * whole window. EQW creates the game window with the exact title EqW-TAKP.
+ * whole window. Physical Thor diagnostics identify Client1 as the whole game
+ * window above the propertyless render child. Keep the legacy EqW-TAKP title.
  * Avoid unbounded XFetchName/XGetClassHint reads and deny missing properties. */
 static int exact_property(Display *display, Window window, Atom property,
                           const unsigned char *expected, size_t expected_bytes) {
@@ -66,6 +68,7 @@ static int exact_property(Display *display, Window window, Atom property,
 }
 static int identity(Display *display, Window window) {
     static const unsigned char title[] = "EqW-TAKP";
+    static const unsigned char thor_title[] = "Client1";
     static const unsigned char class_name[] = "eqgame.exe\0eqgame.exe";
     XWindowAttributes attributes;
     request_begin();
@@ -73,7 +76,8 @@ static int identity(Display *display, Window window) {
     request_end();
     if (!found || attributes.map_state != IsViewable || attributes.class != InputOutput ||
         attributes.width < 1 || attributes.height < 1) return 0;
-    return exact_property(display, window, XA_WM_NAME, title, sizeof(title) - 1u) &&
+    return (exact_property(display, window, XA_WM_NAME, title, sizeof(title) - 1u) ||
+            exact_property(display, window, XA_WM_NAME, thor_title, sizeof(thor_title) - 1u)) &&
            exact_property(display, window, XA_WM_CLASS, class_name, sizeof(class_name));
 }
 
@@ -106,13 +110,17 @@ int main(int argc, char **argv) {
     signal(SIGALRM, request_timeout);
     setvbuf(stdout, NULL, _IONBF, 0);
     struct trasc_observe_log log = {.file = stdout};
+    const char *event_path = getenv("TRASC_TAKP_FOCUS_EVENT_NATIVE");
+    const char *event_token = getenv("TRASC_CLIENT_LAUNCH");
+    int event_configured = trasc_focus_event_config(event_path, event_token);
     char identity_label[64];
-    trasc_observe_quote(identity_label, sizeof(identity_label), "EqW-TAKP/eqgame.exe");
+    trasc_observe_quote(identity_label, sizeof(identity_label), "EqW-TAKP|Client1/eqgame.exe");
     uint64_t start = clock_ms(CLOCK_MONOTONIC), attempts = 0, successes = 0, last_attempt = 0;
     trasc_observe_emit(&log, 0,
-        "{\"record\":\"begin\",\"marker\":\"TRASC_TAKP_X_FOCUS_RECOVERY_V1\",\"pid\":%ld,\"monotonic_ms\":%llu,\"epoch_ms\":%llu,\"max_bytes\":%u,\"poll_ms\":100,\"path_limit\":%u,\"request_timeout_seconds\":%u,\"changes_focus\":true,\"warps_grabs_injection_property_writes\":false}",
+        "{\"record\":\"begin\",\"marker\":\"TRASC_TAKP_X_FOCUS_RECOVERY_V2\",\"pid\":%ld,\"monotonic_ms\":%llu,\"epoch_ms\":%llu,\"max_bytes\":%u,\"poll_ms\":100,\"path_limit\":%u,\"request_timeout_seconds\":%u,\"window_titles\":[\"EqW-TAKP\",\"Client1\"],\"focus_event_protocol\":1,\"focus_event_max_bytes\":%u,\"event_configured\":%s,\"changes_focus\":true,\"warps_grabs_injection_property_writes\":false}",
         (long)getpid(), (unsigned long long)start, (unsigned long long)clock_ms(CLOCK_REALTIME),
-        TRASC_OBSERVE_MAX_BYTES, TRASC_FOCUS_PATH_LIMIT, TRASC_FOCUS_REQUEST_TIMEOUT);
+        TRASC_OBSERVE_MAX_BYTES, TRASC_FOCUS_PATH_LIMIT, TRASC_FOCUS_REQUEST_TIMEOUT,
+        TRASC_FOCUS_EVENT_MAX_BYTES, event_configured ? "true" : "false");
     XSetErrorHandler(error_handler);
     request_begin();
     Display *display = XOpenDisplay(NULL);
@@ -156,11 +164,19 @@ int main(int argc, char **argv) {
                 request_end();
                 int success = after == candidate && xerrors == errors_before;
                 if (success) successes++;
+                int event_written = 0;
+                if (success && event_configured) {
+                    request_begin();
+                    event_written = trasc_focus_event_write(event_path, event_token, (unsigned long long)successes);
+                    request_end();
+                }
+                int event_error = success && !event_written ? (event_configured ? errno : EINVAL) : 0;
                 if (!log.full && !log.failed) trasc_observe_emit(&log, 0,
-                    "{\"record\":\"focus_repair\",\"t_ms\":%llu,\"before\":%lu,\"candidate\":%lu,\"after\":%lu,\"identity\":\"%s\",\"path_depth\":%u,\"rmb\":true,\"attempt\":%llu,\"success\":%s,\"xerrors\":%u}",
+                    "{\"record\":\"focus_repair\",\"t_ms\":%llu,\"before\":%lu,\"candidate\":%lu,\"after\":%lu,\"identity\":\"%s\",\"path_depth\":%u,\"rmb\":true,\"attempt\":%llu,\"success\":%s,\"xerrors\":%u,\"event_sequence\":%llu,\"event_written\":%s,\"event_error\":%d}",
                     (unsigned long long)(time - start), (unsigned long)checked_focus,
                     (unsigned long)candidate, (unsigned long)after, identity_label, checked_depth,
-                    (unsigned long long)attempts, success ? "true" : "false", xerrors);
+                    (unsigned long long)attempts, success ? "true" : "false", xerrors,
+                    (unsigned long long)successes, event_written ? "true" : "false", event_error);
                 state = success ? 5 : 6;
             }
         }

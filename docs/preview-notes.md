@@ -1,31 +1,31 @@
-# TRASC Android preview 0.6.29 · code 78
+# TRASC Android preview 0.6.30 · code 79
 
-This is a diagnostic update for the unresolved TAKP camera. On the latest
-Thor test, the 0.6.28 focus companion ran but made zero focus requests because
-it did not recognize the actual game window in the pointer path. The next
-correction requires the real window properties and layout; capture behavior
-and its strict ownership checks are unchanged in this release.
+The Thor logs identify the actual TAKP window as exact `Client1`, while the
+previous recovery helper accepted only `EqW-TAKP`. Version0.6.30 accepts both
+exact titles with the existing process-class, visibility, pointer-path,
+physical Look and absent-native-focus ownership guards.
 
-A bounded read-only native inspector records short window title/class bytes,
-property types/counts, visibility, geometry, parents, PIDs and pointer-path
-relationships. It can identify matching candidates outside that path without
-changing focus, pointer or properties. Final helper liveness also refreshes
-after teardown. Existing V3, focus companion, observer, input transport,
-runtimes, settings and all 21 native launcher components remain unchanged.
+Actual ARM qualification also reproduced a capture gap after restoring
+focus: Wine's cached cursor could stay at center while the physical pointer
+escaped, turning twelve fresh +1 packets into78. V4 now receives a tiny
+private per-launch success notification and submits the same owned capture
+rectangle once after a verified focus repair. It adds no frame warps, input
+drain, axis conversion, registry change or runtime replacement.
 
-Actual ARM64 qualification passed 14 property/layout cases with unchanged
-focus/pointer/buttons, normal bounded logs and zero drops/X errors. It qualifies
-collection, not physical camera repair. All five APK/profile/publication gates
-and independent public signature/source/asset verification passed. Exact
-receipts are in docs/release-status-0629.md and release-proof-0629.json.
+The actual MSVC V4 helper and shared code passed native qualification:
+24 exact signed segments (including centered restore),32 focus refusals,
+9 event-reader refusals and three once-only repair/refresh sequences.
+This is controlled runtime qualification; physical Thor camera acceptance
+remains pending. APK/profile/signing/public download gates must also pass.
 
-Camp and stop clients/servers normally; install as an Android update without
-uninstalling, then reopen TAKP. Keep the working Yaulp deployment and data;
-no server rebuild, database import, client reimport or prefix reset is needed.
-Enter the saved character within five minutes of client launch, enable Look,
-reproduce right-stick motion for ten seconds, turn Look off, stop normally
-and export a fresh bundle including client-takp-windows.log.
+Camp and stop clients/servers normally, install in place without uninstalling,
+then reopen TAKP. The official V3 helper upgrades with its exact backup
+preserved, along with earlier originals. No Prepare/reimport, server rebuild,
+database import or prefix/runtime reset is required. Keep the Yaulp deployment.
 
-Camera remains unaccepted. NPC visibility, Traditional StoneUI, the separate
-expired post-camp session-key observation and backup/bot/model/object-reuse
-checks remain separate. See docs/takp-window-0629.md and device-camera-0628.md.
+Test short Thor right-stick reversals in both axes, neutral and Look off/on;
+background/resume and repeat. Camp/stop, wait stopped, export fresh logs.
+Correlate V2 focus_repair/event_written with V4 focus_clip_refresh and actual
+signed native/game input. NPC visibility, Traditional StoneUI and other
+backup/bot/model/object-reuse acceptance remain separate. See
+`docs/takp-camera-client1-0630.md` and `docs/device-camera-0629.md`.

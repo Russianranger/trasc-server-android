@@ -27,10 +27,12 @@ def record(source, output, root):
     offset = struct.unpack_from('<I', data, 0x3c)[0]
     if data[:2] != b'MZ' or data[offset:offset+4] != b'PE\0\0' or struct.unpack_from('<H', data, offset+4)[0] != 0x14c or struct.unpack_from('<H', data, offset+24)[0] != 0x10b:
         raise ValueError('EQW camera helper must be a Windows x86 PE32 DLL')
-    if b'TRASC_TAKP_WINE_RAW_LOOK_V3' not in data:
+    if b'TRASC_TAKP_WINE_RAW_LOOK_V4' not in data:
         raise ValueError('EQW DLL is missing the camera repair identity')
     if b'TRASC_TAKP_CAMERA_TRACE_V1' not in data:
         raise ValueError('EQW DLL is missing the bounded camera diagnostics identity')
+    if b'TRASCFOCUS1 ' not in data or b'TRASC_TAKP_FOCUS_EVENT' not in data or b'TRASC_CLIENT_LAUNCH' not in data:
+        raise ValueError('EQW DLL is missing the bounded session focus-event reader')
     output.mkdir(parents=True, exist_ok=True)
     shutil.copyfile(dll, output/'eqw.dll')
     shutil.copyfile(source/'LICENSE.txt', output/'eqw-LICENSE.txt')
@@ -39,8 +41,9 @@ def record(source, output, root):
     # Build products/debug symbols do not belong in the preserved source.
     for folder in (output/'source/eqw_takp/Release', output/'source/eqw_takp/x64'):
         if folder.exists(): shutil.rmtree(folder)
-    patches = {str(path.relative_to(root)):digest(path) for path in (
-        root/'native/takp_camera_recenter.h', root/'native/takp_camera_trace.h', root/'native/takp_dinput_observation.h',
+    patches = {path.relative_to(root).as_posix():digest(path) for path in (
+        root/'native/takp_camera_recenter_v4.h', root/'native/takp_camera_focus_event.h',
+        root/'native/takp_camera_trace.h', root/'native/takp_dinput_observation.h',
         root/'scripts/prepare-takp-eqw.py', root/'scripts/record-takp-eqw.py')}
     receipt = {'format':1, 'architecture':'x86', 'helper':'eqw.dll', 'sha256':digest(dll),
         'bytes':len(data), 'source_repository':'https://github.com/CoastalRedwood/eqw_takp',
@@ -48,8 +51,13 @@ def record(source, output, root):
         'patched_game_input_sha256':digest(source/'eqw_takp/game_input.cpp'),
         'upstream_source_sha256':recipe.SOURCE_SHA,
         'patched_source_sha256':{name:digest(source/'eqw_takp'/name) for name in recipe.SOURCE_SHA},
-        'patch_files':patches, 'marker':'TRASC_TAKP_WINE_RAW_LOOK_V3',
-        'trace_marker':'TRASC_TAKP_CAMERA_TRACE_V1', 'camera_behavior':'V3 conditional 250ms same-rectangle recovery after an observed escaped cursor; no repeated cursor warps',
+        'patch_files':patches, 'marker':'TRASC_TAKP_WINE_RAW_LOOK_V4',
+        'trace_marker':'TRASC_TAKP_CAMERA_TRACE_V1',
+        'focus_event':{'protocol':'TRASCFOCUS1', 'max_bytes':96, 'launch_token_bytes':32, 'poll_interval_ms':20,
+            'path_environment':'TRASC_TAKP_FOCUS_EVENT', 'token_environment':'TRASC_CLIENT_LAUNCH',
+            'regular_file_only':True, 'read_only':True, 'consume_when_look_off':True,
+            'refresh':'once per new verified native focus-success sequence; same owned clip and generation; physical look/foreground/visible only'},
+        'camera_behavior':'V4 session-scoped verified native focus-success refresh of the same owned look clip; retains bounded 250ms escaped-cursor recovery; no added cursor warps, input drains, axis or consumer conversion',
         'compiler':'Microsoft Visual C++ v143, Release x86', 'build_commit':os.environ.get('GITHUB_SHA'),
         'build_run':int(os.environ.get('GITHUB_RUN_ID','0')), 'license_sha256':digest(source/'LICENSE.txt')}
     (output/'eqw-camera-build.json').write_text(json.dumps(receipt,indent=2)+'\n')

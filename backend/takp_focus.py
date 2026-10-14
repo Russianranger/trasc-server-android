@@ -1,14 +1,15 @@
 """Scoped native-focus recovery for TAKP; never edits the existing Wine prefix."""
 import hashlib
 import json
+import re
 from pathlib import Path
 import struct
 
 
-MARKER = 'TRASC_TAKP_X_FOCUS_RECOVERY_V1'
+MARKER = 'TRASC_TAKP_X_FOCUS_RECOVERY_V2'
 
 
-def start(supervisor, logs, root=None):
+def start(supervisor, logs, root=None, session=None):
     if supervisor.request.get('profile') != 'takp' or supervisor.request.get('mode') != 'client':
         return {}
     settings = supervisor.status.get('takp_input_settings', {})
@@ -32,9 +33,23 @@ def start(supervisor, logs, root=None):
                 or data[:6] != b'\x7fELF\x02\x01' or struct.unpack_from('<H', data, 18)[0] != 183
                 or MARKER.encode() not in data
                 or receipt.get('bounded_output_bytes') != 128*1024
-                or receipt.get('window_title') != 'EqW-TAKP'
+                or receipt.get('window_titles') != ['EqW-TAKP', 'Client1']
+                or receipt.get('focus_event_protocol') != 1 or receipt.get('focus_event_max_bytes') != 96
                 or receipt.get('window_class') != 'eqgame.exe'):
             raise ValueError('Native-focus helper differs from qualified ARM64 bytes')
+        session = Path(session) if session else Path('/session')
+        if session.is_symlink() or not session.is_dir():
+            raise ValueError('Invalid private focus-event session')
+        token = supervisor.env.get('TRASC_CLIENT_LAUNCH', '')
+        if not isinstance(token, str) or not re.fullmatch('[0-9a-f]{32}', token):
+            raise ValueError('Invalid focus-event launch identity')
+        event_path = session / 'takp-focus.event'
+        if event_path.exists() or event_path.is_symlink():
+            value = event_path.lstat()
+            if event_path.is_symlink() or not event_path.is_file() or value.st_nlink != 1 or value.st_size > 96:
+                raise ValueError('Invalid existing private focus event')
+        supervisor.env['TRASC_TAKP_FOCUS_EVENT_NATIVE'] = str(event_path)
+        supervisor.env['TRASC_TAKP_FOCUS_EVENT'] = 'Z:' + str(event_path).replace('/', '\\')
         from log_retention import rotate
         rotate(Path(logs) / 'client-takp-focus.log')
         process = supervisor.spawn([str(binary)], 'client-takp-focus.log')
@@ -42,6 +57,7 @@ def start(supervisor, logs, root=None):
         result = {'state': 'started', 'pid': process.pid, 'sha256': receipt['sha256'],
             'prefix_settings_changed': False, 'guard': 'held_right_button_and_pointer_over_named_game_with_no_native_focus',
             'max_log_bytes': 128*1024}
+        result.update(focus_event_protocol=1, focus_event_max_bytes=96, focus_event_configured=True)
     except (OSError, ValueError, KeyError) as error:
         result = {'state': 'unavailable', 'error': str(error)[:240], 'prefix_settings_changed': False}
     return {'takp_focus_recovery': result}

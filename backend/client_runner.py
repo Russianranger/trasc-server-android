@@ -407,6 +407,8 @@ class Supervisor:
         self.env['mesa_glthread'] = 'true' if request.get('graphics_threading') == 'opengl_worker' else 'false'
         self.status['mesa_glthread_requested'] = self.env['mesa_glthread'] == 'true'
         self.env['TRASC_CLIENT_LAUNCH'] = self.launch_token
+        self.env['TRASC_TAKP_FOCUS_EVENT'] = ''
+        self.env['TRASC_TAKP_FOCUS_EVENT_NATIVE'] = ''
         self.env['TRASC_EQ_CAMERA_MOUSE_V1'] = '0'
         self.env['TRASC_EQ_CAMERA_MOUSE_V2'] = '0'
         self.env['TRASC_EQ_LOAD_V1'] = 'off'

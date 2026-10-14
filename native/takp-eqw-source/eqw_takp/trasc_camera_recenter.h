@@ -1,11 +1,11 @@
-// TRASC TAKP Wine camera v3. Restrict the cursor only during EQW's existing
+// TRASC TAKP Wine camera v4. Restrict the cursor only during EQW's existing
 // look gate. Wine can acknowledge its cached rectangle without a physical X
 // grab; retry that same rectangle only when an observed cursor escapes it.
 // Repeated SetCursorPos warps can turn late MotionNotify into false deltas.
 #pragma once
 
 namespace trasc_takp_camera {
-static const char marker[] = "TRASC_TAKP_WINE_RAW_LOOK_V3";
+static const char marker[] = "TRASC_TAKP_WINE_RAW_LOOK_V4";
 
 struct Rect { int left, top, right, bottom; };
 inline bool same(const Rect& a, const Rect& b) {
@@ -16,7 +16,7 @@ inline bool same(const Rect& a, const Rect& b) {
 class LookClip {
     bool held_ = false;
     unsigned long generation_ = 0;
-    unsigned long capture_serial_ = 0, repair_count_ = 0;
+    unsigned long capture_serial_ = 0, repair_count_ = 0, focus_refresh_count_ = 0;
     unsigned long last_repair_tick_ = 0;
     bool repair_clock_started_ = false, repair_ok_ = true;
     Rect original_ = {}, clip_ = {};
@@ -24,6 +24,7 @@ public:
     bool held() const { return held_; }
     unsigned long generation() const { return generation_; }
     unsigned long repair_count() const { return repair_count_; }
+    unsigned long focus_refresh_count() const { return focus_refresh_count_; }
     bool repair_ok() const { return repair_ok_; }
     // Capture only if no lifecycle release overtook the caller's input query.
     template<class Getter, class Setter>
@@ -71,6 +72,20 @@ public:
         ++repair_count_;
         repair_ok_ = set(clip_);
         return true; // retain logical ownership/original even if retry failed
+    }
+    // A verified native focus recovery is an independent capture-loss event.
+    // Wine's cached GetCursorPos can remain at center during continuous motion,
+    // so submit the same owned clip once when that event arrives. The caller
+    // consumes a session-scoped sequence and checks physical RMB/foreground.
+    template<class Getter, class Setter>
+    bool force_refresh_since(unsigned long generation, Getter get, Setter set) {
+        if (generation != generation_ || !held_) return false;
+        Rect current;
+        if (!get(current) || !same(current, clip_)) return false;
+        ++repair_count_;
+        ++focus_refresh_count_;
+        repair_ok_ = set(clip_);
+        return repair_ok_; // never release/reacquire or fall back to a warp
     }
     template<class Getter, class Setter> bool release(Getter get, Setter set) {
         ++generation_; // stamp even an already-released clip / paused look
