@@ -1,0 +1,93 @@
+{
+  "version": "0.6.31",
+  "version_code": 80,
+  "qualified_source": "f165ec0ca152aff0f696dc46758ff39f0f38aebd",
+  "qualified_tree": "3e0a790e53a5b5ebb582ca9c82c523d29f591b56",
+  "merge_commit": "5bac8a4da928218207aec1d93a057b4498b8df65",
+  "pull_request": 38,
+  "release_run": 38815690385,
+  "release_run_url": "https://github.com/Russianranger/trasc-server-android/actions/runs/38815690385",
+  "release_result": "success",
+  "python_tests": 569,
+  "python_skips": 0,
+  "browser_scripts": 16,
+  "archive_heap_mib": 96,
+  "archive_cases": {
+    "zip64_payload_bytes": 4294967313,
+    "real_files": 190000,
+    "long_name_link_records": 87000,
+    "index_bytes": 58256144
+  },
+  "checks": [
+    "management JVM/C",
+    "archive checksums and restore",
+    "rollback/crash recovery",
+    "namespace/symlink confinement",
+    "cancellation and failure preservation",
+    "Android assembly/lint",
+    "preserved signing certificate",
+    "exact 0.6.30 native reuse",
+    "exact qualified TAKP helper and focus proofs"
+  ],
+  "public_audit": {
+    "apk_bytes": 18960032,
+    "sha256": "132243827df0dcf2d275e9a01396111861b8a94a35a0d2b267be5727b9537105",
+    "manifest": {
+      "commit": "f165ec0ca152aff0f696dc46758ff39f0f38aebd",
+      "sha256": "132243827df0dcf2d275e9a01396111861b8a94a35a0d2b267be5727b9537105",
+      "file": "trasc-server-android-preview.apk",
+      "version": "0.6.31",
+      "version_code": 80,
+      "application_id": "io.github.russianranger.trasc.preview",
+      "signing_certificate_sha256": "ff9c09cdc3e2404d1d7f72d61ce2f8651464f5e03dff340f70bd4df28c70e869",
+      "build_run": 38815690385,
+      "native_payload_reused_from": "0.6.30",
+      "native_reuse_manifest_sha256": "d62f63386b377cd6dfd3345ee938c3414e33fc132a9170e14eeb6ddcb8f99870",
+      "traditional_camera_adapter_sha256": "24ef8b70cd316e107fccc4f6696b4a625e307f95c2ec532b93abf049fe6113a0",
+      "source_archive_sha256": "59ca0f83a9be2f4590cf9ca39dc6a0be2987f253a6c26d7eb72abff7c680c6ba"
+    },
+    "unchanged_assets_and_libraries": 149,
+    "changed_assets": [
+      "assets/engine.py",
+      "assets/ui/app.js",
+      "assets/ui/index.html",
+      "assets/ui/workspace.js"
+    ],
+    "ui_source_assets_verified": 52
+  },
+  "public_assets": [
+    {
+      "name": "launcher-sources.tar.gz",
+      "id": 645356982,
+      "bytes": 257905734,
+      "digest": "sha256:59ca0f83a9be2f4590cf9ca39dc6a0be2987f253a6c26d7eb72abff7c680c6ba",
+      "url": "https://github.com/Russianranger/trasc-server-android/releases/download/preview/launcher-sources.tar.gz",
+      "updated_at": "2026-10-15T22:26:03Z"
+    },
+    {
+      "name": "native-reuse.json",
+      "id": 645356993,
+      "bytes": 4817,
+      "digest": "sha256:d62f63386b377cd6dfd3345ee938c3414e33fc132a9170e14eeb6ddcb8f99870",
+      "url": "https://github.com/Russianranger/trasc-server-android/releases/download/preview/native-reuse.json",
+      "updated_at": "2026-10-15T22:25:56Z"
+    },
+    {
+      "name": "preview-build.json",
+      "id": 645356980,
+      "bytes": 765,
+      "digest": "sha256:e32bb0df564ca2e1aa682fcab4f30ecd41320b636e8ebfebcfcf54f8e543505d",
+      "url": "https://github.com/Russianranger/trasc-server-android/releases/download/preview/preview-build.json",
+      "updated_at": "2026-10-15T22:25:56Z"
+    },
+    {
+      "name": "trasc-server-android-preview.apk",
+      "id": 645356983,
+      "bytes": 18960032,
+      "digest": "sha256:132243827df0dcf2d275e9a01396111861b8a94a35a0d2b267be5727b9537105",
+      "url": "https://github.com/Russianranger/trasc-server-android/releases/download/preview/trasc-server-android-preview.apk",
+      "updated_at": "2026-10-15T22:25:57Z"
+    }
+  ],
+  "physical_acceptance": "Pending large Android SAF export/restore and updated UI confirmation on Thor; accepted 0.6.30 native camera behavior is preserved, not re-qualified."
+}

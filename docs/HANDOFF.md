@@ -1,3 +1,18 @@
+# 0.6.31 published and independently downloaded — October 15, 2026
+
+Read [release-status-0631.md](release-status-0631.md) and
+[release-proof-0631.json](release-proof-0631.json) first. PR #38 merged; release
+run 38815690385 passed, including all 569 Python tests/zero skips, 16 browser
+scripts, all three heavy archive cases at 96 MiB, Android lint/signing and
+exact accepted 0.6.30 native reuse. Public APK 18,960,032 bytes / SHA256
+`132243827df0dcf2d275e9a01396111861b8a94a35a0d2b267be5727b9537105`; version 0.6.31/code 80.
+Files → Export all profiles and readable absent-prefix collections are ready
+for Thor testing. Existing runtimes/data/clients/prefixes and accepted native
+camera helpers are preserved. Physical external-provider export/restore
+remains pending. No server rebuild/import/reset is required.
+
+---
+
 # 0.6.31 profile export discoverability and absent prefix collections
 
 Current work starts at main `47ede4f` (physically accepted 0.6.30 camera).
