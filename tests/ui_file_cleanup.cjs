@@ -13,7 +13,7 @@ const server=http.createServer((req,res)=>{
   await page.addInitScript(()=>{
    window.fixture={profile:localStorage.profile||'custom',alive:false,client:false,busy:false,installing:false,sessionBusy:false,calls:[],removed:[],preview:null,holdPreview:false,failDelete:false};
    const entry=(name,folder,deletable=true,directory=false)=>({name,path:folder?folder+'/'+name:name,size:directory?null:1024,directory,deletable,protection:deletable?'':'Essential fixture file'});
-   const entries=folder=>folder==='backups'?[entry('database-latest.sql.gz',folder,false),...Array.from({length:204},(_,i)=>entry('database-'+String(i).padStart(4,'0')+'.sql.gz',folder))]:folder==='exports'?[entry('session-export.zip',folder),entry('logs-export.zip',folder)]:folder==='incoming'?[entry('old-import.zip',folder)]:folder==='client/prefix-backups'?[entry('prefix-backup-20261001',folder,true,true)]:[entry('backups','',false,true),entry('server','',false,true),entry('client','',false,true),entry('settings.json','',false)];
+   const entries=folder=>folder==='client/prefix-backups'&&fixture.emptyPrefixes?[]:folder==='backups'?[entry('database-latest.sql.gz',folder,false),...Array.from({length:204},(_,i)=>entry('database-'+String(i).padStart(4,'0')+'.sql.gz',folder))]:folder==='exports'?[entry('session-export.zip',folder),entry('logs-export.zip',folder)]:folder==='incoming'?[entry('old-import.zip',folder)]:folder==='client/prefix-backups'?[entry('prefix-backup-20261001',folder,true,true)]:[entry('backups','',false,true),entry('server','',false,true),entry('client','',false,true),entry('settings.json','',false)];
    window.Trasc={call(id,op,input){setTimeout(()=>{const f=fixture,a=JSON.parse(input);let result={};f.calls.push({op,a});try{
     if(op!=='native_state'&&a.__profile&&a.__profile!==f.profile)throw Error('World profile changed');
     if(op==='native_state')result={profile:f.profile,installed:true,alive:f.alive,installing:f.installing,session_busy:f.sessionBusy,status:'Runtime stopped',free_bytes:50e9};
@@ -25,6 +25,7 @@ const server=http.createServer((req,res)=>{
      const folder=a.path||'.',all=entries(folder==='.'?'':folder).filter(x=>!f.removed.includes(x.path)&&x.name.toLowerCase().includes((a.query||'').trim().toLowerCase())),offset=a.offset||0,limit=a.limit||200;
      result={path:folder,items:all.slice(offset,offset+limit),total:all.length,offset,limit,next_offset:offset+limit<all.length?offset+limit:null};
     }
+    else if(op==='pick'&&a.kind==='session-export-all'){result={cancelled:true};}
     else if(op==='file_delete_preview'){
      if(f.alive||f.client||f.busy||f.installing||f.sessionBusy)throw Error('Stop the client and server runtime before deleting files');
      const paths=[...a.paths].sort();if(paths.some(p=>p.includes('latest')||p==='settings.json'))throw Error('Protected file');
@@ -89,6 +90,7 @@ const server=http.createServer((req,res)=>{
    await page.evaluate(flag=>{fixture[flag]=true;return poll();},flag);
    await page.waitForFunction(flag=>flag==='alive'?lastNative?.alive:flag==='client'?lastClientNative?.alive:flag==='busy'?lastClientNative?.busy:flag==='installing'?lastNative?.installing:lastNative?.session_busy,flag);
    assert(await page.locator('#cleanup-review').isDisabled(),flag+' blocks cleanup');assert(await page.locator('#cleanup-delete').isDisabled());
+   if(['installing','sessionBusy'].includes(flag))for(const id of ['session-export-all','files-session-export-all'])assert(await page.isDisabled('#'+id),'Both export entries blocked during '+flag);
    await page.locator('#cleanup-delete').evaluate(button=>button.click());assert.equal(await deleteCalls(),0,'An active '+flag+' cannot submit permanent deletion');
    await page.evaluate(flag=>{fixture[flag]=false;return poll();},flag);await page.waitForFunction(()=>!lastNative?.alive&&!lastNative?.installing&&!lastNative?.session_busy&&!lastClientNative?.alive&&!lastClientNative?.busy);
   }
@@ -112,6 +114,25 @@ const server=http.createServer((req,res)=>{
   assert.equal(await checked().count(),0);assert(await page.locator('#cleanup-confirm').isHidden());assert.equal(await deleteCalls(),2);
   assert.deepEqual(await page.evaluate(()=>fixture.removed.sort()),['exports/logs-export.zip','exports/session-export.zip']);
   const offlineCalls=await page.evaluate(()=>fixture.calls);assert(!offlineCalls.some(x=>x.op==='runtime_start'),'Cleanup never starts a runtime');assert(offlineCalls.some(x=>x.op==='native_files'),'Files browser uses native listing');
+  // Empty collections are meaningful, profile-scoped results rather than private path errors.
+  await page.evaluate(()=>fixture.emptyPrefixes=true);
+  for(const profile of ['traditional','takp']){
+   if(profile!==await page.evaluate(()=>activeProfile)){
+    await page.selectOption('#world-profile',profile);await page.locator('#switch-profile').click();await page.waitForFunction(p=>activeProfile===p,profile);
+   }
+   await page.locator('nav [data-tab=files]').click();await page.locator('#cleanup-prefix').click();
+   await page.waitForFunction(()=>document.getElementById('file-results').textContent.startsWith('No old Wine prefixes saved for this profile.'));
+   assert.equal(await page.locator('#file-list tr').count(),0);
+   assert(await page.isDisabled('#cleanup-select-page'),'No stale page selection after an empty result');
+   assert(await page.isDisabled('#cleanup-review'));
+  }
+  // Both visible entry points invoke the same direct-destination picker, including cancel.
+  assert(await page.locator('#files-session-export-all').isVisible());
+  await page.locator('#files-session-export-all').click();await page.waitForFunction(()=>!busy);
+  await page.locator('nav [data-tab=server]').click();await page.locator('#session-export-all').click();await page.waitForFunction(()=>!busy);
+  const exports=await page.evaluate(()=>fixture.calls.filter(x=>x.op==='pick'));
+  assert.equal(exports.length,2);assert(exports.every(x=>x.a.kind==='session-export-all'&&x.a.__profile==='takp'));
+  assert.equal(await page.locator('#notice').textContent(),'All-profile backup cancelled.');
   assert.deepEqual(errors,[],'No UI JavaScript errors');
   console.log('PASS: offline protected browsing, page-only selection, confirmation/cancel, scoped/stale review invalidation, runtime gating, profile isolation, backend revalidation, deletion refresh and phone/Thor layout');
  }finally{await browser.close();server.close();}

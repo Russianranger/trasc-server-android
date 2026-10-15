@@ -30,6 +30,17 @@ public final class StorageFilesTest {
         Path temp=Files.createTempDirectory("trasc-storage-");
         try {
             File w=work(temp,"browse");Path root=w.toPath();
+            for(String id:new String[]{"custom","traditional","takp"}) {
+                File empty=work(temp,"empty-"+id);
+                for(String collection:new String[]{"backups","exports","incoming","client/prefix-backups"}) {
+                    StorageFiles.Page absent=StorageFiles.browse(empty,collection,"",0,200);
+                    check(absent.total==0&&absent.items.isEmpty()&&absent.path.equals(collection),"Missing collection is empty for "+id);
+                    check(!Files.exists(empty.toPath().resolve(collection)),"Browse never creates collection");
+                }
+                rejects(()->StorageFiles.browse(empty,"client/current","",0,200),"Unknown missing path still rejected");
+                Files.createSymbolicLink(empty.toPath().resolve("client"),root);
+                rejects(()->StorageFiles.browse(empty,"client/prefix-backups","",0,200),"Linked missing prefix ancestor still rejected");
+            }
             for(String folder:new String[]{"backups","exports","incoming","database","server","maps","sources","client","run","builds"})Files.createDirectories(root.resolve(folder));
             for(String name:new String[]{"settings.json","mysql.cnf","mysql.sock","mysql.pid"})write(root,name,"PRIVATE");
             write(root,DB,"BACKUP");write(root,PLAYERS,"PLAYERS");write(root,"backups/custom.sql.gz","UNKNOWN");

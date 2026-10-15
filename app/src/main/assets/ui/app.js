@@ -40,7 +40,7 @@ const tabStories={
 };
 function renderOverview(){const [title,summary]=tabStories[currentTab]||tabStories.setup;$('headline').textContent=currentTab==='server'&&lastState?.running?'Your world is running.':title;$('summary').textContent=activeProfile==='takp'&&currentTab==='setup'?'Download your TAKP forks, prepare the local world and bring in your Windows TAKP client.':activeProfile==='takp'&&currentTab==='build'?'Compile and stage the pinned TAKP server with playerbots.':activeProfile==='traditional'&&currentTab==='build'?'Prepare a copy of the tested source, then compile and stage its binaries.':summary;}
 function statusBadge(id,label,state){const el=$(id);el.textContent=label;el.dataset.state=state;el.classList.toggle('online',state==='running');}
-function clientStopBlocked(s=lastClientNative){return !s?.alive||!!(s.busy||lastNative?.session_busy||['client-stop','session-import','session-export','session-import-all','session-export-all'].some(id=>activeUiActions.has(id))||(s.profile&&activeProfile&&s.profile!==activeProfile));}
+function clientStopBlocked(s=lastClientNative){return !s?.alive||!!(s.busy||lastNative?.session_busy||['client-stop','session-import','session-export','session-import-all','session-export-all','files-session-export-all'].some(id=>activeUiActions.has(id))||(s.profile&&activeProfile&&s.profile!==activeProfile));}
 function renderClientActivity(s){
  lastClientNative=s;if(typeof syncProfileControls==='function')syncProfileControls();if(typeof cleanupControls==='function')cleanupControls();
  let label='Client · Stopped',state='stopped';
@@ -203,7 +203,7 @@ action('run-sql',async()=>{const r=await job('sql',{query:$('sql-query').value,w
 let fileBrowseGeneration=0,fileOffset=0,fileNext=null;
 const filePageSize=200;
 function clearFileResults(message){
- ++fileBrowseGeneration;if(typeof cleanupInvalidate==='function')cleanupInvalidate();$('file-list').replaceChildren();$('selected-file').value='';
+ ++fileBrowseGeneration;if(typeof cleanupInvalidate==='function')cleanupInvalidate();if(typeof cleanupPage==='function')cleanupPage([],$('file-path').value.trim(),$('file-search').value.trim());$('file-list').replaceChildren();$('selected-file').value='';
  $('file-prev').disabled=$('file-next').disabled=true;$('file-results').textContent=message;
 }
 async function browse(offset=0){
@@ -222,7 +222,7 @@ async function browse(offset=0){
    size.textContent=f.directory?'Folder':bytes(f.size);const b=document.createElement('button');b.className='secondary';b.textContent='Select';
    b.onclick=()=>{$('selected-file').value=f.path;};select.append(b);row.append(name,size,select,cleanupCell(f));$('file-list').append(row);
   }
-  $('file-results').textContent=r.total?`${r.offset+1}–${r.offset+r.items.length} of ${r.total} ${query?'matches':'entries'}`:query?'No matching names in this folder.':'This folder is empty.';
+  $('file-results').textContent=r.total?`${r.offset+1}–${r.offset+r.items.length} of ${r.total} ${query?'matches':'entries'}`:query?'No matching names in this folder.':r.path==='client/prefix-backups'?'No old Wine prefixes saved for this profile. Backups appear here after Repair Wine prefix.':'This folder is empty.';
   $('file-prev').disabled=r.offset===0;$('file-next').disabled=r.next_offset==null;
   $('file-list').closest('.table-wrap').scrollTop=0;
  }catch(e){if(request!==fileBrowseGeneration)return;$('file-results').textContent='Could not load files. '+e.message;throw e;}
@@ -259,14 +259,15 @@ action('fix-nektulos',()=>job('fix_nektulos'));
 action('revert-nektulos',()=>job('revert_nektulos'));
 action('session-export',async()=>{notice('Stopping the session and creating a complete backup…');const r=await api('session_backup');$('session-result').textContent='Local ZIP: '+r.file;await exportResult(r);notice('Complete session exported. Open runtime when you want to play again.');});
 action('session-import',async()=>{const r=await api('pick',{kind:'session',replace:$('replace-session').checked});initialSettings=false;rulesLoaded=false;notice(r.message);window.location.reload();});
-action('session-export-all',async()=>{
+async function exportAllProfiles(){
  const launcher_preferences=typeof window.launcherAppearanceSnapshot==='function'?window.launcherAppearanceSnapshot():{};
  notice('Choose where to save the backup of all profiles.');
  const r=await api('pick',{kind:'session-export-all',launcher_preferences});
  if(r.cancelled){notice('All-profile backup cancelled.');return;}
- $('session-result').textContent=r.message||'All profiles exported to the selected destination.';
+ for(const id of ['session-result','files-session-result'])$(id).textContent=r.message||'All profiles exported to the selected destination.';
  notice(r.message||'All-profile backup exported. Open the runtime when you want to play again.');
-});
+}
+for(const id of ['session-export-all','files-session-export-all'])action(id,exportAllProfiles);
 action('session-import-all',async()=>{
  const r=await api('pick',{kind:'session-all',replace:$('replace-all-sessions').checked});
  if(r.cancelled){notice('All-profile restore cancelled.');return;}
