@@ -62,7 +62,15 @@ final class StorageFiles {
         if(query==null)query="";
         if(query.length()>256)throw new IOException("File search is limited to 256 characters");
         String relative=normalize(path,true),needle=query.trim().toLowerCase(Locale.ROOT);
-        Store store=new Store(work);Path folder=store.resolve(relative);store.requireDirectory(folder);
+        Store store=new Store(work);Path folder=store.resolve(relative);
+        try {store.requireDirectory(folder);}catch(NoSuchFileException missing) {
+            // Collections are created lazily. Browsing must remain read-only and
+            // missing ancestors must still pass the no-symlink checks above.
+            if(Arrays.asList("backups","exports","incoming","client/prefix-backups").contains(relative)) {
+                store.requireRoot();return new Page(relative,new ArrayList<>(),0,0,limit);
+            }
+            throw new IOException("Folder does not exist in this profile: "+relative,missing);
+        }
         Policy policy=new Policy(store);List<Entry> entries=new ArrayList<>();int examined=0;
         try(DirectoryStream<Path> children=Files.newDirectoryStream(folder)) {
             for(Path child:children) {

@@ -1,39 +1,21 @@
-# TRASC Android preview 0.6.30 · code 79
+# TRASC 0.6.31 — profile backups and prefix browsing
 
-Published and independently verified October 14, 2026. All five release jobs
-passed, including 569 Python tests with zero skips, all three production
-profiles, APK signing/lint and exact native payload checks. The actual public
-APK signature, source archive and qualified helper bytes were independently
-verified. See `docs/release-status-0630.md` and `docs/release-proof-0630.json`.
+Update in place; keep the existing installation and its data.
 
-The Thor logs identify the game window as exact `Client1`; the previous
-recovery helper accepted only `EqW-TAKP`. Version 0.6.30 accepts both exact
-titles with the existing process-class, visibility, pointer-path, physical
-Look and absent-native-focus guards.
+- Files → **Export all profiles** backs up Custom, Traditional and TAKP in one
+  ZIP. The same button remains in Server → Session backups.
+- Stop the client first, choose a destination with sufficient space, and watch
+  progress in the activity panel. Cancel stops the transfer. Runtime shutdown
+  and SQL snapshots precede export; reopen the runtime afterward.
+- Large ZIPs stream directly to the destination with fixed buffers and ZIP64.
+  Use exFAT or a provider supporting files over 4 GB. Keep backups private.
+- Files → Old Wine prefixes displays an empty-state explanation if no old
+  prefix has been saved in that profile. Existing backups remain listed.
 
-Actual ARM qualification also reproduced capture loss after focus restoration:
-Wine's logical cursor could stay centered while the physical pointer escaped,
-turning twelve fresh +1 packets into 78. V4 reads a private per-launch success
-notification and submits the same owned capture rectangle once after verified
-focus repair. It adds no frame warps, input drain, axis conversion, registry
-change or runtime replacement.
+Test Traditional and TAKP separately. Export all profiles to external storage,
+wait for success, and retain the archive. For restore testing, use Setup →
+Restore all profiles on a separate test installation/device; restoring replaces
+included profile data. Full physical export/restore acceptance is pending.
 
-The actual MSVC V4 helper and matching shared code passed 24 exact signed
-segments, including centered restore, 32 focus refusals, nine reader refusals
-and three once-only repair/refresh sequences. This is controlled runtime
-qualification. **Physical mouse-look acceptance has now passed on the tested
-AYN Thor right-stick configuration**, supported by the user's perfect-movement
-report and the fresh signed input/game trace. See `docs/device-camera-0630.md`.
-
-Camp and stop clients/servers normally, install in place without uninstalling,
-then reopen TAKP with the working Yaulp deployment. The known official V3
-helper upgrades with its exact backup and earlier originals preserved. No
-Prepare/reimport, server rebuild, database import or prefix/runtime reset is
-required. Existing profiles, data, client assets, runtimes and settings remain.
-
-Within the first five minutes, test short Thor right-stick reversals in both
-axes, neutral and Look off/on; background/resume and repeat. Camp/stop, wait
-stopped, then export fresh logs. Correlate V2 `focus_repair/event_written`
-with V4 `focus_clip_refresh` and actual signed native/game input.
-NPC visibility, Traditional StoneUI and backup/bot/model/physical object-reuse
-acceptance remain separate. See `docs/takp-camera-client1-0630.md`.
+Accepted 0.6.30 mouse-look helpers and native components are preserved. No
+server rebuild or Wine prefix reset is required for this update.

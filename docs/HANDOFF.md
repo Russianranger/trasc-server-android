@@ -1,3 +1,32 @@
+# 0.6.31 profile export discoverability and absent prefix collections
+
+Current work starts at main `47ede4f` (physically accepted 0.6.30 camera).
+Scope: Files now has **Export all profiles**, sharing the existing direct SAF
+ZIP64 exporter with Server → Session backups. Both controls use the same busy,
+installation and transfer gates. No archive buffering or second private ZIP
+is introduced. Existing quiesce/snapshot, progress, cancellation, memory/file
+count/index limits, destination failure cleanup and verified restore remain.
+
+Files → Old Wine prefixes returns a profile-scoped empty listing when the
+lazily created collection does not exist, instead of exposing a Java private
+path exception. Known missing backup/export/import collection roots are also
+empty. Browsing creates no folders. Unknown paths, symlinks, protected files
+and deletion confirmation remain guarded. Clearing browser results now clears
+stale per-page cleanup entries. Existing prefix contents remain browsable.
+
+Physical large external-storage export/restore remains pending. Use exFAT or a
+provider supporting >4 GB files; source size alone does not guarantee destination
+capacity. No claim of guaranteed immunity to Android/system/provider failure.
+APK must preserve the current certificate and all 0.6.30 native components.
+No server/runtime/client rebuild, reimport or prefix repair is needed to test.
+
+Validation/publication status: see the profile-backup-launcher Actions run for
+this commit. Local host ZIP64 roundtrip passed at 4,294,967,313 bytes with a
+96 MiB Java heap and matching source/restored SHA256. Other checks are recorded
+below after completion; do not infer physical Thor qualification.
+
+---
+
 # 0.6.30 physical TAKP mouse-look acceptance — PASS
 
 On October 14, 2026, the user reports: “That worked!! It's perfect now.”
