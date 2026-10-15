@@ -115,11 +115,11 @@ const server=http.createServer((req,res)=>{
   assert.deepEqual(await page.evaluate(()=>fixture.removed.sort()),['exports/logs-export.zip','exports/session-export.zip']);
   const offlineCalls=await page.evaluate(()=>fixture.calls);assert(!offlineCalls.some(x=>x.op==='runtime_start'),'Cleanup never starts a runtime');assert(offlineCalls.some(x=>x.op==='native_files'),'Files browser uses native listing');
   // Empty collections are meaningful, profile-scoped results rather than private path errors.
-  await page.evaluate(()=>fixture.emptyPrefixes=true);
   for(const profile of ['traditional','takp']){
    if(profile!==await page.evaluate(()=>activeProfile)){
     await page.selectOption('#world-profile',profile);await page.locator('#switch-profile').click();await page.waitForFunction(p=>activeProfile===p,profile);
    }
+   await page.evaluate(()=>fixture.emptyPrefixes=true);
    await page.locator('nav [data-tab=files]').click();await page.locator('#cleanup-prefix').click();
    await page.waitForFunction(()=>document.getElementById('file-results').textContent.startsWith('No old Wine prefixes saved for this profile.'));
    assert.equal(await page.locator('#file-list tr').count(),0);
