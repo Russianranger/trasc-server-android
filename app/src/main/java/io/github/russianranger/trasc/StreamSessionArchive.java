@@ -105,12 +105,13 @@ final class StreamSessionArchive {
         long overhead=expected.metadata+expected.bytes/500+16L*1024*1024;
         SessionArchive.checkSpace(archive.getParentFile(),external==null?expected.bytes+overhead:16L*1024*1024);
         progress.bytes(0,expected.bytes);Totals actual=new Totals();byte[] buffer=new byte[BUFFER];long[] done={0};
+        MessageDigest fileHash=SessionArchive.sha(); // Reuse native-backed Android digest contexts.
         try(ZipOutputStream zip=new ZipOutputStream(new BufferedOutputStream(external==null?new FileOutputStream(archive):external,BUFFER))){
             zip.setLevel(1);zip.putNextEntry(new ZipEntry(PAYLOAD));MessageDigest payload=SessionArchive.sha();DataOutputStream out=new DataOutputStream(new BufferedOutputStream(new DigestOutputStream(zip,payload),65536));out.writeInt(MAGIC);
             walk(sources,base.getCanonicalFile().toPath(),progress,(path,r)->{
                 actual.add(r);header(out,r);
                 if(r.type=='F'){
-                    MessageDigest hash=SessionArchive.sha();long left=r.size;
+                    fileHash.reset();MessageDigest hash=fileHash;long left=r.size;
                     try(InputStream input=Files.newInputStream(path,LinkOption.NOFOLLOW_LINKS)){
                         while(left>0){progress.check();int n=input.read(buffer,0,(int)Math.min(left,buffer.length));if(n<0)throw new EOFException("File changed during backup: "+r.name);if(n==0)continue;
                             if(external==null)SessionArchive.checkSpace(archive.getParentFile(),n);out.write(buffer,0,n);hash.update(buffer,0,n);left-=n;done[0]+=n;progress.bytes(done[0],expected.bytes);
@@ -152,7 +153,7 @@ final class StreamSessionArchive {
             ZipEntry member=zip.getEntry(PAYLOAD);if(member.getSize()!=bytes+metadata+5)throw new IOException("Streaming payload size does not match its manifest");
             SessionArchive.checkSpace(staging,bytes+count*8192L+metadata+16L*1024*1024);
             for(String id:SessionArchive.WORLDS)Files.createDirectories(stage.resolve("worlds/"+id+"/work"));Files.createDirectory(stage.resolve("global"));
-            boolean[][] presence=new boolean[3][4];Totals actual=new Totals();byte[] buffer=new byte[BUFFER];long completed=0;MessageDigest digest=SessionArchive.sha();progress.bytes(0,bytes);
+            boolean[][] presence=new boolean[3][4];Totals actual=new Totals();byte[] buffer=new byte[BUFFER];long completed=0;MessageDigest digest=SessionArchive.sha(),fileHash=SessionArchive.sha();progress.bytes(0,bytes);
             try(DataInputStream in=new DataInputStream(new BufferedInputStream(new DigestInputStream(zip.getInputStream(member),digest),BUFFER))){
                 if(in.readInt()!=MAGIC)throw new IOException("Invalid streaming backup header");int type;
                 while((type=in.readUnsignedByte())!=0){
@@ -168,7 +169,7 @@ final class StreamSessionArchive {
                     if(type=='D'){Files.createDirectory(target);journal(deferred,r);}
                     else if(type=='L'){Files.createFile(target);journal(deferred,r);}
                     else{
-                        MessageDigest hash=SessionArchive.sha();long left=r.size;
+                        fileHash.reset();MessageDigest hash=fileHash;long left=r.size;
                         try(OutputStream raw=Files.newOutputStream(target,StandardOpenOption.CREATE_NEW,StandardOpenOption.WRITE);BufferedOutputStream out=new BufferedOutputStream(raw,65536)){
                             while(left>0){progress.check();int n=in.read(buffer,0,(int)Math.min(left,buffer.length));if(n<0)throw new EOFException("Truncated streaming file");if(n==0)continue;
                                 SessionArchive.checkSpace(staging,n);out.write(buffer,0,n);hash.update(buffer,0,n);left-=n;completed+=n;progress.bytes(completed,bytes);

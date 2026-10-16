@@ -1,3 +1,20 @@
+# 0.6.33 final hashing-context safeguard — current continuation
+
+The v3 streaming format passed full release CI in run 38845198585, including
+600,661 records and a >4 GiB roundtrip at 48 MiB, all 569 Python tests/zero
+skips, browser flows, Android lint/signing and native reuse. An intermediate
+0.6.32 preview was published from 6c89973; it is not physically accepted.
+
+Final 0.6.33 additionally reuses one file SHA256 context per sequential
+writer/reader, with explicit reset between files, avoiding per-file digest
+provider/native allocations. This does not change the v3 wire format.
+Basic/legacy/adversarial/activation/cancellation tests passed locally after
+that change. Final exact-source stress CI and publication remain pending.
+New v3 backups require 0.6.32+ to restore. Existing v1/v2 readers are retained.
+Do not rebuild/reset the user's working server, client, prefixes or camera.
+
+---
+
 # 0.6.32 scalable all-profile backup — current continuation
 
 0.6.31 physical export FAILED on October 15 at 21:56 Chicago. Device bundle

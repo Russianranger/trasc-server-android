@@ -1,9 +1,10 @@
-# TRASC 0.6.32 — large all-profile backup fix
+# TRASC 0.6.33 — large all-profile backup fix
 
 Install over the existing app without uninstalling.
 
 Files → Export all profiles now uses a streaming format that supports more than
-the previous 200,000 total entries without building a per-file heap inventory.
+the previous 200,000 total entries without building a per-file heap inventory. File and payload hashing contexts
+are reused during each sequential transfer to limit provider allocation churn.
 Clients, prefixes, databases, runtimes, sources, builds and settings are retained.
 New backups require TRASC 0.6.32 or newer to restore. Older backups remain readable.
 
