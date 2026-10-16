@@ -16,7 +16,7 @@ final class SessionArchive {
     interface Progress { void update(String text); default void bytes(long done,long total) {} default void check()throws IOException {if(Thread.currentThread().isInterrupted())throw new InterruptedIOException("Session transfer cancelled");} }
     static final long RESERVE=128L*1024*1024, MAX_BYTES=256L*1024*1024*1024;
     static final int MAX_FILES=200000;
-    static final long MAX_INDEX_BYTES=64L*1024*1024,MAX_ARCHIVE_BYTES=MAX_BYTES+MAX_BYTES/500+MAX_FILES*1024L+16L*1024*1024;
+    static final long MAX_INDEX_BYTES=64L*1024*1024,MAX_ARCHIVE_BYTES=MAX_BYTES+MAX_BYTES/500+StreamSessionArchive.MAX_METADATA+16L*1024*1024;
     static final String INDEX="session-index.tsv", MANIFEST="session.properties", ALL_FORMAT="trasc-all-sessions-2";
     static final List<String> WORLDS=Collections.unmodifiableList(Arrays.asList("custom","traditional","takp"));
     static final LinkedHashMap<String,String> COMPONENTS=new LinkedHashMap<>();
@@ -163,7 +163,7 @@ final class SessionArchive {
             Properties p=new Properties();try(InputStream in=bounded(zip.getInputStream(e),16384)){p.load(in);}return p;
         }
     }
-    static boolean allProfiles(Properties manifest){return ALL_FORMAT.equals(manifest.getProperty("format"));}
+    static boolean allProfiles(Properties manifest){return ALL_FORMAT.equals(manifest.getProperty("format"))||StreamSessionArchive.FORMAT.equals(manifest.getProperty("format"));}
     static List<String> presentProfiles(Properties manifest)throws IOException {
         archiveProfiles(manifest);List<String> result=new ArrayList<>();
         for(String id:WORLDS){String value=manifest.getProperty(id+".present");if(!Arrays.asList("true","false").contains(value))throw new IOException("Invalid world presence metadata");if(value.equals("true"))result.add(id);}return result;
@@ -221,7 +221,11 @@ final class SessionArchive {
         checkSpace(destination,localArchive?bytes[0]+overhead:files[0]*1024L+16L*1024*1024);return bytes[0];
     }
     static void createAll(File base,File archive,String version,String selected,File preferences,Progress progress)throws IOException {createAll(base,archive,version,selected,preferences,progress,null);}
-    static void createAll(File base,File spool,String version,String selected,File preferences,Progress progress,OutputStream external)throws IOException {
+    static void createAll(File base,File archive,String version,String selected,File preferences,Progress progress,OutputStream external)throws IOException {
+        StreamSessionArchive.create(base,archive,version,selected,preferences,progress,external);
+    }
+    static void createAllLegacy(File base,File archive,String version,String selected,File preferences,Progress progress)throws IOException {createAllLegacy(base,archive,version,selected,preferences,progress,null);}
+    static void createAllLegacy(File base,File spool,String version,String selected,File preferences,Progress progress,OutputStream external)throws IOException {
         File archive=spool;
         WorldProfiles.valid(selected);WorldProfiles profiles=new WorldProfiles(base);List<Source> list=new ArrayList<>();
         Properties manifest=new Properties();manifest.setProperty("format",ALL_FORMAT);manifest.setProperty("profiles","custom,traditional,takp");manifest.setProperty("selected_profile",selected);
@@ -342,6 +346,7 @@ final class SessionArchive {
         return c==-1&&line.length()==0?null:line.toString();
     }
     static Properties restore(File archive,File staging,Progress progress)throws IOException {
+        if(StreamSessionArchive.FORMAT.equals(readManifest(archive).getProperty("format")))return StreamSessionArchive.restore(archive,staging,progress);
         Path stage=staging.toPath();Files.createDirectories(stage);MemoryBudget memory=new MemoryBudget();memory.check();
         try(ZipFile zip=openArchive(archive)) {
             ZipEntry manifestEntry=zip.getEntry(MANIFEST),indexEntry=zip.getEntry(INDEX);

@@ -1,3 +1,26 @@
+# 0.6.32 scalable all-profile backup — current continuation
+
+0.6.31 physical export FAILED on October 15 at 21:56 Chicago. Device bundle
+`logs-8167277602799695405.zip` records the handled 200,000-entry preflight
+ceiling in SessionArchive, not an export-time OOM. The old 190k qualification
+was below this real combined installation. The exact total count is unknown.
+
+Format 3 now streams records within one ZIP payload, with a second small
+manifest. ZIP metadata is constant-size; restore verifies sequentially in
+isolated staging and finalizes links/modes using a reverse disk journal.
+No whole-archive heap inventory or private export ZIP copy is introduced.
+The same production createAll entry point and existing quiesce/checkpoint,
+SAF cancellation/failure cleanup and atomic activation are retained.
+
+Read docs/session-stream-0632.md. Local 600,661-record roundtrip (200,001 real
+client files per world) and 4,294,967,313-byte streaming roundtrip with independent
+SHA256 both passed at 48 MiB heap; CI/publication status must be checked before delivery. Existing
+single-profile/v2 archives remain readable; v3 backups need 0.6.32+ to restore.
+Physical Thor large export/restore remains pending; accepted native camera,
+server binaries, clients and installed prefixes must remain preserved.
+
+---
+
 # 0.6.31 published and independently downloaded — October 15, 2026
 
 Read [release-status-0631.md](release-status-0631.md) and
