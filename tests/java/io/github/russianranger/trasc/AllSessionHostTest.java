@@ -32,7 +32,7 @@ public final class AllSessionHostTest {
     }
     static File backup(Path base,Path tmp)throws Exception {
         File prefs=tmp.resolve("preferences.properties").toFile();Files.writeString(prefs.toPath(),"client_controls=[]\nlauncher_preferences={\"theme\":\"monk\"}\n");
-        File zip=tmp.resolve("all.zip").toFile();SessionArchive.createAll(base.toFile(),zip,"test","traditional",prefs,s->{});return zip;
+        File zip=tmp.resolve("all.zip").toFile();SessionArchive.createAllLegacy(base.toFile(),zip,"test","traditional",prefs,s->{});return zip;
     }
     static String index(File archive)throws IOException {
         try(ZipFile z=new ZipFile(archive);InputStream in=z.getInputStream(z.getEntry(SessionArchive.INDEX))){return new String(in.readAllBytes(),java.nio.charset.StandardCharsets.UTF_8);}
@@ -72,7 +72,7 @@ public final class AllSessionHostTest {
         rejected(()->SessionArchive.restore(corrupt,tmp.resolve("bad-last-world").toFile(),s->{}),"Last-world corruption must reject before activation");verify(base,"old ");
         rejected(()->SessionArchive.limitedLine(new StringReader("x".repeat(40000))),"Oversized metadata line must reject before unbounded allocation");
         File cancelled=tmp.resolve("cancelled.zip").toFile();SessionArchive.Progress cancellation=new SessionArchive.Progress(){int checks;public void update(String s){}public void check()throws IOException{if(++checks>20)throw new InterruptedIOException("cancelled");}};
-        rejected(()->SessionArchive.createAll(base.toFile(),cancelled,"test","custom",tmp.resolve("preferences.properties").toFile(),cancellation),"Cancelled archive must fail");check(!cancelled.exists(),"Cancelled partial local archive removed");verify(base,"old ");
+        rejected(()->SessionArchive.createAllLegacy(base.toFile(),cancelled,"test","custom",tmp.resolve("preferences.properties").toFile(),cancellation),"Cancelled archive must fail");check(!cancelled.exists(),"Cancelled partial local archive removed");verify(base,"old ");
         // Partial worlds, without any server runtime, are still represented and restored.
         // A corrupt recovery journal must reject before any live-world mutation.
         Properties badJournal=new Properties();badJournal.setProperty("format","2");badJournal.setProperty("phase","activating");badJournal.setProperty("components",String.join(",",AllProfileSwap.worldComponents()));badJournal.setProperty("recovery",java.util.UUID.randomUUID().toString());
@@ -88,7 +88,7 @@ public final class AllSessionHostTest {
         File inconsistent=tmp.resolve("bad-runtime-flag.zip").toFile();ManagementHostTest.rewriteZip(archive,inconsistent,SessionArchive.MANIFEST,changed.toString());
         rejected(()->SessionArchive.restore(inconsistent,tmp.resolve("bad-runtime-flag").toFile(),s->{}),"Presence metadata must match actual runtime root");
         Path partial=tmp.resolve("partial");write(partial,"profiles/takp/work/client/current/eqgame.exe","partial client");
-        File partialArchive=tmp.resolve("partial.zip").toFile();SessionArchive.createAll(partial.toFile(),partialArchive,"test","custom",tmp.resolve("preferences.properties").toFile(),s->{});
+        File partialArchive=tmp.resolve("partial.zip").toFile();SessionArchive.createAllLegacy(partial.toFile(),partialArchive,"test","custom",tmp.resolve("preferences.properties").toFile(),s->{});
         Path partialStage=tmp.resolve("partial-stage");SessionArchive.restore(partialArchive,partialStage.toFile(),s->{});
         check(Files.readString(partialStage.resolve("worlds/takp/work/client/current/eqgame.exe")).equals("partial client"),"Partial import survives");
         Properties partialInfo=SessionArchive.readManifest(partialArchive);check(SessionArchive.presentProfiles(partialInfo).equals(Collections.singletonList("takp")),"Absent profiles have no archive namespace");
@@ -115,7 +115,7 @@ public final class AllSessionHostTest {
         File sparse=base.resolve("work/client/current/large.dat").toFile();try(RandomAccessFile out=new RandomAccessFile(sparse,"rw")){out.setLength(size);out.seek(0);out.write(0x54);out.seek(0x1_0000_0000L);out.write(0x52);out.seek(size-1);out.write(0x43);}
         File prefs=tmp.resolve("preferences.properties").toFile();File archive=tmp.resolve("zip64.zip").toFile();
         // Direct stream avoids reserving a second 4GiB private archive; compression retains a small ZIP.
-        try(OutputStream out=new FileOutputStream(archive)){SessionArchive.createAll(base.toFile(),tmp.resolve("spool.zip").toFile(),"test","custom",prefs,s->{},out);}
+        try(OutputStream out=new FileOutputStream(archive)){SessionArchive.createAllLegacy(base.toFile(),tmp.resolve("spool.zip").toFile(),"test","custom",prefs,s->{},out);}
         try(ZipFile zip=new ZipFile(archive)){check(zip.getEntry("worlds/custom/client/current/large.dat").getSize()==size,"ZIP64 preserves greater-than-4GiB file size");}
         check(archive.length()<64L*1024*1024,"Sparse logical file written as bounded compressed stream");
         Path stage=tmp.resolve("zip64-restored");SessionArchive.restore(archive,stage.toFile(),s->{});
@@ -153,7 +153,7 @@ public final class AllSessionHostTest {
         Path base=tmp.resolve("metadata-base"),links=base.resolve("work/client/prefix/dosdevices");Files.createDirectories(links);
         String target="x".repeat(350),padding="n".repeat(96);
         for(int i=0;i<87000;i++){Path folder=links.resolve(String.valueOf(i/1000));Files.createDirectories(folder);Files.createSymbolicLink(folder.resolve(padding+i),Paths.get(target));}
-        File archive=tmp.resolve("metadata.zip").toFile();SessionArchive.createAll(base.toFile(),archive,"test","custom",tmp.resolve("preferences.properties").toFile(),s->{});
+        File archive=tmp.resolve("metadata.zip").toFile();SessionArchive.createAllLegacy(base.toFile(),archive,"test","custom",tmp.resolve("preferences.properties").toFile(),s->{});
         long inventory;try(ZipFile zip=SessionArchive.openArchive(archive)){inventory=zip.getEntry(SessionArchive.INDEX).getSize();}
         check(inventory>50L*1024*1024&&inventory<=SessionArchive.MAX_INDEX_BYTES,"Fixture approaches supported index byte budget");
         Path stage=tmp.resolve("metadata-stage");SessionArchive.restore(archive,stage.toFile(),s->{});
@@ -163,7 +163,7 @@ public final class AllSessionHostTest {
     static void highEntries(Path tmp)throws Exception {
         Path base=tmp.resolve("entry-base"),files=base.resolve("work/client/current/files");Files.createDirectories(files);
         int count=190000;for(int i=0;i<count;i++){Path folder=files.resolve(String.valueOf(i/1000));Files.createDirectories(folder);Files.createFile(folder.resolve(String.valueOf(i)));}
-        File archive=tmp.resolve("entries.zip").toFile();SessionArchive.createAll(base.toFile(),archive,"test","custom",tmp.resolve("preferences.properties").toFile(),s->{});
+        File archive=tmp.resolve("entries.zip").toFile();SessionArchive.createAllLegacy(base.toFile(),archive,"test","custom",tmp.resolve("preferences.properties").toFile(),s->{});
         Path stage=tmp.resolve("entries-stage");SessionArchive.restore(archive,stage.toFile(),s->{});
         check(Files.isRegularFile(stage.resolve("worlds/custom/work/client/current/files/189/189999")),"High entry-count ZIP64 archive restored at bounded heap");
         System.out.println("190000-file archive export/import passed under the supplied heap limit");

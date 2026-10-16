@@ -1,21 +1,17 @@
-# TRASC 0.6.31 — profile backups and prefix browsing
+# TRASC 0.6.33 — large all-profile backup fix
 
-Update in place; keep the existing installation and its data.
+Install over the existing app without uninstalling.
 
-- Files → **Export all profiles** backs up Custom, Traditional and TAKP in one
-  ZIP. The same button remains in Server → Session backups.
-- Stop the client first, choose a destination with sufficient space, and watch
-  progress in the activity panel. Cancel stops the transfer. Runtime shutdown
-  and SQL snapshots precede export; reopen the runtime afterward.
-- Large ZIPs stream directly to the destination with fixed buffers and ZIP64.
-  Use exFAT or a provider supporting files over 4 GB. Keep backups private.
-- Files → Old Wine prefixes displays an empty-state explanation if no old
-  prefix has been saved in that profile. Existing backups remain listed.
+Files → Export all profiles now uses a streaming format that supports more than
+the previous 200,000 total entries without building a per-file heap inventory. File and payload hashing contexts
+are reused during each sequential transfer to limit provider allocation churn.
+Clients, prefixes, databases, runtimes, sources, builds and settings are retained.
+New backups require TRASC 0.6.32 or newer to restore. Older backups remain readable.
 
-Test Traditional and TAKP separately. Export all profiles to external storage,
-wait for success, and retain the archive. For restore testing, use Setup →
-Restore all profiles on a separate test installation/device; restoring replaces
-included profile data. Full physical export/restore acceptance is pending.
+Camp/stop the client before export. Choose a destination with sufficient free
+space and support for files over 4 GB, such as exFAT. Progress and cancellation
+remain in the activity panel. Reopen the runtime afterward. Retain the completed
+ZIP and export fresh logs. Physical large SAF export/restore remains pending.
 
-Accepted 0.6.30 mouse-look helpers and native components are preserved. No
-server rebuild or Wine prefix reset is required for this update.
+Traditional/TAKP prefix browsing and accepted native camera helpers are preserved.
+No server rebuild, client import or prefix repair is required.

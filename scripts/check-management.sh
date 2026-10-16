@@ -23,6 +23,8 @@ if ! command -v javac >/dev/null; then compiler=(java -m jdk.compiler/com.sun.to
     tests/java/io/github/russianranger/trasc/AudioHostTest.java \
     app/src/main/java/io/github/russianranger/trasc/TarExtractor.java \
     app/src/main/java/io/github/russianranger/trasc/SessionArchive.java \
+    app/src/main/java/io/github/russianranger/trasc/StreamSessionArchive.java \
+    tests/java/io/github/russianranger/trasc/StreamSessionHostTest.java \
     app/src/main/java/io/github/russianranger/trasc/SessionTransfer.java \
     app/src/main/java/io/github/russianranger/trasc/SessionPreferences.java \
     app/src/main/java/io/github/russianranger/trasc/AllProfileSwap.java \
@@ -63,6 +65,11 @@ java -cp "$classes" io.github.russianranger.trasc.AudioHostTest
 java -cp "$classes" io.github.russianranger.trasc.LogRetentionHostTest
 java -cp "$classes" io.github.russianranger.trasc.ManagementHostTest
 java -Xmx96m -cp "$classes" io.github.russianranger.trasc.AllSessionHostTest
+java -Xmx48m -cp "$classes" io.github.russianranger.trasc.StreamSessionHostTest
+if [[ ${TRASC_STREAM_HEAVY_TESTS:-0} == 1 ]]; then
+    java -Xmx48m -cp "$classes" io.github.russianranger.trasc.StreamSessionHostTest --large
+    java -Xmx48m -cp "$classes" io.github.russianranger.trasc.StreamSessionHostTest --zip64
+fi
 if [[ ${TRASC_ARCHIVE_HEAVY_TESTS:-0} == 1 ]]; then
     # Optional disk/time-intensive qualification: a sparse >4GiB payload,
     # 190k inventory records, and a near-limit long-name/link index at 96MiB.
