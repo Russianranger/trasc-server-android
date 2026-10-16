@@ -1,3 +1,25 @@
+# 0.6.33 published, merged and independently downloaded — October 16 UTC / October 15 Chicago
+
+Read [release-status-0633.md](release-status-0633.md) and
+[release-proof-0633.json](release-proof-0633.json) first. PR #39 merged as
+`5e86e6b`; source `de3d2a5`, release CI 38847312963 passed. Public APK
+18,970,100 bytes / SHA256 `34a55129b0e46a09f2659abee8141fa664c3d059474a2b45475fcc8d11ab54f4`; code 82.
+
+The 0.6.31 physical all-profile export failure is confirmed: combined 200k-entry
+preflight ceiling. Production v3 streaming export/restore now passed 600,661
+records (200,001 fixture client files per world) and >4 GiB content with hashes
+at 48 MiB heap, plus 569 Python/zero skips, 16 browser scripts, JVM/C, lint,
+signing and exact native reuse. Hashing contexts are reused and archive path
+validation is literal. Existing v1/v2 read support and atomic activation remain.
+
+New v3 backups need 0.6.32+ to restore. Accepted native input/camera/helpers,
+server/client binaries and installed data are preserved. Next is physical Thor
+Files → Export all profiles; retain ZIP and fresh report. Reopen runtime after
+export. Physical external-provider export/restore remains pending; do not mark
+it passed from host CI. No rebuild/import/reset is required.
+
+---
+
 # 0.6.33 final hashing-context safeguard — current continuation
 
 The v3 streaming format passed full release CI in run 38845198585, including

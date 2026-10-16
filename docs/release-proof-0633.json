@@ -1,0 +1,109 @@
+{
+  "version": "0.6.33",
+  "version_code": 82,
+  "qualified_source": "de3d2a50ff34514874d9d73b349fdb5d25e20cc5",
+  "qualified_tree": "936aa78f0dbf61479c644d8c3334c75ddc2a437c",
+  "merge_commit": "5e86e6ba46414aabd2e26d57ba374cc3a524d137",
+  "pull_request": 39,
+  "release_run": 38847312963,
+  "release_result": "success",
+  "python_tests": 569,
+  "python_skips": 0,
+  "browser_scripts": 16,
+  "archive_format": "trasc-all-sessions-3",
+  "minimum_v3_reader": "0.6.32",
+  "legacy_readers_retained": [
+    1,
+    2
+  ],
+  "stress_cases": {
+    "java_heap_mib": 48,
+    "total_records": 600661,
+    "real_client_files_per_profile": 200001,
+    "profiles": 3,
+    "zip_members": 2,
+    "zip64_payload_bytes": 4294967313,
+    "independent_source_restored_sha256_match": true
+  },
+  "limits": {
+    "records": 2000000,
+    "regular_bytes": 274877906944,
+    "metadata_bytes": 536870912,
+    "utf8_field_bytes": 16384,
+    "path_components": 256
+  },
+  "strategy": [
+    "one sequential payload plus manifest",
+    "reused 1MiB data buffer",
+    "file hashing context reused per direction",
+    "literal archive path checks",
+    "exclusive staged creation detects duplicates and parent conflicts",
+    "inert link placeholders until whole payload verified",
+    "reverse disk journal for links/directory modes",
+    "existing sync/atomic activation/rollback unchanged"
+  ],
+  "device_failure": {
+    "bundle": "logs-8167277602799695405.zip",
+    "bundle_sha256": "676e3b9fafd37b50ce53e253307ca1b68ca1b5502e659848149dca5140a161fb",
+    "version": "0.6.31",
+    "at_utc": "2026-10-16T02:56:32.829182Z",
+    "cause": "Handled legacy 200000-entry preflight ceiling",
+    "exact_total_count": "unknown; at least 200001"
+  },
+  "public_audit": {
+    "bytes": 18970100,
+    "sha256": "34a55129b0e46a09f2659abee8141fa664c3d059474a2b45475fcc8d11ab54f4",
+    "manifest": {
+      "commit": "de3d2a50ff34514874d9d73b349fdb5d25e20cc5",
+      "sha256": "34a55129b0e46a09f2659abee8141fa664c3d059474a2b45475fcc8d11ab54f4",
+      "file": "trasc-server-android-preview.apk",
+      "version": "0.6.33",
+      "version_code": 82,
+      "application_id": "io.github.russianranger.trasc.preview",
+      "signing_certificate_sha256": "ff9c09cdc3e2404d1d7f72d61ce2f8651464f5e03dff340f70bd4df28c70e869",
+      "build_run": 38847312963,
+      "native_payload_reused_from": "0.6.32",
+      "native_reuse_manifest_sha256": "c376bd7b2e000937be9cc4c6082576635a804a8775fa919cd2caa0af7201b163",
+      "traditional_camera_adapter_sha256": "24ef8b70cd316e107fccc4f6696b4a625e307f95c2ec532b93abf049fe6113a0",
+      "source_archive_sha256": "546a005ae84d1f8e5c5612d8a6a96247c3caf93f8b111081220356927410528f"
+    },
+    "unchanged_baseline_assets_and_libraries": 151,
+    "changed_assets": [
+      "assets/engine.py",
+      "assets/ui/index.html"
+    ],
+    "verified_ui_source_assets": 52,
+    "streaming_reader_writer_in_dex": true
+  },
+  "public_assets": [
+    {
+      "name": "launcher-sources.tar.gz",
+      "id": 646076203,
+      "bytes": 278277182,
+      "digest": "sha256:546a005ae84d1f8e5c5612d8a6a96247c3caf93f8b111081220356927410528f",
+      "url": "https://github.com/Russianranger/trasc-server-android/releases/download/preview/launcher-sources.tar.gz"
+    },
+    {
+      "name": "native-reuse.json",
+      "id": 646076207,
+      "bytes": 4817,
+      "digest": "sha256:c376bd7b2e000937be9cc4c6082576635a804a8775fa919cd2caa0af7201b163",
+      "url": "https://github.com/Russianranger/trasc-server-android/releases/download/preview/native-reuse.json"
+    },
+    {
+      "name": "preview-build.json",
+      "id": 646076206,
+      "bytes": 765,
+      "digest": "sha256:544a544baf6cda0e780b1f1e6246b687118119166ddaec6a9913c8ea8d2383bf",
+      "url": "https://github.com/Russianranger/trasc-server-android/releases/download/preview/preview-build.json"
+    },
+    {
+      "name": "trasc-server-android-preview.apk",
+      "id": 646076214,
+      "bytes": 18970100,
+      "digest": "sha256:34a55129b0e46a09f2659abee8141fa664c3d059474a2b45475fcc8d11ab54f4",
+      "url": "https://github.com/Russianranger/trasc-server-android/releases/download/preview/trasc-server-android-preview.apk"
+    }
+  ],
+  "physical_acceptance": "Pending new Thor large SAF export/restore and lifecycle/provider confirmation. Accepted native components are preserved, not physically re-qualified."
+}
