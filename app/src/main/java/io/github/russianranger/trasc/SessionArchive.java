@@ -50,8 +50,12 @@ final class SessionArchive {
     static Path confined(Path root,String name)throws IOException {
         // Debian multiarch files use colons (e.g. binutils-common:arm64.conffiles).
         // Reject drive-prefixed paths, not ordinary Linux filename characters.
-        if(name.isEmpty()||name.startsWith("/")||name.contains("\\")||name.indexOf('\0')>=0||name.matches("(?s)^[A-Za-z]:.*"))throw new IOException("Unsafe session path: "+name);
-        for(String p:name.split("/",-1))if(p.isEmpty()||p.equals(".")||p.equals(".."))throw new IOException("Unsafe session path: "+name);
+        if(name.isEmpty()||name.startsWith("/")||name.contains("\\")||name.indexOf('\0')>=0||(name.length()>=2&&name.charAt(1)==':'&&((name.charAt(0)>='A'&&name.charAt(0)<='Z')||(name.charAt(0)>='a'&&name.charAt(0)<='z'))))throw new IOException("Unsafe session path: "+name);
+        for(int start=0;;) {
+            int slash=name.indexOf('/',start),end=slash<0?name.length():slash,length=end-start;
+            if(length==0||length==1&&name.charAt(start)=='.'||length==2&&name.charAt(start)=='.'&&name.charAt(start+1)=='.')throw new IOException("Unsafe session path: "+name);
+            if(slash<0)break;start=slash+1;
+        }
         Path out=root.resolve(name).normalize();
         if(!out.startsWith(root))throw new IOException("Session path escapes staging");
         return out;
@@ -318,9 +322,10 @@ final class SessionArchive {
     static Path destination(Path stage,String name)throws IOException {
         if(name.equals("global/preferences.properties"))return confined(stage,name);
         if(name.startsWith("worlds/")) {
-            String[] parts=name.split("/",3);if(parts.length!=3)throw new IOException("Invalid world component");
-            WorldProfiles.valid(parts[1]);if(parts[2].startsWith("worlds/")||parts[2].startsWith("global/"))throw new IOException("Nested world/global namespace is not supported");
-            return destination(confined(stage,"worlds/"+parts[1]),parts[2]);
+            int separator=name.indexOf('/',7);if(separator<0)throw new IOException("Invalid world component");
+            String id=name.substring(7,separator),component=name.substring(separator+1);
+            WorldProfiles.valid(id);if(component.startsWith("worlds/")||component.startsWith("global/"))throw new IOException("Nested world/global namespace is not supported");
+            return destination(confined(stage,"worlds/"+id),component);
         }
         for(Map.Entry<String,String> c:COMPONENTS.entrySet()) {
             if(name.equals(c.getKey())||name.startsWith(c.getKey()+"/")) {

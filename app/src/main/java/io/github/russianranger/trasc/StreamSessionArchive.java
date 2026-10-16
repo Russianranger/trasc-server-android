@@ -18,6 +18,9 @@ final class StreamSessionArchive {
     static final int MAGIC=0x54534333, MAX_RECORDS=2000000, MAX_TEXT=16384, MAX_DEPTH=256;
     static final long MAX_METADATA=512L*1024*1024;
     static final int BUFFER=1024*1024;
+    // Literal checks avoid per-record native regex allocation on Android.
+    static final List<String> RUNTIME_ROOTS=Arrays.asList("worlds/custom/runtime","worlds/traditional/runtime","worlds/takp/runtime");
+    static final List<String> SETTINGS_FILES=Arrays.asList("worlds/custom/configuration/settings.json","worlds/traditional/configuration/settings.json","worlds/takp/configuration/settings.json");
     static final class Record {
         int type,mode;long size;String name,link;
         Record(int type,int mode,long size,String name,String link){this.type=type;this.mode=mode;this.size=size;this.name=name;this.link=link;}
@@ -49,8 +52,8 @@ final class StreamSessionArchive {
         if(!r.name.startsWith("worlds/")&&!r.name.equals("global/preferences.properties"))throw new IOException("Invalid streaming world namespace");
         SessionArchive.confined(stage,r.name);Path target=SessionArchive.destination(stage,r.name);
         if(stage.relativize(target).getNameCount()>MAX_DEPTH)throw new IOException("Backup directory nesting exceeds the safe limit");
-        if(r.name.matches("worlds/(custom|traditional|takp)/runtime")&&r.type!='D')throw new IOException("Runtime root must be a directory");
-        if((r.name.equals("global/preferences.properties")||r.name.matches("worlds/(custom|traditional|takp)/configuration/settings.json"))&&r.type!='F')throw new IOException("Saved settings must be a regular file");
+        if(RUNTIME_ROOTS.contains(r.name)&&r.type!='D')throw new IOException("Runtime root must be a directory");
+        if((r.name.equals("global/preferences.properties")||SETTINGS_FILES.contains(r.name))&&r.type!='F')throw new IOException("Saved settings must be a regular file");
         return target;
     }
     static List<SessionArchive.Source> sources(File base,String selected,File preferences,Properties manifest)throws IOException {
@@ -161,9 +164,9 @@ final class StreamSessionArchive {
                     if(actual.count>count||actual.bytes>bytes||actual.metadata>metadata)throw new IOException("Streaming payload exceeds its manifest");
                     if(!Files.isDirectory(target.getParent(),LinkOption.NOFOLLOW_LINKS))throw new IOException("Streaming parent directory is missing or not a real directory: "+r.name);
                     if(r.name.startsWith("worlds/")){
-                        String[] parts=r.name.split("/",3);int i=SessionArchive.WORLDS.indexOf(parts[1]);presence[i][0]=true;
-                        boolean runtime=parts[2].equals("runtime")||parts[2].startsWith("runtime/");if(!runtime)presence[i][1]=true;
-                        if(parts[2].equals("runtime")&&r.type=='D')presence[i][2]=true;if(parts[2].equals("configuration/settings.json")&&r.type=='F')presence[i][3]=true;
+                        int separator=r.name.indexOf('/',7),i=SessionArchive.WORLDS.indexOf(r.name.substring(7,separator));String component=r.name.substring(separator+1);presence[i][0]=true;
+                        boolean runtime=component.equals("runtime")||component.startsWith("runtime/");if(!runtime)presence[i][1]=true;
+                        if(component.equals("runtime")&&r.type=='D')presence[i][2]=true;if(component.equals("configuration/settings.json")&&r.type=='F')presence[i][3]=true;
                     }
                     SessionArchive.checkSpace(staging,8192);
                     if(type=='D'){Files.createDirectory(target);journal(deferred,r);}

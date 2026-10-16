@@ -8,7 +8,8 @@ The production `SessionArchive.createAll` now writes format
 `trasc-all-sessions-3`. A standard ZIP has exactly two members:
 `session-stream.bin` and `session.properties`. The payload begins with a
 four-byte magic, then bounded binary records. Each regular file streams through
-one reusable 1 MiB buffer and has a trailing SHA256. The manifest records whole
+one reusable 1 MiB buffer and has a trailing SHA256. File hashing contexts are
+reused; archive path checks use literal parsing rather than per-file regex. The manifest records whole
 payload SHA256, record/byte/metadata totals, profile/component presence, active
 profile, architecture and clean database state. There is no per-file ZIP central
 directory and no aggregate index map in the Java heap.
