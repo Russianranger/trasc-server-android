@@ -70,11 +70,28 @@ final class WorldProfiles {
         } finally {Files.deleteIfExists(temp.toPath());}
     }
     synchronized void endSwitch(){switching=false;notifyAll();}
-    /** Caller already owns one Lease. Refuse overlapping pickers, transfers and requests. */
+    /** Caller already owns one Lease. Cleanup remains an immediate, non-waiting reservation. */
     synchronized void beginMaintenance()throws IOException {
-        if(switching||maintenance||operations!=1)
-            throw new IOException("Finish file transfers and close the file picker, then retry storage cleanup");
+        beginMaintenance(0,"Finish file transfers and close the file picker, then retry storage cleanup");
+    }
+    /** Drain requests already admitted when SAF resumes the launcher; stop new ones entering. */
+    synchronized void beginSessionMaintenance()throws IOException {
+        beginMaintenance(5000,"Finish the active operation and close any other file picker or client display, then retry the backup or restore");
+    }
+    private void beginMaintenance(long waitMillis,String message)throws IOException {
+        if(switching||maintenance||operations<1)throw new IOException(message);
         maintenance=true;
+        boolean acquired=false;
+        try {
+            long until=System.nanoTime()+waitMillis*1_000_000L;
+            while(operations>1) {
+                long remaining=until-System.nanoTime();
+                if(remaining<=0)throw new IOException(message);
+                try {wait(Math.max(1,Math.min(50,remaining/1_000_000L)));}
+                catch(InterruptedException e){Thread.currentThread().interrupt();throw new InterruptedIOException("Session preparation interrupted; retry the backup or restore");}
+            }
+            acquired=true;
+        } finally {if(!acquired){maintenance=false;notifyAll();}}
     }
     synchronized void endMaintenance(){maintenance=false;notifyAll();}
 }

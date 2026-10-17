@@ -34,6 +34,7 @@ if ! command -v javac >/dev/null; then compiler=(java -m jdk.compiler/com.sun.to
     app/src/main/java/io/github/russianranger/trasc/ServerRuntimeIdentity.java \
     tests/java/io/github/russianranger/trasc/ServerRuntimeIdentityHostTest.java \
     tests/java/io/github/russianranger/trasc/WorldProfilesHostTest.java \
+    tests/java/io/github/russianranger/trasc/SessionGateHostTest.java \
     app/src/main/java/io/github/russianranger/trasc/StorageFiles.java \
     tests/java/io/github/russianranger/trasc/StorageFilesTest.java \
     app/src/main/java/io/github/russianranger/trasc/LocalLogs.java \
@@ -79,6 +80,7 @@ if [[ ${TRASC_ARCHIVE_HEAVY_TESTS:-0} == 1 ]]; then
 fi
 java -cp "$classes" io.github.russianranger.trasc.TarExtractorHostTest
 java -cp "$classes" io.github.russianranger.trasc.WorldProfilesHostTest
+java -cp "$classes" io.github.russianranger.trasc.SessionGateHostTest
 java -cp "$classes" io.github.russianranger.trasc.ServerRuntimeIdentityHostTest
 java -cp "$classes" io.github.russianranger.trasc.StorageFilesTest
 java -cp "$classes" io.github.russianranger.trasc.ClientHostTest

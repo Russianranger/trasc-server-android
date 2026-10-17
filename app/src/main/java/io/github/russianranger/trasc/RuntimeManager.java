@@ -308,12 +308,18 @@ public final class RuntimeManager {
             public void check()throws IOException {if(sessionCancelled||Thread.currentThread().isInterrupted())throw new InterruptedIOException("Session transfer cancelled; existing worlds are unchanged");}
         };
     }
-    synchronized void beginSessionTransport(String phase)throws IOException {beginSession();sessionPhase=phase;}
+    void beginSessionTransport(String phase)throws IOException {beginSession();sessionPhase=phase;}
     void endSessionTransport(){sessionCancellable=false;sessionPhase="idle";sessionBusy=false;profiles.endMaintenance();}
-    private synchronized void beginSession()throws IOException {
-        if(recoveryError!=null)throw new IOException(recoveryError);
-        if(sessionBusy||installing||ClientRuntime.get(context).busy)throw new IOException("Wait for the current runtime, client or session operation");
-        profiles.beginMaintenance();sessionBusy=true;sessionCancelled=false;sessionCancellable=true;sessionBytes=0;sessionTotal=-1;sessionPhase="preparing";
+    private void beginSession()throws IOException {
+        // Reserve first, but never hold the runtime monitor while existing requests drain:
+        // a status/log request may need that monitor before it can release its profile lease.
+        synchronized(this) {
+            if(recoveryError!=null)throw new IOException(recoveryError);
+            if(sessionBusy||installing||ClientRuntime.get(context).busy)throw new IOException("Wait for the current runtime, client or session operation");
+            sessionBusy=true;sessionCancelled=false;sessionCancellable=false;sessionBytes=0;sessionTotal=-1;sessionPhase="preparing";
+        }
+        try {profiles.beginSessionMaintenance();sessionCancellable=true;}
+        catch(IOException e){sessionCancellable=false;sessionPhase="idle";sessionBusy=false;throw e;}
     }
     JSONObject backupSession()throws Exception {
         beginSession();

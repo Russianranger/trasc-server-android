@@ -1,3 +1,26 @@
+# 0.6.34 published — session preparation after the file picker
+
+Read [session-handoff-0634.md](session-handoff-0634.md) and
+[release-status-0634.md](release-status-0634.md). Source `cff8beb`, release run
+38998882560 passed and published version 0.6.34/code 83. The APK SHA256 is
+`7d787bc90c7c53a73f60c1eb1f79820cbb310d90db8149c5e929512d7971f307`.
+
+The new 0.6.33 Thor report failed twice in WorldProfiles.beginMaintenance before
+archive writing. No session transfer is active in the report. The immediate
+one-lease test races launcher resume/poll leases after SAF. The session gate now
+reserves admission and drains existing requests outside the runtime monitor,
+with bounded timeout/interruption cleanup and retry tests. Cleanup remains
+immediate. Old immediate-gate behavior fails the new concurrency regression;
+new behavior passes locally and in exact-source CI.
+
+569 Python tests/zero skips, JVM/C, all 16 browser scripts, 600,661-record and
+4,294,967,313-byte production roundtrips at 48 MiB, assembly/lint/signing and
+exact 0.6.33 native reuse passed. No archive format/native camera change and no
+server/client rebuild or prefix reset. Install in place and retry Files → Export
+all profiles. Physical Thor SAF/lifecycle/restore acceptance remains pending.
+
+---
+
 # 0.6.33 published, merged and independently downloaded — October 16 UTC / October 15 Chicago
 
 Read [release-status-0633.md](release-status-0633.md) and
