@@ -1,17 +1,19 @@
-# TRASC 0.6.33 — large all-profile backup fix
+# TRASC 0.6.34 — backup file-picker handoff fix
 
 Install over the existing app without uninstalling.
 
-Files → Export all profiles now uses a streaming format that supports more than
-the previous 200,000 total entries without building a per-file heap inventory. File and payload hashing contexts
-are reused during each sequential transfer to limit provider allocation churn.
-Clients, prefixes, databases, runtimes, sources, builds and settings are retained.
-New backups require TRASC 0.6.32 or newer to restore. Older backups remain readable.
+Fixes an all-profile export/restore preparation race that reported "Finish file
+transfers and close the file picker" when the launcher was only resuming or
+refreshing its status. Preparation now reserves profile admission, drains
+already-started requests for up to five seconds, and then starts the transfer.
+Timeout or interruption releases the pending reservation so you can retry.
+Actual overlapping transfers, pickers and client displays remain protected.
 
-Camp/stop the client before export. Choose a destination with sufficient free
-space and support for files over 4 GB, such as exFAT. Progress and cancellation
-remain in the activity panel. Reopen the runtime afterward. Retain the completed
-ZIP and export fresh logs. Physical large SAF export/restore remains pending.
+The bounded-memory streaming backup format from 0.6.33 remains unchanged, with
+legacy backup readers retained. New all-profile backups require 0.6.32+ to restore.
+Camp/stop the client, use Files → Export all profiles, and select storage with
+adequate free space and support for files over 4 GB. Reopen the runtime afterward.
 
-Traditional/TAKP prefix browsing and accepted native camera helpers are preserved.
-No server rebuild, client import or prefix repair is required.
+Existing worlds, Wine prefixes and accepted native camera helpers are preserved.
+No server rebuild, client import or prefix repair is required. Physical Thor
+large SAF export/restore acceptance remains pending.
