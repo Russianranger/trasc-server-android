@@ -1,0 +1,55 @@
+{
+  "version": "0.6.34",
+  "bytes": 18970464,
+  "sha256": "7d787bc90c7c53a73f60c1eb1f79820cbb310d90db8149c5e929512d7971f307",
+  "manifest": {
+    "commit": "cff8beba3448c77808ca132815b648a0a4b2d230",
+    "sha256": "7d787bc90c7c53a73f60c1eb1f79820cbb310d90db8149c5e929512d7971f307",
+    "file": "trasc-server-android-preview.apk",
+    "version": "0.6.34",
+    "version_code": 83,
+    "application_id": "io.github.russianranger.trasc.preview",
+    "signing_certificate_sha256": "ff9c09cdc3e2404d1d7f72d61ce2f8651464f5e03dff340f70bd4df28c70e869",
+    "build_run": 38998882560,
+    "native_payload_reused_from": "0.6.33",
+    "native_reuse_manifest_sha256": "64cae6be01513809ea2191de2336f36d3e7c7be75923d9757e9ad4f04000cd0b",
+    "traditional_camera_adapter_sha256": "24ef8b70cd316e107fccc4f6696b4a625e307f95c2ec532b93abf049fe6113a0",
+    "source_archive_sha256": "56cb505caee83a02e96edba004a85f21ba99c9702484ea56960a2c78db18d6a1"
+  },
+  "zip_integrity": true,
+  "ui_files_match_source": 52,
+  "asset_native_changes_vs_0633": [
+    "assets/engine.py",
+    "assets/ui/index.html"
+  ],
+  "unchanged_assets_native_count": 151,
+  "session_gate_and_streaming_dex_strings": true,
+  "physical_device_acceptance": "pending",
+  "qualified_source": "cff8beba3448c77808ca132815b648a0a4b2d230",
+  "qualified_tree": "db6f791db10adc313104fdab617831aba7797a0a",
+  "release_run": 38998882560,
+  "release_result": "success",
+  "python_tests": 569,
+  "python_skips": 0,
+  "browser_scripts": 16,
+  "session_gate_regression": "passed",
+  "old_immediate_gate_regression": "failed as expected",
+  "stress": {
+    "heap_mib": 48,
+    "records": 600661,
+    "zip64_bytes": 4294967313,
+    "export_restore": true
+  },
+  "device_report": {
+    "file": "logs-4597651028510037813.zip",
+    "sha256": "591732a9563c819d4052ea9d017c1961934b1a0295c532de2cca463713517d1f",
+    "app_version": "0.6.33",
+    "errors_utc": [
+      "2026-10-17T01:25:42.035200Z",
+      "2026-10-17T03:21:53.255138Z"
+    ],
+    "stage": "WorldProfiles.beginMaintenance before archive writing",
+    "session_busy": false,
+    "session_phase": "idle"
+  }
+}

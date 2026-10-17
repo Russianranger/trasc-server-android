@@ -29,5 +29,6 @@ No persistent transfer lock is introduced or cleared; these gates are in memory.
 leases to cover SAF/onResume/poll overlap, blocked new entry/switching, retry
 after cleanup, real transfer timeout without lease loss, interruption cleanup,
 and refusal that must not clear another owner's maintenance reservation.
-Full management/archive regressions and release CI must pass before publication.
+Full management/archive regressions and exact-source release CI 38998882560 passed.
+An equivalent immediate (zero-wait) gate fails the new overlap regression.
 Physical device export/provider/lifecycle and restore acceptance remain pending.
