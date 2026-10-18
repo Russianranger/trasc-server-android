@@ -2,7 +2,7 @@
 
 **Latest APK: [TRASC Android 0.6.40](https://github.com/Russianranger/trasc-server-android/releases/download/v0.6.40/trasc-server-android-0.6.40.apk)** · [Release page](https://github.com/Russianranger/trasc-server-android/releases/latest)
 
-Fixes the Custom Setup confirmation that could silently cancel **Synchronize Files** and **Import / repair card data** in Android WebView. Review the preview, press the deployment action and approve the visible confirmation to start copying. **Missing at destination** describes an individual file awaiting deployment. SHA-256 verification, protected replacement backups, local-conflict approval and runtime-only preservation remain included. [Release notes and device checklist](docs/release-0640-notes.md). Install over your current app; restart the server after content deployment and use **Verify data & card service** to check LoN initialization.
+Fixes the Custom Setup confirmation that could silently cancel **Synchronize Files** and **Import / repair card data** in Android WebView. Review the preview, press the deployment action and approve the visible confirmation to start copying. **Server file: Not deployed yet** describes an individual file awaiting deployment. SHA-256 verification, protected replacement backups, local-conflict approval and runtime-only preservation remain included. [Release notes and device checklist](docs/release-0640-notes.md). Install over your current app; restart the server after content deployment and use **Verify data & card service** to check LoN initialization.
 
 **Russianranger foreword;**
 

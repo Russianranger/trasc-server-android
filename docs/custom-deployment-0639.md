@@ -1,6 +1,6 @@
-# Custom deployment in TRASC 0.6.39
+# Custom deployment in TRASC 0.6.40
 
-[Download TRASC 0.6.39](https://github.com/Russianranger/trasc-server-android/releases/download/v0.6.39/trasc-server-android-0.6.39.apk), published from main after successful [clean release qualification](https://github.com/Russianranger/trasc-server-android/actions/runs/39152733003). See [release proof](release-proof-0639.json) and [release notes](release-0639-notes.md). Physical AYN Thor acceptance remains a device step.
+[Download TRASC 0.6.40](https://github.com/Russianranger/trasc-server-android/releases/download/v0.6.40/trasc-server-android-0.6.40.apk), published from main after successful [clean release qualification](https://github.com/Russianranger/trasc-server-android/actions/runs/39157216552). See [release proof](release-proof-0640.json) and [release notes](release-0640-notes.md). Physical AYN Thor acceptance remains a device step.
 
 ## Quick start
 
