@@ -12,7 +12,7 @@ function deploymentDate(value){if(value==null||value==='')return 'Modified time 
 function deploymentSummary(report){return report?.summary||report?.totals||{};}
 function deploymentCount(summary,key){return Number(summary?.[key]??(key==='errors'?summary?.error:0))||0;}
 function deploymentContext(){return activeProfile==='custom'&&lastNative?.profile==='custom'&&lastNative.alive&&!lastNative.installing&&!lastNative.session_busy&&lastState?.profile==='custom';}
-function deploymentBusy(){return !!(busy||sessionAction||customDeploymentStatusLoading||Object.values(deploymentModels).some(m=>m.working||m.picking)||lastState?.jobs?.some(j=>['queued','running'].includes(j.status))||lastClientNative?.busy);}
+function deploymentBusy(){return !!(busy||sessionAction||customDeploymentStatusLoading||Object.values(deploymentModels).some(m=>m.working||m.picking)||lastState?.jobs?.some(j=>['queued','running'].includes(j.status))||lastClientNative?.busy||lastNative?.lon_input?.busy);}
 function deploymentRecovery(data){return !!(lastState?.custom_deployment_recovery_error||data?.recovery_required||data?.recovery_pending||data?.recovery_error||data?.recovery?.required||data?.recovery?.pending||data?.recovery?.error);}
 function resetCustomDeploymentProfile(){
  if(customDeploymentProfile===activeProfile)return;
@@ -100,11 +100,18 @@ function checkCustomDeploymentStatus(){
  renderCustomDeploymentControls();if(activeProfile==='custom'&&currentTab==='setup'&&deploymentContext()&&!deploymentBusy())loadCustomDeployment().catch(e=>notice(e.message,true));
 }
 async function deploymentRun(key,operation,fn){
- const m=deploymentModels[key];if(!deploymentContext()||deploymentBusy())throw Error('Open the Custom runtime and wait for other operations to finish.');
+ const m=deploymentModels[key];requireDeploymentReady(key);
  const generation=customDeploymentGeneration,previousJobs=new Set((lastState?.jobs||[]).map(j=>j.id));m.working=true;m.error='';busy++;activeUiActions.add('custom-deployment-'+key);renderSessionControls();renderCustomDeploymentControls();
  try{const result=await fn();if(generation!==customDeploymentGeneration||activeProfile!=='custom')return null;return result;}
  catch(e){if(generation===customDeploymentGeneration){m.error=e.message;if(['apply','scan','pick'].includes(operation)){const failed=[...(lastState?.jobs||[])].reverse().find(j=>!previousJobs.has(j.id)&&j.operation===deploymentKinds[key].operation+'_'+operation&&j.status==='error');renderDeploymentFailure(key,e,failed?.failure);}notice(e.message,true);}return null;}
  finally{m.working=false;m.picking=false;m.cancelling=false;busy--;activeUiActions.delete('custom-deployment-'+key);renderSessionControls();renderCustomDeploymentControls();poll().catch(()=>{});}
+}
+function requireDeploymentReady(key){
+ const m=deploymentModels[key],message=!deploymentContext()?'Open the Custom server runtime before using deployment tools.':deploymentBusy()?'Another operation is still active. Wait for it to finish, then try again. No deployment was queued.':'';
+ if(message){m.error=message;renderCustomDeploymentControls();throw Error(message);}
+}
+function cancelDeploymentConfirmation(key,message){
+ const m=deploymentModels[key];m.error='';m.data={...m.data,message};renderCustomDeploymentControls();notice(message);
 }
 function renderDeploymentFailure(key,error,receipt){
  const m=deploymentModels[key],failure=receipt||{failed:true,copied_files:0,copied_bytes:0,recovery_required:false};m.report=failure;$(key+'-report').hidden=false;
@@ -166,7 +173,7 @@ function deploymentFileElement(key,file){
  const name=document.createElement('code');name.textContent=(file.group?((deploymentModels[key].preview?.group_labels?.[file.group]||deploymentGroupLabels[file.group]||file.group)+'/'):'')+(file.path||file.relative_path||'Unknown path');header.append(badge,name);item.append(header);
  if(file.conflict||file.local_modification){const conflict=document.createElement('small');conflict.className='deployment-conflict';conflict.textContent='Local modification · explicit approval required before replacement';item.append(conflict);}
  const metadata=document.createElement('div');metadata.className='deployment-file-meta';
- for(const [side,label]of [['source','Source'],['destination','Runtime']]){const fields=deploymentMetadata(file,side),text=document.createElement('small');text.textContent=label+': '+deploymentSize(fields.size)+(fields.size!=null?' · '+deploymentDate(fields.mtime):'');metadata.append(text);}item.append(metadata);
+ for(const [side,label]of [['source','Source'],['destination','Server file']]){const fields=deploymentMetadata(file,side),text=document.createElement('small'),missing=side==='destination'&&classification==='new'?'Not deployed yet':side==='source'&&classification==='runtime_only'?'Not in selected source':'Not inspected or unavailable';text.textContent=label+': '+(fields.size==null?missing:deploymentSize(fields.size)+' · '+deploymentDate(fields.mtime));metadata.append(text);}item.append(metadata);
  const inspectionErrors=[file.error,file.source?.error,file.destination?.error].filter(Boolean);if(inspectionErrors.length){const error=document.createElement('small');error.className='deployment-file-error';error.textContent=[...new Set(inspectionErrors)].join(' · ');item.append(error);}
  if(key==='quest'&&classification==='changed'&&/\.(pl|pm|lua|ini|json|conf|cfg|txt|xml|csv)$/i.test(file.path||file.relative_path||'')){
   const button=document.createElement('button');button.className='secondary';button.textContent='Show text diff';
@@ -208,13 +215,14 @@ function renderDeploymentReport(key,result){
 }
 async function applyDeployment(key){
  const m=deploymentModels[key],preview=m.preview,selection=deploymentSelection(key),transfer=deploymentTransfer(key);
+ requireDeploymentReady(key);
  if(!preview?.token)throw Error('Scan and review this world’s files first.');
  if(lastState?.running)throw Error('Stop the server before deploying files.');
  if(lastClientNative?.alive)throw Error('Stop the client before deploying files.');
  if(deploymentRecovery(m.data))throw Error('Recover the interrupted deployment before synchronizing.');
  if(transfer.changed&&!$(key+'-approve').checked)throw Error('Review the changed files and approve replacement first.');
  if(transfer.conflicts&&!$(key+'-conflicts').checked)throw Error('Locally modified files require separate explicit approval.');
- if(!window.confirm('Synchronize '+transfer.count+' selected files'+(transfer.bytes!=null?' ('+deploymentSize(transfer.bytes)+')':'')+' to this Custom world?'+(transfer.changed?' Changed files will be backed up.':'')+' Runtime-only files will be kept.'))return;
+ if(!window.confirm('Synchronize '+transfer.count+' selected files'+(transfer.bytes!=null?' ('+deploymentSize(transfer.bytes)+')':'')+' to this Custom world?'+(transfer.changed?' Changed files will be backed up.':'')+' Runtime-only files will be kept.')){cancelDeploymentConfirmation(key,(key==='lon'?'Card-data import':'Synchronization')+' cancelled. No server files were changed. Your preview is still available.');return;}
  const token=preview.token;
  const result=await deploymentRun(key,'apply',()=>job(deploymentKinds[key].operation+'_apply',{token,...selection,confirm_overwrite:!!$(key+'-approve').checked,approve_conflicts:!!$(key+'-conflicts').checked}));
  if(result){renderDeploymentReport(key,result);clearDeploymentPreview(key);m.data=null;m.loadedAt=0;await loadCustomDeployment(true);renderCustomDeploymentControls();}else{clearDeploymentPreview(key);m.loadedAt=0;renderCustomDeploymentControls();}
@@ -239,7 +247,7 @@ function deploymentBind(id,fn){$(id).addEventListener('click',()=>Promise.resolv
 for(const key of Object.keys(deploymentKinds)){
  deploymentBind(key+'-scan',()=>scanDeployment(key));deploymentBind(key+'-reload',()=>loadCustomDeployment(true));deploymentBind(key+'-apply',()=>applyDeployment(key));
  deploymentBind(key+'-cancel',async()=>{const m=deploymentModels[key];if(!m.working&&!m.picking)return;m.cancelling=true;renderCustomDeploymentControls();try{await api(m.picking?'lon_input_cancel':'cancel');notice('Cancellation requested. Files already touched are recovered before another deployment.');}finally{m.cancelling=false;renderCustomDeploymentControls();}});
- deploymentBind(key+'-stop',async()=>{if(!lastState?.running)return;if(!window.confirm('Stop this Custom server before deployment? You can start it again after synchronizing.'))return;await deploymentRun(key,'stop',()=>job('stop'));clearDeploymentPreview(key);deploymentModels[key].loadedAt=0;await loadCustomDeployment(true);notice('Server stopped. Scan again to review the current files before deploying.');});
+ deploymentBind(key+'-stop',async()=>{if(!lastState?.running)return;if(!window.confirm('Stop this Custom server before deployment? You can start it again after synchronizing.')){cancelDeploymentConfirmation(key,'Server stop cancelled. No deployment was started.');return;}await deploymentRun(key,'stop',()=>job('stop'));clearDeploymentPreview(key);deploymentModels[key].loadedAt=0;await loadCustomDeployment(true);notice('Server stopped. Scan again to review the current files before deploying.');});
  deploymentBind(key+'-start',()=>deploymentRun(key,'start',()=>job('start')));
  deploymentBind(key+'-recover',async()=>{if(lastState?.running)throw Error('Stop the server before recovering a deployment.');const result=await deploymentRun(key,'recover',()=>job('custom_deployment_recover'));if(result){clearDeploymentPreview(key);await loadCustomDeployment(true);notice(result.message||'Interrupted deployment recovery completed. Scan again before synchronizing.');}});
  for(const suffix of ['approve','conflicts'])$(key+'-'+suffix).addEventListener('change',renderCustomDeploymentControls);

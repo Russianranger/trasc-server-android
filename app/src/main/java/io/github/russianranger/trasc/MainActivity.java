@@ -2,6 +2,7 @@ package io.github.russianranger.trasc;
 
 import android.Manifest;
 import android.app.Activity;
+import android.app.AlertDialog;
 import android.content.*;
 import android.database.Cursor;
 import android.net.Uri;
@@ -17,6 +18,8 @@ import java.util.Arrays;
 
 public final class MainActivity extends Activity {
     private WebView web;
+    private ManagementChromeClient managementChrome;
+    private boolean activityResumed;
     private RuntimeManager runtime;
     private ControllerManager controller;
     private LauncherController launcherController;
@@ -50,9 +53,11 @@ public final class MainActivity extends Activity {
         s.setAllowFileAccess(false);s.setAllowContentAccess(false);s.setAllowFileAccessFromFileURLs(false);s.setAllowUniversalAccessFromFileURLs(false);
         s.setMixedContentMode(WebSettings.MIXED_CONTENT_NEVER_ALLOW);
         web.addJavascriptInterface(new Bridge(),"Trasc");
+        managementChrome=new ManagementChromeClient();web.setWebChromeClient(managementChrome);
         web.setWebViewClient(new WebViewClient(){
             @Override public boolean onRenderProcessGone(WebView view,RenderProcessGoneDetail detail){
                 runtime.recordFailure("management_display",new IOException("WebView renderer exited: crashed="+detail.didCrash()+" priority="+detail.rendererPriorityAtExit()));
+                managementChrome.cancelPending();
                 web=null;controller.capture(false);
                 if(launcherController!=null)launcherController.reset();
                 android.view.ViewParent parent=view.getParent();if(parent instanceof android.view.ViewGroup)((android.view.ViewGroup)parent).removeView(view);
@@ -80,6 +85,57 @@ public final class MainActivity extends Activity {
         });
         web.loadUrl("https://app.trasc.local/index.html");
         if(android.os.Build.VERSION.SDK_INT>=33)requestPermissions(new String[]{Manifest.permission.POST_NOTIFICATIONS},20);
+    }
+    /** WebView otherwise suppresses window.confirm and immediately returns false. */
+    private final class ManagementChromeClient extends WebChromeClient {
+        private AlertDialog dialog;
+        private JsResult pending;
+        private boolean allowed(WebView view,String url){
+            return activityResumed&&!isFinishing()&&!isDestroyed()&&view!=null&&view==web
+                &&"https://app.trasc.local/index.html".equals(url)
+                &&"https://app.trasc.local/index.html".equals(view.getUrl());
+        }
+        @Override public boolean onJsConfirm(WebView view,String url,String message,JsResult result){
+            if(!allowed(view,url)||pending!=null){result.cancel();return true;}
+            final String profile=runtime.profiles.current();
+            pending=result;
+            try {
+                dialog=new AlertDialog.Builder(MainActivity.this)
+                    .setTitle(WorldProfiles.label(profile)+" — Confirm action")
+                    .setMessage(message)
+                    .setPositiveButton("Continue",(ignored,which)->resolve(result,allowed(view,url)&&profile.equals(runtime.profiles.current())))
+                    .setNegativeButton(android.R.string.cancel,(ignored,which)->resolve(result,false))
+                    .setOnCancelListener(ignored->resolve(result,false))
+                    .create();
+                dialog.setOnDismissListener(ignored->resolve(result,false));
+                dialog.setOnKeyListener((ignored,key,event)->{
+                    if(key==KeyEvent.KEYCODE_BUTTON_B||key==KeyEvent.KEYCODE_BACK){
+                        if(event.getAction()==KeyEvent.ACTION_UP)cancelPending();
+                        return true;
+                    }
+                    if(key==KeyEvent.KEYCODE_BUTTON_A){
+                        if(event.getAction()==KeyEvent.ACTION_UP&&dialog!=null){
+                            android.view.View focused=dialog.getCurrentFocus();
+                            if(focused==dialog.getButton(AlertDialog.BUTTON_POSITIVE)||focused==dialog.getButton(AlertDialog.BUTTON_NEGATIVE))focused.performClick();
+                        }
+                        return true;
+                    }
+                    return false;
+                });
+                dialog.show();
+                // Opening a confirmation must never make a held controller A approve it.
+                dialog.getButton(AlertDialog.BUTTON_NEGATIVE).setFocusableInTouchMode(true);
+                dialog.getButton(AlertDialog.BUTTON_NEGATIVE).requestFocus();
+            }catch(RuntimeException error){cancelPending();runtime.recordFailure("management_confirmation",error);}
+            return true;
+        }
+        private void resolve(JsResult result,boolean accepted){
+            if(pending!=result)return;
+            AlertDialog previous=dialog;dialog=null;pending=null;
+            if(accepted)result.confirm();else result.cancel();
+            if(previous!=null)previous.dismiss();
+        }
+        void cancelPending(){if(pending!=null)resolve(pending,false);}
     }
     private String restoredActivation(){return getSharedPreferences("session-restoration",MODE_PRIVATE).getString("activation","");}
     private ControllerManager createController(){controllerProfile=runtime.profiles.current();controllerActivation=restoredActivation();File selectedWork;
@@ -385,8 +441,8 @@ public final class MainActivity extends Activity {
         return super.dispatchGenericMotionEvent(event);
     }
     @Override public void onWindowFocusChanged(boolean focus){super.onWindowFocusChanged(focus);if(!focus){if(controller!=null)controller.capture(false);if(launcherController!=null)launcherController.reset();}}
-    @Override protected void onResume(){super.onResume();if(controller!=null)try(WorldProfiles.Lease ignored=runtime.profiles.enter(runtime.profiles.current())){if(!runtime.profiles.current().equals(controllerProfile)||!restoredActivation().equals(controllerActivation)){controller.close();controller=createController();}else controller.reload();}catch(IOException ignored){}if(web!=null)web.evaluateJavascript("if(typeof controllerLoaded!=='undefined'){controllerLoaded=false;if(currentTab==='client')loadController(true).catch(e=>notice(e.message,true));}",null);}
-    @Override protected void onPause(){if(controller!=null)controller.capture(false);if(launcherController!=null)launcherController.reset();super.onPause();}
+    @Override protected void onResume(){super.onResume();activityResumed=true;if(controller!=null)try(WorldProfiles.Lease ignored=runtime.profiles.enter(runtime.profiles.current())){if(!runtime.profiles.current().equals(controllerProfile)||!restoredActivation().equals(controllerActivation)){controller.close();controller=createController();}else controller.reload();}catch(IOException ignored){}if(web!=null)web.evaluateJavascript("if(typeof controllerLoaded!=='undefined'){controllerLoaded=false;if(currentTab==='client')loadController(true).catch(e=>notice(e.message,true));}",null);}
+    @Override protected void onPause(){activityResumed=false;if(managementChrome!=null)managementChrome.cancelPending();if(controller!=null)controller.capture(false);if(launcherController!=null)launcherController.reset();super.onPause();}
     @Override public void onBackPressed(){if(controller.active()){controller.capture(false);return;}if(web!=null)web.evaluateJavascript("window.appBack && window.appBack()",null);}
-    @Override protected void onDestroy(){pickerId=null;if(pickerLease!=null){pickerLease.close();pickerLease=null;}if(launcherInputManager!=null)launcherInputManager.unregisterInputDeviceListener(launcherDevices);if(launcherController!=null)launcherController.reset();if(controller!=null)controller.close();if(web!=null){web.removeJavascriptInterface("Trasc");web.destroy();web=null;}tasks.shutdown();super.onDestroy();}
+    @Override protected void onDestroy(){activityResumed=false;if(managementChrome!=null)managementChrome.cancelPending();pickerId=null;if(pickerLease!=null){pickerLease.close();pickerLease=null;}if(launcherInputManager!=null)launcherInputManager.unregisterInputDeviceListener(launcherDevices);if(launcherController!=null)launcherController.reset();if(controller!=null)controller.close();if(web!=null){web.removeJavascriptInterface("Trasc");web.destroy();web=null;}tasks.shutdown();super.onDestroy();}
 }

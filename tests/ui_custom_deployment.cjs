@@ -39,6 +39,7 @@ with tempfile.TemporaryDirectory() as temp:
  before=quest_sync.status(engine)
  applied=quest_sync.apply(engine,{'token':preview['token'],'include_new':True,'include_changed':True,'confirm_overwrite':True,'approve_conflicts':True})
  after=quest_sync.status(engine)
+ rescanned=quest_sync.scan(engine)
  write('sources/current/Release-NMS-Quests/changed.lua','return "failed replacement"\n')
  failed_preview=quest_sync.scan(engine)
  original_copy=core._copy
@@ -61,6 +62,7 @@ with tempfile.TemporaryDirectory() as temp:
  lon=core.preview(engine,'lon_data',[{'name':'lon_data','source':work/'incoming/lon-fixture/data','destination':work/'server/lon_data'}],{'path':'client/current','kind':'directory'},extra={'validation':{'valid':True,'parsed_archetypes':1,'errors':[],'warnings':[],'server_initialization':'pending_restart'}})
  lonrows=core.details(engine,{'token':lon['token'],'limit':500},'lon_data')
  lonapplied=core.apply(engine,'lon_data',{'token':lon['token']})
+ lonrescanned=core.preview(engine,'lon_data',[{'name':'lon_data','source':work/'incoming/lon-fixture/data','destination':work/'server/lon_data'}],{'path':'client/current','kind':'directory'})
  lonapplied['validation']=lon['extra']['validation'];lonapplied['message']='Legends of Norrath files deployed and SHA-256 verified. Restart the server to initialize the card service.'
  verify={}
  for service_state in ('confirmed','failed','pending_restart','disabled'):
@@ -68,7 +70,7 @@ with tempfile.TemporaryDirectory() as temp:
   rule={'enabled':service_state!='disabled','path':'lon_data'}
   layout={'lon_data':str(work/'server/lon_data'),'lon_rule':rule}
   with patch.object(lon_data,'validate',return_value=lon['extra']['validation']),patch.object(lon_data,'_service_report',return_value=service),patch.object(core,'destinations',return_value=layout):verify[service_state]=lon_data.verify(engine)
- print(json.dumps({'quest':{'preview':preview,'rows':rows,'diff':diff,'before':before,'applied':applied,'after':after,'failure':failure},'lon':{'preview':lon,'rows':lonrows,'applied':lonapplied,'verify':verify,'before':{'profile':'custom','destination':str(work/'server/lon_data'),'recovery_required':False}}}))
+ print(json.dumps({'quest':{'preview':preview,'rescan':rescanned,'rows':rows,'diff':diff,'before':before,'applied':applied,'after':after,'failure':failure},'lon':{'preview':lon,'rescan':lonrescanned,'rows':lonrows,'applied':lonapplied,'verify':verify,'before':{'profile':'custom','destination':str(work/'server/lon_data'),'recovery_required':False}}}))
 `],{encoding:'utf8',maxBuffer:8*1024*1024}));
 async function fullInterfaceChecks(browser){
  const native=JSON.parse(execFileSync('python3',['tests/test_client_native_status.py','--fixtures'],{encoding:'utf8'}));
@@ -78,7 +80,7 @@ async function fullInterfaceChecks(browser){
   const page=await browser.newPage({viewport:{width:1280,height:720}}),errors=[];page.on('pageerror',e=>errors.push(e.message));
   try{
    await page.addInitScript(({profile,native,fixtures})=>{
-    window.fixture={profile,native,data:fixtures,calls:[],jobs:[],keyboard:[]};window.confirm=()=>true;
+    window.fixture={profile,native,data:fixtures,calls:[],jobs:[],keyboard:[],applied:{}};
     const connection=()=>({profile:fixture.profile,host:{host:'127.0.0.1',port:5999,exists:true,can_save:true,revision:'host-1'},patch:{exe:'eqgame.exe',eligible:fixture.profile==='custom',patched:false,can_apply:fixture.profile==='custom',revision:'exe-1',download:{can_download:fixture.profile==='custom'}}});
     const state=()=>({profile:fixture.profile,running:false,settings:{ip:'127.0.0.1',login_port:5999,repo:'https://github.com/Russianranger/Triptych-Triumvirate',ref:'main',workers:3,jobs:2},source:{commit:'a'.repeat(40)},jobs:fixture.jobs,processes:{},maps_ready:true,database_imported:true,binaries_ready:true,client:{imported:true,files:10,bytes:1000},traditional:{components:{},build:{}},takp:{source_ready:true,components:{},build:{}},free_bytes:50e9});
     window.Trasc={launcherKeyboard(show){fixture.keyboard.push(show);},call(id,op,input){setTimeout(()=>{const f=fixture,args=JSON.parse(input);f.calls.push({op,args});let result={};try{
@@ -86,8 +88,8 @@ async function fullInterfaceChecks(browser){
      else if(op==='client_native_state')result=structuredClone(f.native[f.profile].stopped);
      else if(op==='state')result=state();
      else if(op==='client_connection_status')result=connection();
-     else if(op==='quest_sync_status'||op==='lon_data_status'){if(f.profile!=='custom')throw Error('Deployment belongs to Custom');result=structuredClone(f.data[op==='quest_sync_status'?'quest':'lon'].before);}
-     else if(op==='quest_sync_scan'||op==='lon_data_scan'){if(f.profile!=='custom')throw Error('Deployment belongs to Custom');result={id:op,operation:op,status:'done',result:structuredClone(f.data[op==='quest_sync_scan'?'quest':'lon'].preview)};f.jobs.push(result);}
+     else if(op==='quest_sync_status'||op==='lon_data_status'){if(f.profile!=='custom')throw Error('Deployment belongs to Custom');const kind=op==='quest_sync_status'?'quest':'lon';result=structuredClone(f.applied[kind]&&f.data[kind].after||f.data[kind].before);}
+     else if(['quest_sync_scan','lon_data_scan','quest_sync_apply','lon_data_apply'].includes(op)){if(f.profile!=='custom')throw Error('Deployment belongs to Custom');const kind=op.startsWith('quest_sync')?'quest':'lon',apply=op.endsWith('_apply');result={id:op+'-'+f.jobs.length,operation:op,status:'done',result:structuredClone(f.data[kind][apply?'applied':f.applied[kind]?'rescan':'preview'])};if(apply)f.applied[kind]=true;f.jobs.push(result);}
      else if(op==='source_update_status')result={profile:f.profile,source_available:true,current_revision:'a'.repeat(40),target_revision:'main'};
      else if(op==='controller_state')result={sources:[],actions:[],layers:[{name:'Main',bindings:{}}],deadzone:.2,sensitivity:700};
      else if(op==='databases')result={candidates:[]};
@@ -102,6 +104,30 @@ async function fullInterfaceChecks(browser){
     assert(await page.isEnabled('#quest-scan'),'Normal startup poll enables Custom scanning without a manual refresh');
     await page.click('#quest-scan');await page.waitForFunction(()=>!!deploymentModels.quest.preview?.token&&!busy&&!deploymentModels.quest.working);
     assert.equal(await page.locator('#quest-counts tr').count(),4,'Full shipped UI renders all actual backend groups');
+    const dialogAction=async(key,accept)=>{
+     let shown=false;
+     page.once('dialog',async dialog=>{shown=true;assert.equal(dialog.type(),'confirm');assert(dialog.message().includes('selected files')&&dialog.message().includes('Runtime-only files will be kept.'));await(accept?dialog.accept():dialog.dismiss());});
+     await page.click('#'+key+'-apply');await page.waitForFunction(()=>!busy&&!customDeploymentStatusLoading&&!Object.values(deploymentModels).some(m=>m.working||m.loading));assert(shown,'Shipped Apply opens a real browser confirmation');
+    };
+    await page.check('#quest-approve');await page.check('#quest-conflicts');
+    await dialogAction('quest',false);
+    assert.equal(await page.evaluate(()=>fixture.calls.filter(c=>c.op==='quest_sync_apply').length),0,'Dismissing the real quest dialog never queues a mutation');
+    assert((await page.textContent('#quest-status')).includes('Synchronization cancelled. No server files were changed.'));
+    assert(await page.isVisible('#quest-preview'),'Dismissing confirmation keeps the reviewed preview available');
+    await dialogAction('quest',true);
+    assert.equal(await page.evaluate(()=>fixture.calls.filter(c=>c.op==='quest_sync_apply').length),1,'Accepting the real quest dialog queues exactly one reviewed synchronization');
+    assert((await page.textContent('#quest-report-summary')).includes(fixtures.quest.applied.copied_files+' files copied'));
+    await page.click('#quest-scan');await page.waitForFunction(()=>!!deploymentModels.quest.preview?.token&&!busy&&!deploymentModels.quest.working);
+    assert.equal(await page.evaluate(()=>deploymentModels.quest.preview.summary.new+deploymentModels.quest.preview.summary.changed),0,'Successful synchronization rescans to the real backend matching result');
+    await page.click('#lon-scan');await page.waitForFunction(()=>!!deploymentModels.lon.preview?.token&&!busy&&!deploymentModels.lon.working);
+    await dialogAction('lon',false);
+    assert.equal(await page.evaluate(()=>fixture.calls.filter(c=>c.op==='lon_data_apply').length),0,'Dismissing the real card-data dialog never queues a mutation');
+    assert((await page.textContent('#lon-status')).includes('Card-data import cancelled. No server files were changed.'));
+    await dialogAction('lon',true);
+    assert.equal(await page.evaluate(()=>fixture.calls.filter(c=>c.op==='lon_data_apply').length),1,'Accepting the real card-data dialog queues exactly one reviewed import');
+    assert((await page.textContent('#lon-report-summary')).includes(fixtures.lon.applied.copied_files+' files copied'));
+    await page.click('#lon-scan');await page.waitForFunction(()=>!!deploymentModels.lon.preview?.token&&!busy&&!deploymentModels.lon.working);
+    assert.equal(await page.evaluate(()=>deploymentModels.lon.preview.summary.new+deploymentModels.lon.preview.summary.changed),0,'Successful card import rescans to the real backend matching result');
     await page.locator('#custom-quest-sync h3').focus();await page.evaluate(()=>launcherMenuController.command('back'));
     assert.equal(await page.getAttribute('#custom-quest-sync','data-controller-card-collapsed'),'true','Controller B collapses the new tile');
     await page.evaluate(()=>launcherMenuController.command('accept'));
@@ -166,9 +192,11 @@ async function fullInterfaceChecks(browser){
   await page.check('#quest-conflicts');assert(await page.isEnabled('#quest-apply'));
   await page.locator('#quest-file-inspection summary').click();await page.waitForFunction(()=>deploymentModels.quest.rows.length>0);await idle();
   assert.equal(await page.locator('#quest-files .deployment-file').count(),40,'File inspector is bounded to one page');
-  assert((await page.textContent('#quest-files')).includes('Runtime:')&&(await page.textContent('#quest-files')).includes('Source:'),'Both metadata sides are displayed');
+  assert((await page.textContent('#quest-files')).includes('Server file:')&&(await page.textContent('#quest-files')).includes('Source:'),'Both metadata sides are displayed');
+  assert((await page.textContent('#quest-files')).includes('Server file: Not deployed yet'),'A new file is clearly identified as absent from the server, not as a missing runtime');
   await page.click('#quest-next');await idle();assert((await page.textContent('#quest-files-status')).includes('Files 41–'));
   await page.selectOption('#quest-filter','runtime_only');await idle();assert.equal(await page.locator('#quest-files .deployment-file').count(),1);assert((await page.textContent('#quest-files')).includes('runtime-only.lua'),'Runtime-only filter uses exact backend classification');
+  assert((await page.textContent('#quest-files')).includes('Source: Not in selected source'),'Runtime-only files distinguish missing source from a file waiting for deployment');
   await page.selectOption('#quest-filter','changed');await idle();assert.equal(await page.locator('#quest-files .deployment-file').count(),2);
   await page.getByRole('button',{name:'Show text diff'}).first().click();assert((await page.textContent('#quest-files pre')).includes('updated source'),'Changed text can be inspected with a bounded backend diff');
   await page.selectOption('#quest-sort','mtime_desc');await idle();assert.equal(await page.evaluate(()=>fixture.calls.filter(c=>c.op==='quest_sync_files').at(-1).args.sort),'modified_desc');
@@ -179,6 +207,13 @@ async function fullInterfaceChecks(browser){
   await page.selectOption('#quest-mode','both');await page.check('#quest-approve');await page.check('#quest-conflicts');
   await page.evaluate(()=>fixture.confirm=false);await page.click('#quest-apply');await idle();
   assert.equal(await page.evaluate(()=>fixture.calls.filter(c=>c.op==='quest_sync_apply').length),0,'Declining confirmation performs no mutation');
+  assert((await page.textContent('#quest-status')).includes('No server files were changed.'),'Declining confirmation provides persistent cancellation feedback');
+  assert(await page.isVisible('#quest-preview'),'Declining confirmation retains the preview');
+  await page.evaluate(async()=>{lastNative.lon_input={busy:true};fixture.confirmText=null;await applyDeployment('quest').catch(()=>{});});
+  assert.equal(await page.evaluate(()=>fixture.calls.filter(c=>c.op==='quest_sync_apply').length),0,'An active native transfer cannot queue an overlapping synchronization');
+  assert.equal(await page.evaluate(()=>fixture.confirmText),null,'A blocked action does not ask the user to approve an operation it cannot queue');
+  assert((await page.textContent('#quest-status')).includes('No deployment was queued.'),'A preflight busy refusal is visible in the deployment tile');
+  await page.evaluate(()=>{lastNative.lon_input={busy:false};deploymentModels.quest.error='';});
   await page.evaluate(()=>{fixture.confirm=true;lastState.running=true;renderCustomDeploymentControls();});
   assert(await page.isEnabled('#quest-scan'),'Read-only scans remain available while server runs');assert(await page.isDisabled('#quest-apply'),'Live server replacement is blocked');
   await page.click('#quest-stop');await idle();assert(await page.isHidden('#quest-preview'),'Stopping the server requires a fresh preview');

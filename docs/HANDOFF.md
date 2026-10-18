@@ -1,3 +1,13 @@
+# 0.6.40 pending qualification — Custom deployment confirmation repair
+
+Version/code 0.6.40/89 is prepared for main. Release publication and downloadable APK verification are pending; this block is not proof of a published release. The publisher retains the exact-current-main guard, pinned 0.6.36 native payload/source baseline, existing application identity/signing certificate, normal Latest release and byte-identical compatibility preview. Workflow trigger marker remains `[ntcore-release]`.
+
+The user reported that quest and LoN scans succeeded but pressing their deployment actions left the same New/Changed files on a later scan. The Android WebView confirmation path could return cancellation without displaying its dialog, preventing the apply job from being submitted. This release repairs the visible confirmation/cancellation flow and clarifies individual missing-file wording, while retaining preview, overwrite/conflict approvals, stopped-process guards, protected backups, hash verification and rollback. See [release notes and device checklist](release-0640-notes.md).
+
+Qualification must exercise Cancel (no queued apply), approve (one queued apply), running/repeated actions, correct profile and destination, and rescan after the verified copy. Existing backend/JVM/browser/Android build, signing and native payload gates must pass before publication. Record the final commit, workflow, APK digest and public/preview parity after successful publication. Physical AYN Thor deployment and fresh LoN service initialization remain device acceptance steps.
+
+---
+
 # 0.6.39 published as Latest — Custom LoN import, quest sync and 4 GB verification
 
 Source `0ae2b4e36b585bba0307b2566965a6160e15b009`, release run [39152733003](https://github.com/Russianranger/trasc-server-android/actions/runs/39152733003), attempt 1 succeeded. See [release-proof-0639.json](release-proof-0639.json), [Custom deployment guide](custom-deployment-0639.md) and [release notes/device checklist](release-0639-notes.md).

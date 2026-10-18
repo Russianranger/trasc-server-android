@@ -1,8 +1,8 @@
 # TRASC Server for Android
 
-**Latest APK: [TRASC Android 0.6.39](https://github.com/Russianranger/trasc-server-android/releases/download/v0.6.39/trasc-server-android-0.6.39.apk)** · [Release page](https://github.com/Russianranger/trasc-server-android/releases/latest)
+**Latest APK: [TRASC Android 0.6.40](https://github.com/Russianranger/trasc-server-android/releases/download/v0.6.40/trasc-server-android-0.6.40.apk)** · [Release page](https://github.com/Russianranger/trasc-server-android/releases/latest)
 
-Custom **Setup → Legends of Norrath Data** imports client card data from Android folders or nested ZIPs into the server's resolved destination. **Setup → Quest & Plugin Sync** previews SHA-256 changes from your selected Triptych source and deploys quests, plugins and Lua modules with replacement approval, protected backups and interrupted-transfer recovery. Runtime-only files and player data are preserved. The Custom client's 4 GB control now offers **Verify 4 GB patch** when address support is already enabled. [Release notes and device checklist](docs/release-0639-notes.md). Install over your current app; restart the server after content deployment to verify LoN initialization.
+Fixes the Custom Setup confirmation that could silently cancel **Synchronize Files** and **Import / repair card data** in Android WebView. Review the preview, press the deployment action and approve the visible confirmation to start copying. **Missing at destination** describes an individual file awaiting deployment. SHA-256 verification, protected replacement backups, local-conflict approval and runtime-only preservation remain included. [Release notes and device checklist](docs/release-0640-notes.md). Install over your current app; restart the server after content deployment and use **Verify data & card service** to check LoN initialization.
 
 **Russianranger foreword;**
 
