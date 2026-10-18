@@ -18,4 +18,4 @@ The release preserves the application identity and signing certificate, the qual
 4. Test character-select world entry and camp/relog. Export logs if the transition still stops; successful world entry on the Thor remains a separate physical acceptance check.
 5. Confirm Traditional/TAKP and existing transfer/backup tools retain their settings and behavior.
 
-Automated backend, browser, JVM/native host, real Microsoft current-source DLL compilation, Android compile/lint, signing and public-download checks must pass before publication. Qualification and physical Thor retest are pending until recorded in the release proof.
+Qualification passed: 821 Python tests with zero skips, all 22 browser suites, JVM/native host and DirectX checks, real Microsoft current-source DLL compilation, Android compile/lint, signing and independent public-download verification. See [release-proof-0642.json](release-proof-0642.json). Physical AYN Thor world entry and camp/relog remain pending the user's retest.
