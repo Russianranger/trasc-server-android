@@ -24,8 +24,52 @@ template<class T> bool read(const void *address, T &value) {
         && count == sizeof(value);
 }
 
+// Exact mapped-image signature of the MIT-licensed SpellbookSizeUpdate patch,
+// commit 38a153d273f448ad1953d0b89497470443fd590e. See THIRD_PARTY_NOTICES.md.
+// Only code/raw padding is checked: the mutable book starts at section+0x200.
+inline bool expandedSpellbook(const BYTE *image, LONG peOffset, const IMAGE_NT_HEADERS32 &nt) {
+    if (nt.OptionalHeader.SizeOfImage != 0x12c5000
+        || nt.OptionalHeader.ImageBase != 0x400000
+        || !(nt.FileHeader.Characteristics & IMAGE_FILE_LARGE_ADDRESS_AWARE)
+        || nt.FileHeader.SizeOfOptionalHeader != sizeof(IMAGE_OPTIONAL_HEADER32)
+        || nt.FileHeader.NumberOfSections < 2 || nt.FileHeader.NumberOfSections > 32) return false;
+    IMAGE_SECTION_HEADER section = {};
+    const BYTE *table = image + peOffset + 24 + nt.FileHeader.SizeOfOptionalHeader;
+    if (!read(table + (nt.FileHeader.NumberOfSections - 1) * sizeof(section), section)
+        || memcmp(section.Name, ".sbook\0\0", 8)
+        || section.Misc.VirtualSize != 0x2000 || section.VirtualAddress != 0x12c3000
+        || section.SizeOfRawData != 0x200 || section.PointerToRawData != 8774656
+        || section.PointerToRelocations || section.PointerToLinenumbers
+        || section.NumberOfRelocations || section.NumberOfLinenumbers
+        || section.Characteristics != 0xe0000060) return false;
+    for (unsigned i = 0; i + 1 < nt.FileHeader.NumberOfSections; ++i) {
+        IMAGE_SECTION_HEADER earlier = {};
+        if (!read(table + i * sizeof(earlier), earlier)
+            || !memcmp(earlier.Name, ".sbook\0\0", 8)
+            || earlier.VirtualAddress >= 0x12c3000) return false;
+    }
+    const BYTE hook1[] = {0xe8,0x2a,0x64,0x14,0x01,0x90,0x90,0x90,0x90,0x90,0x90,0x90,0x90,0x90,0x90,0x90,0x90,0x90,0x90};
+    const BYTE hook2[] = {0xe9,0xa5,0xa0,0x14,0x01,0x90,0x90};
+    BYTE actual1[sizeof(hook1)] = {}, actual2[sizeof(hook2)] = {};
+    if (!read(image + 0x17cbd1, actual1) || memcmp(actual1, hook1, sizeof(hook1))
+        || !read(image + 0x178fd6, actual2) || memcmp(actual2, hook2, sizeof(hook2))) return false;
+    const BYTE first[] = {0x50,0x51,0x57,0xbf,0x00,0x32,0x6c,0x01,0xb9,0xa0,0x05,0x00,0x00,0x83,0xc8,0xff,0xfc,0xf3,0xab,0x5f,0x59,0x58,0x68,0xa0,0x05,0x00,0x00,0x68,0x00,0x32,0x6c,0x01,0x8b,0xce,0xe8,0xd9,0x85,0xeb,0xfe,0xc7,0x05,0x80,0x48,0x6c,0x01,0x01,0x00,0x00,0x00,0x56,0x57,0xbe,0x00,0x32,0x6c,0x01,0x8d,0xbf,0xbc,0x1a,0x00,0x00,0xb9,0xd0,0x02,0x00,0x00,0xfc,0xf3,0xa5,0x5f,0x5e,0xc3};
+    const BYTE second[] = {0x81,0xfe,0xd0,0x02,0x00,0x00,0x73,0x0c,0x8b,0xbc,0xb3,0xbc,0x1a,0x00,0x00,0xe9,0x49,0x5f,0xeb,0xfe,0x83,0x3d,0x80,0x48,0x6c,0x01,0x00,0xbf,0xff,0xff,0xff,0xff,0x74,0x07,0x8b,0x3c,0xb5,0x00,0x32,0x6c,0x01,0xe9,0x2f,0x5f,0xeb,0xfe};
+    BYTE expected[512], actual[512] = {};
+    memset(expected, 0xcc, sizeof(expected));
+    memcpy(expected, first, sizeof(first)); memcpy(expected + 0x80, second, sizeof(second));
+    const unsigned fixups[] = {4,28,41,52,150,165};
+    const DWORD delta = static_cast<DWORD>(reinterpret_cast<ULONG_PTR>(image)) - 0x400000;
+    for (unsigned offset : fixups) {
+        DWORD address = 0; memcpy(&address, expected + offset, sizeof(address)); address += delta;
+        memcpy(expected + offset, &address, sizeof(address));
+    }
+    return read(image + 0x12c3000, actual) && !memcmp(actual, expected, sizeof(expected));
+}
+
 // This layout was checked against the supplied May 10 2013 ROF2 executable.
-// The launcher also requires its complete SHA256 before enabling the adapter.
+// The launcher also verifies the complete file and protected original before
+// enabling an adapter; expanded images additionally need the exact code above.
 inline bool supported(const BYTE *image) {
     IMAGE_DOS_HEADER dos = {};
     IMAGE_NT_HEADERS32 nt = {};
@@ -35,7 +79,7 @@ inline bool supported(const BYTE *image) {
     return nt.Signature == IMAGE_NT_SIGNATURE && nt.FileHeader.Machine == IMAGE_FILE_MACHINE_I386
         && nt.FileHeader.TimeDateStamp == 0x518de58f
         && nt.OptionalHeader.Magic == IMAGE_NT_OPTIONAL_HDR32_MAGIC
-        && nt.OptionalHeader.SizeOfImage == 0x12c3000;
+        && (nt.OptionalHeader.SizeOfImage == 0x12c3000 || expandedSpellbook(image, dos.e_lfanew, nt));
 }
 
 inline bool looking(const BYTE *image) {

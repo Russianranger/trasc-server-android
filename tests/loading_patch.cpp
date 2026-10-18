@@ -2,6 +2,7 @@
 #include "../backend/eq_client_loading.h"
 #include <assert.h>
 #include <stdlib.h>
+#include "spellbook_image_fixture.h"
 using namespace trasc_loading;
 static BYTE *fixtureImage;
 static bool expectFast;
@@ -83,9 +84,11 @@ static void stub(DWORD rva, unsigned args, bool callerCleansStack) {
     if(!callerCleansStack && args) { *p++=0xc2;*p++=static_cast<BYTE>(args*4);*p=0; }
     else *p=0xc3;
 }
-static void prepare() {
-    fixtureImage=static_cast<BYTE *>(VirtualAlloc(NULL,0x12c3000,MEM_COMMIT|MEM_RESERVE,PAGE_EXECUTE_READWRITE));
+static void prepare(bool expanded) {
+    fixtureImage=static_cast<BYTE *>(VirtualAlloc(NULL,spellbook_fixture::expandedSize,MEM_COMMIT|MEM_RESERVE,PAGE_EXECUTE_READWRITE));
     assert(fixtureImage && !validateLayout(fixtureImage));
+    if (expanded) spellbook_fixture::expanded(fixtureImage); else spellbook_fixture::metadata(fixtureImage,false);
+    assert(trasc_camera::supported(fixtureImage));
     for(DWORD rva:numberCalls) {
         fixtureImage[rva]=0xe8; *reinterpret_cast<DWORD *>(fixtureImage+rva+1)=0x4089a0-rva-5;
     }
@@ -113,8 +116,8 @@ static void prepare() {
 int main() {
     static_assert(sizeof(void *)==4,"This fixture exercises the real x86 ABI");
     const bool modes[] = {false, true};
-    for(bool fast : modes) {
-        expectFast=fast;prepare();
+    for(bool expanded : modes) for(bool fast : modes) {
+        expectFast=fast;prepare(expanded);
         fixtureImage[stageCalls[1].rva]=0x90;
         assert(!patchLayout(fixtureImage,fast));
         assert(callMatches(fixtureImage,stageCalls[0].rva,stageCalls[0].target));
@@ -148,6 +151,6 @@ int main() {
         checksumDepth=0;InterlockedExchange(&profileThread,0);
         VirtualFree(fixtureImage,0,MEM_RELEASE);
     }
-    assert(mapped==2);
-    puts("PASS: complete patched x86 loader, all stage ABIs, unchanged results, scope cleanup, opt-out and layout rejection");
+    assert(mapped==4);
+    puts("PASS: stock and exact 1440-slot native guards, complete patched x86 loader, all stage ABIs, unchanged results, scope cleanup, opt-out and layout rejection");
 }

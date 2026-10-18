@@ -2,6 +2,7 @@
 #include "../backend/eq_camera_mouse.h"
 #include <assert.h>
 #include <stdio.h>
+#include "spellbook_image_fixture.h"
 
 struct Mouse {
     DWORD type = DI8DEVTYPE_MOUSE;
@@ -9,8 +10,8 @@ struct Mouse {
     // Deliberately no GetProperty. Wine 10 cannot query DIPROP_AXISMODE.
 };
 
-int main() {
-    BYTE *image = static_cast<BYTE *>(VirtualAlloc(NULL, 0x12c3000, MEM_COMMIT | MEM_RESERVE, PAGE_READWRITE));
+static void exercise(bool expanded) {
+    BYTE *image = static_cast<BYTE *>(VirtualAlloc(NULL, spellbook_fixture::expandedSize, MEM_COMMIT | MEM_RESERVE, PAGE_READWRITE));
     assert(image);
     IMAGE_DOS_HEADER *dos = reinterpret_cast<IMAGE_DOS_HEADER *>(image);
     IMAGE_NT_HEADERS32 *nt = reinterpret_cast<IMAGE_NT_HEADERS32 *>(image + 128);
@@ -19,6 +20,7 @@ int main() {
     nt->FileHeader.TimeDateStamp = 0x518de58f;
     nt->OptionalHeader.Magic = IMAGE_NT_OPTIONAL_HDR32_MAGIC;
     nt->OptionalHeader.SizeOfImage = 0x12c3000;
+    if (expanded) spellbook_fixture::expanded(image);
     assert(trasc_camera::supported(image));
     nt->FileHeader.TimeDateStamp++; assert(!trasc_camera::supported(image)); nt->FileHeader.TimeDateStamp--;
     assert(!trasc_camera::looking(image)); // No game object at startup.
@@ -51,5 +53,10 @@ int main() {
     assert(!trasc_camera::looking(image)); // Unreadable state fails closed.
     assert(!trasc_camera::supported(NULL));
     VirtualFree(image, 0, MEM_RELEASE);
-    puts("PASS: startup, menu, held/toggled look, character select and invalid game state");
+}
+int main() {
+    BYTE *guard = static_cast<BYTE *>(VirtualAlloc(NULL, spellbook_fixture::expandedSize, MEM_COMMIT | MEM_RESERVE, PAGE_READWRITE));
+    assert(guard); spellbook_fixture::rejectionChecks(guard); VirtualFree(guard, 0, MEM_RELEASE);
+    exercise(false); exercise(true);
+    puts("PASS: stock and exact 1440-slot/ASLR layouts, native guard corruption refusals, startup, menu, held/toggled look, character select and invalid game state");
 }

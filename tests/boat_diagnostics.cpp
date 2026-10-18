@@ -3,6 +3,7 @@
 #include <assert.h>
 #include <initializer_list>
 #include <string>
+#include "spellbook_image_fixture.h"
 using namespace trasc_boats;
 static void put(BYTE *p,DWORD value){memcpy(p,&value,4);}
 static std::string contents(const char *path){
@@ -49,15 +50,15 @@ static void recording(){
     assert(contents(path)==line&&contents(rollover)==previous);
     assert(DeleteFileA(path)&&DeleteFileA(rollover));
 }
-int main(){
-    static_assert(sizeof(void*)==4,"x86 state layout required");
-    recording();
-    BYTE *image=static_cast<BYTE*>(VirtualAlloc(NULL,0x12c3000,MEM_RESERVE|MEM_COMMIT,PAGE_READWRITE));assert(image);
+static void exercise(bool expanded){
+    BYTE *image=static_cast<BYTE*>(VirtualAlloc(NULL,spellbook_fixture::expandedSize,MEM_RESERVE|MEM_COMMIT,PAGE_READWRITE));assert(image);
     static BYTE player[0x1100],ship[0x1100],npc[0x1100],game[0x700],info[0x40];
     IMAGE_DOS_HEADER *dos=reinterpret_cast<IMAGE_DOS_HEADER*>(image);dos->e_magic=IMAGE_DOS_SIGNATURE;dos->e_lfanew=128;
     IMAGE_NT_HEADERS32 *nt=reinterpret_cast<IMAGE_NT_HEADERS32*>(image+128);nt->Signature=IMAGE_NT_SIGNATURE;
     nt->FileHeader.Machine=IMAGE_FILE_MACHINE_I386;nt->FileHeader.TimeDateStamp=0x518de58f;
     nt->OptionalHeader.Magic=IMAGE_NT_OPTIONAL_HDR32_MAGIC;nt->OptionalHeader.SizeOfImage=0x12c3000;
+    memset(player,0,sizeof(player));memset(ship,0,sizeof(ship));memset(npc,0,sizeof(npc));memset(game,0,sizeof(game));memset(info,0,sizeof(info));
+    if(expanded)spellbook_fixture::expanded(image);
     put(image+0x4cfce0,0x0150818b);put(image+0x5d7240,address(image+0x19e530));assert(supported(image));
     image[0x4cfce0]^=1;assert(!supported(image));image[0x4cfce0]^=1;
     for(BYTE *p:{player,ship,npc}){put(p,address(image+0x5d71f0));put(p+0x234,address(info));}
@@ -81,5 +82,9 @@ int main(){
     SetLastError(0x1234);trasc_boat_after_read(E_FAIL,sizeof(DIMOUSESTATE2),image+0xa67884);assert(GetLastError()==0x1234);
     SetLastError(0x3456);trasc_boat_after_read(S_OK,256,player);assert(GetLastError()==0x3456);
     VirtualFree(image,0,MEM_RELEASE);
-    puts("PASS: long-session boat capture, bounded rollover and I/O recovery; read-only snapshots, exact-client guards, invalid actors, names, nonboats, zoning and unchanged input/error state");
+}
+int main(){
+    static_assert(sizeof(void*)==4,"x86 state layout required");
+    recording();exercise(false);exercise(true);
+    puts("PASS: stock and exact 1440-slot native guards, long-session boat capture, bounded rollover and I/O recovery; read-only snapshots, exact-client guards, invalid actors, names, nonboats, zoning and unchanged input/error state");
 }

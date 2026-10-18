@@ -10,6 +10,8 @@ The user's 0.6.40 logs confirm that both Setup deployments completed and the LoN
 
 ## Device checklist
 
+The expanded executable retains the existing camera, loading, display and boat adapters through a mapped-image guard that checks the canonical patch code and section, including relocated pointers. The compiler also accepts the project's absent legacy include directory without creating or downloading dependencies. Publication requires a real current-source Microsoft compiler build as well as the full launcher qualification.
+
 1. Keep the Custom runtime open with server and client stopped. Check compatibility, apply the supported 1,440-slot patch and approve its visible confirmation. Verify the reported protected backup and successful checksum.
 2. Compile and deploy a new current-source `dinput8.dll`; check compatibility again. Keep native dinput8 enabled.
 3. Start server/client, enter the world, confirm inventory/spells/casting, and camp/relog once. Export logs if the transition still stops.

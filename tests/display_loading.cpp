@@ -2,6 +2,7 @@
 #include "../backend/eq_display_loading.h"
 #include <assert.h>
 #include <initializer_list>
+#include "spellbook_image_fixture.h"
 using namespace trasc_display;
 static BYTE *image;
 static int objects[5];
@@ -60,9 +61,11 @@ static void __fastcall globalFixture(void *self,void *) {
         (*slot)(7); assert(seenWait==7); // Never reduce other waits.
     }
 }
-static void prepare() {
-    image=static_cast<BYTE *>(VirtualAlloc(NULL,0x12c3000,MEM_COMMIT|MEM_RESERVE,PAGE_EXECUTE_READWRITE));assert(image);
+static void prepare(bool expanded) {
+    image=static_cast<BYTE *>(VirtualAlloc(NULL,spellbook_fixture::expandedSize,MEM_COMMIT|MEM_RESERVE,PAGE_EXECUTE_READWRITE));assert(image);
     assert(!validate(image));
+    if (expanded) spellbook_fixture::expanded(image); else spellbook_fixture::metadata(image,false);
+    assert(trasc_camera::supported(image));
     for(const StageCall &site:calls) { image[site.rva]=0xe8; *reinterpret_cast<DWORD *>(image+site.rva+1)=site.target-site.rva-5; }
     for(const SleepOperand &site:sleepOperands) {
         image[site.rva]=site.first; image[site.rva+1]=site.second;
@@ -79,8 +82,8 @@ static void prepare() {
 int main() {
     static_assert(sizeof(void *)==4,"Real x86 ABI required");
     const bool modes[]={false,true};
-    for(bool fast:modes) {
-        prepare();
+    for(bool expanded:modes) for(bool fast:modes) {
+        prepare(expanded);
         image[sleepSites[0].rva+1]=2;
         assert(!patch(image,fast));assert(trasc_loading::callMatches(image,calls[0].rva,calls[0].target));
         image[sleepSites[0].rva+1]=1;
@@ -111,12 +114,12 @@ int main() {
         waitModel(1);assert(seenWait==1);InterlockedExchange(&ownerThread,0);models=false;
         VirtualFree(image,0,MEM_RELEASE);
     }
-    assert(modelCalls==36);
+    assert(modelCalls==72);
     // Component measurement only: the game/device's actual wait count is logged separately.
     for(bool fast:modes) {
         originalSleep=Sleep;reducePauses=fast;Scope scope(true);
         LONGLONG start=clockTicks(); for(int i=0;i<128;++i) waitModel(1);
         printf("model_wait_fixture mode=%s calls=128 elapsed_us=%llu\n",fast?"yield":"original",micros(clockTicks()-start));
     }
-    puts("PASS: UI/model x86 ABIs, success/failure passthrough, exact-site rejection, original import preserved, scoped waits and opt-out");
+    puts("PASS: stock and exact 1440-slot native guards, UI/model x86 ABIs, success/failure passthrough, exact-site rejection, original import preserved, scoped waits and opt-out");
 }

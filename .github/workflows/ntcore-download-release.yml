@@ -172,6 +172,7 @@ jobs:
           assert hashlib.file_digest(apk.open('rb'),'sha256').hexdigest()==manifest['sha256']
           files=['backend/'+name+'.py' for name in ('engine','client_spellbook','client_compatibility',
             'client_launch_compatibility','client_dll','client_mouse','client_connection')]
+          files += ['backend/eq_camera_mouse.h']
           files += ['app/src/main/assets/ui/'+name for name in ('index.html','app.js',
             'spellbook-compatibility.js','spellbook-compatibility.css')]
           with zipfile.ZipFile(apk) as archive:
@@ -180,6 +181,6 @@ jobs:
                   assert archive.read(asset)==pathlib.Path(name).read_bytes(), asset
               assert any(b'client_spellbook_preflight' in archive.read(name)
                 for name in archive.namelist() if name.startswith('classes') and name.endswith('.dex'))
-          print('Public APK download verified against qualified SHA-256 and 11 exact source assets; native preflight present.')
+          print('Public APK download verified against qualified SHA-256 and 12 exact source assets; native preflight present.')
           print(json.dumps(manifest,sort_keys=True))
           PY

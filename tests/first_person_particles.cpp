@@ -1,5 +1,6 @@
 #define DIRECTINPUT_VERSION 0x0800
 #include "../backend/eq_first_person_particles.h"
+#include "spellbook_image_fixture.h"
 #include <assert.h>
 using namespace trasc_particles;
 static BYTE *image, *graphics, *actor, *replacement;
@@ -38,7 +39,7 @@ static void runUpdate() {
 static DWORD WINAPI otherThread(void *) { runUpdate(); return 0; }
 int main() {
     static_assert(sizeof(void *)==4,"Actual x86 callback ABI required");
-    image=allocate(0x12c3000); graphics=allocate(0x1e6000);
+    image=allocate(spellbook_fixture::expandedSize); graphics=allocate(0x1e6000);
     actor=allocate(0x2000); replacement=allocate(0x2000);
     assert(!graphicsSupported(graphics));
     metadata(image,0x518de58f,0x12c3000); metadata(graphics,0x518de5b6,0x1e6000);
@@ -52,6 +53,11 @@ int main() {
     assert(!patch(image,OFF)); assert(field(image,updateSlot)==pointer(image+updateRva));
     image[updateRva]^=1; assert(!patch(image,REPAIR)); image[updateRva]^=1;
     put(image+updateSlot,0); assert(!patch(image,REPAIR)); put(image+updateSlot,pointer(image+updateRva));
+    assert(patch(image,PROFILE)); assert(!patch(image,REPAIR));
+    // Repeat installation through the shared guard with the exact expanded image.
+    put(image+updateSlot,pointer(image+updateRva));
+    spellbook_fixture::expanded(image);
+    assert(trasc_camera::supported(image));
     assert(patch(image,PROFILE)); assert(!patch(image,REPAIR));
     // Once installed, run through the patched vtable and a same-signature x86
     // original callback. The real PE is covered separately by the private verifier.
@@ -101,5 +107,5 @@ int main() {
     attempts=128; replacement[0x5c]=0; camera[0x4c]=1; runUpdate();
     assert(!replacement[0x5c] && lastSample.status==ATTEMPT_LIMIT && attempts==128);
     reports=512; haveSample=false; runUpdate(); assert(reports==512);
-    puts("PASS: particle callback x86 ABI/original-first ordering, diagnostics/repair/opt-out, actor lifecycle, scope/thread/read safety, exact-layout guards and bounded retries/logs");
+    puts("PASS: stock and exact 1440-slot native guards, particle callback x86 ABI/original-first ordering, diagnostics/repair/opt-out, actor lifecycle, scope/thread/read safety, exact-layout guards and bounded retries/logs");
 }
