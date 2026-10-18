@@ -8,7 +8,7 @@ function api(op,args={},timeoutMs=0){return new Promise((resolve,reject)=>{const
 function notice(text,error=false){$('notice').hidden=false;$('notice').classList.toggle('error',error);$('notice').textContent=text;}
 function bytes(n){if(n==null)return '—';return n>=1073741824?(n/1073741824).toFixed(1)+' GB':n>=1048576?(n/1048576).toFixed(1)+' MB':(n/1024).toFixed(0)+' KB';}
 function ready(id,ok){$(id).textContent=ok?'Ready':'Required';$(id).classList.toggle('done',ok);}
-function tab(name){if(currentTab==='client'&&name!=='client')api('controller_capture',{active:false}).catch(()=>{});currentTab=name;document.body.dataset.scene=name;renderOverview();document.querySelectorAll('.tab').forEach(e=>e.classList.toggle('active',e.id===name));document.querySelectorAll('nav button').forEach(e=>e.classList.toggle('active',e.dataset.tab===name));if(name==='client'&&typeof loadController==='function')loadController().catch(e=>notice(e.message,true));if(name==='gameplay'&&typeof refreshEraStatus==='function')refreshEraStatus().catch(e=>notice(e.message,true));if(name==='spire'&&typeof loadSpire==='function')loadSpire().catch(e=>notice(e.message,true));if(name==='bots'&&typeof loadBots==='function')loadBots().catch(e=>notice(e.message,true));if(name==='build'&&typeof loadSourceUpdates==='function')loadSourceUpdates().catch(e=>notice(e.message,true));if(name==='client'&&typeof loadTakpSkeletons==='function')loadTakpSkeletons().catch(e=>notice(e.message,true));if(name==='files')browse().catch(e=>notice(e.message,true));if(name==='logs'){logs().catch(()=>{});loadLogRetention().catch(e=>notice(e.message,true));}}
+function tab(name){if(currentTab==='client'&&name!=='client')api('controller_capture',{active:false}).catch(()=>{});currentTab=name;document.body.dataset.scene=name;renderOverview();document.querySelectorAll('.tab').forEach(e=>e.classList.toggle('active',e.id===name));document.querySelectorAll('nav button').forEach(e=>e.classList.toggle('active',e.dataset.tab===name));if(name==='client'&&typeof loadController==='function')loadController().catch(e=>notice(e.message,true));if(name==='gameplay'&&typeof refreshEraStatus==='function')refreshEraStatus().catch(e=>notice(e.message,true));if(name==='spire'&&typeof loadSpire==='function')loadSpire().catch(e=>notice(e.message,true));if(name==='bots'&&typeof loadBots==='function')loadBots().catch(e=>notice(e.message,true));if(name==='build'&&typeof loadSourceUpdates==='function')loadSourceUpdates().catch(e=>notice(e.message,true));if(name==='client'&&typeof loadClientConnection==='function')loadClientConnection().catch(e=>notice(e.message,true));if(name==='client'&&typeof loadTakpSkeletons==='function')loadTakpSkeletons().catch(e=>notice(e.message,true));if(name==='files')browse().catch(e=>notice(e.message,true));if(name==='logs'){logs().catch(()=>{});loadLogRetention().catch(e=>notice(e.message,true));}}
 window.appBack=()=>tab('server');
 document.querySelectorAll('[data-tab]').forEach(b=>b.addEventListener('click',()=>tab(b.dataset.tab)));
 function action(id,fn){$(id).addEventListener('click',async()=>{const b=$(id);b.disabled=true;busy++;activeUiActions.add(id);renderSessionControls();try{await fn();}catch(e){notice(e.message,true);}finally{activeUiActions.delete(id);busy--;b.disabled=false;renderSessionControls();poll().catch(()=>{});}});}
@@ -57,6 +57,7 @@ function renderClientActivity(s){
  if(typeof renderBotsControls==='function')renderBotsControls();
  if(typeof renderSourceUpdatesControls==='function')renderSourceUpdatesControls();
  if(typeof renderTakpSkeletonControls==='function')renderTakpSkeletonControls();
+ if(typeof renderClientConnectionControls==='function')renderClientConnectionControls();
 }
 function renderSessionControls(){
  const n=lastNative,s=lastState,active=s?.jobs?.find(j=>['queued','running'].includes(j.status));
@@ -79,6 +80,7 @@ function renderSessionControls(){
  if(typeof renderBotsControls==='function')renderBotsControls();
  if(typeof renderSourceUpdatesControls==='function')renderSourceUpdatesControls();
  if(typeof renderTakpSkeletonControls==='function')renderTakpSkeletonControls();
+ if(typeof renderClientConnectionControls==='function')renderClientConnectionControls();
  renderDatabaseSelection();
 }
 function render(s){lastState=s;renderSessionControls();renderOverview();if(typeof renderBoatTrial==='function')renderBoatTrial();if(typeof renderFerryService==='function')renderFerryService();$('free').textContent=bytes(s.free_bytes);
@@ -105,7 +107,7 @@ async function poll(){
   finally{renderSessionControls();renderOverview();}})(),
   (async()=>{try{if(typeof clientRuntimeState==='function')await clientRuntimeState();else renderClientActivity(await api('client_native_state',{},10000));}
    catch(e){lastClientNative=null;if(typeof syncProfileControls==='function')syncProfileControls();if(typeof cleanupControls==='function')cleanupControls();statusBadge('client-badge','Client · Status unavailable','unknown');}})()
- ]);}finally{polling=false;if(typeof checkEraStatus==='function')checkEraStatus();}
+ ]);}finally{polling=false;if(typeof checkClientConnectionStatus==='function')checkClientConnectionStatus();if(typeof checkEraStatus==='function')checkEraStatus();}
 }
 document.addEventListener('visibilitychange',()=>{if(!document.hidden)poll();});
 function selectedDatabaseCandidate(){return databaseCandidates.find(c=>c.id===$('db-candidate').value);}

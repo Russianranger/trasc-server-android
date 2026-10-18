@@ -34,6 +34,7 @@ import client_addons
 import client_dll
 import client_toolchain
 import client_settings
+import client_connection
 import player_data
 import spire
 import boat_trial
@@ -52,7 +53,7 @@ import modern_bot_bridge
 import source_updates
 from log_retention import rotate
 
-VERSION = '0.6.34'
+VERSION = '0.6.35'
 DEFAULT_REPO = 'https://github.com/Russianranger/Triptych-Triumvirate'
 BINARIES = ('world', 'zone', 'loginserver', 'shared_memory', 'ucs', 'eqlaunch', 'queryserv', 'export_client_files')
 CLIENT_FILES = ('spells_us.txt', 'dbstr_us.txt', 'SkillCaps.txt', 'BaseData.txt')
@@ -1240,6 +1241,9 @@ class Engine(ManagedContent):
         src=safe_path(self.work,args['path'],True)
         if not any(src.is_relative_to(self.work / x) for x in ('server','maps','sources','incoming','backups','exports')): raise ValueError('This location is managed by the app')
         dest=safe_path(self.work,args['destination'])
+        protected = self.work / client_connection.RECOVERY
+        if dest.is_relative_to(protected) or (args.get('action') == 'move' and (src.is_relative_to(protected) or protected.is_relative_to(src))):
+            raise ValueError('Client connection originals are protected. Use the client Restore action to revert them.')
         if not any(dest.is_relative_to(self.work / x) for x in ('server','maps','incoming','backups','exports')): raise ValueError('Choose a server, maps, incoming, backups or exports destination')
         if dest.exists(): raise ValueError('Destination already exists; move it to a backup path first')
         if src==dest or dest.is_relative_to(src): raise ValueError('Invalid destination')
@@ -1324,6 +1328,8 @@ class Engine(ManagedContent):
         if op.startswith('bots_'):
             return bots.dispatch(self,op,args)
         if op=='ferry_diagnostics':return ferry_service.diagnostics(self,args)
+        if op == 'client_connection_status': return client_connection.status(self, args)
+        if op in client_connection.MUTATIONS: return client_connection.mutate(self, op, args)
         if op in ('boat_trial_status','boat_trial_preview','boat_trial_apply'):
             return boat_trial.dispatch(self,op,args)
         if op in ('ferry_service_status','ferry_service_preview','ferry_service_apply'):
@@ -1380,7 +1386,7 @@ def serve(work, port, token, profile='custom'):
                     threading.Thread(target=server.shutdown,daemon=True).start()
                     result={'message':'Stopping all processes and database'}
                 elif op=='cancel': engine.cancel.set(); result={'message':'Cancellation requested'}
-                elif op in ('state','files','logs','databases','client_dll_status','client_dll_download_info','ferry_diagnostics','traditional_status','takp_status','era_status','bots_status','bots_characters','bots_roster','source_update_status','takp_skeleton_status'): result=engine.dispatch(op,args)
+                elif op in ('state','files','logs','databases','client_dll_status','client_dll_download_info','ferry_diagnostics','traditional_status','takp_status','era_status','bots_status','bots_characters','bots_roster','source_update_status','takp_skeleton_status','client_connection_status'): result=engine.dispatch(op,args)
                 else: result=engine.enqueue(op,args)
                 payload=json.dumps({'ok':True,'result':result}).encode()
             except Exception as e:

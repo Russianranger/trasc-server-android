@@ -11,6 +11,7 @@ function spellTestControls(){
  $('spell-test-restore').disabled=activeProfile==='takp'||!!(busy||clientFileBusy||!active);
  $('client-import').disabled=!!(busy||clientFileBusy||active);
  if(typeof renderTakpSkeletonControls==='function')renderTakpSkeletonControls();
+ if(typeof renderClientConnectionControls==='function')renderClientConnectionControls();
  for(const id of ['client-prepare','export-client'])$(id).disabled=!!(busy||clientFileBusy||incomplete);
  if(typeof syncProfileControls==='function')syncProfileControls();
 }

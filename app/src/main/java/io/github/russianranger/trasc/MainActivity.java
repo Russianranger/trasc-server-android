@@ -19,6 +19,14 @@ public final class MainActivity extends Activity {
     private WebView web;
     private RuntimeManager runtime;
     private ControllerManager controller;
+    private LauncherController launcherController;
+    private volatile boolean launcherMenuSuspended;
+    private android.hardware.input.InputManager launcherInputManager;
+    private final android.hardware.input.InputManager.InputDeviceListener launcherDevices=new android.hardware.input.InputManager.InputDeviceListener(){
+        public void onInputDeviceAdded(int id){}
+        public void onInputDeviceChanged(int id){if(launcherController!=null)launcherController.deviceUnavailable(id);}
+        public void onInputDeviceRemoved(int id){if(launcherController!=null)launcherController.deviceUnavailable(id);}
+    };
     private String controllerProfile,controllerActivation;
     private ClientRuntime clientRuntime;
     private final ExecutorService tasks=Executors.newFixedThreadPool(3);
@@ -32,6 +40,12 @@ public final class MainActivity extends Activity {
         getWindow().setStatusBarColor(0xff10191c); getWindow().setNavigationBarColor(0xff10191c);
         web=new WebView(this);setContentView(web);
         controller=createController();
+        launcherController=new LauncherController(command->{
+            if(web!=null&&!isDestroyed()&&hasWindowFocus()&&!launcherMenuSuspended&&!controller.active())
+                web.evaluateJavascript("window.launcherMenuController && window.launcherMenuController.command("+JSONObject.quote(command)+")",null);
+        });
+        launcherInputManager=(android.hardware.input.InputManager)getSystemService(INPUT_SERVICE);
+        launcherInputManager.registerInputDeviceListener(launcherDevices,null);
         WebSettings s=web.getSettings();s.setJavaScriptEnabled(true);s.setDomStorageEnabled(true);
         s.setAllowFileAccess(false);s.setAllowContentAccess(false);s.setAllowFileAccessFromFileURLs(false);s.setAllowUniversalAccessFromFileURLs(false);
         s.setMixedContentMode(WebSettings.MIXED_CONTENT_NEVER_ALLOW);
@@ -40,6 +54,7 @@ public final class MainActivity extends Activity {
             @Override public boolean onRenderProcessGone(WebView view,RenderProcessGoneDetail detail){
                 runtime.recordFailure("management_display",new IOException("WebView renderer exited: crashed="+detail.didCrash()+" priority="+detail.rendererPriorityAtExit()));
                 web=null;controller.capture(false);
+                if(launcherController!=null)launcherController.reset();
                 android.view.ViewParent parent=view.getParent();if(parent instanceof android.view.ViewGroup)((android.view.ViewGroup)parent).removeView(view);
                 view.destroy();
                 android.widget.Button reopen=new android.widget.Button(MainActivity.this);
@@ -88,6 +103,14 @@ public final class MainActivity extends Activity {
         }catch(Exception ignored){}
     }
     final class Bridge {
+        @JavascriptInterface public void launcherKeyboard(boolean show){runOnUiThread(()->{
+            if(web==null||isDestroyed()||!hasWindowFocus())return;
+            android.view.inputmethod.InputMethodManager keyboard=(android.view.inputmethod.InputMethodManager)getSystemService(INPUT_METHOD_SERVICE);
+            if(show){web.requestFocus();keyboard.showSoftInput(web,android.view.inputmethod.InputMethodManager.SHOW_IMPLICIT);}
+            else keyboard.hideSoftInputFromWindow(web.getWindowToken(),0);
+        });}
+        // A physical-input rebinding surface can temporarily own the controller.
+        @JavascriptInterface public void launcherMenuSuspended(boolean suspended){launcherMenuSuspended=suspended;runOnUiThread(()->{if(launcherController!=null)launcherController.reset();});}
         @JavascriptInterface public void call(String id,String operation,String input){
             final String submittedProfile=runtime.profiles.current();
             submit(()->{
@@ -164,6 +187,7 @@ public final class MainActivity extends Activity {
                             }
                             break;
                         case "client_settings_save":
+                        case "client_host_save": case "client_host_restore": case "client_4gb_apply": case "client_4gb_restore":
                         case "import_client_zip": case "import_client_ui": case "activate_client_ui": case "restore_client_ui": case "prepare_client": case "export_client":
                         case "apply_spell_test": case "restore_spell_test":
                         case "client_addons_copy": case "client_dll_deploy":
@@ -319,11 +343,25 @@ public final class MainActivity extends Activity {
         });
         if(!accepted)transferLease.close();
     }
-    @Override public boolean dispatchKeyEvent(KeyEvent event){return controller!=null&&controller.key(event)||super.dispatchKeyEvent(event);}
-    @Override public boolean dispatchGenericMotionEvent(MotionEvent event){return controller!=null&&controller.motion(event)||super.dispatchGenericMotionEvent(event);}
-    @Override public void onWindowFocusChanged(boolean focus){super.onWindowFocusChanged(focus);if(!focus&&controller!=null)controller.capture(false);}
+    @Override public boolean dispatchKeyEvent(KeyEvent event){
+        if(controller!=null&&controller.active()){
+            if(launcherController!=null)launcherController.reset();
+            return controller.key(event)||LauncherController.gamepad(event)||super.dispatchKeyEvent(event);
+        }
+        if(launcherController!=null&&!launcherMenuSuspended&&hasWindowFocus()&&launcherController.key(event))return true;
+        return super.dispatchKeyEvent(event);
+    }
+    @Override public boolean dispatchGenericMotionEvent(MotionEvent event){
+        if(controller!=null&&controller.active()){
+            if(launcherController!=null)launcherController.reset();
+            return controller.motion(event)||LauncherController.gamepad(event)||super.dispatchGenericMotionEvent(event);
+        }
+        if(launcherController!=null&&!launcherMenuSuspended&&hasWindowFocus()&&launcherController.motion(event))return true;
+        return super.dispatchGenericMotionEvent(event);
+    }
+    @Override public void onWindowFocusChanged(boolean focus){super.onWindowFocusChanged(focus);if(!focus){if(controller!=null)controller.capture(false);if(launcherController!=null)launcherController.reset();}}
     @Override protected void onResume(){super.onResume();if(controller!=null)try(WorldProfiles.Lease ignored=runtime.profiles.enter(runtime.profiles.current())){if(!runtime.profiles.current().equals(controllerProfile)||!restoredActivation().equals(controllerActivation)){controller.close();controller=createController();}else controller.reload();}catch(IOException ignored){}if(web!=null)web.evaluateJavascript("if(typeof controllerLoaded!=='undefined'){controllerLoaded=false;if(currentTab==='client')loadController(true).catch(e=>notice(e.message,true));}",null);}
-    @Override protected void onPause(){if(controller!=null)controller.capture(false);super.onPause();}
+    @Override protected void onPause(){if(controller!=null)controller.capture(false);if(launcherController!=null)launcherController.reset();super.onPause();}
     @Override public void onBackPressed(){if(controller.active()){controller.capture(false);return;}if(web!=null)web.evaluateJavascript("window.appBack && window.appBack()",null);}
-    @Override protected void onDestroy(){pickerId=null;if(pickerLease!=null){pickerLease.close();pickerLease=null;}if(controller!=null)controller.close();if(web!=null){web.removeJavascriptInterface("Trasc");web.destroy();web=null;}tasks.shutdown();super.onDestroy();}
+    @Override protected void onDestroy(){pickerId=null;if(pickerLease!=null){pickerLease.close();pickerLease=null;}if(launcherInputManager!=null)launcherInputManager.unregisterInputDeviceListener(launcherDevices);if(launcherController!=null)launcherController.reset();if(controller!=null)controller.close();if(web!=null){web.removeJavascriptInterface("Trasc");web.destroy();web=null;}tasks.shutdown();super.onDestroy();}
 }

@@ -17,7 +17,7 @@ final class StorageFiles {
     private static final String DB="database-[0-9]{8}-[0-9]{6}-[0-9a-f]{4}\\.sql\\.gz";
     private static final String PLAYERS="players-[0-9]{8}-[0-9]{6}-[0-9a-f]{8}\\.zip";
     private static final Set<String> HIDDEN=new HashSet<>(Arrays.asList("settings.json","mysql.cnf","mysql.sock","mysql.pid"));
-    private static final Set<String> RECOVERY=new HashSet<>(Arrays.asList("nektulos","client-spell-test","content","ferry-quests","spire","client-setup"));
+    private static final Set<String> RECOVERY=new HashSet<>(Arrays.asList("nektulos","client-spell-test","content","ferry-quests","spire","client-setup","client-connection"));
 
     static final class Entry {
         final String name,path,protection;

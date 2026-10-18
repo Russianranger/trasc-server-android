@@ -164,6 +164,14 @@ class TakpClientTests(unittest.TestCase):
         self.assertFalse((backup/'spells_en.txt').exists())
         self.assertEqual((self.client/'eqmac.exe').read_bytes(),b'fixture eqmac.exe')
 
+    def test_prepare_retains_existing_custom_login_addresses_and_ports(self):
+        self.import_zip(self.content(self.root/'source'))
+        original = takp_client.login_text('192.168.1.90', 6123).encode('ascii') + b'; retained custom endpoint\r\n'
+        (self.client/'EQHOST.TXT').write_bytes(original)
+        self.engine.prepare_client({'resolution':'800x600'})
+        self.assertEqual((self.client/'EQHOST.TXT').read_bytes(), original)
+        self.assertFalse((self.client/'eqhost.txt').exists())
+
     def test_old_login_file_is_repaired_with_backup_and_endpoint_unchanged(self):
         self.client.mkdir(parents=True)
         prefix = self.engine.work/'client/prefix'

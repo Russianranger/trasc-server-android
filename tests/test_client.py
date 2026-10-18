@@ -454,7 +454,7 @@ class ClientTests(unittest.TestCase):
         (self.client/'resources/spells_us.txt').write_text('old spells')
         dll=(self.client/'dinput8.dll').read_bytes()
         with patch.object(self.engine,'_export_client_data',side_effect=self.export_fixture): result=self.engine.prepare_client({'resolution':'960x540'})
-        self.assertIn('Host=127.0.0.1:5999',(self.client/'EQHOST.TXT').read_text())
+        self.assertEqual((self.client/'EQHOST.TXT').read_text(),'old endpoint')
         self.assertFalse((self.client/'eqhost.txt').exists())
         ini=(self.client/'eqclient.ini').read_text();self.assertIn('Foo=untouched',ini);self.assertIn('Music=1',ini);self.assertIn('; keep comment',ini);self.assertIn('WindowedWidth=960',ini)
         self.assertEqual((self.client/'dinput8.dll').read_bytes(),dll)

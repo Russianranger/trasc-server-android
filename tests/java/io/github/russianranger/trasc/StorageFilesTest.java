@@ -55,6 +55,11 @@ public final class StorageFilesTest {
             page=StorageFiles.browse(w,"backups","",0,50);
             check(entry(page,DB).deletable&&entry(page,PLAYERS).deletable,"Generated snapshots deletable");
             check(!entry(page,"backups/custom.sql.gz").deletable,"Unknown backups protected");
+            write(root,"backups/client-connection/20261018-080000-012345abcdef/original","CLIENT ORIGINAL");
+            write(root,"backups/client-connection/host-control.json","{}");
+            check(!entry(StorageFiles.browse(w,"backups","",0,50),"backups/client-connection").deletable,"Client connection originals collection is explicitly protected");
+            rejects(()->StorageFiles.preview(w,Collections.singletonList("backups/client-connection/20261018-080000-012345abcdef/original")),"original eqhost or executable recovery cannot be deleted");
+            rejects(()->StorageFiles.preview(w,Collections.singletonList("backups/client-connection/host-control.json")),"client connection recovery metadata cannot be deleted");
             for(int i=0;i<2505;i++)write(root,"incoming/row"+String.format(Locale.ROOT,"%04d",i)+".zip","x");
             page=StorageFiles.browse(w,"incoming","ROW2055",0,30);
             check(page.total==1&&page.items.get(0).name.equals("row2055.zip"),"Search spans the entire folder and ignores case");

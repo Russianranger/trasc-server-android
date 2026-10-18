@@ -222,6 +222,20 @@ def login_text(address, port):
     return '[Registration Servers]\r\n{\r\n' + endpoint + '}\r\n[Login Servers]\r\n{\r\n' + endpoint + '}\r\n'
 
 
+def normalize_login_sections(original):
+    """The sole launch migration allowed by protected connection recovery."""
+    if original.startswith((b'\xff\xfe', b'\xfe\xff')):
+        raise ValueError('TAKP eqhost.txt must use the legacy text format; Prepare this client again')
+    updated = original
+    for old, new in ((b'RegistrationServers', b'Registration Servers'),
+                     (b'LoginServers', b'Login Servers')):
+        updated = re.sub(rb'(?mi)^[ \t]*\[' + old + rb'\][ \t]*(?=\r?$)',
+                         b'[' + new + b']', updated)
+        if len(re.findall(rb'(?mi)^[ \t]*\[' + new + rb'\][ \t]*\r?$', updated)) != 1:
+            raise ValueError('TAKP eqhost.txt needs one [' + new.decode() + '] section; Prepare this client again')
+    return updated
+
+
 def repair_login_file(client, prefix):
     """Repair the 0.6.16/17 section names without changing the login address."""
     from client_display import atomic_bytes
@@ -232,15 +246,7 @@ def repair_login_file(client, prefix):
     if host.stat().st_size > 16384:
         raise ValueError('TAKP eqhost.txt is too large; Prepare this client again')
     original = host.read_bytes()
-    if original.startswith((b'\xff\xfe', b'\xfe\xff')):
-        raise ValueError('TAKP eqhost.txt must use the legacy text format; Prepare this client again')
-    updated = original
-    for old, new in ((b'RegistrationServers', b'Registration Servers'),
-                     (b'LoginServers', b'Login Servers')):
-        updated = re.sub(rb'(?mi)^[ \t]*\[' + old + rb'\][ \t]*(?=\r?$)',
-                         b'[' + new + b']', updated)
-        if len(re.findall(rb'(?mi)^[ \t]*\[' + new + rb'\][ \t]*\r?$', updated)) != 1:
-            raise ValueError('TAKP eqhost.txt needs one [' + new.decode() + '] section; Prepare this client again')
+    updated = normalize_login_sections(original)
     report = {'format': 'takp_legacy', 'repaired': updated != original}
     if updated == original:
         return report
@@ -292,7 +298,8 @@ def prepare(engine, args):
         raise ValueError('Unsupported TAKP display option')
     changes = data_changes(engine, client)
     changes.update(bundle_changes(client))
-    changes[file_at(client, 'eqhost.txt')] = login_text(engine.config['ip'], engine.config['login_port'])
+    from client_connection import prepare_default
+    prepare_default(engine, client, changes)
     ini = file_at(client, 'eqclient.ini')
     if ini.exists() and ini.stat().st_size > 2*1024**2:
         raise ValueError('TAKP eqclient.ini is too large')
@@ -312,7 +319,7 @@ def prepare(engine, args):
     record.update(report)
     atomic_json(marker, record)
     result.update(local_client_synced=True, copied_files=2, backup=backup, client=record,
-                  message='TAKP client prepared for ' + engine.config['ip'] + ':' + str(engine.config['login_port']) + '. Server exports spells_us.txt and SkillCaps.txt, bundled TAKP DLLs and display settings updated; any supplied spells_en.txt remains unchanged. Originals saved in ' + backup + '.')
+                  message='TAKP client prepared; existing eqhost.txt login addresses and ports retained. Server exports spells_us.txt and SkillCaps.txt, bundled TAKP DLLs and display settings updated; any supplied spells_en.txt remains unchanged. Originals saved in ' + backup + '.')
     atomic_json(engine.work / 'logs/client-data-sync.json', result)
     return result
 

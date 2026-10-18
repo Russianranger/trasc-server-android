@@ -126,7 +126,7 @@ final class ClientRuntime {
     }
     synchronized JSONObject start(JSONObject options)throws Exception {
         server.requireRecovered();
-        begin();boolean started=false,compilerLease=false;
+        begin();boolean started=false,compilerLease=false,clientLease=false;
         try {
             Map<String,Object> profileOptions=ClientProfilePolicy.overrides(server.profiles.current(),options.optString("mode","client"));
             if(!profileOptions.isEmpty()) {
@@ -148,10 +148,11 @@ final class ClientRuntime {
                 org.json.JSONArray jobs=response.getJSONObject("result").getJSONArray("jobs");
                 for(int i=0;i<jobs.length();i++) {
                     JSONObject job=jobs.getJSONObject(i);
-                    if(Arrays.asList("client_settings_save","import_client_zip","import_client_ui","activate_client_ui","restore_client_ui","prepare_client","export_client","apply_spell_test","restore_spell_test","client_addons_copy","client_dll_deploy","client_dll_sdk","client_dll_download","set_takp_skeletons","source_update_preview","source_update_apply","build_update","deploy_update","era_apply","era_restore","bots_generate","bots_socials_install","bots_socials_restore","bots_storage_enable").contains(job.optString("operation"))&&Arrays.asList("queued","running").contains(job.optString("status")))
+                    if(Arrays.asList("client_settings_save","client_host_save","client_host_restore","client_4gb_apply","client_4gb_restore","import_client_zip","import_client_ui","activate_client_ui","restore_client_ui","prepare_client","export_client","apply_spell_test","restore_spell_test","client_addons_copy","client_dll_deploy","client_dll_sdk","client_dll_download","set_takp_skeletons","source_update_preview","source_update_apply","build_update","deploy_update","era_apply","era_restore","bots_generate","bots_socials_install","bots_socials_restore","bots_storage_enable").contains(job.optString("operation"))&&Arrays.asList("queued","running").contains(job.optString("status")))
                         throw new IOException("Wait for client file changes to finish before launching");
                 }
             }
+            RuntimeManager.write(new File(server.work,"run/client-active.json"),new JSONObject().put("pid",android.os.Process.myPid()).toString());clientLease=true;
             String mode=options.optString("mode","client"),resolution=options.optString("resolution","800x600"),renderer=options.optString("renderer","software");
             String cpuProfile=options.optString("cpu_profile",server.profiles.current().equals("takp")?"accurate":"balanced");
             String npcRendering=options.optString("npc_rendering","compatibility");
@@ -226,7 +227,7 @@ final class ClientRuntime {
             if(!takp()&&spellJournal.exists())request.put("spell_test",json(spellJournal));
             RuntimeManager.write(new File(run,"request.json"),request.toString());
             File backend=new File(server.home,"client-backend");backend.mkdirs();
-            for(String name:new String[]{"client_runner.py","takp_client.py","takp_skeletons.py","managed_content.py","client_mouse.py","traditional_camera.py","trasc-camera-dinput8.dll","traditional-camera-bundle.json","client_presentation.py","log_retention.py","client_display.py","client_xauthority.py","client_metrics.py","client_spells.py","client_vulkan.py","client_audio.py","libasound_module_pcm_trasc.so","audio-bundle.json","graphics_probe.py","runtime_probe.py","wined3d.dll","wined3d-patch.json","wineserver","wineserver-patch.json"})
+            for(String name:new String[]{"client_runner.py","client_connection.py","takp_client.py","takp_skeletons.py","managed_content.py","client_mouse.py","traditional_camera.py","trasc-camera-dinput8.dll","traditional-camera-bundle.json","client_presentation.py","log_retention.py","client_display.py","client_xauthority.py","client_metrics.py","client_spells.py","client_vulkan.py","client_audio.py","libasound_module_pcm_trasc.so","audio-bundle.json","graphics_probe.py","runtime_probe.py","wined3d.dll","wined3d-patch.json","wineserver","wineserver-patch.json"})
                 try(InputStream in=context.getAssets().open(name)){RuntimeManager.copy(in,new File(backend,name));}
             if(takp()) {
                 try(InputStream in=context.getAssets().open("takp_input_diagnostics.py")){RuntimeManager.copy(in,new File(backend,"takp_input_diagnostics.py"));}
@@ -303,7 +304,7 @@ final class ClientRuntime {
                         if(active.waitFor(1,TimeUnit.SECONDS))break;
                     }
                     active.waitFor();
-                    synchronized(ClientRuntime.this){if(bridge!=null&&graphics==bridge){bridge.stop();graphics=null;}if(playback!=null&&audio==playback){playback.close();audio=null;}if(process==active)recoverCameraAdapter();}
+                    synchronized(ClientRuntime.this){if(bridge!=null&&graphics==bridge){bridge.stop();graphics=null;}if(playback!=null&&audio==playback){playback.close();audio=null;}if(process==active){new File(activeWork,"run/client-active.json").delete();recoverCameraAdapter();}}
                 } catch(Exception e){RuntimeManager.recordFailure(activeWork,"client_gpu_cleanup",e);}
             },"client-graphics-lifecycle");monitor.setDaemon(true);monitor.start();
             for(int i=0;i<200;i++) {
@@ -320,7 +321,7 @@ final class ClientRuntime {
                 if(started&&alive())stop();
                 else {if(graphics!=null){graphics.stop();graphics=null;}if(audio!=null){audio.close();audio=null;}recoverCameraAdapter();}
             } catch(Exception cleanup){e.addSuppressed(cleanup);server.recordFailure("client_camera_restore",cleanup);}
-            status=e.getMessage();if(compilerLease)new File(server.work,"run/client-dll-building.json").delete();throw e;
+            status=e.getMessage();if(compilerLease)new File(server.work,"run/client-dll-building.json").delete();if(clientLease&&!alive())new File(server.work,"run/client-active.json").delete();throw e;
         }
         finally {busy=false;}
     }
@@ -333,6 +334,7 @@ final class ClientRuntime {
         if(graphics!=null){graphics.stop();graphics=null;}
         if(audio!=null){audio.close();audio=null;}
         new File(server.work,"run/client-dll-building.json").delete();
+        new File(server.work,"run/client-active.json").delete();
         process=null;recoverCameraAdapter();status="Client stopped. Server runtime is managed separately.";
     }
 

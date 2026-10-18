@@ -182,3 +182,8 @@ Open the runtime, then use **Client → Choose client ZIP**. The archive must co
 Bindings work without a running Linux runtime. Each gamepad button, trigger, D-pad and stick direction can target a keyboard key, mouse button, pointer direction or wheel step. Profiles include stick deadzone and pointer speed. Two physical inputs sharing a key keep it held until both release. Capture is limited to the client input area; focus loss, leaving Client, disconnection or changing profiles releases held inputs. The same profile also feeds the native Wine display. The diagnostic canvas remains available for checking bindings separately. See [embedded client milestone](docs/client-runtime.md) for setup, launch, diagnostics and current limitations.
 
 Development continuation: [handoff](docs/HANDOFF.md).
+
+
+### Client connection and controller menus (0.6.35 beta)
+
+The Client tab offers per-world **eqhost.txt** address editing, with port preservation and protected originals for Restore. Prepare retains existing host files. Custom additionally offers a reversible 4 GB/Large Address Aware patch for the imported 32-bit eqgame.exe. LB/RB cycle launcher tabs, D-pad selects cards and controls, A accepts or opens the keyboard, and B collapses cards. See [the beta guide](docs/client-customization-0635.md) for device checks.

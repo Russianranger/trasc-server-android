@@ -1,0 +1,14 @@
+/* A distinct focus ring also appears for native gamepad-driven JS focus. */
+body[data-controller-menu=active] .controller-menu-focus{outline:3px solid var(--gold,#dec18a)!important;outline-offset:3px;box-shadow:0 0 0 6px #081713!important;scroll-margin:16px}
+.controller-menu-help{font:12px/1.7 system-ui,sans-serif;color:var(--muted);margin:-14px 0 22px;overflow-wrap:anywhere}
+[data-controller-card-heading]{cursor:pointer;padding:4px 0;scroll-margin:16px}
+[data-controller-card-heading]::after{content:' ▾';color:var(--gold,#dec18a);font-size:14px}
+[data-controller-card-heading][aria-expanded=false]::after{content:' ▸'}
+article.card[data-controller-card-collapsed=true]>:not(.controller-card-title){display:none!important}
+article.card[data-controller-card-collapsed=true]>.controller-card-title{margin-bottom:0}
+.controller-select-dialog{color:var(--text);background:var(--panel,#142220);border:2px solid var(--gold,#dec18a);border-radius:8px;padding:20px;width:min(92vw,540px);max-height:75vh;overflow:auto}
+.controller-select-dialog::backdrop{background:#000b}
+.controller-select-dialog h2{font-size:18px;margin:0 0 16px}
+.controller-select-dialog .controller-select-options{display:grid;gap:10px}
+.controller-select-dialog button{width:100%;text-align:left;min-height:46px;white-space:normal}
+.controller-select-dialog button[aria-current=true]{border:2px solid var(--gold,#dec18a)}

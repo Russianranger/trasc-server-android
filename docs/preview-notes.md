@@ -1,19 +1,14 @@
-# TRASC 0.6.34 — backup file-picker handoff fix
+# TRASC 0.6.35 beta — client connection and controller menus
 
-Install over the existing app without uninstalling.
+Install over the existing TRASC preview app without uninstalling.
 
-Fixes an all-profile export/restore preparation race that reported "Finish file
-transfers and close the file picker" when the launcher was only resuming or
-refreshing its status. Preparation now reserves profile admission, drains
-already-started requests for up to five seconds, and then starts the transfer.
-Timeout or interruption releases the pending reservation so you can retry.
-Actual overlapping transfers, pickers and client displays remain protected.
+- Client → Login address edits **eqhost.txt**, independently for Custom, Traditional and TAKP. The default for a missing file is 127.0.0.1. Existing files are unchanged until you save; saving changes only the address and retains the port and remaining text. Prepare client preserves the file.
+- The first changed host file is retained in a protected recovery folder. Restore original login file reverts it. The connection screen shows the current address, port and recovery availability.
+- Custom → Client → 4 GB client patch enables Large Address Aware in the selected 32-bit eqgame.exe, as recommended by Triptych upstream for its enlarged spellbook. The protected original can be restored. Already patched clients are left intact. This increases the executable's address-space allowance; available memory still depends on the Wine/runtime environment.
+- Controller menu navigation is enabled by default: LB/RB change visible tabs, D-pad moves focus, A opens a tile or activates a control, and B collapses a tile. A on a text field opens Android's keyboard. Gameplay and controller testing retain their mappings.
 
-The bounded-memory streaming backup format from 0.6.33 remains unchanged, with
-legacy backup readers retained. New all-profile backups require 0.6.32+ to restore.
-Camp/stop the client, use Files → Export all profiles, and select storage with
-adequate free space and support for files over 4 GB. Reopen the runtime afterward.
+Open the selected server runtime to read or change the client connection or executable, and stop the game client before saving, patching or restoring. Existing protected recovery and session-backup behavior remains available.
 
-Existing worlds, Wine prefixes and accepted native camera helpers are preserved.
-No server rebuild, client import or prefix repair is required. Physical Thor
-large SAF export/restore acceptance remains pending.
+The APK retains the existing application identity, signing certificate and verified native runtime components. No server rebuild, database import or Wine prefix repair is required to use these launcher features.
+
+Physical AYN Thor acceptance of the new menus, keyboard and client customization remains pending. Host/browser regression and APK build evidence are recorded separately in the release workflow.

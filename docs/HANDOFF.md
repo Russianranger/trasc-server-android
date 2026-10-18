@@ -1,3 +1,11 @@
+# 0.6.35 beta — client connection and controller navigation
+
+See [client-customization-0635.md](client-customization-0635.md) for scope, protected recovery behavior and device acceptance. New source adds explicit per-world eqhost.txt IP editing with ports preserved, Custom-only reversible PE 4 GB patching, and default controller menus. Existing native components, application identity and signing are retained. Main beta workflow must qualify the exact source before publication. Triptych upstream merge is preserved in draft PR #4 pending explicit approval after automatic review rejected its main update; TRASC beta publication is separately authorized.
+
+Initial local test runs encountered a full shared filesystem. JVM/C suite subsequently passed using a memory-backed temporary directory; focused backend and controller tests pass. Browser/Android/full-dependency qualification is the clean GitHub workflow's responsibility; do not claim physical Thor acceptance without a report.
+
+---
+
 # 0.6.34 published — session preparation after the file picker
 
 Read [session-handoff-0634.md](session-handoff-0634.md) and

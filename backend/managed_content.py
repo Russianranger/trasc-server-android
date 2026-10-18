@@ -273,15 +273,15 @@ class ManagedContent:
         fullscreen = args.get('fullscreen', False)
         if not isinstance(fullscreen, bool): raise ValueError('Invalid fullscreen option')
         changes = self._client_data_changes(client)
-        host = client_file(client, 'eqhost.txt')
-        changes[host] = '[LoginServer]\r\nHost=' + self.config['ip'] + ':' + str(self.config['login_port']) + '\r\n'
+        from client_connection import prepare_default
+        prepare_default(self, client, changes)
         ini = client_file(client, 'eqclient.ini')
         text = ini.read_text(encoding='cp1252') if ini.exists() else ''
         changes[ini] = display_ini(text, resolution, fullscreen)
         result = self._export_client_data()
         backup = install_export(self.work, client, lambda: self._apply_client_changes(client, changes))
         result.update(local_client_synced=True, copied_files=8, backup=backup,
-                      message='All four client data files overwritten in the local client root and Resources folder; login address and display settings prepared. Originals saved in ' + backup + '.')
+                      message='All four client data files overwritten in the local client root and Resources folder; existing eqhost.txt login address and port retained, display settings prepared. Originals saved in ' + backup + '.')
         if result['filter_applied']:
             result['message'] += ' Spell compatibility remains on: ' + str(result['spell_filter']['removed_rows']) + ' high IDs excluded. Latest full spell export retained for Restore.'
         atomic_json(self.work / 'logs/client-data-sync.json', result)
