@@ -27,3 +27,7 @@ Initial local full regression attempts were obstructed by a full 32 GB shared sc
 Local final regression: 592 Python tests completed with 30 dependency-dependent skips and no failures using a memory-backed temporary directory. Production JVM/C management regressions passed. New native launcher-controller Java test, protected-recovery tests and Node VM UI race tests passed. Browser and Android qualification remain CI gates.
 
 The TAKP legacy section-name launch repair is included in the recovery checksum journal before host changes, so protected Restore remains available after the known conversion. Regression covers legacy Save → launch repair → Restore → launch repair → Save → Restore.
+
+## Published qualification
+
+Release run [39091813067](https://github.com/Russianranger/trasc-server-android/actions/runs/39091813067), attempt 2 succeeded for source 589606cf239749709cfa95fcbc27189464984589. All 592 Python tests ran without skips, all 18 browser scripts and the JVM/C/DirectX suites passed, followed by APK assembly, Android lint, pinned signing and exact native reuse checks. The same verified build artifact was retained for a publication-only retry after the initial newly created draft took time to appear in the release list. See release-proof-0635.json for public artifact digests. Device acceptance remains pending.

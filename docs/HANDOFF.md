@@ -1,3 +1,15 @@
+# 0.6.35 beta published and independently downloaded — October 18 UTC / October 17 Chicago
+
+Source `589606cf239749709cfa95fcbc27189464984589`, release run [39091813067](https://github.com/Russianranger/trasc-server-android/actions/runs/39091813067), attempt 2 succeeded. See [release-proof-0635.json](release-proof-0635.json) and [client-customization-0635.md](client-customization-0635.md).
+
+Beta APK is 18,988,718 bytes / SHA256 `8e840a6dceab22930d7aff167ea45cd2583fbc882d6b9e98a61d9cc574f84b10`; version 0.6.35/code84. The named v0.6.35-beta release and preview contain identical APK bytes. All 592 Python tests with zero skips, JVM/C/DirectX, all 18 browser suites, assembly/lint, pinned signing and unchanged native payload passed. Public APK download was independently hashed. Publication-only retry handled delayed visibility of the newly created draft without rebuilding the qualified artifact.
+
+New features: per-world eqhost.txt IP editing with exact port/content preservation and protected Restore; Custom-only reversible 4 GB PE flag; default controller menus. The full browser suite caught and resolved text-field Enter interception; physical keyboard Enter and native gamepad A now retain their distinct functions. TAKP legacy header normalization is covered by protected recovery tests. Physical AYN Thor acceptance remains pending.
+
+Triptych upstream merge is preserved in [draft PR #4](https://github.com/Russianranger/Triptych-Triumvirate/pull/4), Android changes retained, with main unchanged pending explicit approval after automatic review rejection. Launcher beta publication is complete. No server rebuild, database import or prefix reset is needed for these launcher tools.
+
+---
+
 # 0.6.35 beta — client connection and controller navigation
 
 See [client-customization-0635.md](client-customization-0635.md) for scope, protected recovery behavior and device acceptance. New source adds explicit per-world eqhost.txt IP editing with ports preserved, Custom-only reversible PE 4 GB patching, and default controller menus. Existing native components, application identity and signing are retained. Main beta workflow must qualify the exact source before publication. Triptych upstream merge is preserved in draft PR #4 pending explicit approval after automatic review rejected its main update; TRASC beta publication is separately authorized.
