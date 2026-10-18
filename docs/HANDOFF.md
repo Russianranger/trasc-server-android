@@ -1,10 +1,12 @@
-# 0.6.37 — official NTCore patch download
+# 0.6.37 published as Latest and independently downloaded
 
-Adds an explicit Custom client download of the official NTCore `4gb_patch.exe`, saved beside the imported `eqgame.exe`. Both upstream ZIP and executable are checksum pinned. Downloading does not run the patcher or modify the client; existing built-in Apply/Restore retains protected recovery. See [ntcore-download-0637.md](ntcore-download-0637.md) and [release notes](release-0637-notes.md).
+Source `6787353e51f50c824e6ec3836086b65f30d8257c`, release run [39144890527](https://github.com/Russianranger/trasc-server-android/actions/runs/39144890527), attempt 1 succeeded. See [release-proof-0637.json](release-proof-0637.json), [NTCore download guide](ntcore-download-0637.md) and [release notes](release-0637-notes.md).
 
-Version/code 0.6.37/86, same application identity and signing certificate, unchanged native components reused from verified 0.6.36. Full main release workflow gates publication as Latest on regression tests, assembly, lint, signing, native reuse and exact current-main checks. Physical Android/Wine acceptance remains pending.
+[Download 0.6.37 APK](https://github.com/Russianranger/trasc-server-android/releases/download/v0.6.37/trasc-server-android-0.6.37.apk). Version/code 0.6.37/86, 18,993,098 bytes, SHA256 `ebca29fe745e52896bf5e9eedee9a990f1470547a338757b9975409a0e18ba0a`. Public APK was independently downloaded, hashed, and inspected for the shipped backend/UI download operation. GitHub Latest resolves to non-draft/non-prerelease v0.6.37; compatibility preview contains identical APK bytes.
 
-Local qualification: 616 Python tests passed with 30 dependency skips; JVM/C management and DirectX checks passed; focused client/controller browser tests passed. A live production downloader call fetched the official NTCore file, verified the pinned executable, left eqgame.exe and recovery data unchanged, and reused the verified existing copy. Full dependency/browser/Android qualification remains the release workflow gate.
+Client → Custom client · 4 GB patch now downloads the official NTCore `4gb_patch.exe` beside imported `eqgame.exe`. The fixed official HTTPS ZIP and its sole executable are size/checksum pinned. Download does not run the tool or modify eqgame.exe; existing built-in Apply/Restore retains protected recovery. Existing verified copies are reused and conflicting files are preserved. Uses exclusive file creation compatible with Android filesystems that deny hard links, safe cleanup, profile/stopped-client guards and post-network installation/revision rechecks.
+
+All 616 Python tests with zero skips, JVM/C/DirectX checks, all 19 browser scripts, APK assembly/lint, pinned signing and exact 0.6.36 native reuse passed in clean CI. Local full regression also passed (30 dependency skips); live production downloader fetched the official file, left the client and recovery data untouched, and reused the verified copy. Physical Android/Wine acceptance remains pending. Install in place; database sorting, eqhost.txt controls and controller navigation remain included.
 
 ---
 

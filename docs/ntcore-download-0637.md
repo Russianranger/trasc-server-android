@@ -23,3 +23,9 @@ The downloader bounds the response and archive, checks both hashes and installs 
 5. Check the new button with controller navigation. Traditional and TAKP retain their independent client settings and do not expose the Custom patch tools.
 
 Physical Android/Wine execution remains device acceptance. Release qualification and artifact hashes are recorded separately after publication.
+
+## Published qualification
+
+Release run [39144890527](https://github.com/Russianranger/trasc-server-android/actions/runs/39144890527) passed for source `6787353e51f50c824e6ec3836086b65f30d8257c`: 616 Python tests without skips, all 19 browser scripts, JVM/C/DirectX, APK assembly/lint, pinned signing and unchanged native payload. The normal v0.6.37 release is verified as GitHub Latest and the compatibility preview contains identical APK bytes. The public APK was independently downloaded, hashed and inspected for the new backend/UI operation. See [release-proof-0637.json](release-proof-0637.json).
+
+A live production downloader call also fetched and verified the official file, preserved eqgame.exe and recovery data, and reused the existing verified tool on a repeat request. Physical Android/Wine execution remains pending.
