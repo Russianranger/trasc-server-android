@@ -6,6 +6,7 @@ source builds and file operations never use the user's Termux installation.
 """
 import argparse
 import contextlib
+from datetime import datetime
 import gzip
 import hashlib
 import hmac
@@ -53,12 +54,20 @@ import modern_bot_bridge
 import source_updates
 from log_retention import rotate
 
-VERSION = '0.6.35'
+VERSION = '0.6.36'
 DEFAULT_REPO = 'https://github.com/Russianranger/Triptych-Triumvirate'
 BINARIES = ('world', 'zone', 'loginserver', 'shared_memory', 'ucs', 'eqlaunch', 'queryserv', 'export_client_files')
 CLIENT_FILES = ('spells_us.txt', 'dbstr_us.txt', 'SkillCaps.txt', 'BaseData.txt')
 MAX_EXTRACT_BYTES = 40 * 1024**3
 MAX_FILES = 400000
+
+
+def _zip_modified_time(item):
+    """ZIP DOS times are local wall time; invalid/absent dates stay unknown."""
+    try:
+        return datetime(*item.date_time).timestamp()
+    except (AttributeError, TypeError, ValueError, OverflowError, OSError):
+        return None
 
 
 def atomic_json(path, value):
@@ -498,7 +507,14 @@ class Engine(ManagedContent):
             yield stream
 
     def database_catalog(self):
-        """Untruncated catalog; bundle validation must not depend on UI limits."""
+        """Untruncated catalog; bundle validation must not depend on UI limits.
+
+        ``modified`` is Unix seconds: filesystem mtime for SQL/SQL.GZ files,
+        the member's recorded local ZIP time for archived inputs, or null when
+        that ZIP date is invalid. Complete PEQ bundles use the latest known
+        component time, excluding their installer manifest. Metadata discovery
+        does not extract or read SQL payloads, nor change the default ordering.
+        """
         results = []
         for root in (self.work / 'sources/current', self.work / 'incoming'):
             if not root.exists(): continue
@@ -507,7 +523,9 @@ class Engine(ManagedContent):
                 if not p.is_file() or p.is_symlink(): continue
                 relative = str(p.relative_to(self.work))
                 if p.name.lower().endswith(('.sql', '.sql.gz')):
-                    results.append({'id': relative, 'size': p.stat().st_size, 'kind': 'sql', 'origin': origin})
+                    info = p.stat()
+                    results.append({'id': relative, 'size': info.st_size, 'modified': info.st_mtime,
+                                    'kind': 'sql', 'origin': origin})
                 elif p.suffix.lower() == '.zip':
                     try:
                         with zipfile.ZipFile(p) as z:
@@ -518,7 +536,8 @@ class Engine(ManagedContent):
                                     except ValueError: continue
                                     if item.is_dir() or stat.S_ISLNK(item.external_attr >> 16) or item.flag_bits & 1:
                                         continue
-                                    results.append({'id': relative + '!' + item.filename, 'size': item.file_size, 'kind': 'sql', 'origin': origin})
+                                    results.append({'id': relative + '!' + item.filename, 'size': item.file_size,
+                                                    'modified': _zip_modified_time(item), 'kind': 'sql', 'origin': origin})
                     except (ValueError, zipfile.BadZipFile): pass
         indexed = {}
         for candidate in results:
@@ -538,9 +557,12 @@ class Engine(ManagedContent):
                             raise ValueError('PEQ bundle is missing ' + PurePosixPath(part.partition('!')[2] or part).name)
                         if len(indexed[part]) != 1:
                             raise ValueError('PEQ bundle has a duplicate SQL part')
+                    modified = [indexed[part][0]['modified'] for part in selections
+                                if indexed[part][0]['modified'] is not None]
                     candidate.update(kind='peq_bundle', label='Complete PEQ database · 5 parts',
                                      selections=selections, parts=names,
-                                     size=sum(indexed[part][0]['size'] for part in selections))
+                                     size=sum(indexed[part][0]['size'] for part in selections),
+                                     modified=max(modified, default=None))
                 except (ValueError, OSError, EOFError, zipfile.BadZipFile) as error:
                     candidate.update(kind='unsupported_bundle', label='Incomplete or unsupported PEQ database', reason=str(error))
             elif len(matches) != 1:

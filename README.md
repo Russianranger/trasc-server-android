@@ -1,5 +1,9 @@
 # TRASC Server for Android
 
+**Latest APK: [TRASC Android 0.6.36](https://github.com/Russianranger/trasc-server-android/releases/download/v0.6.36/trasc-server-android-0.6.36.apk)** · [Release page](https://github.com/Russianranger/trasc-server-android/releases/latest)
+
+Setup now offers **Sort database files**: largest first or newest modified first, across Custom, Traditional and TAKP. [Release notes](docs/release-0636-notes.md). Install over your current app.
+
 **Russianranger foreword;**
 
 This app is vibe coded utilizing ChatGPT's Codex with Astra "Extra High" thinking model. As of the time of this foreword (9/18/26) I have been working on this for about 1 week. This app is a way for me to easily replicate what I was doing manually in Termux with server compilation/running and then running the client in Winlator/GameNative and tinkering with those settings. I just wanted an easier, and more intuitive way to pull the custom Triune fork (forked off Saltmontes5k fork) that had ascendant and other custom additions and integrate it into the server. This project turned out to be a lot more lucrative than just that. So what does this app do, and what was it meant for?

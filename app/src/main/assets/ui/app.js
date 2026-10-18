@@ -112,18 +112,39 @@ async function poll(){
 document.addEventListener('visibilitychange',()=>{if(!document.hidden)poll();});
 function selectedDatabaseCandidate(){return databaseCandidates.find(c=>c.id===$('db-candidate').value);}
 function databaseArchiveName(c){const [archive,member]=c.id.split('!'),name=archive.split('/').pop();return member&&databaseCandidates.filter(x=>x.kind==='peq_bundle'&&x.id.split('!')[0]===archive).length>1?name+' / '+member.split('/').slice(0,-1).join('/'):name;}
+function databaseModified(c){const value=c.modified;return typeof value==='number'&&Number.isFinite(value)&&Number.isFinite(new Date(value*1000).getTime())?value:null;}
+function databaseMetadata(c){const modified=databaseModified(c);return bytes(c.size)+(modified===null?' · modified time unavailable':' · modified '+new Date(modified*1000).toLocaleString());}
+function databaseCandidateOrder(a,b){
+ const sort=$('db-sort').value;
+ const value=c=>sort==='modified_desc'?databaseModified(c):typeof c.size==='number'&&Number.isFinite(c.size)&&c.size>=0?c.size:null;
+ if(sort==='size_desc'||sort==='modified_desc'){
+  const av=value(a),bv=value(b);
+  if(av===null&&bv!==null)return 1;
+  if(bv===null&&av!==null)return -1;
+  if(av!==null&&bv!==null&&av!==bv)return bv-av;
+ }else{
+  const rank=c=>c.kind==='peq_bundle'?0:c.kind==='unsupported_bundle'?1:c.origin==='source'?3:2;
+  const difference=rank(a)-rank(b);if(difference)return difference;
+ }
+ return a.id<b.id?-1:a.id>b.id?1:0;
+}
 function renderDatabaseSelection(){
- const c=selectedDatabaseCandidate(),blocked=!!(busy||databaseScanning||sessionAction),unsupported=c?.kind==='unsupported_bundle',wrongProfile=c?.kind==='peq_bundle'&&activeProfile!=='traditional';
+ const c=selectedDatabaseCandidate(),blocked=!!(busy||databaseScanning||sessionAction),unsupported=c?.kind==='unsupported_bundle',catalogOnly=activeProfile==='takp',wrongProfile=c?.kind==='peq_bundle'&&activeProfile!=='traditional';
+ $('db-card-title').textContent=catalogOnly?'Database files':'Select database';
+ $('db-candidate-label').textContent=catalogOnly?'Database file to review':'Database to import';
+ $('upload-db').textContent=catalogOnly?'Choose file to review':'Choose database file';
  $('import-db').textContent=c?.kind==='peq_bundle'?'Import complete PEQ database':'Import selected database';
- $('import-db').disabled=blocked||!c||unsupported||wrongProfile;
+ $('import-db').disabled=blocked||!c||unsupported||wrongProfile||catalogOnly;
  $('db-candidate').disabled=databaseScanning;
- $('db-parts').replaceChildren();$('db-parts').hidden=c?.kind!=='peq_bundle';
+ $('db-sort').disabled=databaseScanning;
+ $('db-parts').replaceChildren();$('db-parts').hidden=catalogOnly||c?.kind!=='peq_bundle';
  if(databaseScanning)$('db-detail').textContent='Checking database files…';
+ else if(catalogOnly)$('db-detail').textContent=(c?c.id+' · '+databaseMetadata(c)+'. ':'')+'TAKP uses its matching pinned database. Use Initialize fresh TAKP database below for a new world; generic SQL imports are unavailable.';
  else if(unsupported)$('db-detail').textContent=c.reason||'This database bundle is incomplete or unsupported. Choose a complete PEQ ZIP.';
  else if(c?.kind==='peq_bundle'){
-  $('db-detail').textContent=wrongProfile?'This split PEQ database belongs to Traditional EQEmu. Stop the runtimes and switch worlds before importing.':'Selected '+databaseArchiveName(c)+'. These five parts import together in the required order:';
+  $('db-detail').textContent=wrongProfile?'This split PEQ database belongs to Traditional EQEmu. Stop the runtimes and switch worlds before importing.':'Selected '+databaseArchiveName(c)+' · '+databaseMetadata(c)+'. These five parts import together in the required order:';
   for(const part of c.parts||[]){const item=document.createElement('li');item.textContent=part;$('db-parts').append(item);}
- }else if(c)$('db-detail').textContent=c.id+' · '+bytes(c.size)+'. Individual SQL file selected; check that it is a full seed before importing.';
+ }else if(c)$('db-detail').textContent=c.id+' · '+databaseMetadata(c)+'. Individual SQL file selected; check that it is a full seed before importing.';
  else $('db-detail').textContent=databaseCandidates.length?'No matching database selected. Clear the search or show individual SQL files and source scripts.':'Choose a complete PEQ ZIP, SQL or SQL.GZ file to import your database.';
  if(typeof renderSeedBundle==='function')renderSeedBundle();
 }
@@ -135,9 +156,8 @@ function renderDatabaseCandidates(preferred=null){
   if(!advanced&&((c.origin==='source'||c.id.startsWith('sources/'))&&!fullSeed||parts.has(c.id)))return false;
   return !query||[c.label,c.id,...(c.parts||[])].filter(Boolean).join(' ').toLowerCase().includes(query);
  });
- const rank=c=>c.kind==='peq_bundle'?0:c.kind==='unsupported_bundle'?1:c.origin==='source'?3:2;
- candidates.sort((a,b)=>rank(a)-rank(b)||a.id.localeCompare(b.id));select.replaceChildren();
- for(const c of candidates){const option=document.createElement('option');option.value=c.id;option.textContent=c.label?c.label+' · '+databaseArchiveName(c):c.id+' · '+bytes(c.size);option.title=c.id;option.disabled=c.kind==='unsupported_bundle';select.append(option);}
+ candidates.sort(databaseCandidateOrder);select.replaceChildren();
+ for(const c of candidates){const option=document.createElement('option');option.value=c.id;option.textContent=(c.label?c.label+' · '+databaseArchiveName(c):c.id)+' · '+bytes(c.size);option.title=c.id+' · '+databaseMetadata(c);option.disabled=c.kind==='unsupported_bundle';select.append(option);}
  if(!candidates.length||preferred===''){const option=document.createElement('option');option.value='';option.textContent=candidates.length?'Choose a database seed below':databaseCandidates.length?'No matching seeds. Show individual files or clear the search.':'Choose or find a database file first';select.prepend(option);}
  if(candidates.some(c=>c.id===previous))select.value=previous;
  else if(preferred!==null)select.value='';
@@ -159,9 +179,11 @@ async function scanDB(preferredFile=null){
   }
   databaseScanning=false;renderDatabaseCandidates(preferred);
   const c=selectedDatabaseCandidate();
-  notice(c?.kind==='peq_bundle'?(activeProfile==='traditional'?'Complete PEQ database selected: all five parts are ready to import.':'Split PEQ selected. Switch to Traditional EQEmu before importing.'):c?.kind==='unsupported_bundle'?c.reason||'This database bundle is incomplete or unsupported.':preferredFile?(c?'Database file selected. Review it below, then import.':'Choose a database seed from the uploaded file below.'):'Database files refreshed. Complete seeds appear first.',c?.kind==='unsupported_bundle');
+  notice(activeProfile==='takp'?'TAKP database files refreshed. Initialize a new world with the pinned TAKP database below.':c?.kind==='peq_bundle'?(activeProfile==='traditional'?'Complete PEQ database selected: all five parts are ready to import.':'Split PEQ selected. Switch to Traditional EQEmu before importing.'):c?.kind==='unsupported_bundle'?c.reason||'This database bundle is incomplete or unsupported.':preferredFile?(c?'Database file selected. Review it below, then import.':'Choose a database seed from the uploaded file below.'):'Database files refreshed. '+($('db-sort').value==='size_desc'?'Largest files appear first.':$('db-sort').value==='modified_desc'?'Most recently modified files appear first.':'Complete seeds appear first.'),c?.kind==='unsupported_bundle');
  }finally{if(generation===databaseScanGeneration){databaseScanning=false;renderDatabaseSelection();}}
 }
+try{const saved=localStorage.getItem('trasc.databaseSort');if(['recommended','size_desc','modified_desc'].includes(saved))$('db-sort').value=saved;}catch{}
+$('db-sort').addEventListener('change',()=>{try{localStorage.setItem('trasc.databaseSort',$('db-sort').value);}catch{}renderDatabaseCandidates();});
 $('db-search').addEventListener('input',()=>renderDatabaseCandidates());
 $('db-show-scripts').addEventListener('change',()=>renderDatabaseCandidates());
 $('db-candidate').addEventListener('change',renderDatabaseSelection);
@@ -182,7 +204,7 @@ action('maps-git',async()=>{await job('import_maps',{url:$('maps-url').value.tri
 action('maps-zip',async()=>{const f=await api('pick',{kind:'maps'});await job('import_maps',{file:f.file});});
 action('scan-db',scanDB);
 action('upload-db',async()=>{const f=await api('pick',{kind:'database'});if(typeof clearSeedBundle==='function')clearSeedBundle();await scanDB(f.path||f.file);});
-action('import-db',async()=>{const c=selectedDatabaseCandidate();if(!c)throw new Error('Choose a database file first.');if(c.kind==='unsupported_bundle')throw new Error(c.reason||'Choose a complete database bundle.');if(c.kind==='peq_bundle'&&activeProfile!=='traditional')throw new Error('Switch to Traditional EQEmu to import this split PEQ database.');await job('import_database',{selection:c.id,replace:$('replace-db').checked});});
+action('import-db',async()=>{if(activeProfile==='takp')throw new Error('Use Initialize fresh TAKP database to deploy its matching pinned database.');const c=selectedDatabaseCandidate();if(!c)throw new Error('Choose a database file first.');if(c.kind==='unsupported_bundle')throw new Error(c.reason||'Choose a complete database bundle.');if(c.kind==='peq_bundle'&&activeProfile!=='traditional')throw new Error('Switch to Traditional EQEmu to import this split PEQ database.');await job('import_database',{selection:c.id,replace:$('replace-db').checked});});
 async function serverAction(operation){
  sessionAction=operation;renderSessionControls();
  try{if(operation==='restart'){await job('stop');await job('start');}else await job(operation);}

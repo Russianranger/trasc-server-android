@@ -1,14 +1,19 @@
-# TRASC 0.6.35 beta — client connection and controller menus
+# TRASC Android 0.6.36 — database sorting
 
-Install over the existing TRASC preview app without uninstalling.
+[Download the Android APK](https://github.com/Russianranger/trasc-server-android/releases/download/v0.6.36/trasc-server-android-0.6.36.apk)
 
-- Client → Login address edits **eqhost.txt**, independently for Custom, Traditional and TAKP. The default for a missing file is 127.0.0.1. Existing files are unchanged until you save; saving changes only the address and retains the port and remaining text. Prepare client preserves the file.
-- The first changed host file is retained in a protected recovery folder. Restore original login file reverts it. The connection screen shows the current address, port and recovery availability.
-- Custom → Client → 4 GB client patch enables Large Address Aware in the selected 32-bit eqgame.exe, as recommended by Triptych upstream for its enlarged spellbook. The protected original can be restored. Already patched clients are left intact. This increases the executable's address-space allowance; available memory still depends on the Wine/runtime environment.
-- Controller menu navigation is enabled by default: LB/RB change visible tabs, D-pad moves focus, A opens a tile or activates a control, and B collapses a tile. A on a text field opens Android's keyboard. Gameplay and controller testing retain their mappings.
+Install over your existing TRASC app. This release is marked Latest on GitHub.
 
-Open the selected server runtime to read or change the client connection or executable, and stop the game client before saving, patching or restoring. Existing protected recovery and session-backup behavior remains available.
+In **Setup → Select database / Database files**, use **Sort database files**:
 
-The APK retains the existing application identity, signing certificate and verified native runtime components. No server rebuild, database import or Wine prefix repair is required to use these launcher features.
+- **Size — largest first** sorts database files by descending size.
+- **Modified — newest first** sorts by descending modification date and time.
+- **Recommended** retains the existing complete-seed-first ordering.
 
-Physical AYN Thor acceptance of the new menus, keyboard and client customization remains pending. Host/browser regression and APK build evidence are recorded separately in the release workflow.
+The dropdown is available in Custom, Traditional and TAKP. Changing sort preserves your selected database, and works with search, individual SQL files and refreshed scans. Selected file details show the size and modification date; unavailable dates appear last when sorting by date. ZIP entries use their recorded member dates, and complete PEQ bundles use the newest component date.
+
+TAKP's sortable file catalog is available for review. New TAKP database deployment continues through its matching Initialize fresh TAKP database action.
+
+Includes the 0.6.35 per-profile eqhost.txt IP controls with protected originals, Custom's reversible 4 GB client patch, and default controller menu navigation. Existing application identity and signing certificate support an in-place update.
+
+Automated regression and APK verification evidence is recorded in the release workflow. Physical Thor acceptance of the new sorting control remains pending.
