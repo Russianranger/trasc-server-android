@@ -6,9 +6,9 @@ set -euo pipefail
 [[ "${GITHUB_EVENT_NAME:?}" == 'push' || "$GITHUB_EVENT_NAME" == 'workflow_dispatch' ]]
 [[ "${GITHUB_SHA:?}" =~ ^[0-9a-f]{40}$ ]]
 repo="$GITHUB_REPOSITORY"
-tag='v0.6.38'
-title='TRASC Android 0.6.38'
-notes='docs/release-0638-notes.md'
+tag='v0.6.39'
+title='TRASC Android 0.6.39'
+notes='docs/release-0639-notes.md'
 mkdir -p dist/publication
 
 require_current_main() {
@@ -41,11 +41,11 @@ import hashlib,json,os,pathlib,re
 p=pathlib.Path('dist')
 sha=lambda path: hashlib.file_digest(path.open('rb'),'sha256').hexdigest()
 manifest=json.loads((p/'release-build.json').read_text())
-apk=p/'trasc-server-android-0.6.38.apk'
+apk=p/'trasc-server-android-0.6.39.apk'
 assert manifest['commit']==os.environ['GITHUB_SHA']
 assert manifest['file']==apk.name and manifest['sha256']==sha(apk)
 assert manifest['bytes']==apk.stat().st_size
-assert manifest['version']=='0.6.38' and manifest['version_code']==87
+assert manifest['version']=='0.6.39' and manifest['version_code']==88
 assert manifest['application_id']=='io.github.russianranger.trasc.preview'
 certificate=pathlib.Path('docs/preview-signing.sha256').read_text().strip()
 assert manifest['signing_certificate_sha256']==certificate
@@ -85,7 +85,7 @@ if ! gh api "repos/$repo/releases/tags/$tag" > dist/publication/release.json 2>/
     python3 - <<'PY'
 import json,pathlib
 p=pathlib.Path('dist/publication')
-matches=[r for page in json.loads((p/'releases.json').read_text()) for r in page if r['tag_name']=='v0.6.38']
+matches=[r for page in json.loads((p/'releases.json').read_text()) for r in page if r['tag_name']=='v0.6.39']
 assert len(matches)<=1, 'Multiple releases have the version tag'
 if matches:
     (p/'release.json').write_text(json.dumps(matches[0]))
@@ -102,7 +102,7 @@ fi
 release_id=$(python3 - <<'PY'
 import json,os,pathlib
 r=json.loads(pathlib.Path('dist/publication/release.json').read_text())
-assert r['tag_name']=='v0.6.38' and r['target_commitish']==os.environ['GITHUB_SHA'], 'Existing release belongs to another commit'
+assert r['tag_name']=='v0.6.39' and r['target_commitish']==os.environ['GITHUB_SHA'], 'Existing release belongs to another commit'
 assert isinstance(r['id'],int) and r['id']>0
 print(r['id'])
 PY
@@ -134,7 +134,7 @@ PY
         require_current_main
         gh api --method DELETE "repos/$repo/releases/assets/$asset_id" > /dev/null
     done < dist/publication/delete-assets.txt
-    for name in trasc-server-android-0.6.38.apk launcher-sources.tar.gz release-build.json native-reuse.json; do
+    for name in trasc-server-android-0.6.39.apk launcher-sources.tar.gz release-build.json native-reuse.json; do
         require_current_main
         curl --fail --silent --show-error --retry 3 \
             -H "Authorization: Bearer ${GH_TOKEN:?}" -H 'Content-Type: application/octet-stream' \
@@ -145,7 +145,7 @@ PY
 import json,pathlib
 p=pathlib.Path('dist/publication')
 r=json.loads((p/'release.json').read_text())
-assert r['draft'] and r['tag_name']=='v0.6.38'
+assert r['draft'] and r['tag_name']=='v0.6.39'
 actual={a['name']:{'size':a['size'],'digest':a['digest']} for a in r['assets']}
 assert actual==json.loads((p/'release-expected.json').read_text()), 'Uploaded release differs from qualified artifact'
 PY
@@ -159,7 +159,7 @@ python3 - <<'PY'
 import json,pathlib
 p=pathlib.Path('dist/publication')
 r=json.loads((p/'release.json').read_text())
-assert not r['draft'] and not r['prerelease'] and r['tag_name']=='v0.6.38'
+assert not r['draft'] and not r['prerelease'] and r['tag_name']=='v0.6.39'
 assert json.loads((p/'latest-release.json').read_text())['id']==r['id'], 'Release is not discoverable as latest'
 actual={a['name']:{'size':a['size'],'digest':a['digest']} for a in r['assets']}
 assert actual==json.loads((p/'release-expected.json').read_text())
@@ -168,13 +168,13 @@ PY
 require_current_main
 if ! gh release view preview >/dev/null 2>&1; then
     gh release create preview --prerelease --latest=false --target "$GITHUB_SHA" \
-        --title 'TRASC Android 0.6.38 compatibility preview' --notes-file docs/preview-notes.md
+        --title 'TRASC Android 0.6.39 compatibility preview' --notes-file docs/preview-notes.md
 fi
 gh api --method PATCH "repos/$repo/git/refs/tags/preview" -f "sha=$GITHUB_SHA" -F force=true > /dev/null
 gh release upload preview dist/trasc-server-android-preview.apk dist/launcher-sources.tar.gz \
     dist/preview-build.json dist/native-reuse.json --clobber
 require_current_main
-gh release edit preview --prerelease=true --latest=false --title 'TRASC Android 0.6.38 compatibility preview' \
+gh release edit preview --prerelease=true --latest=false --title 'TRASC Android 0.6.39 compatibility preview' \
     --notes-file docs/preview-notes.md
 gh api "repos/$repo/releases/tags/preview" > dist/publication/preview-release.json
 gh api "repos/$repo/git/ref/tags/preview" > dist/publication/preview-tag.json
@@ -189,6 +189,6 @@ for name,expected in json.loads((p/'preview-expected.json').read_text()).items()
     assert actual[name]==expected, 'Preview asset differs: '+name
 obj=json.loads((p/'preview-tag.json').read_text())['object']
 assert obj['type']=='commit' and obj['sha']==os.environ['GITHUB_SHA']
-assert json.loads((p/'latest-release.json').read_text())['tag_name']=='v0.6.38', 'Preview displaced latest release'
-print('Published verified 0.6.38 latest release and matching compatibility preview from current main.')
+assert json.loads((p/'latest-release.json').read_text())['tag_name']=='v0.6.39', 'Preview displaced latest release'
+print('Published verified 0.6.39 latest release and matching compatibility preview from current main.')
 PY

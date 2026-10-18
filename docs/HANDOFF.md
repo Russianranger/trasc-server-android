@@ -1,3 +1,17 @@
+# 0.6.39 implementation — Custom LoN import, quest sync and 4 GB verification
+
+**Pending qualification/publication checkpoint.** See [Custom deployment guide](custom-deployment-0639.md) and [release notes/device checklist](release-0639-notes.md). Version/code is prepared as 0.6.39/88; do not claim a downloadable 0.6.39 APK until the exact-source workflow and independent public download verification complete.
+
+Custom Setup now contains **Legends of Norrath Data** and **Quest & Plugin Sync**. LoN accepts SAF folders or nested ZIPs, discovers/stages only the data subtree, mirrors the real Triptych card parser, and resolves `Custom:LoNDataPath` through the existing database's named/default ruleset overlays relative to the effective server-config working directory. It never guesses an unreadable rule. Import repairs all new/changed card data together. **Verify data & card service** distinguishes valid card files from a confirmed fresh live server startup, failed startup, disabled rule and pending restart.
+
+Quest scan uses SHA-256 across the installed source's quests, plugins and Lua modules, with actual new/changed/matching/runtime-only/error/conflict counts, paged metadata/diffs, transfer bytes, explicit replacement/conflict approval and source freshness. All distinct configured Lua module paths plus canonical `quests/lua_modules` are maintained. Runtime-only files survive. Both actions have exclusive transfer/profile/process guards, protected originals, verified atomic replacements, durable manifests and interrupted-transfer rollback/recovery under `backups/custom-deployment`. No DB import/migration/player-data modification, executable patch or server rebuild is performed by content synchronization; Traditional/TAKP keep their content.
+
+Real Triptych source `38a4f2ad03203cb2f12dbff26fd613cc47efba0a` host inspection: 10,424 unique files / 19,119,637 bytes (10,317 quests, 64 plugins, 43 Lua modules). Matching scan: 10,424 Matching / zero Errors. Controlled delta: one New, one Changed and one preserved Runtime Only; verified two-file / 41,239-byte sync. A subsequent runtime edit was detected as a local conflict. Real LoN host parser evidence: 6,027 parsed cards, zero unreadable records, 16 booster sets. Exact October 9/16 witness filenames and database/server-code caveats are listed in the guide. These host results are not the user's device counts or proof of Thor service initialization.
+
+The greyed-out 4 GB action for an already LAA-enabled supported client is changed to idempotent **Verify 4 GB patch**, with explicit blocked-state reasons. This is separate from quest deployment and the official NTCore downloader. Physical AYN Thor SAF, synchronization/rollback, card-service restart and patch-control acceptance remain pending, alongside final clean release CI, Android lint/signing/native parity and publication evidence.
+
+---
+
 # 0.6.38 published as Latest — device-reported client status repair
 
 Source `67627ef586d5617fce2e14185f5d70a50e677e50`, release run [39146525560](https://github.com/Russianranger/trasc-server-android/actions/runs/39146525560), attempt 1 succeeded. See [release-proof-0638.json](release-proof-0638.json), [diagnosis and retry guide](client-status-0638.md) and [release notes](release-0638-notes.md).

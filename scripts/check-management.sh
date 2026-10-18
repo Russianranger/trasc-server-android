@@ -26,6 +26,8 @@ if ! command -v javac >/dev/null; then compiler=(java -m jdk.compiler/com.sun.to
     app/src/main/java/io/github/russianranger/trasc/StreamSessionArchive.java \
     tests/java/io/github/russianranger/trasc/StreamSessionHostTest.java \
     app/src/main/java/io/github/russianranger/trasc/SessionTransfer.java \
+    app/src/main/java/io/github/russianranger/trasc/LonInputTransfer.java \
+    tests/java/io/github/russianranger/trasc/LonInputTransferHostTest.java \
     app/src/main/java/io/github/russianranger/trasc/SessionPreferences.java \
     app/src/main/java/io/github/russianranger/trasc/AllProfileSwap.java \
     tests/java/io/github/russianranger/trasc/AllSessionHostTest.java \
@@ -67,6 +69,7 @@ java -cp "$classes" io.github.russianranger.trasc.LogRetentionHostTest
 java -cp "$classes" io.github.russianranger.trasc.ManagementHostTest
 java -Xmx96m -cp "$classes" io.github.russianranger.trasc.AllSessionHostTest
 java -Xmx48m -cp "$classes" io.github.russianranger.trasc.StreamSessionHostTest
+java -Xmx32m -cp "$classes" io.github.russianranger.trasc.LonInputTransferHostTest
 if [[ ${TRASC_STREAM_HEAVY_TESTS:-0} == 1 ]]; then
     java -Xmx48m -cp "$classes" io.github.russianranger.trasc.StreamSessionHostTest --large
     java -Xmx48m -cp "$classes" io.github.russianranger.trasc.StreamSessionHostTest --zip64

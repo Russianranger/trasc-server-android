@@ -1,4 +1,4 @@
-name: Build NTCore patch download release
+name: Build Custom content deployment release
 on:
   push:
     branches: [main]
@@ -24,10 +24,10 @@ jobs:
           python3 - <<'PY'
           import pathlib,re
           gradle=pathlib.Path('app/build.gradle').read_text()
-          assert re.search(r"versionName\s+'0\.6\.38'", gradle)
-          assert re.search(r'versionCode\s+87\b', gradle)
-          assert re.search(r"^VERSION = '0\.6\.38'$", pathlib.Path('backend/engine.py').read_text(), re.M)
-          assert pathlib.Path('docs/release-0638-notes.md').is_file()
+          assert re.search(r"versionName\s+'0\.6\.39'", gradle)
+          assert re.search(r'versionCode\s+88\b', gradle)
+          assert re.search(r"^VERSION = '0\.6\.39'$", pathlib.Path('backend/engine.py').read_text(), re.M)
+          assert pathlib.Path('docs/release-0639-notes.md').is_file()
           PY
       - uses: actions/setup-java@v4
         with:
@@ -74,7 +74,7 @@ jobs:
       - name: Install regression dependencies
         run: |
           sudo apt-get update
-          sudo apt-get install -y mariadb-server binutils
+          sudo apt-get install -y mariadb-server binutils g++ zlib1g-dev
           python3 -m pip install lupa==2.6
           npm install --no-save --package-lock=false playwright@1.55.0
           npx playwright install --with-deps chromium
@@ -96,19 +96,19 @@ jobs:
           PY
       - name: Package the release and matching launcher/native source attribution
         run: |
-          cp app/build/outputs/apk/debug/app-debug.apk dist/trasc-server-android-0.6.38.apk
-          cp dist/trasc-server-android-0.6.38.apk dist/trasc-server-android-preview.apk
+          cp app/build/outputs/apk/debug/app-debug.apk dist/trasc-server-android-0.6.39.apk
+          cp dist/trasc-server-android-0.6.39.apk dist/trasc-server-android-preview.apk
           mkdir -p runtime-work/source-bundle/launcher-source
           cp runtime-work/baseline/launcher-sources.tar.gz runtime-work/source-bundle/launcher-source/native-sources-0.6.36.tar.gz
-          git archive --format=tar.gz "$GITHUB_SHA" > runtime-work/source-bundle/launcher-source/launcher-code-0.6.38.tar.gz
+          git archive --format=tar.gz "$GITHUB_SHA" > runtime-work/source-bundle/launcher-source/launcher-code-0.6.39.tar.gz
           cp dist/native-reuse.json backend-assets/traditional-camera-bundle.json THIRD_PARTY_NOTICES.md runtime-work/source-bundle/launcher-source/
           tar -czf dist/launcher-sources.tar.gz -C runtime-work/source-bundle launcher-source
           python3 - <<'PY'
           import hashlib,json,os,pathlib
-          p=pathlib.Path('dist/trasc-server-android-0.6.38.apk')
+          p=pathlib.Path('dist/trasc-server-android-0.6.39.apk')
           sha=lambda path: hashlib.file_digest(path.open('rb'),'sha256').hexdigest()
           manifest={'commit':os.environ['GITHUB_SHA'],'sha256':sha(p),'file':p.name,'bytes':p.stat().st_size,
-            'version':'0.6.38','version_code':87,'application_id':'io.github.russianranger.trasc.preview',
+            'version':'0.6.39','version_code':88,'application_id':'io.github.russianranger.trasc.preview',
             'signing_certificate_sha256':pathlib.Path('docs/preview-signing.sha256').read_text().strip(),
             'build_run':int(os.environ['GITHUB_RUN_ID']),'native_payload_reused_from':'0.6.36',
             'native_reuse_manifest_sha256':sha(pathlib.Path('dist/native-reuse.json')),
@@ -122,7 +122,7 @@ jobs:
         with:
           name: ntcore-release
           path: |
-            dist/trasc-server-android-0.6.38.apk
+            dist/trasc-server-android-0.6.39.apk
             dist/trasc-server-android-preview.apk
             dist/launcher-sources.tar.gz
             dist/release-build.json

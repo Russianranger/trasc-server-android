@@ -1,8 +1,8 @@
 # TRASC Server for Android
 
-**Latest APK: [TRASC Android 0.6.38](https://github.com/Russianranger/trasc-server-android/releases/download/v0.6.38/trasc-server-android-0.6.38.apk)** · [Release page](https://github.com/Russianranger/trasc-server-android/releases/latest)
+**Latest APK: [TRASC Android 0.6.39](https://github.com/Russianranger/trasc-server-android/releases/download/v0.6.39/trasc-server-android-0.6.39.apk)** · [Release page](https://github.com/Russianranger/trasc-server-android/releases/latest)
 
-Fixes the client-status check that kept the patch controls disabled. **Client → Custom client · 4 GB patch → Download NTCore 4 GB Patch** saves the official Windows patcher beside your imported Custom client's `eqgame.exe`. Downloading does not run the patcher; **Apply 4 GB patch** enables address support directly, with a protected original for Restore. Setup retains database sorting across all three profiles. [Release notes](docs/release-0638-notes.md). Install over your current app.
+Custom **Setup → Legends of Norrath Data** imports client card data from Android folders or nested ZIPs into the server's resolved destination. **Setup → Quest & Plugin Sync** previews SHA-256 changes from your selected Triptych source and deploys quests, plugins and Lua modules with replacement approval, protected backups and interrupted-transfer recovery. Runtime-only files and player data are preserved. The Custom client's 4 GB control now offers **Verify 4 GB patch** when address support is already enabled. [Release notes and device checklist](docs/release-0639-notes.md). Install over your current app; restart the server after content deployment to verify LoN initialization.
 
 **Russianranger foreword;**
 

@@ -192,7 +192,11 @@ class ConnectionTests(unittest.TestCase):
 
     def test_already_patched_import_creates_no_spurious_original(self):
         self.exe.write_bytes(pe(patched=True))
+        self.assertTrue(self.state()['patch']['can_apply'])
+        before = self.exe.stat()
         self.mutate('client_4gb_apply')
+        self.assertEqual(self.exe.read_bytes(), pe(patched=True))
+        self.assertEqual(self.exe.stat().st_ino, before.st_ino)
         self.assertFalse((self.work/'backups').exists())
         self.assertFalse(self.state()['patch']['can_restore'])
 

@@ -91,3 +91,7 @@ The native presentation/input helper statically links the MIT/X11-licensed libXd
 ## Optional TAKP classic skeleton assets (0.6.25)
 
 The reversible model option adapts [EqSkelePatcher](https://github.com/Russianranger/EqSkelePatcher/tree/c3382bc492a9810bcbea50e78cda4463f514c95b), copyright (c) 2023 Nick Gal, MIT licensed. Its exact source, MIT notice and provenance are bundled under `takp-skeleton-patcher/` and retained in `backend/takp-skeleton-patcher/` in the source archive. The bounded Python adaptation changes only the selected WLD string tables inside a user-imported client's model archives. It redistributes no EverQuest model assets and installs no third-party executable. The primary PFS/S3D and WLD format references are recorded in the provenance file.
+
+## Triptych LoN loader test reference
+
+`tests/fixtures/lon-loader-reference.cpp` contains an attributed Reader/ParseArchetype test reference from Russianranger/Triptych-Triumvirate, commit 38a4f2ad03203cb2f12dbff26fd613cc47efba0a (`Release-NMS-Server/world/lon_service.cpp`), under its GPL version 3 terms. It is used for host-only parser parity tests with synthetic records; client card assets are not bundled in the APK. The reference and attribution are included in this release's matching launcher source archive.

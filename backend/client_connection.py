@@ -436,7 +436,9 @@ def status(engine, args=None):
         path = lookup(root, executable)
         raw = read(path, MAX_EXE)
         _, patched = pe_info(raw)
-        patch.update(eligible=True, exe=path.name, patched=patched, revision=sha(raw), can_apply=not patched)
+        # Verification is also useful for clients shipped with LAA already set.
+        # mutate() treats that state as an exact no-op and invents no backup.
+        patch.update(eligible=True, exe=path.name, patched=patched, revision=sha(raw), can_apply=True)
         record = recovery(engine, '4gb', path, identity)
         if record:
             patch['backup_exists'] = True

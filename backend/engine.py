@@ -36,6 +36,9 @@ import client_dll
 import client_toolchain
 import client_settings
 import client_connection
+import custom_deployment
+import quest_sync
+import lon_data
 import player_data
 import spire
 import boat_trial
@@ -54,7 +57,7 @@ import modern_bot_bridge
 import source_updates
 from log_retention import rotate
 
-VERSION = '0.6.38'
+VERSION = '0.6.39'
 DEFAULT_REPO = 'https://github.com/Russianranger/Triptych-Triumvirate'
 BINARIES = ('world', 'zone', 'loginserver', 'shared_memory', 'ucs', 'eqlaunch', 'queryserv', 'export_client_files')
 CLIENT_FILES = ('spells_us.txt', 'dbstr_us.txt', 'SkillCaps.txt', 'BaseData.txt')
@@ -220,6 +223,13 @@ class Engine(ManagedContent):
         except (ValueError, OSError) as error:
             self.source_recovery_error = str(error)
             self.log('Source update recovery needs attention: ' + str(error))
+        self.custom_deployment_recovery_error = ''
+        if profile == 'custom':
+            try:
+                custom_deployment.recover(self)
+            except (ValueError, OSError) as error:
+                self.custom_deployment_recovery_error = str(error)
+                self.log('Custom content recovery needs attention: ' + str(error))
         if profile == 'takp':
             try:
                 self.recover_takp_skeletons()
@@ -591,10 +601,12 @@ class Engine(ManagedContent):
         if result.returncode: raise ValueError(result.stderr.strip()[-3000:])
         return result.stdout
 
-    def ensure_db(self):
+    def ensure_db(self, existing_only=False):
         with self.process_lock:
-            if self.db and self.db.poll() is None: return
             datadir = self.work / 'database'
+            if existing_only and (not self.config.get('database_imported') or not (datadir / 'mysql').is_dir()):
+                raise ValueError('An existing imported Custom database is required to read the active LoN rules; no database was created or imported')
+            if self.db and self.db.poll() is None: return
             if not (datadir / 'mysql').exists():
                 # Android's hostname need not resolve, including during offline setup.
                 # --force skips the installer's DNS prerequisite; it does not ignore SQL errors.
@@ -605,12 +617,13 @@ class Engine(ManagedContent):
             if not re.fullmatch(r'[0-9a-f]{40}', self.config['root_password']):
                 raise ValueError('Invalid managed root credential')
             init = self.work / 'run/mysql-init.sql'
-            init.write_text("ALTER USER 'root'@'localhost' IDENTIFIED BY '" + self.config['root_password'] + "';\nDELETE FROM mysql.global_priv WHERE User='' OR (User='root' AND Host<>'localhost');\nFLUSH PRIVILEGES;\n")
-            init.chmod(0o600)
+            if not existing_only:
+                init.write_text("ALTER USER 'root'@'localhost' IDENTIFIED BY '" + self.config['root_password'] + "';\nDELETE FROM mysql.global_priv WHERE User='' OR (User='root' AND Host<>'localhost');\nFLUSH PRIVILEGES;\n")
+                init.chmod(0o600)
             rotate(self.work/'logs/mariadb.log')
             log = open(self.work / 'logs/mariadb.log', 'ab')
             self.db = subprocess.Popen(['mariadbd', '--no-defaults', '--user=root', '--datadir=' + str(datadir),
-                '--init-file=' + str(init),
+                *([] if existing_only else ['--init-file=' + str(init)]),
                 '--socket=' + str(self.work / 'run/mysql.sock'), '--pid-file=' + str(self.work / 'run/mysql.pid'),
                 '--bind-address=127.0.0.1', '--port=' + str(self.config['db_port']), '--skip-name-resolve',
                 '--innodb-buffer-pool-size=128M', '--innodb-flush-method=fsync', '--innodb-use-native-aio=0',
@@ -623,6 +636,8 @@ class Engine(ManagedContent):
                     break
                 except (ValueError, subprocess.TimeoutExpired): time.sleep(0.5)
             else: raise ValueError('MariaDB did not become ready')
+            if existing_only:
+                return  # This path issues SELECT readiness/rule lookups only.
             if not re.fullmatch(r'[0-9a-f]{40}', self.config['db_password']):
                 raise ValueError('Invalid managed database credential')
             password = "'" + self.config['db_password'] + "'"
@@ -890,7 +905,7 @@ class Engine(ManagedContent):
             if p.name.startswith(('patch_', 'opcodes', 'mail_opcodes', 'login_opcodes')):
                 target = runtime / p.name
                 if not target.exists(): shutil.copy2(p, target)
-        if not (runtime / 'eqemu_config.json').exists():
+        if not (runtime / 'eqemu_config.json').exists() and not (self.work / 'eqemu_config.json').exists():
             example = src / 'eqemu_config.json.example'
             if example.exists(): shutil.copy2(example, runtime / 'eqemu_config.json')
         if not (runtime / 'login.json').exists():
@@ -902,6 +917,10 @@ class Engine(ManagedContent):
         if self.profile == 'traditional': return traditional_runtime.write_config(self)
         runtime = self.work / 'server'
         cfg_path = runtime / 'eqemu_config.json'
+        if not cfg_path.exists() and (self.work / 'eqemu_config.json').exists():
+            cfg_path = self.work / 'eqemu_config.json'
+        custom_deployment.confined(self, cfg_path)
+        existing_config = cfg_path.exists()
         cfg = json.loads(cfg_path.read_text()) if cfg_path.exists() else {}
         server = cfg.setdefault('server', {})
         world = server.setdefault('world', {})
@@ -918,7 +937,14 @@ class Engine(ManagedContent):
         server['zones'] = {'defaultstatus': 0, 'ports': {'low': 7000, 'high': 7100}}
         server['ucs'] = {'host': self.config['ip'], 'port': 7778}
         server['queryserver'] = {'host': '127.0.0.1', 'port': 9003}
-        server['directories'] = {'maps': 'maps', 'quests': 'quests', 'plugins': 'quests/plugins', 'lua_modules': 'quests/lua_modules', 'patches': '.', 'opcodes': '.', 'shared_memory': 'shared/', 'logs': 'logs'}
+        directories = server.setdefault('directories', {})
+        if not isinstance(directories, dict): raise ValueError('Invalid server directory configuration')
+        # Preserve reviewed quest/plugin/module targets, including search-path arrays.
+        for key, value in {'maps': 'maps', 'quests': 'quests',
+                           'plugins': 'plugins' if existing_config else 'quests/plugins',
+                           'lua_modules': 'lua_modules' if existing_config else 'quests/lua_modules',
+                           'patches': '.', 'opcodes': '.', 'shared_memory': 'shared/', 'logs': 'logs'}.items():
+            directories.setdefault(key, value)
         server.setdefault('launcher', {})['exe'] = str(runtime / 'bin/zone')
         server['auto_database_updates'] = True
         atomic_json(cfg_path, cfg)
@@ -1263,9 +1289,10 @@ class Engine(ManagedContent):
         src=safe_path(self.work,args['path'],True)
         if not any(src.is_relative_to(self.work / x) for x in ('server','maps','sources','incoming','backups','exports')): raise ValueError('This location is managed by the app')
         dest=safe_path(self.work,args['destination'])
-        protected = self.work / client_connection.RECOVERY
-        if dest.is_relative_to(protected) or (args.get('action') == 'move' and (src.is_relative_to(protected) or protected.is_relative_to(src))):
-            raise ValueError('Client connection originals are protected. Use the client Restore action to revert them.')
+        for recovery in (client_connection.RECOVERY, custom_deployment.RECOVERY):
+            protected = self.work / recovery
+            if dest.is_relative_to(protected) or (args.get('action') == 'move' and (src.is_relative_to(protected) or protected.is_relative_to(src))):
+                raise ValueError('Recovery originals and deployment records are protected. Use the matching Restore or recovery action.')
         if not any(dest.is_relative_to(self.work / x) for x in ('server','maps','incoming','backups','exports')): raise ValueError('Choose a server, maps, incoming, backups or exports destination')
         if dest.exists(): raise ValueError('Destination already exists; move it to a backup path first')
         if src==dest or dest.is_relative_to(src): raise ValueError('Invalid destination')
@@ -1321,11 +1348,33 @@ class Engine(ManagedContent):
             'processes':{name:{'pid':p.pid,'running':p.poll() is None,'exit':p.poll()} for name,p in self.processes.items()},
             'jobs':self.jobs,'free_bytes':shutil.disk_usage(self.work).free,'running':self.server_running(),
             'nektulos':self.nektulos_status(), 'client':client,
-            'source_update':source_updates.status(self)}
+            'source_update':source_updates.status(self),
+            'custom_deployment_recovery_error':getattr(self, 'custom_deployment_recovery_error', '') if self.profile == 'custom' else ''}
 
     def dispatch(self,op,args):
         if args.get('__profile', self.profile) != self.profile:
             raise ValueError('World profile changed. Refresh before continuing.')
+        if self.profile == 'custom' and op in ('start', 'deploy', 'deploy_update', 'import_source', 'source_update_apply'):
+            custom_deployment.recover(self)
+            self.custom_deployment_recovery_error = ''
+        if op == 'custom_deployment_recover':
+            custom_deployment.require_custom(self)
+            custom_deployment.require_stopped(self)
+            result = custom_deployment.recover(self)
+            self.custom_deployment_recovery_error = ''
+            return dict(result, profile=self.profile, message='Custom content recovery completed; scan again before making further changes.')
+        if op.startswith('quest_sync_'):
+            methods = {'status': quest_sync.status, 'scan': quest_sync.scan, 'files': quest_sync.files,
+                       'diff': quest_sync.diff, 'apply': quest_sync.apply}
+            method = methods.get(op.removeprefix('quest_sync_'))
+            if method is None: raise ValueError('Unknown quest synchronization operation')
+            return method(self, args)
+        if op.startswith('lon_data_'):
+            methods = {'status': lon_data.status, 'scan': lon_data.scan, 'files': lon_data.files,
+                       'apply': lon_data.apply, 'verify': lon_data.verify}
+            method = methods.get(op.removeprefix('lon_data_'))
+            if method is None: raise ValueError('Unknown Legends of Norrath operation')
+            return method(self, args)
         if (self.work / 'run/source-update.json').exists() and op in ('import_source', 'source_update_preview', 'source_update_apply', 'build', 'build_update', 'deploy', 'deploy_update', 'start'):
             source_updates.recover(self)
         if op in ('takp_skeleton_status', 'set_takp_skeletons') and self.profile != 'takp':
@@ -1408,7 +1457,7 @@ def serve(work, port, token, profile='custom'):
                     threading.Thread(target=server.shutdown,daemon=True).start()
                     result={'message':'Stopping all processes and database'}
                 elif op=='cancel': engine.cancel.set(); result={'message':'Cancellation requested'}
-                elif op in ('state','files','logs','databases','client_dll_status','client_dll_download_info','ferry_diagnostics','traditional_status','takp_status','era_status','bots_status','bots_characters','bots_roster','source_update_status','takp_skeleton_status','client_connection_status'): result=engine.dispatch(op,args)
+                elif op in ('state','files','logs','databases','client_dll_status','client_dll_download_info','ferry_diagnostics','traditional_status','takp_status','era_status','bots_status','bots_characters','bots_roster','source_update_status','takp_skeleton_status','client_connection_status','quest_sync_status','quest_sync_files','quest_sync_diff','lon_data_status','lon_data_files'): result=engine.dispatch(op,args)
                 else: result=engine.enqueue(op,args)
                 payload=json.dumps({'ok':True,'result':result}).encode()
             except Exception as e:
