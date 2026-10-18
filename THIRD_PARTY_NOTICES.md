@@ -95,3 +95,7 @@ The reversible model option adapts [EqSkelePatcher](https://github.com/Russianra
 ## Triptych LoN loader test reference
 
 `tests/fixtures/lon-loader-reference.cpp` contains an attributed Reader/ParseArchetype test reference from Russianranger/Triptych-Triumvirate, commit 38a4f2ad03203cb2f12dbff26fd613cc47efba0a (`Release-NMS-Server/world/lon_service.cpp`), under its GPL version 3 terms. It is used for host-only parser parity tests with synthetic records; client card assets are not bundled in the APK. The reference and attribution are included in this release's matching launcher source archive.
+
+## 1,440-slot RoF2 compatibility patch
+
+`backend/client_spellbook.py` ports the byte-guarded patch algorithm and 115-site table from [thezerodivide/SpellbookSizeUpdate](https://github.com/thezerodivide/SpellbookSizeUpdate), commit `38a153d273f448ad1953d0b89497470443fd590e`, under the MIT License (copyright 2026 thezerodivide). The full notice is retained in the module and the independent reference fixture `tests/fixtures/spellbook-patch-reference.js`. Changes integrate SHA-256 qualification, protected recovery, atomic writes, process/profile guards and Android launcher controls. No EverQuest executable or client assets are distributed.

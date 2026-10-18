@@ -326,6 +326,16 @@ def pe_info(raw):
     return pe + 22, bool(flags & 0x20)
 
 
+def has_spellbook_section(raw):
+    # This guard only prevents a legacy whole-file restore from removing the
+    # expanded profile parser. It does not qualify arbitrary patched binaries.
+    pe_info(raw)
+    pe = struct.unpack_from('<I', raw, 0x3c)[0]
+    sections = struct.unpack_from('<H', raw, pe + 6)[0]
+    table = pe + 24 + struct.unpack_from('<H', raw, pe + 20)[0]
+    return any(raw[table+i*40:table+i*40+8].rstrip(b'\0') == b'.sbook' for i in range(sections))
+
+
 def recovery(engine, kind, path, identity):
     marker = confined(engine, RECOVERY + '/' + kind + '-' + identity + '.json')
     raw = read(marker, 131072, missing=True)
@@ -439,8 +449,12 @@ def status(engine, args=None):
         # Verification is also useful for clients shipped with LAA already set.
         # mutate() treats that state as an exact no-op and invents no backup.
         patch.update(eligible=True, exe=path.name, patched=patched, revision=sha(raw), can_apply=True)
+        expanded = has_spellbook_section(raw)
         record = recovery(engine, '4gb', path, identity)
-        if record:
+        if expanded:
+            patch['warning'] = 'The 1,440-slot client patch includes 4 GB support. Use its separate Restore action before restoring an older executable.'
+            patch['backup_exists'] = bool(record)
+        elif record:
             patch['backup_exists'] = True
             if sha(raw) in record['accepted']:
                 patch['can_restore'] = sha(raw) != record['original_sha256']
@@ -467,6 +481,8 @@ def mutate(engine, operation, args):
         raise ValueError('The client file changed. Reload connection settings before continuing.')
     if operation == 'client_4gb_download':
         return download_patch(engine, root, executable, identity, revision)
+    if operation == 'client_4gb_restore' and has_spellbook_section(raw):
+        raise ValueError('Restore the 1,440-slot client patch through its own tile before restoring the older 4 GB executable backup.')
     if operation.endswith('_restore'):
         record = recovery(engine, kind, path, identity)
         if not record:

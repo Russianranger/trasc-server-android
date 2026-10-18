@@ -1,3 +1,17 @@
+# 0.6.41 qualification in progress — Custom client world-entry compatibility
+
+Version/code 0.6.41/90 is being prepared from current main. Publication and physical repaired-world-entry acceptance are pending; do not infer a published APK from the planned download path. See [world-entry diagnosis and repair steps](client-world-entry-0641.md) and [release notes](release-0641-notes.md).
+
+Device follow-up from logs-5053492160817103633.zip on October 18 confirms **both 0.6.40 content deployments succeeded**: LoN apply completed 19:21:48 UTC, quest sync completed 19:25:04 UTC. Fresh world startup at 19:32:32 loaded 6,027 cards with zero unreadable records, 16 booster sets, 46 starter decks and 179 scenarios, then initialized the card service on port 15792. This establishes physical LoN service acceptance for that run and supersedes the earlier pending service check. Neriakc booted and accepted zone entry at 19:33:57; the client stopped after MSG_SEND_PC/items timestamp at 19:33:58. The installed DLL remains the September 26 build, re-deployed rather than rebuilt on October 18.
+
+The exact upstream contract in Triptych Release-NMS-Server/docs/spellbook-1440.md explains the incompatible 1,440-slot player profile: an older 720-slot executable stops mid-profile and fails to enter the world. LAA/4 GB alone never installed the separate spellbook code/storage expansion. This release adds a checksum-gated executable repair with protected original/restore, selected-versus-deployed server compatibility evidence and installed/staged DLL freshness reporting. It also honors the newly added nms_vorbis.c per-file C compilation setting. No server downgrade, database reimport/migration or player-data alteration is involved.
+
+Deployed ABI evidence requires the actual ARM64 zone hash to match build-info.json. Exact reviewed source revisions are recognized; future build receipts retain the selected spellbook header hash/constant. Downloading new source alone supplies an indication and cannot make an older deployed server require the new client. Traditional/TAKP remain isolated. The release workflow retains the checksum-pinned 0.6.36 native/source baseline, preserved signing key/certificate and exact-main publication guards. A bounded post-creation version-tag read retry addresses the 0.6.40 publisher's observed transient 404 without changing source checks or rebuilding a qualified artifact.
+
+Local final backend regression passes all 806 tests (30 database/Lua dependency skips); JVM management/SAF/archive tests, DirectX extraction checks and the new full spellbook browser suite pass. Clean CI, all-browser regression and publication verification remain pending. Do not claim successful physical world entry until the user retests the executable/DLL pair.
+
+---
+
 # 0.6.40 published as Latest — deployment confirmation repair
 
 Source `9db50342dbd94786f8ee786020751353c9d63be1`, release run [39157216552](https://github.com/Russianranger/trasc-server-android/actions/runs/39157216552), attempt 2 succeeded. See [release-proof-0640.json](release-proof-0640.json), [release notes/device checklist](release-0640-notes.md) and [Custom deployment guide](custom-deployment-0639.md).

@@ -1,8 +1,8 @@
 # TRASC Server for Android
 
-**Latest APK: [TRASC Android 0.6.40](https://github.com/Russianranger/trasc-server-android/releases/download/v0.6.40/trasc-server-android-0.6.40.apk)** · [Release page](https://github.com/Russianranger/trasc-server-android/releases/latest)
+**Latest APK: [TRASC Android 0.6.41](https://github.com/Russianranger/trasc-server-android/releases/download/v0.6.41/trasc-server-android-0.6.41.apk)** · [Release page](https://github.com/Russianranger/trasc-server-android/releases/latest)
 
-Fixes the Custom Setup confirmation that could silently cancel **Synchronize Files** and **Import / repair card data** in Android WebView. Review the preview, press the deployment action and approve the visible confirmation to start copying. **Server file: Not deployed yet** describes an individual file awaiting deployment. SHA-256 verification, protected replacement backups, local-conflict approval and runtime-only preservation remain included. [Release notes and device checklist](docs/release-0640-notes.md). Install over your current app; restart the server after content deployment and use **Verify data & card service** to check LoN initialization.
+Adds **Custom Client → 1,440-slot spellbook compatibility** to repair the character-select world-entry freeze against the October 16 Triptych server. The 4 GB action alone does not expand the spellbook. Apply the verified executable repair, then **Compile dinput8.dll → Deploy staged DLL** from the selected current source. Protected originals, hash verification and explicit restore remain available; unknown executables are refused. Existing quests, LoN data, players and all three profiles are preserved. [Exact repair steps](docs/client-world-entry-0641.md) · [Release notes and device checklist](docs/release-0641-notes.md).
 
 **Russianranger foreword;**
 

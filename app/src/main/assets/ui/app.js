@@ -17,7 +17,7 @@ Object.assign(operationLabels,{activate_client_ui:'Saving client UI skin',restor
 Object.assign(operationLabels,{bots_storage_preview:'Reviewing bot storage',bots_storage_enable:'Backing up and enabling bot storage',bots_preview:'Reviewing companions',bots_generate:'Generating companions',bots_socials_preview:'Reviewing summon buttons',bots_socials_install:'Saving summon buttons',bots_socials_restore:'Restoring character buttons'});
 Object.assign(operationLabels,{source_update_preview:'Checking source update',source_update_apply:'Applying reviewed source changes',build_update:'Building updated source',deploy_update:'Deploying updated binaries',set_takp_skeletons:'Updating skeleton models'});
 Object.assign(operationLabels,{takp_setup:'Downloading TAKP world files',takp_initialize_database:'Initializing TAKP database and playerbots',takp_create_account:'Creating local TAKP account'});
-Object.assign(operationLabels,{quest_sync_scan:'Scanning quests and plugins',quest_sync_apply:'Synchronizing reviewed scripts',lon_data_scan:'Validating Legends of Norrath data',lon_data_apply:'Installing reviewed Legends of Norrath data',lon_data_verify:'Checking deployed card data',custom_deployment_recover:'Recovering Custom content'});
+Object.assign(operationLabels,{client_spellbook_apply:'Applying the 1,440-slot client patch',client_spellbook_restore:'Restoring the original client executable',quest_sync_scan:'Scanning quests and plugins',quest_sync_apply:'Synchronizing reviewed scripts',lon_data_scan:'Validating Legends of Norrath data',lon_data_apply:'Installing reviewed Legends of Norrath data',lon_data_verify:'Checking deployed card data',custom_deployment_recover:'Recovering Custom content'});
 function operationLabel(operation){return operationLabels[operation]||operation.replaceAll('_',' ');}
 // Keep scrolled/focused controls clear of the sticky runtime panel in either orientation.
 const runtimeToolbar=document.querySelector('.runtime-toolbar');
@@ -59,6 +59,7 @@ function renderClientActivity(s){
  if(typeof renderSourceUpdatesControls==='function')renderSourceUpdatesControls();
  if(typeof renderTakpSkeletonControls==='function')renderTakpSkeletonControls();
  if(typeof renderClientConnectionControls==='function')renderClientConnectionControls();
+ if(typeof renderSpellbookCompatibilityControls==='function')renderSpellbookCompatibilityControls();
  if(typeof renderCustomDeploymentControls==='function')renderCustomDeploymentControls();
 }
 function renderSessionControls(){
@@ -83,6 +84,7 @@ function renderSessionControls(){
  if(typeof renderSourceUpdatesControls==='function')renderSourceUpdatesControls();
  if(typeof renderTakpSkeletonControls==='function')renderTakpSkeletonControls();
  if(typeof renderClientConnectionControls==='function')renderClientConnectionControls();
+ if(typeof renderSpellbookCompatibilityControls==='function')renderSpellbookCompatibilityControls();
  if(typeof renderCustomDeploymentControls==='function')renderCustomDeploymentControls();
  renderDatabaseSelection();
 }
@@ -110,7 +112,7 @@ async function poll(){
   finally{renderSessionControls();renderOverview();}})(),
   (async()=>{try{if(typeof clientRuntimeState==='function')await clientRuntimeState();else renderClientActivity(await api('client_native_state',{},10000));}
    catch(e){lastClientNative=null;if(typeof syncProfileControls==='function')syncProfileControls();if(typeof cleanupControls==='function')cleanupControls();statusBadge('client-badge','Client · Status unavailable','unknown');}})()
- ]);}finally{polling=false;if(typeof checkClientConnectionStatus==='function')checkClientConnectionStatus();if(typeof checkCustomDeploymentStatus==='function')checkCustomDeploymentStatus();if(typeof checkEraStatus==='function')checkEraStatus();}
+ ]);}finally{polling=false;if(typeof checkClientConnectionStatus==='function')checkClientConnectionStatus();if(typeof checkSpellbookCompatibilityStatus==='function')checkSpellbookCompatibilityStatus();if(typeof checkCustomDeploymentStatus==='function')checkCustomDeploymentStatus();if(typeof checkEraStatus==='function')checkEraStatus();}
 }
 document.addEventListener('visibilitychange',()=>{if(!document.hidden)poll();});
 function selectedDatabaseCandidate(){return databaseCandidates.find(c=>c.id===$('db-candidate').value);}

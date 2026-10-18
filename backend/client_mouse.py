@@ -43,8 +43,11 @@ def adapter_mode(request, client, marker):
     if not request.get('native_dinput8', True):
         return 'needs_dll'
     exe = client / request['executable']
-    if not exe.is_file() or exe.stat().st_size != 8774656 or hashlib.sha256(exe.read_bytes()).hexdigest() != EXE_SHA256:
-        return 'unsupported_executable'
+    stock = exe.is_file() and not exe.is_symlink() and exe.stat().st_size == 8774656 and hashlib.sha256(exe.read_bytes()).hexdigest() == EXE_SHA256
+    if not stock:
+        import client_spellbook
+        if not client_spellbook.recognizes_supported_executable(exe):
+            return 'unsupported_executable'
     dlls = [p for p in client.iterdir() if p.name.lower() == 'dinput8.dll' and p.is_file() and not p.is_symlink()]
     if len(dlls) != 1 or dlls[0].stat().st_size > 64*1024**2 or marker.encode() not in dlls[0].read_bytes():
         return 'needs_dll'

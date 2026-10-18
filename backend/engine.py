@@ -36,6 +36,9 @@ import client_dll
 import client_toolchain
 import client_settings
 import client_connection
+import client_spellbook
+import client_compatibility
+import client_launch_compatibility
 import custom_deployment
 import quest_sync
 import lon_data
@@ -57,7 +60,7 @@ import modern_bot_bridge
 import source_updates
 from log_retention import rotate
 
-VERSION = '0.6.40'
+VERSION = '0.6.41'
 DEFAULT_REPO = 'https://github.com/Russianranger/Triptych-Triumvirate'
 BINARIES = ('world', 'zone', 'loginserver', 'shared_memory', 'ucs', 'eqlaunch', 'queryserv', 'export_client_files')
 CLIENT_FILES = ('spells_us.txt', 'dbstr_us.txt', 'SkillCaps.txt', 'BaseData.txt')
@@ -820,6 +823,7 @@ class Engine(ManagedContent):
                 hashes[name] = source_updates._digest(stage / name, self.check_cancel)
                 with (stage / name).open('rb') as stream: os.fsync(stream.fileno())
             atomic_json(stage / 'build-info.json', {'source': source_info, 'built': time.time(), 'app': VERSION,
+                'client_compatibility': self.client_compatibility_record(),
                 'ferry_support': ferry_support, 'bot_creation_bridge': bot_creation_bridge,
                 'bot_creation_bridge_unavailable': bot_creation_bridge_unavailable,
                 'binaries': hashes, 'source_tree_sha256': source_tree,
@@ -1332,6 +1336,12 @@ class Engine(ManagedContent):
             text=f.read().decode(errors='replace')
         return {'text':text,'names':sorted(names)}
 
+    def client_compatibility_record(self):
+        try:
+            return client_compatibility.source_record(self)
+        except (OSError, ValueError, TypeError):
+            return None  # Old/unsupported source remains unknown, never guessed.
+
     def state(self):
         if self.current_job and self.current_job['operation'] == 'client_dll_download':
             self.current_job['progress'] = client_toolchain.progress(self)
@@ -1399,6 +1409,14 @@ class Engine(ManagedContent):
         if op.startswith('bots_'):
             return bots.dispatch(self,op,args)
         if op=='ferry_diagnostics':return ferry_service.diagnostics(self,args)
+        if op == 'client_spellbook_status': return client_launch_compatibility.status(self, args)
+        if op == 'client_spellbook_preflight': return client_launch_compatibility.preflight(self, args)
+        if op in ('client_spellbook_apply', 'client_spellbook_restore'):
+            requirements = client_compatibility.requirements(self)
+            if op == 'client_spellbook_apply' and requirements.get('known_deployed') and requirements.get('required_spellbook_slots') == 720:
+                raise ValueError('The verified deployed server uses a 720-slot spellbook. Deploy the matching updated server before applying the 1,440-slot client patch.')
+            result = client_spellbook.mutate(self, op, args)
+            return client_launch_compatibility.decorate(self, result)
         if op == 'client_connection_status': return client_connection.status(self, args)
         if op in client_connection.MUTATIONS: return client_connection.mutate(self, op, args)
         if op in ('boat_trial_status','boat_trial_preview','boat_trial_apply'):
@@ -1457,7 +1475,7 @@ def serve(work, port, token, profile='custom'):
                     threading.Thread(target=server.shutdown,daemon=True).start()
                     result={'message':'Stopping all processes and database'}
                 elif op=='cancel': engine.cancel.set(); result={'message':'Cancellation requested'}
-                elif op in ('state','files','logs','databases','client_dll_status','client_dll_download_info','ferry_diagnostics','traditional_status','takp_status','era_status','bots_status','bots_characters','bots_roster','source_update_status','takp_skeleton_status','client_connection_status','quest_sync_status','quest_sync_files','quest_sync_diff','lon_data_status','lon_data_files'): result=engine.dispatch(op,args)
+                elif op in ('state','files','logs','databases','client_dll_status','client_dll_download_info','ferry_diagnostics','traditional_status','takp_status','era_status','bots_status','bots_characters','bots_roster','source_update_status','takp_skeleton_status','client_connection_status','client_spellbook_status','client_spellbook_preflight','quest_sync_status','quest_sync_files','quest_sync_diff','lon_data_status','lon_data_files'): result=engine.dispatch(op,args)
                 else: result=engine.enqueue(op,args)
                 payload=json.dumps({'ok':True,'result':result}).encode()
             except Exception as e:

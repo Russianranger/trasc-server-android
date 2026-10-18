@@ -1,4 +1,4 @@
-name: Build Custom sync confirmation repair release
+name: Build Custom world entry compatibility release
 on:
   push:
     branches: [main]
@@ -24,10 +24,10 @@ jobs:
           python3 - <<'PY'
           import pathlib,re
           gradle=pathlib.Path('app/build.gradle').read_text()
-          assert re.search(r"versionName\s+'0\.6\.40'", gradle)
-          assert re.search(r'versionCode\s+89\b', gradle)
-          assert re.search(r"^VERSION = '0\.6\.40'$", pathlib.Path('backend/engine.py').read_text(), re.M)
-          assert pathlib.Path('docs/release-0640-notes.md').is_file()
+          assert re.search(r"versionName\s+'0\.6\.41'", gradle)
+          assert re.search(r'versionCode\s+90\b', gradle)
+          assert re.search(r"^VERSION = '0\.6\.41'$", pathlib.Path('backend/engine.py').read_text(), re.M)
+          assert pathlib.Path('docs/release-0641-notes.md').is_file()
           PY
       - uses: actions/setup-java@v4
         with:
@@ -96,19 +96,19 @@ jobs:
           PY
       - name: Package the release and matching launcher/native source attribution
         run: |
-          cp app/build/outputs/apk/debug/app-debug.apk dist/trasc-server-android-0.6.40.apk
-          cp dist/trasc-server-android-0.6.40.apk dist/trasc-server-android-preview.apk
+          cp app/build/outputs/apk/debug/app-debug.apk dist/trasc-server-android-0.6.41.apk
+          cp dist/trasc-server-android-0.6.41.apk dist/trasc-server-android-preview.apk
           mkdir -p runtime-work/source-bundle/launcher-source
           cp runtime-work/baseline/launcher-sources.tar.gz runtime-work/source-bundle/launcher-source/native-sources-0.6.36.tar.gz
-          git archive --format=tar.gz "$GITHUB_SHA" > runtime-work/source-bundle/launcher-source/launcher-code-0.6.40.tar.gz
+          git archive --format=tar.gz "$GITHUB_SHA" > runtime-work/source-bundle/launcher-source/launcher-code-0.6.41.tar.gz
           cp dist/native-reuse.json backend-assets/traditional-camera-bundle.json THIRD_PARTY_NOTICES.md runtime-work/source-bundle/launcher-source/
           tar -czf dist/launcher-sources.tar.gz -C runtime-work/source-bundle launcher-source
           python3 - <<'PY'
           import hashlib,json,os,pathlib
-          p=pathlib.Path('dist/trasc-server-android-0.6.40.apk')
+          p=pathlib.Path('dist/trasc-server-android-0.6.41.apk')
           sha=lambda path: hashlib.file_digest(path.open('rb'),'sha256').hexdigest()
           manifest={'commit':os.environ['GITHUB_SHA'],'sha256':sha(p),'file':p.name,'bytes':p.stat().st_size,
-            'version':'0.6.40','version_code':89,'application_id':'io.github.russianranger.trasc.preview',
+            'version':'0.6.41','version_code':90,'application_id':'io.github.russianranger.trasc.preview',
             'signing_certificate_sha256':pathlib.Path('docs/preview-signing.sha256').read_text().strip(),
             'build_run':int(os.environ['GITHUB_RUN_ID']),'native_payload_reused_from':'0.6.36',
             'native_reuse_manifest_sha256':sha(pathlib.Path('dist/native-reuse.json')),
@@ -122,7 +122,7 @@ jobs:
         with:
           name: ntcore-release
           path: |
-            dist/trasc-server-android-0.6.40.apk
+            dist/trasc-server-android-0.6.41.apk
             dist/trasc-server-android-preview.apk
             dist/launcher-sources.tar.gz
             dist/release-build.json
@@ -152,3 +152,29 @@ jobs:
         env:
           GH_TOKEN: ${{ github.token }}
         run: bash scripts/publish-ntcore-download-release.sh
+      - name: Independently verify the public APK download and packaged repair
+        run: |
+          curl --fail --location --retry 3 --retry-all-errors --max-time 180 \
+            -o dist/public-download.apk \
+            https://github.com/Russianranger/trasc-server-android/releases/download/v0.6.41/trasc-server-android-0.6.41.apk
+          python3 - <<'PY'
+          import hashlib,json,os,pathlib,zipfile
+          manifest=json.loads(pathlib.Path('dist/release-build.json').read_text())
+          apk=pathlib.Path('dist/public-download.apk')
+          assert manifest['commit']==os.environ['GITHUB_SHA']
+          assert manifest['version']=='0.6.41' and manifest['version_code']==90
+          assert apk.stat().st_size==manifest['bytes']
+          assert hashlib.file_digest(apk.open('rb'),'sha256').hexdigest()==manifest['sha256']
+          files=['backend/'+name+'.py' for name in ('engine','client_spellbook','client_compatibility',
+            'client_launch_compatibility','client_dll','client_mouse','client_connection')]
+          files += ['app/src/main/assets/ui/'+name for name in ('index.html','app.js',
+            'spellbook-compatibility.js','spellbook-compatibility.css')]
+          with zipfile.ZipFile(apk) as archive:
+              for name in files:
+                  asset='assets/'+(name.removeprefix('backend/') if name.startswith('backend/') else name.split('/assets/',1)[1])
+                  assert archive.read(asset)==pathlib.Path(name).read_bytes(), asset
+              assert any(b'client_spellbook_preflight' in archive.read(name)
+                for name in archive.namelist() if name.startswith('classes') and name.endswith('.dex'))
+          print('Public APK download verified against qualified SHA-256 and 11 exact source assets; native preflight present.')
+          print(json.dumps(manifest,sort_keys=True))
+          PY

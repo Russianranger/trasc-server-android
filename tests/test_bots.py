@@ -105,6 +105,7 @@ class BotBuildCompatibilityTests(unittest.TestCase):
             def log(inner,message): pass
             def server_running(inner): return False
             def check_cancel(inner): pass
+            def client_compatibility_record(inner): return engine.Engine.client_compatibility_record(inner)
             def run(inner,command,**kwargs): inner.commands.append(command)
         self.engine=Harness()
     def tearDown(self): self.tmp.cleanup()
@@ -117,6 +118,7 @@ class BotBuildCompatibilityTests(unittest.TestCase):
         self.assertEqual(len(self.engine.commands),2)
         receipt=json.loads((self.work/'server/bin.staged/build-info.json').read_text())
         self.assertIsNone(receipt['bot_creation_bridge'])
+        self.assertIsNone(receipt['client_compatibility'])
         self.assertIn('Custom revision',receipt['bot_creation_bridge_unavailable'])
         self.assertIn('unavailable',result['message'])
 

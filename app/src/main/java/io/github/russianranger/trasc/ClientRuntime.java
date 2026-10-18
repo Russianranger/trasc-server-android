@@ -149,8 +149,14 @@ final class ClientRuntime {
                 org.json.JSONArray jobs=response.getJSONObject("result").getJSONArray("jobs");
                 for(int i=0;i<jobs.length();i++) {
                     JSONObject job=jobs.getJSONObject(i);
-                    if(Arrays.asList("client_settings_save","client_host_save","client_host_restore","client_4gb_apply","client_4gb_restore","client_4gb_download","import_client_zip","import_client_ui","activate_client_ui","restore_client_ui","prepare_client","export_client","apply_spell_test","restore_spell_test","client_addons_copy","client_dll_deploy","client_dll_sdk","client_dll_download","set_takp_skeletons","source_update_preview","source_update_apply","build_update","deploy_update","era_apply","era_restore","bots_generate","bots_socials_install","bots_socials_restore","bots_storage_enable","quest_sync_apply","lon_data_apply","custom_deployment_recover").contains(job.optString("operation"))&&Arrays.asList("queued","running").contains(job.optString("status")))
+                    if(Arrays.asList("client_settings_save","client_host_save","client_host_restore","client_4gb_apply","client_4gb_restore","client_4gb_download","client_spellbook_apply","client_spellbook_restore","import_client_zip","import_client_ui","activate_client_ui","restore_client_ui","prepare_client","export_client","apply_spell_test","restore_spell_test","client_addons_copy","client_dll_deploy","client_dll_sdk","client_dll_download","set_takp_skeletons","source_update_preview","source_update_apply","build_update","deploy_update","era_apply","era_restore","bots_generate","bots_socials_install","bots_socials_restore","bots_storage_enable","quest_sync_apply","lon_data_apply","custom_deployment_recover").contains(job.optString("operation"))&&Arrays.asList("queued","running").contains(job.optString("status")))
                         throw new IOException("Wait for client file changes to finish before launching");
+                }
+                if("custom".equals(server.profiles.current())&&"client".equals(options.optString("mode","client"))) {
+                    JSONObject compatibility=server.request("client_spellbook_preflight",new JSONObject(options.toString()).put("__profile",server.profiles.current()));
+                    if(!compatibility.getBoolean("ok"))throw new IOException(compatibility.optString("error"));
+                    JSONObject checked=compatibility.getJSONObject("result");
+                    if(!checked.optBoolean("allowed",true))throw new IOException(checked.optString("message","Check Custom client compatibility before entering the world."));
                 }
             }
             RuntimeManager.write(new File(server.work,"run/client-active.json"),new JSONObject().put("pid",android.os.Process.myPid()).toString());clientLease=true;

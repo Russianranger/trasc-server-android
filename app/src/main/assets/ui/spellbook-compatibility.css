@@ -1,0 +1,5 @@
+#client-spellbook-panel .spellbook-facts{display:grid;gap:.75rem;margin:1rem 0}
+#client-spellbook-panel .spellbook-facts p{margin:0;padding:.8rem;border:1px solid var(--border,#86734c);border-radius:.45rem;white-space:pre-wrap;overflow-wrap:anywhere}
+#client-spellbook-panel .spellbook-steps{padding-left:1.5rem;line-height:1.6}
+#client-spellbook-panel .spellbook-steps li{padding:.2rem 0}
+#client-spellbook-panel [role=status]{white-space:pre-wrap;overflow-wrap:anywhere}
