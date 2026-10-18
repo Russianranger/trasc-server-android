@@ -445,6 +445,14 @@ class Deployments(unittest.TestCase):
                 with deployment.lease(self.engine):
                     pass
 
+    def test_host_without_posix_locking_refuses_before_opening_any_deployment_file(self):
+        with patch.object(deployment, 'fcntl', None):
+            with self.assertRaisesRegex(ValueError, 'requires POSIX file locking'):
+                with deployment.lease(self.engine):
+                    self.fail('An unlocked deployment must never start')
+        self.assertFalse((self.work / 'run/custom-deployment.lock').exists())
+        self.assertFalse((self.work / deployment.RECOVERY).exists())
+
     def rule_engine(self, selected='custom', sets=(('7', 'default'), ('9', 'custom')), values=None):
         self.queries = []
         self.ensure_calls = []

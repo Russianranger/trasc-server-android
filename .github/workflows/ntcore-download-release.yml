@@ -7,7 +7,7 @@ permissions:
   contents: read
 concurrency:
   group: ntcore-release-${{ github.ref }}
-  cancel-in-progress: false
+  cancel-in-progress: true
 jobs:
   client-dll:
     if: github.ref == 'refs/heads/main' && (github.event_name == 'workflow_dispatch' || contains(github.event.head_commit.message, '[ntcore-release]'))

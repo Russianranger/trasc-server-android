@@ -6,7 +6,10 @@ restart rolls the whole deployment back. No database writes or runtime pruning.
 """
 import contextlib
 import difflib
-import fcntl
+try:
+    import fcntl
+except ImportError:  # Windows can qualify the DLL compiler, not POSIX deployments.
+    fcntl = None
 import hashlib
 import json
 import os
@@ -355,6 +358,8 @@ def _base(engine):
 @contextlib.contextmanager
 def lease(engine):
     require_custom(engine)
+    if fcntl is None:
+        raise ValueError('Custom content deployment requires POSIX file locking; this host supports compiler qualification only')
     with _LOCK:
         path = confined(engine, Path(engine.work) / 'run/custom-deployment.lock')
         _mkdir(engine, path.parent)
