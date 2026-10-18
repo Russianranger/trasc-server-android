@@ -833,10 +833,20 @@ def apply(engine, kind, args, validate=None):
             _remove_journal(engine)
             progress(engine, 'done', files=len(selected), total_files=len(selected), bytes=transfer_bytes, total_bytes=transfer_bytes)
             return result
-        except BaseException:
+        except BaseException as error:
             # KeyboardInterrupt/SystemExit model process interruption in tests;
             # an actual process kill is recovered from the same durable journal.
+            failure = report(value) | {
+                'failed': True, 'error': str(error), 'finished': time.time(),
+                'attempted_files': len(journal['operations']), 'attempted_bytes': done_bytes,
+                'copied_files': None, 'copied_bytes': None, 'backup': str(backup),
+                'rolled_back': False, 'recovery_required': True}
+            job = getattr(engine, 'current_job', None)
+            if isinstance(job, dict):
+                job['failure'] = failure
             _rollback(engine, journal)
+            failure.update(rolled_back=True, recovery_required=False, copied_files=0, copied_bytes=0)
+            atomic(engine, backup / 'failure.json', failure)
             raise
 
 

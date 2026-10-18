@@ -266,6 +266,14 @@ class Deployments(unittest.TestCase):
         self.assertEqual((self.target / 'b.lua').read_text(), 'original-b')
         self.assertFalse(self.journal().exists())
         self.assertFalse(list(self.target.glob('.*trasc-deploy*')))
+        failure = self.engine.current_job['failure']
+        self.assertTrue(failure['rolled_back'])
+        self.assertFalse(failure['recovery_required'])
+        self.assertEqual((failure['copied_files'], failure['copied_bytes']), (0, 0))
+        self.assertEqual((failure['attempted_files'], failure['attempted_bytes']), (2, 5))
+        self.assertEqual(failure['destinations']['quests'], str(self.target))
+        receipt = self.work / deployment.RECOVERY / 'history' / preview['token'] / 'failure.json'
+        self.assertEqual(json.loads(receipt.read_text())['source_identity']['revision'], 'a' * 40)
 
     def interrupt(self, *, new=True):
         self.put(self.source, 'a.lua', 'new-a')

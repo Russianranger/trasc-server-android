@@ -39,6 +39,17 @@ with tempfile.TemporaryDirectory() as temp:
  before=quest_sync.status(engine)
  applied=quest_sync.apply(engine,{'token':preview['token'],'include_new':True,'include_changed':True,'confirm_overwrite':True,'approve_conflicts':True})
  after=quest_sync.status(engine)
+ write('sources/current/Release-NMS-Quests/changed.lua','return "failed replacement"\n')
+ failed_preview=quest_sync.scan(engine)
+ original_copy=core._copy
+ def fail_after_copy(engine,source,target,expected,**kwargs):
+  result=original_copy(engine,source,target,expected,**kwargs)
+  if '.trasc-deploy-' in Path(target).name:raise OSError('Controlled fixture transfer failure')
+  return result
+ with patch.object(core,'_copy',side_effect=fail_after_copy):
+  try:quest_sync.apply(engine,{'token':failed_preview['token'],'confirm_overwrite':True})
+  except OSError:pass
+ failure=engine.current_job['failure']
  def mysql(query):
   if 'COUNT(*)' in query:return 'COUNT(*)\n1\n'
   if 'FROM variables' in query:return 'value\ndefault\n'
@@ -57,7 +68,7 @@ with tempfile.TemporaryDirectory() as temp:
   rule={'enabled':service_state!='disabled','path':'lon_data'}
   layout={'lon_data':str(work/'server/lon_data'),'lon_rule':rule}
   with patch.object(lon_data,'validate',return_value=lon['extra']['validation']),patch.object(lon_data,'_service_report',return_value=service),patch.object(core,'destinations',return_value=layout):verify[service_state]=lon_data.verify(engine)
- print(json.dumps({'quest':{'preview':preview,'rows':rows,'diff':diff,'before':before,'applied':applied,'after':after},'lon':{'preview':lon,'rows':lonrows,'applied':lonapplied,'verify':verify,'before':{'profile':'custom','destination':str(work/'server/lon_data'),'recovery_required':False}}}))
+ print(json.dumps({'quest':{'preview':preview,'rows':rows,'diff':diff,'before':before,'applied':applied,'after':after,'failure':failure},'lon':{'preview':lon,'rows':lonrows,'applied':lonapplied,'verify':verify,'before':{'profile':'custom','destination':str(work/'server/lon_data'),'recovery_required':False}}}))
 `],{encoding:'utf8',maxBuffer:8*1024*1024}));
 async function fullInterfaceChecks(browser){
  const native=JSON.parse(execFileSync('python3',['tests/test_client_native_status.py','--fixtures'],{encoding:'utf8'}));
@@ -130,7 +141,7 @@ async function fullInterfaceChecks(browser){
     return {};
    }
    async function job(op,args={}){
-    fixture.calls.push({op,args,profile:activeProfile});if(fixture.fail)throw Error('Fixture transfer interrupted; rollback completed.');
+    fixture.calls.push({op,args,profile:activeProfile});if(fixture.fail){lastState.jobs.push({id:'failure-'+fixture.calls.length,operation:op,status:'error',failure:op.endsWith('_apply')?structuredClone(fixture.data.quest.failure):undefined});throw Error('Fixture transfer interrupted; rollback completed.');}
     if(fixture.hold)await new Promise(resolve=>fixture.waiters.push(resolve));
     if(op==='custom_deployment_recover'){fixture.recovery=false;return {message:'Recovery completed.'};}
     if(op==='stop'){lastState.running=false;return {message:'Server stopped.'};}if(op==='start'){lastState.running=true;return {message:'Server started.'};}
@@ -199,6 +210,10 @@ async function fullInterfaceChecks(browser){
   await page.evaluate(()=>{fixture.pickHold=false;fixture.hold=true;});await page.click('#quest-scan');await page.waitForFunction(()=>deploymentModels.quest.working);
   assert(await page.isDisabled('#lon-scan'),'Another deployment cannot interfere');await page.click('#quest-cancel');await idle();assert((await page.evaluate(()=>fixture.calls)).some(c=>c.op==='cancel'),'Backend cancellation is exposed');
   await page.evaluate(()=>{fixture.hold=false;fixture.fail=true;});await page.click('#quest-scan');await idle();assert((await page.textContent('#quest-status')).includes('interrupted'));assert(await page.isDisabled('#quest-apply'),'Failed preview never enables mutation');
+  assert((await page.textContent('#quest-report-summary')).includes('0 runtime files / 0 runtime bytes copied.'),'Read-only scan failure reports no runtime transfer');
+  await page.evaluate(()=>{fixture.fail=false;});await page.click('#quest-scan');await idle();await page.check('#quest-approve');await page.check('#quest-conflicts');await page.evaluate(()=>fixture.fail=true);await page.click('#quest-apply');await idle();
+  const failedSummary=await page.textContent('#quest-report-summary');assert(failedSummary.includes('Rollback completed. 0 files / 0 bytes remain changed'));assert(failedSummary.includes(fixtures.quest.failure.destinations.quests),'Failure keeps the actual destination visible');assert((await page.textContent('#quest-validation')).includes(String(fixtures.quest.failure.attempted_bytes)),'Failure reports actual temporary-copy bytes from the Python receipt');assert(await page.isHidden('#quest-start'),'Failed deployment does not suggest starting the server');
+  await page.evaluate(()=>renderDeploymentFailure('quest',Error('Recovery interrupted'),{...fixture.data.quest.failure,recovery_required:true,rolled_back:false,copied_files:null,copied_bytes:null}));assert((await page.textContent('#quest-report-summary')).includes('counts remain unverified'),'Unfinished rollback never reports zero retained copies');
   await page.evaluate(()=>{fixture.fail=false;fixture.recovery=true;deploymentModels.quest.data={recovery_required:true};renderCustomDeploymentControls();});
   assert(await page.isVisible('#quest-recover'));await page.click('#quest-recover');await idle();assert((await page.evaluate(()=>fixture.calls)).some(c=>c.op==='custom_deployment_recover'));
   // A stale response may never populate another profile or make its actions live.

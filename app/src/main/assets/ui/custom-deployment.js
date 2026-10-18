@@ -101,10 +101,19 @@ function checkCustomDeploymentStatus(){
 }
 async function deploymentRun(key,operation,fn){
  const m=deploymentModels[key];if(!deploymentContext()||deploymentBusy())throw Error('Open the Custom runtime and wait for other operations to finish.');
- const generation=customDeploymentGeneration;m.working=true;m.error='';busy++;activeUiActions.add('custom-deployment-'+key);renderSessionControls();renderCustomDeploymentControls();
+ const generation=customDeploymentGeneration,previousJobs=new Set((lastState?.jobs||[]).map(j=>j.id));m.working=true;m.error='';busy++;activeUiActions.add('custom-deployment-'+key);renderSessionControls();renderCustomDeploymentControls();
  try{const result=await fn();if(generation!==customDeploymentGeneration||activeProfile!=='custom')return null;return result;}
- catch(e){if(generation===customDeploymentGeneration){m.error=e.message;notice(e.message,true);}return null;}
+ catch(e){if(generation===customDeploymentGeneration){m.error=e.message;if(['apply','scan','pick'].includes(operation)){const failed=[...(lastState?.jobs||[])].reverse().find(j=>!previousJobs.has(j.id)&&j.operation===deploymentKinds[key].operation+'_'+operation&&j.status==='error');renderDeploymentFailure(key,e,failed?.failure);}notice(e.message,true);}return null;}
  finally{m.working=false;m.picking=false;m.cancelling=false;busy--;activeUiActions.delete('custom-deployment-'+key);renderSessionControls();renderCustomDeploymentControls();poll().catch(()=>{});}
+}
+function renderDeploymentFailure(key,error,receipt){
+ const m=deploymentModels[key],failure=receipt||{failed:true,copied_files:0,copied_bytes:0,recovery_required:false};m.report=failure;$(key+'-report').hidden=false;
+ const destinations=failure.destinations||m.preview?.destinations||m.data?.destinations||m.data?.destination;
+ const destination=typeof destinations==='string'?destinations:destinations?Object.entries(destinations).map(([kind,path])=>kind+': '+path).join(' · '):'Not resolved; no runtime copy started.';
+ $(key+'-report-summary').textContent='Failed: '+(failure.error||error.message)+'. '+(failure.recovery_required?'Recovery is required; the final copied file and byte counts remain unverified.':failure.rolled_back?'Rollback completed. 0 files / 0 bytes remain changed by this operation.':'0 runtime files / 0 runtime bytes copied.')+' Destination: '+destination+(failure.backup?'. Protected backup: '+failure.backup:'');
+ const list=$(key+'-validation');list.replaceChildren();
+ if(failure.attempted_files!=null||failure.attempted_bytes!=null){const li=document.createElement('li');li.textContent='Transfer before recovery: '+Number(failure.attempted_files||0)+' files attempted · '+deploymentSize(failure.attempted_bytes||0)+' copied into temporary or runtime files. These are not retained deployment totals.';list.append(li);}
+ const li=document.createElement('li');li.textContent=failure.recovery_required?'Refresh status and recover the interrupted deployment before starting the server or trying again.':'Review the error, refresh status and scan again before retrying.';list.append(li);$(key+'-start').hidden=true;
 }
 function clearDeploymentPreview(key){const m=deploymentModels[key];m.preview=null;m.rows=[];m.offset=0;m.total=0;m.fileGeneration++;$(key+'-preview').hidden=true;$(key+'-approve').checked=false;$(key+'-conflicts').checked=false;$(key+'-files').replaceChildren();}
 function renderDeploymentPreview(key,report){

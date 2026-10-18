@@ -53,6 +53,8 @@ Counts are separate for quests, plugins and Lua placements, plus a combined tota
 
 Both deployment flows use an exclusive Custom deployment lease and existing launcher transfer/profile guards. Each replacement has a protected original, temporary file, SHA-256 verification, atomic rename and durable write-ahead recovery. The result reports copied files/bytes and the backup destination under `backups/custom-deployment/history/<token>`. Manifests record provenance, timestamps, hashes, destinations and results. Cancellation/failure rolls back modified files; an interrupted process is recovered before new deployment/server startup. Recovery refuses to overwrite unexpected later edits: resolve the reported conflict and retry **Recover interrupted deployment**, keeping its protected backup.
 
+Failure reports retain the resolved destination and actual attempted file/byte counts. A completed rollback reports zero retained file changes and saves a protected `failure.json` receipt. If recovery is incomplete, final copied counts are explicitly unverified; refresh status and complete recovery before restarting or retrying.
+
 No `release-peq.zip` reimport, player reset, database migration, server rebuild or client executable patch occurs in either content action. The existing database migration version 160 is not changed by these tools. Traditional and TAKP destinations are not touched.
 
 ## Storage and bounded transfers
