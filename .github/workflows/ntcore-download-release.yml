@@ -9,6 +9,11 @@ concurrency:
   group: ntcore-release-${{ github.ref }}
   cancel-in-progress: false
 jobs:
+  client-dll:
+    if: github.ref == 'refs/heads/main' && (github.event_name == 'workflow_dispatch' || contains(github.event.head_commit.message, '[ntcore-release]'))
+    uses: ./.github/workflows/client-dll.yml
+    with:
+      source_revision: 38a4f2ad03203cb2f12dbff26fd613cc47efba0a
   apk:
     if: github.ref == 'refs/heads/main' && (github.event_name == 'workflow_dispatch' || contains(github.event.head_commit.message, '[ntcore-release]'))
     runs-on: ubuntu-latest
@@ -137,7 +142,7 @@ jobs:
             app/build/reports/
             ui-reports/
   publish:
-    needs: [apk]
+    needs: [apk, client-dll]
     if: github.ref == 'refs/heads/main' && (github.event_name == 'workflow_dispatch' || contains(github.event.head_commit.message, '[ntcore-release]'))
     runs-on: ubuntu-latest
     permissions:

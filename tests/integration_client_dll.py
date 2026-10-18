@@ -5,6 +5,8 @@ Android runs the same compiler EXEs through its Wine/Box64 runtime.
 Physical-device execution and loading remain device tests.
 """
 import sys
+import json
+import subprocess
 import tempfile
 from pathlib import Path
 import shutil
@@ -13,11 +15,14 @@ from engine import Engine
 import client_dll
 from build_checksum_fixture import generate
 source=Path(sys.argv[1]).resolve();sdk=Path(sys.argv[2]).resolve()
+source_commit=subprocess.check_output(['git','rev-parse','HEAD'],cwd=source,text=True).strip()
+assert len(source_commit)==40 and all(c in '0123456789abcdef' for c in source_commit)
 with tempfile.TemporaryDirectory() as temp:
     work=Path(temp);engine=Engine(work)
     incoming=work/'incoming/sdk.zip';shutil.copy2(sdk,incoming)
     client_dll.import_sdk(engine,{'file':'sdk.zip'})
     shutil.copytree(source/'Release-NMS-Client',work/'sources/current/Release-NMS-Client')
+    (work/'sources/current/trasc-source.json').write_text(json.dumps({'commit':source_commit,'type':'github'}))
     try:
         # The same header is compiled by MSVC with production packing and tested
         # against allocated state, including inaccessible pointers and menus.
@@ -40,6 +45,12 @@ with tempfile.TemporaryDirectory() as temp:
             engine.run([test])
         result=client_dll.build_dll(engine,{})
         assert result['build']['bytes']>100000
+        assert result['build']['source_identity']['commit']==source_commit
+        assert client_dll.compiler_status(engine)['freshness']['staged']['state']=='current'
+        manifest=json.loads((work/result['build']['source_manifest']).read_text())
+        assert manifest['sha256']==result['build']['source_identity']['sha256']
+        assert manifest['inputs']['eqgame_dll/eqgame_dll.vcxproj']['sha256']==result['build']['project_sha256']
+        print('Qualified Triptych client source commit: '+source_commit)
         print('PASS: actual Triptych source compiled with the original Microsoft v142 toolset as an x86 PE32 DLL; installed client untouched')
     except Exception:
         print((work/'logs/operation.log').read_text(errors='replace')[-30000:])

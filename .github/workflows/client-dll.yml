@@ -1,6 +1,12 @@
 name: Validate client DLL compiler
 on:
   workflow_call:
+    inputs:
+      source_revision:
+        description: Exact Triptych source revision to qualify with the production DLL compiler
+        type: string
+        required: false
+        default: 4c653ca2d16aaede33b7011d07254c520ac5f5df
 jobs:
   compile:
     runs-on: windows-2022
@@ -10,7 +16,7 @@ jobs:
       - uses: actions/checkout@v4
         with:
           repository: Russianranger/Triptych-Triumvirate
-          ref: 4c653ca2d16aaede33b7011d07254c520ac5f5df
+          ref: ${{ inputs.source_revision }}
           path: dll-upstream
           sparse-checkout: Release-NMS-Client
       - name: Prepare private Microsoft compiler and SDK from the runner
