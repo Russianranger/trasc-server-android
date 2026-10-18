@@ -42,8 +42,11 @@ def _include_path(root, parent, entry):
         elif part != '.':
             if path.is_symlink(): raise ValueError('Linked client compiler input paths are not supported')
             choices = [p for p in path.iterdir() if p.name.casefold() == part.casefold()] if path.is_dir() else []
-            if len(choices) != 1: raise ValueError('Missing or ambiguous project include: ' + entry)
-            path = choices[0]
+            if len(choices) > 1: raise ValueError('Ambiguous project include: ' + entry)
+            # MSVC accepts an /I directory that does not exist. Keep that
+            # declared search path, without creating or downloading anything.
+            path = choices[0] if choices else path/part
+        _source_path(root,path)
     return _source_path(root, path)
 
 
@@ -99,6 +102,7 @@ def source_identity(engine, project=None, recipe=None):
         inputs[key] = record
     for folder in roots:
         folder = _source_path(root, folder)
+        if not folder.exists(): continue
         if not folder.is_dir(): raise ValueError('Project input is not a directory')
         for parent, dirs, files in os.walk(folder, followlinks=False):
             check()

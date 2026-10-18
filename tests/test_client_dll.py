@@ -81,7 +81,7 @@ class ClientDllTests(unittest.TestCase):
     def test_real_project_emits_tc_for_vorbis_and_tp_for_cpp(self):
         self.project.write_bytes(FIXTURE.read_bytes());recipe=client_dll.project_recipe(self.project)
         for name in recipe['sources']:(self.project.parent/name).write_text('/* fixture */')
-        for name in ('Detours/inc','dependencies/dx9/Include','dependencies/boost'):
+        for name in ('Detours/inc','dependencies/dx9/Include'):
             (self.root/name).mkdir(parents=True)
         self.sdk();result,calls=self.build()
         compile_calls=calls[:-1];self.assertEqual(len(compile_calls),53)
@@ -140,6 +140,32 @@ class ClientDllTests(unittest.TestCase):
         second=client_dll.source_identity(self.engine)['sha256'];self.assertNotEqual(first['sha256'],second)
         (self.work/'client/toolchain/sdk.json').write_bytes(b'changed SDK manifest')
         self.assertNotEqual(second,client_dll.source_identity(self.engine)['sha256'])
+
+    def test_missing_declared_include_is_not_created_and_later_headers_are_hashed(self):
+        self.project.write_text(self.project.read_text().replace('<CompileAs>',
+            '<AdditionalIncludeDirectories>../dependencies/boost</AdditionalIncludeDirectories><CompileAs>',1))
+        missing=self.root/'dependencies/boost'
+        first=client_dll.source_identity(self.engine)
+        self.assertFalse(missing.exists())
+        self.assertEqual(client_dll._include_path(self.root,self.project.parent,'../dependencies/boost'),missing)
+        missing.mkdir(parents=True);(missing/'example.hpp').write_text('new actual dependency')
+        second=client_dll.source_identity(self.engine)
+        self.assertNotEqual(first['sha256'],second['sha256'])
+        self.assertIn('dependencies/boost/example.hpp',second['inputs'])
+
+    def test_missing_declared_include_is_passed_unchanged_to_compiler(self):
+        self.project.write_text(self.project.read_text().replace('<CompileAs>',
+            '<AdditionalIncludeDirectories>../dependencies/boost</AdditionalIncludeDirectories><CompileAs>',1))
+        self.sdk();_,calls=self.build();missing=self.root/'dependencies/boost'
+        argument='/I'+('Z:'+str(missing).replace('/','\\') if os.name!='nt' else str(missing))
+        self.assertIn(argument,calls[0]);self.assertFalse(missing.exists())
+
+    def test_missing_include_cannot_escape_source_or_hide_a_link(self):
+        outside=self.work/'outside';outside.mkdir()
+        (self.root/'linked').symlink_to(outside,target_is_directory=True)
+        for entry in ('../../outside/missing','../missing/../../outside','../missing/../linked/child'):
+            with self.subTest(entry=entry),self.assertRaisesRegex(ValueError,'escapes|Linked'):
+                client_dll._include_path(self.root,self.project.parent,entry)
 
     def test_unchanged_inputs_reuse_hashes_but_rescan_paths(self):
         client_dll.source_identity(self.engine)
