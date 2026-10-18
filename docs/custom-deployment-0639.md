@@ -2,6 +2,17 @@
 
 Implementation and host evidence are recorded below. Clean release CI, publication and physical AYN Thor acceptance remain pending at this checkpoint. See [release notes](release-0639-notes.md) for the device checklist.
 
+## Quick start
+
+1. Select **TRASC Custom**, start its runtime, then stop its server and client. Keep sufficient private storage for the selected ZIP/data and protected replacement copies.
+2. In **Setup → Quest & Plugin Sync**, select **Scan for Changes**. Check the current source commit, configured destinations and actual group counts. Expand **Inspect files and proposed replacements**; review changed files and any local conflicts.
+3. Choose new files, changed files or both. Approve changed replacements and local conflicts separately, then select **Synchronize files** and confirm. Runtime-only files stay in place.
+4. In **Setup → Legends of Norrath Data**, choose **Use imported client**, **Choose folder**, or **Choose client ZIP**. Select **Preview data import**, review the resolved destination and differences, approve any replacements, then select **Import / repair card data**. Review copied files, bytes and the protected backup location.
+5. Start the server with **Start server to validate deployment**, then select **Verify data & card service**. A valid-data report and a **confirmed** fresh running service are separate checks. If verification reports **disabled**, review the active `Custom:LoNEnabled` setting through the existing rule controls; these file tools do not change it. If **failed**, inspect the displayed log evidence; if **pending restart**, stop/start the server and verify again.
+6. Review the October feature report. Quest synchronization deploys script/data files; features labelled server-code/database or additional setup still need their corresponding existing prerequisites. Do not reimport the database to deploy these files.
+
+To update the selected checkout first, use **Refresh Source**. It opens **Builds → Updates**: review the saved repository/ref, choose **Check source update**, review/apply that source update, then return to Setup and scan again. Synchronization never silently fetches another revision.
+
 ## Import Legends of Norrath data
 
 Open the **Custom** runtime. In **Setup → Legends of Norrath Data**, use the imported client or Android **Choose folder** / **Choose client ZIP**. A folder may be the client, `LegendsOfNorrath`, or `data`; a ZIP may contain wrapper folders such as `EverQuest_RoF2PT/LegendsOfNorrath/data`. Only the discovered data subtree is copied. Its contents land directly in the resolved destination, without an extra `data/` level. All supporting files and empty folders are retained; no card assets are bundled in the APK.
@@ -36,7 +47,7 @@ The database lookup opens the existing Custom database when needed and issues SE
 
 ## Review and synchronize quests
 
-**Setup → Quest & Plugin Sync → Scan for Changes** compares the currently installed source's `Release-NMS-Quests` and `Release-NMS-Plugins` against the resolved destinations using SHA-256. The source commit, last successful synchronization commit/date and freshness are shown. Archive imports without recorded commit provenance are labelled accordingly. **Refresh Source** invokes the existing source-update flow; scan/sync never silently fetches another revision.
+**Setup → Quest & Plugin Sync → Scan for Changes** compares the currently installed source's `Release-NMS-Quests` and `Release-NMS-Plugins` against the resolved destinations using SHA-256. The source commit, last successful synchronization commit/date and freshness are shown. Archive imports without recorded commit provenance are labelled accordingly. **Refresh Source** opens the existing **Builds → Updates** review flow; scan/sync never silently fetches another revision.
 
 Counts are separate for quests, plugins and Lua placements, plus a combined total. Additional Lua mirrors are shown separately and contribute actual destination copies to the transfer count. Expand **Inspect files and proposed replacements** for 40-file pages, classification/path filters, filename/size/modified sorting, source/runtime metadata and bounded text diffs for changed supported scripts/configuration. Choose new files, changed files or both. Changed replacements require preview approval; files that differ from the last manifest are local conflicts and require separate approval. Runtime-only files are never automatically deleted.
 
@@ -46,7 +57,7 @@ No `release-peq.zip` reimport, player reset, database migration, server rebuild 
 
 ## Storage and bounded transfers
 
-Android SAF supports document providers and external SD without raw filesystem paths or Termux. Folder discovery copies only LoN data; ZIP selection streams the selected archive to private disk, then extracts only that data. Free private space is required for staging, replacements and rollback copies, plus a 64 MiB reserve. Original selected documents stay unchanged.
+Android SAF supports document providers and external SD without raw filesystem paths or Termux. Folder discovery copies only LoN data; ZIP selection streams the selected archive to private disk, then extracts only that data. Free private space is required for staging, replacements and rollback copies, plus a 64 MiB reserve. Original selected documents stay unchanged. After a successful import, private staging copies are removed; choose the original folder or ZIP again for another preview. The imported client and the original SD/document-provider files are retained.
 
 The native transport uses a 256 KiB copy buffer, accepts at most 200,000 files / 20,000 directories, searches up to 10 folder levels for `LegendsOfNorrath/data`, and limits the data subtree to 64 levels. Backend LoN validation/extraction limits data to 16 GiB total and 8 GiB per file, with at most 200,000 archive entries and a 64 MiB ZIP central directory. The shared deployment preview additionally limits the compared transfer tree to 100,000 files. These are safety ceilings, not preallocated memory; oversized input reports an error and users can choose the data folder directly. Backend file copying/hashing is streamed in 64 KiB chunks; card records are limited to 8 MiB.
 

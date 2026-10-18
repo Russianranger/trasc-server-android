@@ -116,6 +116,25 @@ class Deployments(unittest.TestCase):
         self.assertEqual(result['copied_files'], 1)
         self.assertFalse((self.target / 'new.lua').exists())
 
+    def test_new_only_sync_tracks_later_edits_to_skipped_existing_files(self):
+        self.put(self.source, 'new.lua', 'new')
+        self.put(self.source, 'changed.lua', 'upstream')
+        self.put(self.target, 'changed.lua', 'existing customization')
+        self.apply(self.scan(), include_changed=False)
+        self.assertEqual(self.scan()['summary']['conflicts'], 0)
+        self.put(self.target, 'changed.lua', 'later local edit')
+        preview = self.scan()
+        self.assertEqual(preview['summary']['conflicts'], 1)
+        # Another successful new-only operation cannot clear that conflict.
+        self.apply(preview, include_changed=False)
+        preview = self.scan()
+        self.assertEqual(preview['summary']['conflicts'], 1)
+        with self.assertRaisesRegex(ValueError, 'conflict approval'):
+            self.apply(preview, confirm_overwrite=True)
+        self.assertEqual((self.target / 'changed.lua').read_text(), 'later local edit')
+        self.apply(preview, confirm_overwrite=True, approve_conflicts=True)
+        self.assertEqual((self.target / 'changed.lua').read_text(), 'upstream')
+
     def test_local_edit_since_last_success_requires_separate_approval(self):
         self.put(self.source, 'npc.lua', 'upstream')
         self.apply(self.scan())

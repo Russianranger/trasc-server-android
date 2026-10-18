@@ -800,12 +800,22 @@ def apply(engine, kind, args, validate=None):
             entries = dict((old_manifest or {}).get('entries', {}))
             selected_keys = {(row['group'], row['path']) for row in selected}
             for row in value['rows']:
+                group = groups[row['group']]
+                entry_key = str(Path(group['destination']) / row['path'])
                 if row['classification'] == 'matching' or (row['group'], row['path']) in selected_keys:
-                    group = groups[row['group']]
-                    entries[str(Path(group['destination']) / row['path'])] = {
+                    entries[entry_key] = {
                         'sha256': row['source']['sha256'], 'bytes': row['source']['bytes'],
                         'group': row['group'], 'path': row['path'], 'source_modified': row['source'].get('modified'),
-                        'previous_destination_modified': (row.get('destination') or {}).get('modified')}
+                        'previous_destination_modified': (row.get('destination') or {}).get('modified'), 'managed': True}
+                elif row['classification'] == 'changed' and entry_key not in entries:
+                    # A new-only deployment must also notice future edits to a
+                    # skipped existing script. Record its observed baseline once;
+                    # subsequent skipped deployments must not acknowledge away
+                    # an outstanding local conflict.
+                    entries[entry_key] = {
+                        'sha256': row['destination']['sha256'], 'bytes': row['destination']['bytes'],
+                        'group': row['group'], 'path': row['path'], 'managed': False,
+                        'previous_destination_modified': row['destination'].get('modified')}
             result = report(value) | {'copied_files': len(selected), 'copied_bytes': transfer_bytes,
                                       'backup': str(backup), 'finished': time.time(), 'restart_required': True,
                                       'cancelled': False, 'rolled_back': False}
