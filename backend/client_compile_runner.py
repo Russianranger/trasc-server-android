@@ -19,7 +19,20 @@ def update(phase, **extra):
 
 
 class Compiler:
-    work=WORK
+    def __init__(self):
+        # The native launcher writes this request for this exact process before
+        # starting it. Saved game launch-options can describe an older session.
+        try:
+            with (SESSION/'request.json').open('rb') as source:
+                data=source.read(65537)
+            if len(data)>65536: raise ValueError('Compiler launch request is too large')
+            request=json.loads(data)
+        except (OSError,UnicodeError,json.JSONDecodeError) as error:
+            raise ValueError('Cannot read the compiler launch request. Reopen the Custom client DLL compiler.') from error
+        if not isinstance(request,dict) or request.get('profile')!='custom' or request.get('mode')!='compiler':
+            raise ValueError('The client DLL compiler requires a TRASC Custom compiler request. Reopen it in TRASC Custom.')
+        self.work=WORK
+        self.profile=request['profile']
     def server_running(self): return False  # Native launcher checked the server/job state.
     def check_cancel(self):
         if stop_requested or (SESSION/'stop').exists(): raise RuntimeError('Client DLL build cancelled; installed DLL unchanged')
@@ -58,9 +71,10 @@ def main():
         global stop_requested
         stop_requested=True
     signal.signal(signal.SIGTERM,stop);signal.signal(signal.SIGINT,stop)
-    compiler=Compiler();xserver=None
+    compiler=None;xserver=None
     lease=WORK/'run/client-dll-building.json'
     try:
+        compiler=Compiler()
         atomic_json(lease,{'pid':os.getpid(),'started':time.time()})
         rotate(LOG)
         rotate(WORK/'logs/client-compiler-display.log')
@@ -84,14 +98,16 @@ def main():
     except Exception as error:
         update('error',error=str(error),message=str(error));raise
     finally:
-        try: subprocess.run(['/usr/local/bin/box64','/opt/wine/bin/wineserver','-k'],env=ENV,stdout=subprocess.DEVNULL,stderr=subprocess.DEVNULL,timeout=15)
-        except (OSError,subprocess.TimeoutExpired): pass
+        if compiler is not None:
+            try: subprocess.run(['/usr/local/bin/box64','/opt/wine/bin/wineserver','-k'],env=ENV,stdout=subprocess.DEVNULL,stderr=subprocess.DEVNULL,timeout=15)
+            except (OSError,subprocess.TimeoutExpired): pass
         if xserver is not None:
             xserver.terminate()
             try:xserver.wait(timeout=5)
             except subprocess.TimeoutExpired:xserver.kill();xserver.wait()
-        (SESSION/'display.sock').unlink(missing_ok=True)
-        lease.unlink(missing_ok=True)
+        if compiler is not None:
+            (SESSION/'display.sock').unlink(missing_ok=True)
+            lease.unlink(missing_ok=True)
 
 
 if __name__=='__main__': main()

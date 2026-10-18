@@ -1,3 +1,11 @@
+# 0.6.38 — device-reported client status contract repair
+
+The supplied 0.6.37 AYN Thor screenshot shows the NTCore download disabled with “Waiting for this world’s client status…”. Uploaded status.json confirms runtime alive/custom and client stopped, but the native client status omits top-level profile. The UI requires matching identity and never requests backend client-file status; this is a native/UI contract defect, not an attempted network download failure. Native status must report its current leased profile. Preserve strict stale-profile rejection. Regression must consume native Java status output rather than inventing the missing field.
+
+The same report records a separate compiler worker error, `'Compiler' object has no attribute 'profile'`. The worker must initialize its profile from the validated compiler launch request. Version/code 0.6.38/87 uses the existing immutable 0.6.36 native baseline and pinned signing. Local qualification passed: 626 Python tests (30 dependency skips), JVM/C management checks and the browser native-to-UI regression. That regression executes real native status and shipped UI polling/download functions; the pre-fix native response fails all 36 contract combinations. See [client-status-0638.md](client-status-0638.md). Full release qualification and physical Android acceptance remain pending.
+
+---
+
 # 0.6.37 published as Latest and independently downloaded
 
 Source `6787353e51f50c824e6ec3836086b65f30d8257c`, release run [39144890527](https://github.com/Russianranger/trasc-server-android/actions/runs/39144890527), attempt 1 succeeded. See [release-proof-0637.json](release-proof-0637.json), [NTCore download guide](ntcore-download-0637.md) and [release notes](release-0637-notes.md).

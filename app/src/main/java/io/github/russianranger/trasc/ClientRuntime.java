@@ -58,7 +58,8 @@ final class ClientRuntime {
         return new JSONObject(new String(Files.readAllBytes(file.toPath()),StandardCharsets.UTF_8));
     }
     JSONObject state()throws Exception {
-        JSONObject result=new JSONObject().put("installed",installed()).put("alive",alive()).put("busy",busy).put("status",status);
+        // The bridge holds this world's request lease while taking the snapshot.
+        JSONObject result=new JSONObject().put("profile",server.profiles.current()).put("installed",installed()).put("alive",alive()).put("busy",busy).put("status",status);
         File report=new File(run,"status.json");
         if(report.isFile())try{JSONObject info=json(report);result.put("launch",info);if(info.optBoolean("compiler"))result.put("status",info.optString("message",status));}catch(Exception ignored){}
         File options=new File(server.work,"client/launch-options.json");

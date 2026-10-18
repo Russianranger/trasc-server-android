@@ -1,8 +1,8 @@
 # TRASC Server for Android
 
-**Latest APK: [TRASC Android 0.6.37](https://github.com/Russianranger/trasc-server-android/releases/download/v0.6.37/trasc-server-android-0.6.37.apk)** · [Release page](https://github.com/Russianranger/trasc-server-android/releases/latest)
+**Latest APK: [TRASC Android 0.6.38](https://github.com/Russianranger/trasc-server-android/releases/download/v0.6.38/trasc-server-android-0.6.38.apk)** · [Release page](https://github.com/Russianranger/trasc-server-android/releases/latest)
 
-**Client → Custom client · 4 GB patch → Download NTCore 4 GB Patch** saves the official Windows patcher beside your imported Custom client's `eqgame.exe`. Downloading does not run the patcher; **Apply 4 GB patch** enables address support directly, with a protected original for Restore. Setup retains database sorting across all three profiles. [Release notes](docs/release-0637-notes.md). Install over your current app.
+Fixes the client-status check that kept the patch controls disabled. **Client → Custom client · 4 GB patch → Download NTCore 4 GB Patch** saves the official Windows patcher beside your imported Custom client's `eqgame.exe`. Downloading does not run the patcher; **Apply 4 GB patch** enables address support directly, with a protected original for Restore. Setup retains database sorting across all three profiles. [Release notes](docs/release-0638-notes.md). Install over your current app.
 
 **Russianranger foreword;**
 
