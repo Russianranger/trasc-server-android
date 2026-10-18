@@ -17,7 +17,7 @@ function clientConnectionBlocked(ownAction=false){
  return !!(busy>(ownAction?1:0)||sessionAction||clientConnectionLoading||clientConnectionMutating||clientConnectionError||!clientConnectionContextReady()||lastState?.profile!==activeProfile||lastClientNative.alive||lastClientNative.busy||lastState.jobs?.some(j=>['queued','running'].includes(j.status))||clientConnectionData?.profile!==activeProfile);
 }
 function renderClientConnectionControls(){
- resetClientConnectionProfile();const data=clientConnectionData,host=data?.host,patch=data?.patch,blocked=clientConnectionBlocked();
+ resetClientConnectionProfile();const data=clientConnectionData,host=data?.host,patch=data?.patch,download=patch?.download,blocked=clientConnectionBlocked();
  $('client-host-address').disabled=blocked||host?.can_save!==true;
  $('client-host-local').disabled=blocked||host?.can_save!==true;
  $('client-host-save').disabled=blocked||host?.can_save!==true||!$('client-host-address').value.trim();
@@ -26,12 +26,14 @@ function renderClientConnectionControls(){
  $('client-4gb-panel').hidden=activeProfile!=='custom';
  $('client-4gb-apply').disabled=blocked||activeProfile!=='custom'||patch?.can_apply!==true;
  $('client-4gb-restore').disabled=blocked||activeProfile!=='custom'||patch?.can_restore!==true;
+ $('client-4gb-download').disabled=blocked||activeProfile!=='custom'||download?.can_download!==true;
  if(!clientConnectionHostEdited)$('client-host-address').value=host?.host||'127.0.0.1';
  $('client-host-ports').textContent=host?.port!=null?'Existing port'+(String(host.port).includes(',')?'s':'')+': '+host.port+' · retained when the IP changes.':'Existing port is retained when the IP changes.';
  const context=!activeProfile?'Checking this world…':!lastNative?.alive?'Open this world’s server runtime to inspect or change client files.':!clientConnectionContextReady()?'Waiting for this world’s client status…':clientConnectionLoading?'Checking this world’s client files…':clientConnectionMutating?'Saving this world’s client files…':clientConnectionError;
  const draftChanged=clientConnectionHostEdited&&host&&clientConnectionDraftRevision!==host.revision;
  $('client-host-status').textContent=context||host?.warning||(draftChanged?'eqhost.txt changed while you were editing. Reload client files, then enter your IP again.':host?((host.exists?'Reading '+(host.path||'eqhost.txt')+'.':'No eqhost.txt exists yet. Save creates it with the local default port.')+' '+(host.backup_exists?'The original file is protected and available for Restore.':'The original file is protected on the first change.')+(clientConnectionHostEdited?' IP edit has not been saved.':'')):'Client files have not been checked.');
  $('client-4gb-status').textContent=context||patch?.warning||(patch?(patch.patched?'4 GB address support is already enabled for '+patch.exe+'.':patch.eligible?'4 GB address support is off for '+patch.exe+'.':'Import the Custom client to inspect its executable.')+(patch.backup_exists?' A protected original is available for Restore.':''):'Client executable has not been checked.');
+ $('client-4gb-download-status').textContent=context||download?.warning||(download?.downloaded?'NTCore 4 GB Patch is saved at '+download.path+'. Open it from the Wine desktop when needed.':download?.can_download?'Download the official NTCore utility to '+download.path+'. Downloading leaves '+patch.exe+' unchanged.':patch?.warning||'Import the Custom client to download the official tool into its folder.');
  if(draftChanged)$('client-host-save').disabled=true;
 }
 function showClientConnection(data){
@@ -68,7 +70,8 @@ async function changeClientConnection(operation,section,args={}){
  if(clientConnectionBlocked(true))throw Error('Open this world’s runtime, stop the client and finish other operations before changing client files.');
  const data=clientConnectionData?.[section],profile=activeProfile;
  const restoring=operation.endsWith('_restore');
- if(!data||(restoring?data.can_restore:section==='host'?data.can_save:data.can_apply)!==true)throw Error('Reload client files before making this change.');
+ const allowed=operation==='client_4gb_download'?data?.download?.can_download:restoring?data?.can_restore:section==='host'?data?.can_save:data?.can_apply;
+ if(allowed!==true)throw Error('Reload client files before making this change.');
  const revision=section==='host'&&!restoring&&clientConnectionHostEdited?clientConnectionDraftRevision:data.revision;
  if(revision!==data.revision)throw Error('eqhost.txt changed while you were editing. Reload client files, then enter your IP again.');
  const generation=++clientConnectionGeneration;clientConnectionMutating=true;renderClientConnectionControls();
@@ -97,4 +100,5 @@ action('client-host-save',()=>changeClientConnection('client_host_save','host',{
 action('client-host-restore',()=>changeClientConnection('client_host_restore','host'));
 action('client-4gb-apply',()=>changeClientConnection('client_4gb_apply','patch'));
 action('client-4gb-restore',()=>changeClientConnection('client_4gb_restore','patch'));
+action('client-4gb-download',()=>changeClientConnection('client_4gb_download','patch'));
 renderClientConnectionControls();

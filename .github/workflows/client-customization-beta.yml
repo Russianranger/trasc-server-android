@@ -10,7 +10,7 @@ concurrency:
   cancel-in-progress: false
 jobs:
   apk:
-    if: github.ref == 'refs/heads/main' && !contains(github.event.head_commit.message, '[database-sort-release]') && (github.event_name == 'workflow_dispatch' || contains(github.event.head_commit.message, '[client-beta]'))
+    if: github.ref == 'refs/heads/main' && !contains(github.event.head_commit.message, '[ntcore-release]') && !contains(github.event.head_commit.message, '[database-sort-release]') && (github.event_name == 'workflow_dispatch' || contains(github.event.head_commit.message, '[client-beta]'))
     runs-on: ubuntu-latest
     timeout-minutes: 45
     env:
@@ -138,7 +138,7 @@ jobs:
             ui-reports/
   publish:
     needs: [apk]
-    if: github.ref == 'refs/heads/main' && !contains(github.event.head_commit.message, '[database-sort-release]') && (github.event_name == 'workflow_dispatch' || contains(github.event.head_commit.message, '[client-beta]'))
+    if: github.ref == 'refs/heads/main' && !contains(github.event.head_commit.message, '[ntcore-release]') && !contains(github.event.head_commit.message, '[database-sort-release]') && (github.event_name == 'workflow_dispatch' || contains(github.event.head_commit.message, '[client-beta]'))
     runs-on: ubuntu-latest
     permissions:
       contents: write

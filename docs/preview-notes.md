@@ -1,19 +1,13 @@
-# TRASC Android 0.6.36 — database sorting
+# TRASC Android 0.6.37 — official 4 GB patch download
 
-[Download the Android APK](https://github.com/Russianranger/trasc-server-android/releases/download/v0.6.36/trasc-server-android-0.6.36.apk)
+[Download the Android APK](https://github.com/Russianranger/trasc-server-android/releases/download/v0.6.37/trasc-server-android-0.6.37.apk)
 
 Install over your existing TRASC app. This release is marked Latest on GitHub.
 
-In **Setup → Select database / Database files**, use **Sort database files**:
+In the **Custom** profile, import your client, stop it if it is running, and open **Client → Custom client · 4 GB patch**. **Download NTCore 4 GB Patch** saves the official Windows patcher as `4gb_patch.exe` in that profile's imported client folder. The launcher checks the download against the pinned official archive and executable checksums before saving it. Downloading does not run the patcher or alter `eqgame.exe`.
 
-- **Size — largest first** sorts database files by descending size.
-- **Modified — newest first** sorts by descending modification date and time.
-- **Recommended** retains the existing complete-seed-first ordering.
+The existing **Apply 4 GB patch** action enables the same Large Address Aware flag directly from Android and retains a protected original for **Restore original executable**. The separate download makes the official Windows tool available inside the client folder when needed.
 
-The dropdown is available in Custom, Traditional and TAKP. Changing sort preserves your selected database, and works with search, individual SQL files and refreshed scans. Selected file details show the size and modification date; unavailable dates appear last when sorting by date. ZIP entries use their recorded member dates, and complete PEQ bundles use the newest component date.
+Includes the database sort dropdown across all three profiles, per-profile `eqhost.txt` IP controls with protected originals, and default controller menu navigation. Existing application identity and signing certificate support an in-place update.
 
-TAKP's sortable file catalog is available for review. New TAKP database deployment continues through its matching Initialize fresh TAKP database action.
-
-Includes the 0.6.35 per-profile eqhost.txt IP controls with protected originals, Custom's reversible 4 GB client patch, and default controller menu navigation. Existing application identity and signing certificate support an in-place update.
-
-Automated regression and APK verification evidence is recorded in the release workflow. Physical Thor acceptance of the new sorting control remains pending.
+The official tool is downloaded on request from [NTCore](https://ntcore.com/4gb-patch/); it is not bundled in the APK. Automated regression and APK verification evidence is recorded in the release workflow. Physical Android device acceptance remains pending.

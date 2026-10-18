@@ -5,6 +5,7 @@ outside the client import tree, and every restore verifies installation, path an
 both the original and current checksums before touching a file.
 """
 import hashlib
+import io
 import ipaddress
 import json
 import os
@@ -15,11 +16,158 @@ import struct
 import tempfile
 import time
 import secrets
+import urllib.error
+import urllib.request
+import zipfile
 
 MAX_HOST = 16384
 MAX_EXE = 128 * 1024**2
 RECOVERY = 'backups/client-connection'
-MUTATIONS = ('client_host_save', 'client_host_restore', 'client_4gb_apply', 'client_4gb_restore')
+MUTATIONS = ('client_host_save', 'client_host_restore', 'client_4gb_apply', 'client_4gb_restore', 'client_4gb_download')
+
+# NTCore's reviewed official release. Fetch on explicit request only; the tool
+# is never bundled, executed, or substituted for the reversible built-in patch.
+PATCH_URL = 'https://ntcore.com/files/4gb_patch.zip'
+PATCH_PAGE = 'https://ntcore.com/4gb-patch/'
+PATCH_VERSION = '1.0.0.1'
+PATCH_ZIP_BYTES = 21464
+PATCH_ZIP_SHA256 = '1e13c263dc55e85cf62e3e30c6b2ce936d4c7e16e3bba3e311a5a8bed4be16ca'
+PATCH_EXE_BYTES = 45056
+PATCH_EXE_SHA256 = '980bf5eb62d30c749e5fbf7593e9d25094a4d849a959aa2b7b3fc979b1c93b5a'
+PATCH_NAME = '4gb_patch.exe'
+
+
+class OfficialPatchRedirect(urllib.request.HTTPRedirectHandler):
+    def redirect_request(self, req, fp, code, msg, headers, newurl):
+        if newurl != PATCH_URL:
+            raise ValueError('The official 4GB patch download redirected to an unexpected address')
+        return super().redirect_request(req, fp, code, msg, headers, newurl)
+
+
+def check_download(engine, deadline=None):
+    cancel = getattr(engine, 'cancel', None)
+    if cancel is not None and cancel.is_set():
+        raise ValueError('4GB patch download cancelled; client files were left unchanged')
+    if deadline is not None and time.monotonic() > deadline:
+        raise ValueError('The official 4GB patch download timed out; try again')
+
+
+def fetch_patch(engine):
+    """Bound and verify both the official archive and its fixed executable."""
+    deadline = time.monotonic() + 120
+    check_download(engine, deadline)
+    request = urllib.request.Request(PATCH_URL, headers={'User-Agent': 'TRASC-4GB-Patch/1'})
+    try:
+        with urllib.request.build_opener(OfficialPatchRedirect()).open(request, timeout=30) as response:
+            if response.url != PATCH_URL:
+                raise ValueError('Unexpected official 4GB patch download address')
+            try:
+                declared = int(response.headers.get('Content-Length', '0'))
+            except (TypeError, ValueError) as error:
+                raise ValueError('Invalid official 4GB patch response size') from error
+            if declared not in (0, PATCH_ZIP_BYTES):
+                raise ValueError('The official 4GB patch download size changed; this launcher needs an updated verified release')
+            archive = bytearray()
+            while True:
+                check_download(engine, deadline)
+                block = response.read(min(8192, PATCH_ZIP_BYTES - len(archive) + 1))
+                if not block:
+                    break
+                archive.extend(block)
+                if len(archive) > PATCH_ZIP_BYTES:
+                    raise ValueError('The official 4GB patch download exceeds its size limit')
+        check_download(engine, deadline)
+    except (OSError, urllib.error.URLError) as error:
+        raise ValueError('Could not download the official 4GB patch; check your connection and try again') from error
+    if len(archive) != PATCH_ZIP_BYTES or sha(archive) != PATCH_ZIP_SHA256:
+        raise ValueError('The official 4GB patch archive checksum failed; client files were left unchanged')
+    try:
+        with zipfile.ZipFile(io.BytesIO(archive)) as source:
+            entries = source.infolist()
+            if len(entries) != 1:
+                raise ValueError('The official 4GB patch archive has unexpected entries')
+            entry = entries[0]
+            file_type = stat.S_IFMT(entry.external_attr >> 16)
+            if (entry.filename != PATCH_NAME or entry.is_dir() or file_type not in (0, stat.S_IFREG)
+                    or entry.flag_bits & 1 or entry.file_size != PATCH_EXE_BYTES
+                    or entry.compress_type not in (zipfile.ZIP_STORED, zipfile.ZIP_DEFLATED)):
+                raise ValueError('The official 4GB patch archive has an invalid executable entry')
+            with source.open(entry) as member:
+                raw = member.read(PATCH_EXE_BYTES + 1)
+            if len(raw) != PATCH_EXE_BYTES or sha(raw) != PATCH_EXE_SHA256:
+                raise ValueError('The official 4GB patch executable checksum failed')
+            pe_info(raw)
+            return raw
+    except (zipfile.BadZipFile, NotImplementedError, RuntimeError) as error:
+        raise ValueError('The official 4GB patch archive could not be verified') from error
+
+
+def tool_status(root, eligible):
+    result = dict(can_download=False, downloaded=False, path='client/current/' + PATCH_NAME,
+                  source_url=PATCH_PAGE, download_url=PATCH_URL, version=PATCH_VERSION,
+                  sha256=PATCH_EXE_SHA256, warning='')
+    if root is None:
+        return result
+    try:
+        path = lookup(root, PATCH_NAME)
+        result['path'] = 'client/current/' + path.name
+        raw = read(path, PATCH_EXE_BYTES, missing=True)
+        if raw is not None:
+            if len(raw) != PATCH_EXE_BYTES or sha(raw) != PATCH_EXE_SHA256:
+                raise ValueError('An unrecognized 4gb_patch.exe already exists; it was left unchanged. Move it before downloading the verified NTCore tool.')
+            result['downloaded'] = True
+        result['can_download'] = eligible
+    except (ValueError, OSError) as error:
+        result['warning'] = str(error)
+    return result
+
+
+def download_patch(engine, root, executable, identity, revision):
+    """Save only the fixed verified tool, without replacing any client file."""
+    pe_info(read(lookup(root, executable), MAX_EXE))
+    existing = tool_status(root, True)
+    if existing['warning']:
+        raise ValueError(existing['warning'])
+    if existing['downloaded']:
+        return dict(status(engine), message='The verified NTCore 4GB patch is already downloaded at ' + existing['path'] + '.')
+    raw = fetch_patch(engine)
+    # Network activity may take time. Recheck the client installation, exe and
+    # lease immediately before adding the tool; no executable or backup changes.
+    current_root, current_executable, current_identity = local(engine)
+    if (current_root != root or current_executable != executable or current_identity != identity
+            or sha(read(lookup(current_root, current_executable), MAX_EXE)) != revision):
+        raise ValueError('The client changed during download. Reload connection settings before continuing.')
+    require_stopped(engine)
+    check_download(engine)
+    existing = tool_status(root, True)
+    if existing['warning']:
+        raise ValueError(existing['warning'])
+    if not existing['downloaded']:
+        destination = lookup(root, PATCH_NAME)
+        created = None
+        try:
+            # Android/PRoot can deny hard links. Exclusive creation works there
+            # and cannot replace any existing file, including a late symlink.
+            # A process crash could leave a partial tool, which is subsequently
+            # reported as a conflict rather than silently replaced or executed.
+            fd = os.open(destination, os.O_WRONLY | os.O_CREAT | os.O_EXCL | os.O_NOFOLLOW, 0o644)
+            created = os.fstat(fd)
+            with os.fdopen(fd, 'wb') as out:
+                out.write(raw)
+                out.flush()
+                os.fsync(out.fileno())
+        except FileExistsError as error:
+            raise ValueError('A 4gb_patch.exe appeared during download; it was left unchanged. Reload connection settings.') from error
+        except Exception:
+            if created is not None:
+                try:
+                    current = destination.lstat()
+                    if (current.st_dev, current.st_ino) == (created.st_dev, created.st_ino):
+                        destination.unlink()
+                except FileNotFoundError:
+                    pass
+            raise
+    return dict(status(engine), message='NTCore 4GB Patch downloaded to client/current/4gb_patch.exe. Open it from the Wine desktop if needed. No client executable was changed.')
 
 
 def sha(raw):
@@ -257,7 +405,8 @@ def require_stopped(engine):
 def status(engine, args=None):
     host = dict(host='127.0.0.1', port=6000 if engine.profile == 'takp' else 5999, exists=False, backup_exists=False,
                 revision='', warning='', path='client/current/eqhost.txt', can_save=False, can_restore=False)
-    patch = dict(eligible=False, exe='eqgame.exe', patched=False, backup_exists=False, revision='', warning='', can_apply=False, can_restore=False)
+    patch = dict(eligible=False, exe='eqgame.exe', patched=False, backup_exists=False, revision='', warning='', can_apply=False, can_restore=False,
+                 download=tool_status(None, False))
     result = dict(profile=engine.profile, host=host, patch=patch)
     try:
         root, executable, identity = local(engine)
@@ -297,6 +446,7 @@ def status(engine, args=None):
                 raise ValueError('eqgame.exe changed since patching; the protected original was not applied to this replacement')
     except (ValueError, OSError, UnicodeError, json.JSONDecodeError) as error:
         patch.update(warning=str(error), eligible=False, can_apply=False)
+    patch['download'] = tool_status(root, patch['eligible'])
     return result
 
 
@@ -313,6 +463,8 @@ def mutate(engine, operation, args):
     revision = sha(raw) if raw is not None else 'missing'
     if args.get('revision') != revision:
         raise ValueError('The client file changed. Reload connection settings before continuing.')
+    if operation == 'client_4gb_download':
+        return download_patch(engine, root, executable, identity, revision)
     if operation.endswith('_restore'):
         record = recovery(engine, kind, path, identity)
         if not record:

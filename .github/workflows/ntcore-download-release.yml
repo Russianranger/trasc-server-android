@@ -1,0 +1,154 @@
+name: Build NTCore patch download release
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+permissions:
+  contents: read
+concurrency:
+  group: ntcore-release-${{ github.ref }}
+  cancel-in-progress: false
+jobs:
+  apk:
+    if: github.ref == 'refs/heads/main' && (github.event_name == 'workflow_dispatch' || contains(github.event.head_commit.message, '[ntcore-release]'))
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    env:
+      TRASC_PREVIEW_KEYSTORE: ${{ github.workspace }}/runtime-work/signing/preview.keystore
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - name: Require the authorized release version
+        run: |
+          python3 - <<'PY'
+          import pathlib,re
+          gradle=pathlib.Path('app/build.gradle').read_text()
+          assert re.search(r"versionName\s+'0\.6\.37'", gradle)
+          assert re.search(r'versionCode\s+86\b', gradle)
+          assert re.search(r"^VERSION = '0\.6\.37'$", pathlib.Path('backend/engine.py').read_text(), re.M)
+          assert pathlib.Path('docs/release-0637-notes.md').is_file()
+          PY
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - uses: android-actions/setup-android@v3
+        with:
+          packages: platform-tools
+      - run: sdkmanager 'platforms;android-35' 'build-tools;35.0.0'
+      - uses: gradle/actions/setup-gradle@v4
+        with:
+          gradle-version: '8.11.1'
+      - uses: actions/cache/restore@v4
+        with:
+          path: runtime-work/signing/preview.keystore
+          key: trasc-preview-signing-v2
+      - run: bash scripts/prepare-preview-signing.sh
+      - name: Restore the checksum-pinned baseline for publication retries
+        id: native-baseline
+        uses: actions/cache/restore@v4
+        with:
+          path: runtime-work/baseline
+          key: trasc-ntcore-baseline-0.6.36-cca20ad712e14f9ba600a6921b7913d4b8e14711308b3b65f6d09ab9acfa3c4b
+      - name: Reuse checksum-pinned 0.6.36 native components and corresponding sources
+        run: |
+          mkdir -p runtime-work/baseline dist
+          if [ ! -f runtime-work/baseline/base.apk ]; then
+            curl --fail --location --retry 3 -o runtime-work/baseline/base.apk https://github.com/Russianranger/trasc-server-android/releases/download/v0.6.36/trasc-server-android-0.6.36.apk
+          fi
+          if [ ! -f runtime-work/baseline/launcher-sources.tar.gz ]; then
+            curl --fail --location --retry 3 -o runtime-work/baseline/launcher-sources.tar.gz https://github.com/Russianranger/trasc-server-android/releases/download/v0.6.36/launcher-sources.tar.gz
+          fi
+          echo 'b4f8e8fa9d50a3ec8d7189e943bde30a8b8415b04917ccfab9743f30c5dd87e7  runtime-work/baseline/launcher-sources.tar.gz' | sha256sum --check
+          python3 scripts/reuse-launcher-native.py extract --apk runtime-work/baseline/base.apk --receipt dist/native-reuse.json --expected-sha cca20ad712e14f9ba600a6921b7913d4b8e14711308b3b65f6d09ab9acfa3c4b --baseline-version 0.6.36 --include-camera
+      - name: Cache the verified immutable native baseline
+        if: steps.native-baseline.outputs.cache-hit != 'true'
+        uses: actions/cache/save@v4
+        with:
+          path: runtime-work/baseline
+          key: trasc-ntcore-baseline-0.6.36-cca20ad712e14f9ba600a6921b7913d4b8e14711308b3b65f6d09ab9acfa3c4b
+      - name: Install regression dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y mariadb-server binutils
+          python3 -m pip install lupa==2.6
+          npm install --no-save --package-lock=false playwright@1.55.0
+          npx playwright install --with-deps chromium
+      - name: Verify all backend, JVM, native host and browser flows
+        env:
+          ERARULES_MARIADB: '1'
+        run: bash scripts/check-takp-launcher.sh
+      - name: Compile APK and lint
+        run: gradle --no-daemon :app:assembleDebug :app:lintDebug
+      - name: Verify preserved signing, qualified TAKP helpers and unchanged native payload
+        run: |
+          "$ANDROID_HOME/build-tools/35.0.0/apksigner" verify --print-certs app/build/outputs/apk/debug/app-debug.apk > dist/apk-signing.txt
+          python3 scripts/reuse-launcher-native.py verify --apk app/build/outputs/apk/debug/app-debug.apk --receipt dist/native-reuse.json
+          python3 scripts/verify-takp-apk.py --apk app/build/outputs/apk/debug/app-debug.apk --signing-report dist/apk-signing.txt
+          python3 - <<'PY'
+          import pathlib,re
+          actual=re.search(r'Signer #1 certificate SHA-256 digest: ([0-9a-f]+)', pathlib.Path('dist/apk-signing.txt').read_text()).group(1)
+          assert actual==pathlib.Path('docs/preview-signing.sha256').read_text().strip()
+          PY
+      - name: Package the release and matching launcher/native source attribution
+        run: |
+          cp app/build/outputs/apk/debug/app-debug.apk dist/trasc-server-android-0.6.37.apk
+          cp dist/trasc-server-android-0.6.37.apk dist/trasc-server-android-preview.apk
+          mkdir -p runtime-work/source-bundle/launcher-source
+          cp runtime-work/baseline/launcher-sources.tar.gz runtime-work/source-bundle/launcher-source/native-sources-0.6.36.tar.gz
+          git archive --format=tar.gz "$GITHUB_SHA" > runtime-work/source-bundle/launcher-source/launcher-code-0.6.37.tar.gz
+          cp dist/native-reuse.json backend-assets/traditional-camera-bundle.json THIRD_PARTY_NOTICES.md runtime-work/source-bundle/launcher-source/
+          tar -czf dist/launcher-sources.tar.gz -C runtime-work/source-bundle launcher-source
+          python3 - <<'PY'
+          import hashlib,json,os,pathlib
+          p=pathlib.Path('dist/trasc-server-android-0.6.37.apk')
+          sha=lambda path: hashlib.file_digest(path.open('rb'),'sha256').hexdigest()
+          manifest={'commit':os.environ['GITHUB_SHA'],'sha256':sha(p),'file':p.name,'bytes':p.stat().st_size,
+            'version':'0.6.37','version_code':86,'application_id':'io.github.russianranger.trasc.preview',
+            'signing_certificate_sha256':pathlib.Path('docs/preview-signing.sha256').read_text().strip(),
+            'build_run':int(os.environ['GITHUB_RUN_ID']),'native_payload_reused_from':'0.6.36',
+            'native_reuse_manifest_sha256':sha(pathlib.Path('dist/native-reuse.json')),
+            'traditional_camera_adapter_sha256':sha(pathlib.Path('backend-assets/trasc-camera-dinput8.dll')),
+            'source_archive_sha256':sha(pathlib.Path('dist/launcher-sources.tar.gz'))}
+          pathlib.Path('dist/release-build.json').write_text(json.dumps(manifest,indent=2)+'\n')
+          manifest['file']='trasc-server-android-preview.apk'
+          pathlib.Path('dist/preview-build.json').write_text(json.dumps(manifest,indent=2)+'\n')
+          PY
+      - uses: actions/upload-artifact@v4
+        with:
+          name: ntcore-release
+          path: |
+            dist/trasc-server-android-0.6.37.apk
+            dist/trasc-server-android-preview.apk
+            dist/launcher-sources.tar.gz
+            dist/release-build.json
+            dist/preview-build.json
+            dist/native-reuse.json
+            dist/apk-signing.txt
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: ntcore-reports
+          path: |
+            app/build/reports/
+            ui-reports/
+  publish:
+    needs: [apk]
+    if: github.ref == 'refs/heads/main' && (github.event_name == 'workflow_dispatch' || contains(github.event.head_commit.message, '[ntcore-release]'))
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/download-artifact@v4
+        with:
+          name: ntcore-release
+          path: dist
+      - name: Publish the verified latest release from current main and update preview
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: bash scripts/publish-ntcore-download-release.sh

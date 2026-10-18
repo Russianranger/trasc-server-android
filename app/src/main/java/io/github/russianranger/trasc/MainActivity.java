@@ -187,7 +187,7 @@ public final class MainActivity extends Activity {
                             }
                             break;
                         case "client_settings_save":
-                        case "client_host_save": case "client_host_restore": case "client_4gb_apply": case "client_4gb_restore":
+                        case "client_host_save": case "client_host_restore": case "client_4gb_apply": case "client_4gb_restore": case "client_4gb_download":
                         case "import_client_zip": case "import_client_ui": case "activate_client_ui": case "restore_client_ui": case "prepare_client": case "export_client":
                         case "apply_spell_test": case "restore_spell_test":
                         case "client_addons_copy": case "client_dll_deploy":
