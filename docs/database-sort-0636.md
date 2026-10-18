@@ -16,4 +16,4 @@ The APK retains the application identity, pinned signing certificate and native 
 
 Install over the existing app, open the selected profile runtime, and use Setup → Select database / Database files → Find database files. Check largest-first and newest-first with known files. Confirm the selected database remains selected while sorting and searching. Repeat in Custom, Traditional and TAKP; TAKP keeps its Initialize fresh TAKP database deployment action.
 
-Validation and public asset digests will be recorded after the qualified build publishes. Physical device acceptance is pending.
+Published: workflow 39138297822 passed on its first attempt. All 599 Python tests with zero skips, JVM/C/DirectX checks and 19 browser scripts passed, followed by assembly/lint, pinned signing, native payload identity and TAKP helper verification. The public APK was independently downloaded and matched its published SHA256. GitHub /releases/latest now resolves to non-draft/non-prerelease v0.6.36 and preview APK bytes are identical. See release-proof-0636.json. Physical device acceptance is pending.

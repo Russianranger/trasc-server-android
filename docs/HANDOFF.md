@@ -1,3 +1,17 @@
+# 0.6.36 published as Latest and independently downloaded
+
+Source `7165b8dd8a43496635c083ada3bf20f52851411a`, release run [39138297822](https://github.com/Russianranger/trasc-server-android/actions/runs/39138297822), attempt 1 succeeded. See [release-proof-0636.json](release-proof-0636.json), [database-sort-0636.md](database-sort-0636.md) and [release notes](release-0636-notes.md).
+
+[Download 0.6.36 APK](https://github.com/Russianranger/trasc-server-android/releases/download/v0.6.36/trasc-server-android-0.6.36.apk). Version/code 0.6.36/85, 18,990,062 bytes, SHA256 `cca20ad712e14f9ba600a6921b7913d4b8e14711308b3b65f6d09ab9acfa3c4b`. Public download was independently hashed; preview APK is identical. GitHub /releases/latest independently resolves to non-draft/non-prerelease v0.6.36, fixing the older stable 0.6.2 Latest pointer.
+
+Setup's shared database dropdown offers Recommended, Size descending and Date/time modified descending. It preserves selection/search/uploads, stores the preferred ordering across profiles, and exposes the catalog in Custom, Traditional and TAKP. TAKP retains its matching pinned initialization; generic imports remain guarded. Metadata comes from filesystem times or ZIP member times, and full PEQ bundles use their newest component. The five SQL parts retain their required import order.
+
+All 599 Python tests with zero skips, JVM/C/DirectX checks, all 19 browser scripts, APK assembly/lint, pinned signing, exact native reuse and TAKP helpers passed in clean CI. Focused local sorting/import/TAKP/profile browser checks and screenshot inspection also passed. Physical Thor sorting acceptance remains pending. Current application/signing/runtime components are retained; install in place.
+
+Triptych upstream PR #4 was separately approved and merged into its main as `38a4f2ad03203cb2f12dbff26fd613cc47efba0a`, preserving the reviewed Android and LAN adaptations.
+
+---
+
 # 0.6.35 beta published and independently downloaded — October 18 UTC / October 17 Chicago
 
 Source `589606cf239749709cfa95fcbc27189464984589`, release run [39091813067](https://github.com/Russianranger/trasc-server-android/actions/runs/39091813067), attempt 2 succeeded. See [release-proof-0635.json](release-proof-0635.json) and [client-customization-0635.md](client-customization-0635.md).
