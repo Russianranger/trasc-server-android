@@ -139,7 +139,7 @@
  document.addEventListener('keydown',event=>{
   const name=map[event.key];if(!name||event.altKey||event.ctrlKey||event.metaKey)return;
   const text=event.target.matches?.('input,textarea,select,[contenteditable=true]');
-  if(text&&(directions.has(name)||event.key===' '||event.key==='Enter'&&event.target.tagName==='TEXTAREA'))return;
+  if(text&&(directions.has(name)||event.key===' '||event.key==='Enter'))return;
   if(blocked())return;
   if(event.repeat&&!directions.has(name)||command(name)){event.preventDefault();event.stopImmediatePropagation();consumed.add(event.code||event.key);}
  },true);
