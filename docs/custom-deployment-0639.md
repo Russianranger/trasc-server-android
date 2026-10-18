@@ -1,6 +1,6 @@
 # Custom deployment in TRASC 0.6.39
 
-Implementation and host evidence are recorded below. Clean release CI, publication and physical AYN Thor acceptance remain pending at this checkpoint. See [release notes](release-0639-notes.md) for the device checklist.
+[Download TRASC 0.6.39](https://github.com/Russianranger/trasc-server-android/releases/download/v0.6.39/trasc-server-android-0.6.39.apk), published from main after successful [clean release qualification](https://github.com/Russianranger/trasc-server-android/actions/runs/39152733003). See [release proof](release-proof-0639.json) and [release notes](release-0639-notes.md). Physical AYN Thor acceptance remains a device step.
 
 ## Quick start
 
@@ -155,4 +155,4 @@ The real Triptych checkout at `38a4f2ad03203cb2f12dbff26fd613cc47efba0a` contain
 
 Host validation of real LoN card data parsed 6,027 archetypes with zero unreadable records and 16 booster sets. The reference loader/parser parity check uses the actual Triptych parsing behavior. This establishes readable data, not a running Thor card service. Client assets used during host inspection are not redistributed.
 
-At this checkpoint, the final exact-source clean CI, Android assembly/lint/signature/native-payload verification, downloadable release and physical Thor SAF/card-service acceptance remain pending. Publication proof and workflow totals must be added after the actual release passes; do not infer those results from these host examples.
+The final source `0ae2b4e36b585bba0307b2566965a6160e15b009` passed 749 Python tests with zero skips, all 20 browser suites, JVM/native host/DirectX checks and Android assembly/lint/signature/native-payload verification in release run 39152733003. The public 19,052,862-byte APK was independently downloaded, hashed and inspected for the shipped backend/UI/native SAF implementation. Its SHA-256 is `cf7218cf4a5752a24d7f30946f9ea2af1e3393bfac2d1a6acebba0590c97a560`; GitHub Latest and the identical compatibility preview were verified. Physical Thor SAF and live card-service initialization remain pending the quick-start import/restart/verify steps above.
