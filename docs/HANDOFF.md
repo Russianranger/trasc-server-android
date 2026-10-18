@@ -1,3 +1,13 @@
+# 0.6.42 pending qualification — Client runner module and warning-only compatibility
+
+The user's 0.6.41 Thor screenshot reports `No module named 'client_spellbook'` before game launch. This is a launcher runner deployment regression, distinct from the prior character-select freeze diagnosis. The repair must copy every required compatibility module to the client runner and retain launch when compatibility inspection is unavailable.
+
+Client/server mismatches now require a Continue/Cancel warning rather than a hard launch refusal, with persistent per-profile Don't warn again and a Client settings control to re-enable warnings. This update itself requires no database reset, reimport, runtime reinstall or DLL rebuild. Existing optional executable mutations retain their explicit confirmation and protected originals.
+
+Version/code: 0.6.42/91. Release workflow retains real Microsoft current-source DLL compilation, full launcher regression qualification, Android assembly/lint, pinned signing, exact-current-main publication, unchanged native/source baseline 0.6.36, Latest plus identical compatibility preview and independent public-APK download verification. Release proof and physical Thor retest remain pending. See [release/device checklist](release-0642-notes.md).
+
+---
+
 # 0.6.41 published as Latest — Custom RoF2 world-entry repair
 
 Source `69fddd98450a4d76ab2871cfe28edc0d002b8b8d`, release run [39163930040](https://github.com/Russianranger/trasc-server-android/actions/runs/39163930040), attempt 1 succeeded. See [release-proof-0641.json](release-proof-0641.json), [repair instructions](client-world-entry-0641.md) and [release/device checklist](release-0641-notes.md).

@@ -46,6 +46,8 @@ BASE_SIZE = 8774656
 PATCHED_SIZE = BASE_SIZE + 512
 RECOVERY = connection.RECOVERY
 KIND = 'spellbook'
+GUEST_CLIENT = Path('/client')
+GUEST_WORK = Path('/work')
 TABLE_SHA256 = 'a5eb88a400bde346610093cb904ebafc1965d9f745139e4ff1631dbb79c6f004'
 _LOCK = threading.RLock()
 _EXPECTED_HASHES = {}
@@ -1003,6 +1005,14 @@ def recognizes_supported_executable(path):
     """Recognize the pinned base or a byte-exact patch with protected original."""
     path = Path(path)
     try:
+        # The client runner reads the /client bind; protected originals and
+        # import identity remain in the same world's /work mount. Accept that
+        # alias only when it is the very same file as the canonical client.
+        if path.parent == GUEST_CLIENT:
+            canonical = GUEST_WORK / 'client/current' / path.name
+            if not path.samefile(canonical):
+                return False
+            path = canonical
         if path.name.casefold() != 'eqgame.exe' or path.parent.name != 'current' or path.parent.parent.name != 'client':
             return False
         engine = types.SimpleNamespace(work=path.parents[2], profile='custom')

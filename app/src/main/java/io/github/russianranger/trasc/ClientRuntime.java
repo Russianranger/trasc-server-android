@@ -59,7 +59,7 @@ final class ClientRuntime {
     }
     JSONObject state()throws Exception {
         // The bridge holds this world's request lease while taking the snapshot.
-        JSONObject result=new JSONObject().put("profile",server.profiles.current()).put("installed",installed()).put("alive",alive()).put("busy",busy).put("status",status);
+        JSONObject result=new JSONObject().put("profile",server.profiles.current()).put("installed",installed()).put("alive",alive()).put("busy",busy).put("status",status).put("compatibility_warnings_enabled",context.getSharedPreferences("client-compatibility-warnings",Context.MODE_PRIVATE).getBoolean(server.profiles.current()+".enabled",true));
         File report=new File(run,"status.json");
         if(report.isFile())try{JSONObject info=json(report);result.put("launch",info);if(info.optBoolean("compiler"))result.put("status",info.optString("message",status));}catch(Exception ignored){}
         File options=new File(server.work,"client/launch-options.json");
@@ -152,12 +152,6 @@ final class ClientRuntime {
                     if(Arrays.asList("client_settings_save","client_host_save","client_host_restore","client_4gb_apply","client_4gb_restore","client_4gb_download","client_spellbook_apply","client_spellbook_restore","import_client_zip","import_client_ui","activate_client_ui","restore_client_ui","prepare_client","export_client","apply_spell_test","restore_spell_test","client_addons_copy","client_dll_deploy","client_dll_sdk","client_dll_download","set_takp_skeletons","source_update_preview","source_update_apply","build_update","deploy_update","era_apply","era_restore","bots_generate","bots_socials_install","bots_socials_restore","bots_storage_enable","quest_sync_apply","lon_data_apply","custom_deployment_recover").contains(job.optString("operation"))&&Arrays.asList("queued","running").contains(job.optString("status")))
                         throw new IOException("Wait for client file changes to finish before launching");
                 }
-                if("custom".equals(server.profiles.current())&&"client".equals(options.optString("mode","client"))) {
-                    JSONObject compatibility=server.request("client_spellbook_preflight",new JSONObject(options.toString()).put("__profile",server.profiles.current()));
-                    if(!compatibility.getBoolean("ok"))throw new IOException(compatibility.optString("error"));
-                    JSONObject checked=compatibility.getJSONObject("result");
-                    if(!checked.optBoolean("allowed",true))throw new IOException(checked.optString("message","Check Custom client compatibility before entering the world."));
-                }
             }
             RuntimeManager.write(new File(server.work,"run/client-active.json"),new JSONObject().put("pid",android.os.Process.myPid()).toString());clientLease=true;
             String mode=options.optString("mode","client"),resolution=options.optString("resolution","800x600"),renderer=options.optString("renderer","software");
@@ -234,7 +228,7 @@ final class ClientRuntime {
             if(!takp()&&spellJournal.exists())request.put("spell_test",json(spellJournal));
             RuntimeManager.write(new File(run,"request.json"),request.toString());
             File backend=new File(server.home,"client-backend");backend.mkdirs();
-            for(String name:new String[]{"client_runner.py","client_connection.py","takp_client.py","takp_skeletons.py","managed_content.py","client_mouse.py","traditional_camera.py","trasc-camera-dinput8.dll","traditional-camera-bundle.json","client_presentation.py","log_retention.py","client_display.py","client_xauthority.py","client_metrics.py","client_spells.py","client_vulkan.py","client_audio.py","libasound_module_pcm_trasc.so","audio-bundle.json","graphics_probe.py","runtime_probe.py","wined3d.dll","wined3d-patch.json","wineserver","wineserver-patch.json"})
+            for(String name:new String[]{"client_runner.py","client_connection.py","client_spellbook.py","takp_client.py","takp_skeletons.py","managed_content.py","client_mouse.py","traditional_camera.py","trasc-camera-dinput8.dll","traditional-camera-bundle.json","client_presentation.py","log_retention.py","client_display.py","client_xauthority.py","client_metrics.py","client_spells.py","client_vulkan.py","client_audio.py","libasound_module_pcm_trasc.so","audio-bundle.json","graphics_probe.py","runtime_probe.py","wined3d.dll","wined3d-patch.json","wineserver","wineserver-patch.json"})
                 try(InputStream in=context.getAssets().open(name)){RuntimeManager.copy(in,new File(backend,name));}
             if(takp()) {
                 try(InputStream in=context.getAssets().open("takp_input_diagnostics.py")){RuntimeManager.copy(in,new File(backend,"takp_input_diagnostics.py"));}

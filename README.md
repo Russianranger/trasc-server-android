@@ -1,8 +1,8 @@
 # TRASC Server for Android
 
-**Latest APK: [TRASC Android 0.6.41](https://github.com/Russianranger/trasc-server-android/releases/download/v0.6.41/trasc-server-android-0.6.41.apk)** · [Release page](https://github.com/Russianranger/trasc-server-android/releases/latest)
+**Latest APK: [TRASC Android 0.6.42](https://github.com/Russianranger/trasc-server-android/releases/download/v0.6.42/trasc-server-android-0.6.42.apk)** · [Release page](https://github.com/Russianranger/trasc-server-android/releases/latest)
 
-Adds **Custom Client → 1,440-slot spellbook compatibility** to repair the character-select world-entry freeze against the October 16 Triptych server. The 4 GB action alone does not expand the spellbook. Apply the verified executable repair, then **Compile dinput8.dll → Deploy staged DLL** from the selected current source. Protected originals, hash verification and explicit restore remain available; unknown executables are refused. Existing quests, LoN data, players and all three profiles are preserved. [Exact repair steps](docs/client-world-entry-0641.md) · [Release notes and device checklist](docs/release-0641-notes.md).
+Fixes the 0.6.41 missing `client_spellbook` startup module and makes client compatibility mismatches an optional warning with **Continue / Cancel** and a per-profile **Don't warn again** setting. Re-enable warnings in Client settings. Install over the existing app; no database reset or DLL rebuild is required for this launcher update. Existing optional executable repair, quests, LoN data, players and all three profiles are preserved. [Release notes and device checklist](docs/release-0642-notes.md).
 
 **Russianranger foreword;**
 

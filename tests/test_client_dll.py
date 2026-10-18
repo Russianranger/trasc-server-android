@@ -246,7 +246,8 @@ class ClientDllTests(unittest.TestCase):
                     patch.object(launch.client_connection,'status',return_value={'host':{'host':'127.0.0.1'}}), \
                     patch.object(launch.client_spellbook,'status',return_value={'patched':True}):
                 checked=launch.preflight(self.engine,{})
-                self.assertFalse(checked['allowed']);self.assertNotIn('dll_evidence',checked)
+                self.assertTrue(checked['allowed']);self.assertTrue(checked['requires_confirmation'])
+                self.assertNotIn('dll_evidence',checked)
 
     def test_verified_current_build_deploys_only_on_explicit_action(self):
         self.sdk();self.build();installed=self.work/'client/current/dinput8.dll'

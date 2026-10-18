@@ -260,6 +260,11 @@
 <summary>Graphics, audio &amp; launch options</summary>
 <div class="options-body">
 <p class="hint options-intro">Choose your settings, then launch the client to apply them. Stop a running client before relaunching.</p>
+<fieldset class="option-group" id="client-compatibility-warnings-panel" hidden><legend>Custom client compatibility</legend>
+<label class="check"><input id="client-compatibility-warnings" type="checkbox" checked disabled> Warn before launching with a client compatibility mismatch</label>
+<p class="hint" id="client-compatibility-warnings-status" role="status" aria-live="polite">Checking this profile’s warning preference…</p>
+<small>A mismatch opens a warning with Continue and Cancel. You can choose “Don’t warn again” there, or turn warnings back on here. This setting is saved for this profile and does not change the executable or DLL.</small>
+</fieldset>
 <fieldset class="option-group"><legend>Display &amp; runtime</legend>
 <div class="option-grid">
 <div class="option-field"><label for="client-resolution">Client resolution</label><select id="client-resolution"><option>640x480</option><option selected>800x600</option><option>960x540</option><option>1024x768</option><option>1280x720</option></select></div>

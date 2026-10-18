@@ -1,20 +1,21 @@
-# TRASC Android 0.6.41 — Custom client world-entry compatibility
+# TRASC Android 0.6.42 — Client launch repair and optional compatibility warnings
 
-[Download the Android APK](https://github.com/Russianranger/trasc-server-android/releases/download/v0.6.41/trasc-server-android-0.6.41.apk)
+[Download the Android APK](https://github.com/Russianranger/trasc-server-android/releases/download/v0.6.42/trasc-server-android-0.6.42.apk)
 
-Adds a protected **1,440-slot RoF2 executable repair** for the October 16 Triptych server. That server sends an expanded player profile that an older executable cannot parse, causing a freeze after character select. The previous 4 GB/LAA action only changed memory addressing; this separate spellbook repair supplies the missing executable changes. Supported inputs and already-patched output are verified; unknown executables remain unchanged. The original is backed up for explicit restoration.
+Fixes the 0.6.41 startup regression reporting `No module named 'client_spellbook'`. The backend modules are now copied into the client runner as well as the server runtime, and the compatibility check cannot prevent launch because a report is unavailable.
 
-Open **Client → Custom client · 1,440-slot spellbook compatibility** to check, apply/verify or restore. The report separates selected source from a verified deployed server build and reports DLL freshness. After applying, use **Compile dinput8.dll → Deploy staged DLL** from the selected current source; the October update requires the matching DLL as well. The compiler now honors the project's C source setting for the new LoN audio decoder. [Diagnosis and exact repair steps](client-world-entry-0641.md).
+A detected client/server compatibility mismatch now offers **Continue** or **Cancel** before starting the client. **Don't warn again** saves the choice for that profile. You can turn compatibility warnings back on in Client settings. Choosing Continue starts the configured client without changing its executable, DLL or server data.
 
-The user's 0.6.40 logs confirm that both Setup deployments completed and the LoN card service initialized with 6,027 readable cards. This repair preserves those files, all three profiles, player data, imports/exports and backups. No database reimport or migration is performed. Install over the current app with the preserved application identity and signing certificate.
+Install this APK over your current app. No database reimport, runtime reset or DLL rebuild is required just to install this launcher repair. The existing optional 1,440-slot executable repair, protected original and explicit restore remain available for the matching October Triptych server. If you choose to repair an actual mismatch, follow the [compatibility instructions](client-world-entry-0641.md); the warning itself performs no patch or migration.
+
+The release preserves the application identity and signing certificate, the qualified 0.6.36 native payload, all three profiles, player data, quests, LoN data, imports/exports and backups.
 
 ## Device checklist
 
-The expanded executable retains the existing camera, loading, display and boat adapters through a mapped-image guard that checks the canonical patch code and section, including relocated pointers. The compiler also accepts the project's absent legacy include directory without creating or downloading dependencies. Publication requires a real current-source Microsoft compiler build as well as the full launcher qualification.
+1. Install the update and start your existing client. The missing-module startup failure should no longer occur.
+2. If a mismatch warning appears, choose Cancel once; then start again and choose Continue. Confirm the client starts.
+3. Select Don't warn again and Continue. Launch once more to confirm the warning stays suppressed for that profile, then re-enable it in Client settings and confirm it returns for an unresolved mismatch.
+4. Test character-select world entry and camp/relog. Export logs if the transition still stops; successful world entry on the Thor remains a separate physical acceptance check.
+5. Confirm Traditional/TAKP and existing transfer/backup tools retain their settings and behavior.
 
-1. Keep the Custom runtime open with server and client stopped. Check compatibility, apply the supported 1,440-slot patch and approve its visible confirmation. Verify the reported protected backup and successful checksum.
-2. Compile and deploy a new current-source `dinput8.dll`; check compatibility again. Keep native dinput8 enabled.
-3. Start server/client, enter the world, confirm inventory/spells/casting, and camp/relog once. Export logs if the transition still stops.
-4. Confirm the already synchronized quests and initialized LoN service remain available. Traditional/TAKP should retain their own client setup.
-
-Automated backend, browser, JVM/native host, Android compile/lint and signing qualification results are recorded by the release workflow. Physical repaired-world-entry acceptance remains pending the Thor retest.
+Automated backend, browser, JVM/native host, real Microsoft current-source DLL compilation, Android compile/lint, signing and public-download checks must pass before publication. Qualification and physical Thor retest are pending until recorded in the release proof.

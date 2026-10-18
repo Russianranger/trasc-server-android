@@ -110,8 +110,35 @@ $('client').addEventListener('pointerdown',event=>{if(captureActive&&event.targe
 drawClientInput();
 
 let launchOptionsLoaded=false;
+let clientCompatibilityWarningsSaving=false,clientCompatibilityWarningsProfile=null,clientCompatibilityWarningsGeneration=0;
+function clientCompatibilityWarningsBlocked(){
+ return activeProfile!=='custom'||lastClientNative?.profile!==activeProfile||!!(busy||sessionAction||lastNative?.installing||lastNative?.session_busy||clientCompatibilityWarningsSaving);
+}
+function renderClientCompatibilityWarnings(){
+ if(clientCompatibilityWarningsProfile!==activeProfile){clientCompatibilityWarningsProfile=activeProfile;clientCompatibilityWarningsGeneration++;clientCompatibilityWarningsSaving=false;}
+ const custom=activeProfile==='custom',known=lastClientNative?.profile===activeProfile;
+ $('client-compatibility-warnings-panel').hidden=!custom;
+ $('client-compatibility-warnings').disabled=clientCompatibilityWarningsBlocked();
+ if(known&&!clientCompatibilityWarningsSaving)$('client-compatibility-warnings').checked=lastClientNative.compatibility_warnings_enabled!==false;
+ $('client-compatibility-warnings-status').textContent=clientCompatibilityWarningsSaving?'Saving this profile’s warning preference…':!known?'Checking this profile’s warning preference…':lastClientNative.compatibility_warnings_enabled===false?'Compatibility warnings are off. Turn this on to show them before future launches.':'Compatibility warnings are on. You can continue launching after reviewing a mismatch.';
+}
+$('client-compatibility-warnings').addEventListener('change',async()=>{
+ if(clientCompatibilityWarningsBlocked()){renderClientCompatibilityWarnings();return;}
+ const profile=activeProfile,generation=++clientCompatibilityWarningsGeneration,enabled=$('client-compatibility-warnings').checked;
+ clientCompatibilityWarningsSaving=true;renderClientCompatibilityWarnings();
+ try{
+  const result=await api('client_compatibility_warnings',{enabled});
+  if(activeProfile!==profile||generation!==clientCompatibilityWarningsGeneration||result.profile!==profile)return;
+  lastClientNative={...lastClientNative,compatibility_warnings_enabled:result.enabled!==false};
+  notice(result.enabled===false?'Compatibility warnings disabled for this profile.':'Compatibility warnings enabled for this profile.');
+ }catch(e){if(activeProfile===profile&&generation===clientCompatibilityWarningsGeneration)notice(e.message,true);}
+ finally{if(generation===clientCompatibilityWarningsGeneration){clientCompatibilityWarningsSaving=false;renderClientCompatibilityWarnings();}}
+});
 async function clientRuntimeState(){
- const s=await api('client_native_state',{},10000);renderClientActivity(s);
+ const profile=activeProfile,generation=clientCompatibilityWarningsGeneration,s=await api('client_native_state',{},10000);
+ if((profile&&activeProfile!==profile)||(s.profile&&activeProfile&&s.profile!==activeProfile))return null;
+ if(generation!==clientCompatibilityWarningsGeneration&&lastClientNative?.profile===s.profile)s.compatibility_warnings_enabled=lastClientNative.compatibility_warnings_enabled;
+ renderClientActivity(s);renderClientCompatibilityWarnings();
  if(!launchOptionsLoaded){
   launchOptionsLoaded=true;const saved=s.launch_options||{};
   $('client-cpu-profile').value=(s.profile||activeProfile)==='takp'?'accurate':'balanced';
@@ -162,8 +189,13 @@ action('spell-test-apply',()=>job('apply_spell_test'));
 action('spell-test-restore',()=>job('restore_spell_test'));
 action('client-prepare',async()=>{await job('prepare_client',{resolution:$('client-resolution').value,fullscreen:$('client-fullscreen').checked});});
 for(const [id,mode] of [['client-desktop','desktop'],['client-launch','client']])action(id,async()=>{
+ const profile=activeProfile;
  await api('controller_capture',{active:false});notice('Opening the client display. First-time Wine setup can take a minute…');
- await api('client_start',launchOptions(mode));await clientRuntimeState();await api('client_view');
+ if(profile!==activeProfile)return;
+ const result=await api('client_start',launchOptions(mode));if(profile!==activeProfile)return;
+ await clientRuntimeState();if(profile!==activeProfile)return;
+ if(result?.cancelled){notice(result.message||'Client launch cancelled. Your client files are unchanged.');return;}
+ await api('client_view');
 });
 action('client-prefix-repair',async()=>{
  await api('controller_capture',{active:false});notice('Preserving the previous Wine prefix and preparing a fresh Windows environment…');

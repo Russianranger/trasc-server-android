@@ -19,7 +19,8 @@ import java.util.Arrays;
 public final class MainActivity extends Activity {
     private WebView web;
     private ManagementChromeClient managementChrome;
-    private boolean activityResumed;
+    private final ClientCompatibilityReview compatibilityReview=new ClientCompatibilityReview();
+    private volatile boolean activityResumed;
     private RuntimeManager runtime;
     private ControllerManager controller;
     private LauncherController launcherController;
@@ -57,7 +58,7 @@ public final class MainActivity extends Activity {
         web.setWebViewClient(new WebViewClient(){
             @Override public boolean onRenderProcessGone(WebView view,RenderProcessGoneDetail detail){
                 runtime.recordFailure("management_display",new IOException("WebView renderer exited: crashed="+detail.didCrash()+" priority="+detail.rendererPriorityAtExit()));
-                managementChrome.cancelPending();
+                managementChrome.cancelPending();compatibilityReview.cancelPending();
                 web=null;controller.capture(false);
                 if(launcherController!=null)launcherController.reset();
                 android.view.ViewParent parent=view.getParent();if(parent instanceof android.view.ViewGroup)((android.view.ViewGroup)parent).removeView(view);
@@ -137,6 +138,71 @@ public final class MainActivity extends Activity {
         }
         void cancelPending(){if(pending!=null)resolve(pending,false);}
     }
+    private boolean compatibilityWarningsEnabled(String profile){return getSharedPreferences("client-compatibility-warnings",MODE_PRIVATE).getBoolean(profile+".enabled",true);}
+    private void compatibilityWarningsEnabled(String profile,boolean enabled){getSharedPreferences("client-compatibility-warnings",MODE_PRIVATE).edit().putBoolean(profile+".enabled",enabled).apply();}
+    private boolean clientReviewAllowed(String profile){return activityResumed&&!isFinishing()&&!isDestroyed()&&web!=null&&profile.equals(runtime.profiles.current());}
+    /** Compatibility is advisory. Continue always retains the user's existing launch path. */
+    private boolean reviewClientLaunch(String profile,JSONObject args)throws Exception {
+        if(!"custom".equals(profile)||!"client".equals(args.optString("mode","client"))||!compatibilityWarningsEnabled(profile)||!runtime.alive())return true;
+        String warning;
+        try {
+            JSONObject response=runtime.request("client_spellbook_preflight",new JSONObject(args.toString()).put("__profile",profile));
+            if(!response.optBoolean("ok"))throw new IOException(response.optString("error","Compatibility inspection could not finish."));
+            JSONObject result=response.getJSONObject("result");
+            if(!result.optBoolean("requires_confirmation",false)&&result.optBoolean("allowed",true))return true;
+            warning=result.optString("message","The client and server may have incompatible spellbook settings.");
+        }catch(Exception error){warning="Compatibility could not be checked: "+(error.getMessage()==null?error.toString():error.getMessage());}
+        return compatibilityReview.confirm(profile,warning+"\n\nYou can continue launching the client with its current files.");
+    }
+    private final class ClientCompatibilityReview {
+        private AlertDialog dialog;
+        private CompletableFuture<Boolean> pending;
+        boolean confirm(String profile,String message)throws Exception {
+            CompletableFuture<Boolean> request=new CompletableFuture<>();
+            runOnUiThread(()->show(profile,message,request));
+            try{return request.get();}
+            catch(InterruptedException interrupted){request.complete(false);runOnUiThread(()->resolve(request,false,null,profile));Thread.currentThread().interrupt();return false;}
+        }
+        private void show(String profile,String message,CompletableFuture<Boolean> request){
+            if(request.isDone()||pending!=null||!clientReviewAllowed(profile)){request.complete(false);return;}
+            pending=request;
+            try {
+                android.widget.CheckBox suppress=new android.widget.CheckBox(MainActivity.this);
+                suppress.setText("Don't warn again");suppress.setChecked(false);
+                if(launcherController!=null)launcherController.reset();
+                dialog=new AlertDialog.Builder(MainActivity.this)
+                    .setTitle(WorldProfiles.label(profile)+" — Client compatibility warning")
+                    .setMessage(message).setView(suppress)
+                    .setPositiveButton("Continue",(ignored,which)->resolve(request,clientReviewAllowed(profile),suppress,profile))
+                    .setNegativeButton(android.R.string.cancel,(ignored,which)->resolve(request,false,null,profile))
+                    .setOnCancelListener(ignored->resolve(request,false,null,profile)).create();
+                dialog.setOnDismissListener(ignored->resolve(request,false,null,profile));
+                dialog.setOnKeyListener((ignored,key,event)->{
+                    if(key==KeyEvent.KEYCODE_BUTTON_B||key==KeyEvent.KEYCODE_BACK){if(event.getAction()==KeyEvent.ACTION_UP)cancelPending();return true;}
+                    if(key==KeyEvent.KEYCODE_BUTTON_A){
+                        if(event.getAction()==KeyEvent.ACTION_UP&&dialog!=null){
+                            android.view.View focused=dialog.getCurrentFocus();
+                            if(focused==suppress||focused==dialog.getButton(AlertDialog.BUTTON_POSITIVE)||focused==dialog.getButton(AlertDialog.BUTTON_NEGATIVE))focused.performClick();
+                        }
+                        return true;
+                    }
+                    return false;
+                });
+                dialog.show();
+                dialog.getButton(AlertDialog.BUTTON_NEGATIVE).setFocusableInTouchMode(true);
+                dialog.getButton(AlertDialog.BUTTON_NEGATIVE).requestFocus();
+            }catch(RuntimeException error){resolve(request,false,null,profile);runtime.recordFailure("client_compatibility_warning",error);}
+        }
+        private void resolve(CompletableFuture<Boolean> request,boolean accepted,android.widget.CheckBox suppress,String profile){
+            if(pending!=request)return;
+            accepted=accepted&&!request.isDone()&&clientReviewAllowed(profile);
+            AlertDialog previous=dialog;dialog=null;pending=null;
+            if(accepted&&suppress!=null&&suppress.isChecked())compatibilityWarningsEnabled(profile,false);
+            request.complete(accepted);
+            if(previous!=null)previous.dismiss();
+        }
+        void cancelPending(){if(pending!=null)resolve(pending,false,null,runtime.profiles.current());}
+    }
     private String restoredActivation(){return getSharedPreferences("session-restoration",MODE_PRIVATE).getString("activation","");}
     private ControllerManager createController(){controllerProfile=runtime.profiles.current();controllerActivation=restoredActivation();File selectedWork;
         try{selectedWork=new File(runtime.profiles.home(controllerProfile),"work");}catch(IOException e){throw new IllegalStateException(e);}
@@ -211,7 +277,15 @@ public final class MainActivity extends Activity {
                             profileUi(id,profile,()->{openMicrosoftLicense(args.getString("url"));return new JSONObject();});return;
                         case "client_directx_online": service();result=clientRuntime.installDirectX(null);break;
                         case "client_runtime_online": service();result=clientRuntime.installOnline();break;
-                        case "client_start": service();runOnUiThread(()->controller.capture(false));result=clientRuntime.start(args);break;
+                        case "client_compatibility_warnings":
+                            if(args.has("enabled")) {
+                                if(!(args.get("enabled") instanceof Boolean))throw new IOException("Compatibility warnings setting must be true or false");
+                                compatibilityWarningsEnabled(profile,args.getBoolean("enabled"));
+                            }
+                            result=new JSONObject().put("profile",profile).put("enabled",compatibilityWarningsEnabled(profile));break;
+                        case "client_start":
+                            if(!reviewClientLaunch(profile,args)||!clientReviewAllowed(profile)){result=new JSONObject().put("cancelled",true).put("message","Client launch cancelled");break;}
+                            service();runOnUiThread(()->controller.capture(false));result=clientRuntime.start(args);break;
                         case "client_stop": clientRuntime.stop();if(!runtime.alive()&&!runtime.installing)stopService(new Intent(MainActivity.this,ServerService.class));result=clientRuntime.state();break;
                         case "client_view":
                             if(!clientRuntime.alive()||!clientRuntime.displaySocket().exists())throw new IOException("Launch Wine desktop or the game before opening its display");
@@ -442,7 +516,7 @@ public final class MainActivity extends Activity {
     }
     @Override public void onWindowFocusChanged(boolean focus){super.onWindowFocusChanged(focus);if(!focus){if(controller!=null)controller.capture(false);if(launcherController!=null)launcherController.reset();}}
     @Override protected void onResume(){super.onResume();activityResumed=true;if(controller!=null)try(WorldProfiles.Lease ignored=runtime.profiles.enter(runtime.profiles.current())){if(!runtime.profiles.current().equals(controllerProfile)||!restoredActivation().equals(controllerActivation)){controller.close();controller=createController();}else controller.reload();}catch(IOException ignored){}if(web!=null)web.evaluateJavascript("if(typeof controllerLoaded!=='undefined'){controllerLoaded=false;if(currentTab==='client')loadController(true).catch(e=>notice(e.message,true));}",null);}
-    @Override protected void onPause(){activityResumed=false;if(managementChrome!=null)managementChrome.cancelPending();if(controller!=null)controller.capture(false);if(launcherController!=null)launcherController.reset();super.onPause();}
+    @Override protected void onPause(){activityResumed=false;compatibilityReview.cancelPending();if(managementChrome!=null)managementChrome.cancelPending();if(controller!=null)controller.capture(false);if(launcherController!=null)launcherController.reset();super.onPause();}
     @Override public void onBackPressed(){if(controller.active()){controller.capture(false);return;}if(web!=null)web.evaluateJavascript("window.appBack && window.appBack()",null);}
-    @Override protected void onDestroy(){activityResumed=false;if(managementChrome!=null)managementChrome.cancelPending();pickerId=null;if(pickerLease!=null){pickerLease.close();pickerLease=null;}if(launcherInputManager!=null)launcherInputManager.unregisterInputDeviceListener(launcherDevices);if(launcherController!=null)launcherController.reset();if(controller!=null)controller.close();if(web!=null){web.removeJavascriptInterface("Trasc");web.destroy();web=null;}tasks.shutdown();super.onDestroy();}
+    @Override protected void onDestroy(){activityResumed=false;compatibilityReview.cancelPending();if(managementChrome!=null)managementChrome.cancelPending();pickerId=null;if(pickerLease!=null){pickerLease.close();pickerLease=null;}if(launcherInputManager!=null)launcherInputManager.unregisterInputDeviceListener(launcherDevices);if(launcherController!=null)launcherController.reset();if(controller!=null)controller.close();if(web!=null){web.removeJavascriptInterface("Trasc");web.destroy();web=null;}tasks.shutdown();super.onDestroy();}
 }

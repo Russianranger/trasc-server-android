@@ -60,6 +60,7 @@ function renderClientActivity(s){
  if(typeof renderTakpSkeletonControls==='function')renderTakpSkeletonControls();
  if(typeof renderClientConnectionControls==='function')renderClientConnectionControls();
  if(typeof renderSpellbookCompatibilityControls==='function')renderSpellbookCompatibilityControls();
+ if(typeof renderClientCompatibilityWarnings==='function')renderClientCompatibilityWarnings();
  if(typeof renderCustomDeploymentControls==='function')renderCustomDeploymentControls();
 }
 function renderSessionControls(){
@@ -85,6 +86,7 @@ function renderSessionControls(){
  if(typeof renderTakpSkeletonControls==='function')renderTakpSkeletonControls();
  if(typeof renderClientConnectionControls==='function')renderClientConnectionControls();
  if(typeof renderSpellbookCompatibilityControls==='function')renderSpellbookCompatibilityControls();
+ if(typeof renderClientCompatibilityWarnings==='function')renderClientCompatibilityWarnings();
  if(typeof renderCustomDeploymentControls==='function')renderCustomDeploymentControls();
  renderDatabaseSelection();
 }

@@ -26,7 +26,11 @@ def status(engine, args=None):
 
 def preflight(engine, args=None):
     args = args or {}
-    result = {'profile': engine.profile, 'allowed': True, 'message': '', 'warnings': []}
+    result = {'profile': engine.profile, 'allowed': True, 'requires_confirmation': False,
+              'message': '', 'warnings': []}
+    def warn(message):
+        result.update(requires_confirmation=True, message=message)
+        result['warnings'].append(message)
     if engine.profile != 'custom' or args.get('mode', 'client') != 'client':
         return result
     requirements = client_compatibility.requirements(engine)
@@ -45,9 +49,9 @@ def preflight(engine, args=None):
     slots = requirements['required_spellbook_slots']
     if slots == 1440:
         if not executable['patched']:
-            result.update(allowed=False, message='This local Custom server requires the 1,440-slot client patch. Stop the server and use Client → Custom client · 1,440-slot spellbook, then compile and deploy the current dinput8.dll before entering the world. The 4 GB flag alone is insufficient.')
+            warn('This local Custom server uses a 1,440-slot spellbook, but the executable has not been verified with that layout. Entering the world may freeze. You can continue, or stop the server/client and apply the 1,440-slot patch and matching DLL from Client.')
         elif not args.get('native_dinput8', True):
-            result.update(allowed=False, message='Enable native dinput8.dll for this 1,440-slot Custom server.')
+            warn('Native dinput8.dll is disabled for this 1,440-slot Custom server. Client features or world entry may not work as expected. You can continue, or enable the matching DLL in Client settings.')
         else:
             dll = client_dll.compiler_status(engine)
             installed = dll.get('freshness', {}).get('installed', {})
@@ -67,7 +71,7 @@ def preflight(engine, args=None):
                 result['dll_source_commit'] = installed['source_commit']
                 result['warnings'].append('The installed DLL is verified against the deployed server revision. Selected source has changed; rebuild the DLL when deploying that source.')
             else:
-                result.update(allowed=False, message='The updated Custom server requires the current client DLL. In Client → Build dinput8.dll on this device, Compile dinput8.dll and Deploy staged DLL. The previously installed DLL has not been verified against the selected source.')
+                warn('The installed Custom client DLL has not been verified against the selected source. Entering this updated server may freeze. You can continue, or use Client → Compile dinput8.dll → Deploy staged DLL to prepare the matching DLL.')
     elif slots == 720 and executable['patched']:
-        result.update(allowed=False, message='This verified local server uses a 720-slot spellbook. Restore the original executable in the 1,440-slot client patch tile, or deploy the matching updated server before entering the world.')
+        warn('This verified local server uses a 720-slot spellbook and the client has the 1,440-slot patch. Entering the world may freeze. You can continue, or use matching server/client versions.')
     return result

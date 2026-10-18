@@ -68,21 +68,26 @@ class WorldEntryIntegrationTests(unittest.TestCase):
     def preflight(self, **options):
         return self.engine.dispatch('client_spellbook_preflight', {'__profile': self.engine.profile, **options})
 
-    def test_world_entry_requires_both_executable_and_current_native_dll(self):
+    def test_world_entry_mismatches_are_advisory_and_never_refuse_launch(self):
         self.deploy_server()
-        self.assertFalse(self.preflight()['allowed'])
+        self.assertTrue(self.preflight()['allowed'])
+        self.assertTrue(self.preflight()['requires_confirmation'])
         self.assertIn('1,440', self.preflight()['message'])
         result = self.apply()
         self.assertTrue(result['patched'])
         self.assertEqual(result['requirements']['required_spellbook_slots'], 1440)
         self.assertIn('freshness', result['dll'])
-        self.assertFalse(self.preflight()['allowed'])
+        self.assertTrue(self.preflight()['allowed'])
+        self.assertTrue(self.preflight()['requires_confirmation'])
         self.assertIn('Compile dinput8.dll', self.preflight()['message'])
         with patch.object(launch.client_dll, 'compiler_status', return_value={
                 'freshness': {'installed': {'state': 'current'}}}):
             self.assertTrue(self.preflight()['allowed'])
-            self.assertFalse(self.preflight(native_dinput8=False)['allowed'])
+            self.assertFalse(self.preflight()['requires_confirmation'])
+            self.assertTrue(self.preflight(native_dinput8=False)['allowed'])
+            self.assertTrue(self.preflight(native_dinput8=False)['requires_confirmation'])
         self.assertTrue(self.preflight(mode='compiler')['allowed'])
+        self.assertFalse(self.preflight(mode='compiler')['requires_confirmation'])
 
     def test_new_selected_source_does_not_break_verified_old_server(self):
         self.deploy_server(OLD)
@@ -94,16 +99,20 @@ class WorldEntryIntegrationTests(unittest.TestCase):
             self.apply()
         self.assertEqual(self.exe.read_bytes(), self.original)
         self.assertTrue(self.preflight()['allowed'])
+        self.assertFalse(self.preflight()['requires_confirmation'])
 
     def test_unknown_remote_and_other_profiles_are_not_inferred_from_selected_source(self):
         self.assertTrue(self.preflight()['allowed'])
         self.assertTrue(self.preflight()['warnings'])
+        self.assertFalse(self.preflight()['requires_confirmation'])
         self.deploy_server()
         (self.client / 'eqhost.txt').write_text('[LoginServer]\nHost=192.0.2.44:5999\n')
         self.assertTrue(self.preflight()['allowed'])
+        self.assertFalse(self.preflight()['requires_confirmation'])
         for profile in ('traditional', 'takp'):
             self.engine.profile = profile
             self.assertTrue(self.preflight()['allowed'])
+            self.assertFalse(self.preflight()['requires_confirmation'])
             with self.assertRaisesRegex(ValueError, 'profile changed'):
                 self.engine.dispatch('client_spellbook_apply', {'__profile': 'custom'})
         self.assertEqual(self.exe.read_bytes(), self.original)
@@ -121,6 +130,17 @@ class WorldEntryIntegrationTests(unittest.TestCase):
         client_connection.mutate(self.engine, 'client_4gb_apply', {'revision': state['revision']})
         self.assertEqual(self.exe.read_bytes(), expanded)
 
+    def test_expanded_client_against_older_server_warns_without_modifying_files(self):
+        self.apply()
+        self.deploy_server(OLD)
+        before = self.exe.read_bytes()
+        checked = self.preflight()
+        self.assertTrue(checked['allowed'])
+        self.assertTrue(checked['requires_confirmation'])
+        self.assertIn('720-slot', checked['message'])
+        self.assertIn('continue', checked['message'])
+        self.assertEqual(self.exe.read_bytes(), before)
+
     def test_verified_expanded_executable_keeps_existing_adapters(self):
         self.apply()
         (self.client / 'dinput8.dll').write_bytes((' '.join((client_mouse.MARKER,
@@ -137,12 +157,13 @@ class WorldEntryIntegrationTests(unittest.TestCase):
         self.exe.write_bytes(modified)
         self.assertEqual(client_mouse.launch_mode(request, self.client), 'unsupported_executable')
 
-    def test_native_checks_precede_client_lease_and_file_mutations_are_serialized(self):
+    def test_native_compatibility_is_reviewed_without_a_runtime_refusal(self):
         java = Path(__file__).resolve().parents[1] / 'app/src/main/java/io/github/russianranger/trasc'
         runtime = (java / 'ClientRuntime.java').read_text()
-        self.assertLess(runtime.index('server.request("client_spellbook_preflight"'),
-                        runtime.index('RuntimeManager.write(new File(server.work,"run/client-active.json")'))
         activity = (java / 'MainActivity.java').read_text()
+        self.assertNotIn('client_spellbook_preflight', runtime)
+        self.assertLess(activity.index('if(!reviewClientLaunch(profile,args)'),
+                        activity.index('result=clientRuntime.start(args)'))
         for operation in ('client_spellbook_apply', 'client_spellbook_restore'):
             self.assertIn('"' + operation + '"', runtime)
             self.assertIn('case "' + operation + '"', activity)

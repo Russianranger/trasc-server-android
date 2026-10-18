@@ -105,7 +105,17 @@ final class DirectXInstaller {
     static boolean installed(File directory){return new File(directory,"rof2-installed").isFile();}
     static boolean installedTakp(File directory){return new File(directory,"takp-installed").isFile();}
 }
+final class Context {
+    static final int MODE_PRIVATE=0;
+    final java.util.Map<String,Preferences> preferences=new java.util.HashMap<>();
+    Preferences getSharedPreferences(String name,int mode){return preferences.computeIfAbsent(name,key->new Preferences());}
+    static final class Preferences {
+        final java.util.Map<String,Boolean> values=new java.util.HashMap<>();
+        boolean getBoolean(String key,boolean fallback){return values.getOrDefault(key,fallback);}
+    }
+}
 final class ClientRuntime {
+    final Context context=new Context();
     final RuntimeManager server;
     final File root,run,directx;
     boolean busy;String status="Client stopped";
@@ -197,6 +207,7 @@ class ClientNativeStatusTests(unittest.TestCase):
                 for phase, state in states.items():
                     with self.subTest(profile=profile, metadata=metadata, phase=phase):
                         self.assertTrue(state['installed'])
+                        self.assertTrue(state['compatibility_warnings_enabled'])
                         self.assertTrue(state['directx_installed'])
                         self.assertEqual(state['alive'], phase == 'running')
                         self.assertEqual(state['busy'], phase == 'busy')
