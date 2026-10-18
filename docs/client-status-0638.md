@@ -16,3 +16,7 @@ The same report also contains `'Compiler' object has no attribute 'profile'`. Th
 4. Download the official tool. The saved path should be `client/current/4gb_patch.exe`. The existing **Apply 4 GB patch** action enables the client flag directly and retains its protected Restore.
 
 No server rebuild, client reimport or prefix reset is required for these fixes. Physical AYN Thor download and compiler execution remain device acceptance; automated release evidence is recorded separately after publication.
+
+## Published qualification
+
+Release run [39146525560](https://github.com/Russianranger/trasc-server-android/actions/runs/39146525560) succeeded for source `67627ef586d5617fce2e14185f5d70a50e677e50`. All 626 Python tests ran without skips, all 19 browser scripts passed, followed by assembly, lint, pinned signing and exact native reuse verification. The normal v0.6.38 release is GitHub Latest and compatibility preview has identical APK bytes. Public download was independently hashed; version/code and the packaged compiler worker were checked. See [release-proof-0638.json](release-proof-0638.json).
