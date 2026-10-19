@@ -1,6 +1,6 @@
 # TRASC Server for Android
 
-**Improved launcher UI:** four-area navigation, guided setup, searchable preferences and a server-update synchronization checklist. The six top Start/Stop controls are retained; server Restart is under Manage → Server. [Review guide and device checks](docs/improved-ui-review.md). The [1999 theme](docs/launcher-themes-1999.md) adds four original fantasy paintings and classic bronze frames; Necromancer adds bone borders. The user has authorized the qualified UI merge; builds remain test artifacts pending separate release approval.
+**Improved launcher UI:** four-area navigation, guided setup, searchable preferences and a server-update synchronization checklist. The six top Start/Stop controls are retained; server Restart is under Manage → Server. [Review guide and device checks](docs/improved-ui-review.md). The [1999 theme](docs/launcher-themes-1999.md) adds four retro 1999 game-style scenes and classic bronze frames; Necromancer uses realistic textured bones in place of panel border lines. The user has authorized the qualified UI merge; builds remain test artifacts pending separate release approval.
 
 **Latest APK: [TRASC Android 0.6.42](https://github.com/Russianranger/trasc-server-android/releases/download/v0.6.42/trasc-server-android-0.6.42.apk)** · [Release page](https://github.com/Russianranger/trasc-server-android/releases/latest)
 
