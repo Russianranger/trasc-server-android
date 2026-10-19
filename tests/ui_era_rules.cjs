@@ -102,7 +102,7 @@ const server=http.createServer((req,res)=>{const name=req.url==='/'?'index.html'
    await page.locator('#era-zones').evaluate(element=>{element.closest('details').open=true;});
    assert(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth+1),'Open routing table remains within viewport');
   }
-  assert.equal(await page.locator('#launcher-theme option').count(),3,'Era UI preserves all launcher themes');
+  assert.deepEqual(await page.locator('#launcher-theme option').evaluateAll(options=>options.map(option=>option.value)),['default','necromancer','monk','1999'],'Era UI preserves every launcher theme');
   await page.click('#era-clear');await page.evaluate(()=>{fixture.delayPreview=350;});await page.click('#era-velious');
   await page.evaluate(()=>{activeProfile='custom';lastNative.profile='custom';lastState.profile='custom';lastClientNative.profile='custom';document.body.dataset.profile='custom';fixture.profile='custom';renderEraRules();});
   await page.waitForFunction(()=>busy===0);assert(!(await page.locator('#era-review').isVisible()),'Late preview cannot leak into another profile');
