@@ -41,6 +41,8 @@ import client_compatibility
 import client_launch_compatibility
 import custom_deployment
 import quest_sync
+import update_checklist
+import content_baseline
 import lon_data
 import player_data
 import spire
@@ -190,6 +192,7 @@ class Engine(ManagedContent):
         if profile not in ('custom', 'traditional', 'takp'): raise ValueError('Unknown world profile')
         self.profile = profile
         self.work = Path(work).resolve()
+        if profile != 'takp': content_baseline.recover_maps(self)
         for name in ('incoming', 'sources', 'server', 'maps', 'database', 'backups', 'exports', 'logs', 'run', 'builds', 'client'):
             (self.work / name).mkdir(parents=True, exist_ok=True)
         if profile != 'takp': client_dll.recover_sdk(self)
@@ -458,40 +461,37 @@ class Engine(ManagedContent):
     def import_maps(self, args):
         if self.profile == 'takp': return takp_runtime.import_content(self, dict(args, kind='maps'))
         if self.server_running(): raise ValueError('Stop the server before replacing maps')
+        content_baseline.recover_maps(self)
         stage = self.work / ('maps-import-' + secrets.token_hex(4))
+        metadata = {'profile': self.profile, 'kind': 'maps', 'imported': time.time()}
         try:
             if args.get('url'):
                 archive = self.work / 'incoming/maps-download.zip'
                 url = args['url']
                 if urllib.parse.urlparse(url).hostname == 'github.com' and '/releases/' not in url and not url.endswith('.zip'):
-                    self.github_download(url, args.get('ref', ''), archive)
-                else: self.download(url, archive)
+                    metadata.update(self.github_download(url, args.get('ref', ''), archive))
+                else:
+                    self.download(url, archive)
+                    metadata['url'] = url
             else: archive = safe_path(self.work / 'incoming', args['file'], True)
-            extract_archive(archive, stage)
-            roots = [stage] + [p for p in stage.iterdir() if p.is_dir()]
+            metadata['archive_sha256'] = custom_deployment.digest(archive, self.check_cancel)
+            unpacked = stage / 'unpacked'
+            extract_archive(archive, unpacked)
+            roots = [unpacked] + [p for p in unpacked.iterdir() if p.is_dir()]
             roots += [p / 'maps' for p in list(roots) if (p / 'maps').is_dir()]
             matches = [p for p in dict.fromkeys(roots) if any((p / name).is_dir() for name in ('base', 'nav', 'water', 'legacy'))]
             if len(matches) != 1: raise ValueError('Maps archive must contain base/, nav/, water/ or legacy/ folders')
-            root = matches[0]
-            count = 0
-            self.check_cancel()
-            for name in ('base', 'nav', 'water', 'legacy'):
-                src = root / name
-                if src.exists():
-                    for p in src.rglob('*'):
-                        if p.is_file():
-                            target = self.work / 'maps' / p.relative_to(root)
-                            if target.exists():
-                                backup = self.work / 'backups/maps-before-import' / p.relative_to(root)
-                                backup.parent.mkdir(parents=True, exist_ok=True)
-                                shutil.copy2(target, backup)
-                            target.parent.mkdir(parents=True, exist_ok=True)
-                            shutil.copy2(p, target)
-                            count += 1
-            if count == 0: raise ValueError('No map files found')
-            return {'files_imported': count, 'previous_files': 'backups/maps-before-import'}
+            prepared = stage / 'prepared'
+            expected = content_baseline.prepare_maps(self, matches[0], prepared)
+            metadata['files'] = len(expected)
+            content_baseline.capture(self, prepared, 'maps', metadata, expected)
+            backup = content_baseline.activate_maps(self, prepared, metadata)
+            return {'files_imported': len(expected), 'previous_files': backup,
+                    'message': 'Maps imported with a verified file baseline; previous maps retained as a complete backup.'}
         finally:
-            if stage.exists(): shutil.rmtree(stage)
+            # An unresolved activation journal owns staging until recovery.
+            if stage.exists() and not (self.work / content_baseline.MAPS_PENDING).exists():
+                shutil.rmtree(stage)
 
     @contextlib.contextmanager
     def database_stream(self, selected):
@@ -1435,6 +1435,7 @@ class Engine(ManagedContent):
             'client_dll_deploy':lambda a:client_dll.deploy_dll(self,a),
             'takp_skeleton_status':lambda a:self.takp_skeleton_status(a),
             'set_takp_skeletons':lambda a:self.set_takp_skeletons(a),
+            'update_checklist_scan':lambda a:update_checklist.scan(self,a),
             'source_update_status':lambda a:source_updates.status(self),
             'source_update_preview':self.source_update_preview,'source_update_apply':self.source_update_apply,
             'build_update':self.build_update,'deploy_update':self.deploy_update,

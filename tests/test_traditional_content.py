@@ -42,7 +42,7 @@ class TraditionalContentImports(unittest.TestCase):
 
     def relative_files(self, kind):
         root = self.work / 'server' / kind
-        return {str(p.relative_to(root)) for p in root.rglob('*') if p.is_file() and p.name != content.MARKER}
+        return {str(p.relative_to(root)) for p in root.rglob('*') if p.is_file() and p.name not in (content.MARKER, content.content_baseline.NAME)}
 
     def server_source(self):
         prefix = 'Server-master/'

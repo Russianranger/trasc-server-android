@@ -1,3 +1,4 @@
+const {openTab,openClientOptions,revealControl}=require('./launcher-ui-helper.cjs');
 const {chromium}=require('playwright');
 const fs=require('fs'),http=require('http'),path=require('path'),assert=require('assert');
 const root=path.resolve('app/src/main/assets/ui');
@@ -28,11 +29,11 @@ const server=http.createServer((req,res)=>{
     window.nativeReply(id,{ok:true,result});
    },5);}};
   });
-  await page.goto(`http://127.0.0.1:${server.address().port}/`);
+  await page.goto(`http://127.0.0.1:${server.address().port}/`);await openTab(page,'setup');
   const idle=()=>page.waitForFunction(()=>!polling&&busy===0&&lastNative&&lastClientNative);
   const set=async values=>page.evaluate(async values=>{while(polling)await new Promise(r=>setTimeout(r,10));Object.assign(fixture,values);await poll();},values);
   await idle();await page.selectOption('#launcher-theme','monk');
-  await page.locator('nav [data-tab=server]').click();
+  await openTab(page,'server');
   const beforeLoads=await page.evaluate(()=>Number(localStorage.fixtureLoads));
   await set({outcome:'cancel'});await page.click('#session-export-all');await idle();
   assert.equal(await page.evaluate(()=>Number(localStorage.fixtureLoads)),beforeLoads,'Cancelled destination selection does not reload');
@@ -50,7 +51,7 @@ const server=http.createServer((req,res)=>{
   assert((await page.textContent('#session-result')).includes('All profiles exported'));
   assert(!(await page.evaluate(()=>fixture.calls)).some(c=>c.op==='export'),'Direct SAF export does not create a second destination picker or local ZIP copy');
   await page.screenshot({path:'ui-reports/all-profiles-export-1280.png',fullPage:true});
-  await page.locator('nav [data-tab=setup]').click();await set({outcome:'cancel',cancellable:true});
+  await openTab(page,'setup');await set({outcome:'cancel',cancellable:true});
   await page.click('#session-import-all');await idle();
   assert.equal(await page.evaluate(()=>Number(localStorage.fixtureLoads)),beforeLoads,'Cancelled restore does not reload or apply preferences');
   assert.equal(await page.inputValue('#launcher-theme'),'monk');
@@ -72,7 +73,7 @@ const server=http.createServer((req,res)=>{
   assert.equal(await page.inputValue('#launcher-theme'),'necromancer','Startup applies a durable receipt after activation without an API reply');
   assert.equal(await page.evaluate(()=>{const original=Storage.prototype.setItem;Storage.prototype.setItem=()=>{throw Error('Unavailable');};try{return window.restoreLauncherAppearanceReceipt({restored_activation:'retry-later',launcher_preferences:{theme:'monk'}});}finally{Storage.prototype.setItem=original;}}),false,'Failed preference storage leaves the receipt available for retry');
   assert.equal(await page.evaluate(()=>localStorage.getItem('trasc.session.restored_activation')),'activation-after-process-death');
-  await page.setViewportSize({width:393,height:852});await page.locator('nav [data-tab=setup]').click();
+  await page.setViewportSize({width:393,height:852});await openTab(page,'setup');
   await page.locator('#session-import-all').scrollIntoViewIfNeeded();await page.screenshot({path:'ui-reports/all-profiles-restore-393.png',fullPage:true});
   assert(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth+1),'All-profile restore fits the phone viewport');
   assert.deepEqual(errors,[],'All-profile transfer UI has no JavaScript errors');

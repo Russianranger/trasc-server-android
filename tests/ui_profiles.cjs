@@ -1,3 +1,4 @@
+const {openTab,openClientOptions,revealControl}=require('./launcher-ui-helper.cjs');
 const {chromium}=require('playwright');
 const fs=require('fs'),http=require('http'),path=require('path'),assert=require('assert');
 const root=path.resolve('app/src/main/assets/ui');
@@ -33,7 +34,7 @@ const server=http.createServer((req,res)=>{const name=req.url==='/'?'index.html'
     window.nativeReply(id,{ok:true,result});
    }catch(e){window.nativeReply(id,{ok:false,error:e.message});}},5);}};
   });
-  await page.goto(`http://127.0.0.1:${server.address().port}/`);
+  await page.goto(`http://127.0.0.1:${server.address().port}/`);await openTab(page,'setup');
   await page.waitForFunction(()=>document.getElementById('world-profile').disabled===false);
   await page.selectOption('#world-profile','traditional');await page.click('#switch-profile');
   await page.waitForFunction(()=>document.body.dataset.profile==='traditional');
@@ -41,8 +42,8 @@ const server=http.createServer((req,res)=>{const name=req.url==='/'?'index.html'
   assert.equal(await page.inputValue('#source-ref'),'4aceae18b94ffaafc08e2b17bc41cd72c77f795d');
   assert.equal(await page.isChecked('#client-native-dll'),false);
   assert.equal(await page.isChecked('#client-fast-spells'),false);
-  await page.locator('nav [data-tab=client]').click();
-  await page.click('#client-options > summary');
+  await openTab(page,'client');
+  await openClientOptions(page);
   assert(await page.locator('#client-mouse-warp').isVisible(),'Traditional exposes its standalone camera control');
   assert(!(await page.isDisabled('#client-mouse-warp')),'Traditional camera is selectable while the client is stopped');
   assert(!(await page.isChecked('#client-mouse-warp')),'Traditional camera remains opt-in');
@@ -54,7 +55,7 @@ const server=http.createServer((req,res)=>{const name=req.url==='/'?'index.html'
   const cameraRequest=await page.evaluate(()=>launchOptions('client'));
   assert.equal(cameraRequest.mouse_warp,true);assert.equal(cameraRequest.native_dinput8,false);
   assert.equal(cameraRequest.fast_spell_parse,false);assert.equal(cameraRequest.reduce_load_pauses,false);
-  await page.locator('nav [data-tab=setup]').click();
+  await openTab(page,'setup');
   await page.click('#runtime-open');await page.waitForFunction(()=>lastNative?.alive);
   assert(await page.isDisabled('#world-profile'));
   assert(await page.isDisabled('#start-server'));assert(await page.isDisabled('#build-server'));
@@ -77,7 +78,7 @@ const server=http.createServer((req,res)=>{const name=req.url==='/'?'index.html'
   assert(await page.isDisabled('#client-mouse-warp'),'Active Traditional client blocks camera changes until relaunch');
   await page.evaluate(()=>{fixture.client=false;fixture.jobs.push({id:'busy',operation:'import_source',status:'running'});poll();});await page.waitForFunction(()=>lastState.jobs.some(j=>j.id==='busy'));assert(await page.isDisabled('#build-server'));
   await page.evaluate(()=>{fixture.jobs=[];poll();});await page.waitForFunction(()=>!document.getElementById('build-server').disabled);
-  await page.locator('nav [data-tab=build]').click();await page.selectOption('#build-jobs','1');await page.click('#build-server');
+  await openTab(page,'build');await page.selectOption('#build-jobs','1');await page.click('#build-server');
   await page.waitForFunction(()=>lastState.build_ready&&busy===0&&!polling);
   assert((await page.textContent('#build-status')).includes('staged'));
   for(const id of ['start-server','deploy-build','rollback-build','export-client','client-prepare'])assert(await page.isDisabled('#'+id));
@@ -97,7 +98,7 @@ const server=http.createServer((req,res)=>{const name=req.url==='/'?'index.html'
   for(const id of ['deploy-build','rollback-build','export-client','client-prepare','client-import'])assert(await page.isDisabled('#'+id));
   await page.evaluate(async()=>{while(polling)await new Promise(r=>setTimeout(r,10));fixture.client=false;await poll();});
   const buildRequest=await page.evaluate(()=>fixture.calls.find(x=>x.op==='build'));assert.equal(buildRequest.a.jobs,1);assert.equal(buildRequest.a.__profile,'traditional');
-  await page.waitForFunction(()=>busy===0);await page.locator('nav [data-tab=setup]').click();
+  await page.waitForFunction(()=>busy===0);await openTab(page,'setup');
   await page.click('#content-advanced > summary');await page.selectOption('#content-kind','plugins');await page.check('#replace-content');await page.click('#content-zip');
   await page.waitForFunction(()=>document.getElementById('content-result').textContent.includes('backups/content'));
   const request=await page.evaluate(()=>fixture.calls.find(x=>x.op==='import_content'));
@@ -106,7 +107,7 @@ const server=http.createServer((req,res)=>{const name=req.url==='/'?'index.html'
   for(const viewport of [{width:1280,height:720},{width:393,height:852}]){
    await page.setViewportSize(viewport);
    for(const tab of ['setup','server','gameplay','build','spire','fixes','database','client','files','logs']){
-    await page.locator(`nav [data-tab=${tab}]`).click();await page.evaluate(()=>scrollTo(0,0));
+    await openTab(page,tab);await page.evaluate(()=>scrollTo(0,0));
     const art=await page.evaluate(()=>getComputedStyle(document.body).getPropertyValue('--scene-image'));scenes.add(art);
     const filename=art.match(/classic-[a-z]+\.webp/)[0];assert(fs.existsSync(path.join(root,filename)));
     assert(await page.locator(`#${tab}`).isVisible());
@@ -114,16 +115,16 @@ const server=http.createServer((req,res)=>{const name=req.url==='/'?'index.html'
     if(['setup','client','fixes'].includes(tab))await page.screenshot({path:`ui-reports/profiles-${tab}-${viewport.width}.png`,fullPage:true});
    }
   }
-  assert.equal(scenes.size,10);assert.equal(await page.locator('nav button').count(),11);
-  await page.locator('nav [data-tab=fixes]').click();assert(await page.locator('#prefix-fix-panel').isVisible());assert(!(await page.locator('#ferry-service-panel').isVisible()));
+  assert.equal(scenes.size,10);assert.equal(await page.locator('.primary-nav button').count(),4);
+  await openTab(page,'fixes');assert(await page.locator('#prefix-fix-panel').isVisible());assert(!(await page.locator('#ferry-service-panel').isVisible()));
   await page.click('#runtime-close');await page.waitForFunction(()=>!lastNative?.alive);
   await page.evaluate(()=>{fixture.client=true;poll();});await page.waitForFunction(()=>lastClientNative?.alive);assert(await page.isDisabled('#world-profile'));
   await page.evaluate(()=>{fixture.client=false;poll();});await page.waitForFunction(()=>!document.getElementById('world-profile').disabled);
   await page.selectOption('#world-profile','custom');await page.click('#switch-profile');await page.waitForFunction(()=>document.body.dataset.profile==='custom'&&activeProfile==='custom');
   assert.equal(await page.inputValue('#source-url'),'https://github.com/Russianranger/Triptych-Triumvirate');
   assert.equal(await page.inputValue('#source-ref'),'main');
-  await page.locator('nav [data-tab=fixes]').click();assert(await page.locator('#ferry-service-panel').isVisible());
-  assert.equal(await page.locator('nav button').count(),11);assert.deepEqual(errors,[]);
+  await openTab(page,'fixes');assert(await page.locator('#ferry-service-panel').isVisible());
+  assert.equal(await page.locator('.primary-nav button').count(),4);assert.deepEqual(errors,[]);
   console.log('PASS: profile isolation, opt-in Traditional camera and blocked Custom hooks, qualified compilation, readiness-controlled deployment/start/client data, active-client guards, shared tabs/art and return to Custom');
  }finally{await browser.close();server.close();}
 })().catch(e=>{console.error(e);process.exitCode=1;server.close();});

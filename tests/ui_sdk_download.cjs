@@ -1,3 +1,4 @@
+const {openTab,openClientOptions,revealControl}=require('./launcher-ui-helper.cjs');
 const {chromium}=require('playwright');
 const fs=require('fs'),http=require('http'),path=require('path'),assert=require('assert');
 const root=path.resolve('app/src/main/assets/ui');
@@ -44,8 +45,8 @@ const server=http.createServer((req,res)=>{
   const downloadCount=()=>page.evaluate(()=>fixture.calls.filter(x=>x.op==='client_dll_download').length);
   const openConsent=async()=>{await page.click('#dll-sdk-download');await page.waitForFunction(()=>!document.getElementById('dll-sdk-consent').hidden&&!busy);};
   const finish=async(status,error)=>page.evaluate(({status,error})=>{const j=fixture.jobs.find(j=>j.status==='running');j.status=status;if(status==='done'){fixture.compiler=true;j.result={message:'Microsoft toolchain ready. Compile dinput8.dll when ready.'};}else j.error=error;},{status,error});
-  await page.goto(`http://127.0.0.1:${server.address().port}/`);await idle();
-  await page.click('nav [data-tab=client]');await page.click('#dll-panel > summary');await page.waitForFunction(()=>dllCompilerState!==null);await idle();
+  await page.goto(`http://127.0.0.1:${server.address().port}/`);await openTab(page,'setup');await idle();
+  await openTab(page,'client');await page.click('#dll-panel > summary');await page.waitForFunction(()=>dllCompilerState!==null);await idle();
   assert.equal(await downloadCount(),0,'Opening Client/status must never start a download');
   assert(await page.isDisabled('#dll-build'),'Compiler is unavailable before preparation');
   await openConsent();

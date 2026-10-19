@@ -1,3 +1,4 @@
+const {openTab,openClientOptions,revealControl}=require('./launcher-ui-helper.cjs');
 const {chromium}=require('playwright');
 const fs=require('fs'),path=require('path'),assert=require('assert'),http=require('http');
 const {execFileSync}=require('child_process');
@@ -96,7 +97,7 @@ async function fullInterfaceChecks(browser){
      window.nativeReply(id,{ok:true,result});
     }catch(e){window.nativeReply(id,{ok:false,error:e.message});}},5);}};
    },{profile,native,fixtures});
-   await page.goto('http://127.0.0.1:'+server.address().port+'/');
+   await page.goto('http://127.0.0.1:'+server.address().port+'/');await openTab(page,'setup');
    await page.waitForFunction(profile=>activeProfile===profile&&!polling&&!!lastClientNative,profile);
    assert.equal(await page.isVisible('#custom-deployment'),profile==='custom','Setup deployment tools stay isolated to '+profile);
    if(profile==='custom'){

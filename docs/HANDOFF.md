@@ -1,3 +1,9 @@
+# Improved UI branch review — not merged or released
+
+The user authorized implementation on **`improved-ui` only**, retaining top runtime/server/client Start/Stop, moving server Restart into its appropriate tab, and adding a setup/update synchronization checklist. They reserve the later decision to merge to main and publish. See [improved-ui-review.md](improved-ui-review.md) for behavior, evidence limits, test-APK artifact policy and Thor review steps. Existing profile data and saved settings are retained. The branch-only CI has read-only repository permissions and no release/tag job.
+
+---
+
 # 0.6.42 published as Latest — Client startup repair and optional compatibility warnings
 
 Source `374ff1515dab340e9dd3e4c990de1d79d82bc782`, release run [39168216593](https://github.com/Russianranger/trasc-server-android/actions/runs/39168216593), attempt 1 succeeded. See [release-proof-0642.json](release-proof-0642.json) and [release/device checklist](release-0642-notes.md).

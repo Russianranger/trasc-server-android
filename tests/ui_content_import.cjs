@@ -1,3 +1,4 @@
+const {openTab,openClientOptions,revealControl}=require('./launcher-ui-helper.cjs');
 const {chromium}=require('playwright');
 const fs=require('fs'),http=require('http'),path=require('path'),assert=require('assert');
 const root=path.resolve('app/src/main/assets/ui');
@@ -50,7 +51,7 @@ const server=http.createServer((req,res)=>{
     }catch(e){window.nativeReply(id,{ok:false,error:e.message});}
    },5);}};
   });
-  await page.goto('http://127.0.0.1:'+server.address().port+'/');
+  await page.goto('http://127.0.0.1:'+server.address().port+'/');await openTab(page,'setup');
   await page.waitForFunction(()=>activeProfile==='traditional'&&!polling&&lastClientNative);
   // poll() deliberately skips overlapping requests. Wait for the current refresh
   // before changing native fixture state, then await a complete new refresh.
@@ -100,7 +101,7 @@ const server=http.createServer((req,res)=>{
   fs.mkdirSync('ui-reports',{recursive:true});await page.locator('#plugins-import-panel').scrollIntoViewIfNeeded();
   await page.screenshot({path:'ui-reports/content-import-mobile.png',fullPage:true});
   assert(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth+1),'Support import cards fit mobile');
-  await page.locator('nav [data-tab=client]').click();
+  await openTab(page,'appearance');
   assert(await page.locator('#client-ui-panel').isVisible());assert(!(await page.isDisabled('#client-ui-import')));
   await page.fill('#client-ui-name','ClassicUI');await updateFixture({});assert.equal(await page.inputValue('#client-ui-name'),'ClassicUI');
   await page.click('#client-ui-import');await page.waitForFunction(()=>busy===0);
@@ -124,7 +125,7 @@ const server=http.createServer((req,res)=>{
   // Switch through the real UI after closing the runtime: Custom starts with an independent skin list.
   await page.click('#runtime-close');await page.waitForFunction(()=>!lastNative?.alive&&!polling);
   await page.selectOption('#world-profile','custom');await page.click('#switch-profile');await page.waitForFunction(()=>activeProfile==='custom'&&!polling);
-  await page.locator('nav [data-tab=client]').click();
+  await openTab(page,'appearance');
   assert(await page.locator('#client-ui-panel').isVisible());assert.equal(await page.locator('#client-ui-skins li').count(),0);
   assert(!(await page.locator('#plugins-import-panel').isVisible()));
   await page.fill('#client-ui-name','CustomUI');await page.click('#client-ui-import');await page.waitForFunction(()=>busy===0);

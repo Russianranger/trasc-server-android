@@ -2,14 +2,14 @@
 const $=id=>document.getElementById(id), pending=new Map(),activeUiActions=new Set();
 let activeProfile=null,lastClientNative=null;
 let databaseCandidates=[],databaseScanning=false,databaseScanGeneration=0;
-let seq=0,currentTab='setup',lastState=null,lastNative=null,busy=0,rulesLoaded=false,rulesValues={},initialSettings=false,polling=false,sessionAction=null;
+let seq=0,currentTab='play',lastState=null,lastNative=null,busy=0,rulesLoaded=false,rulesValues={},initialSettings=false,polling=false,sessionAction=null;
 window.nativeReply=(id,response)=>{const p=pending.get(id);if(!p)return;pending.delete(id);clearTimeout(p.timer);response.ok?p.resolve(response.result):p.reject(new Error(response.error));};
 function api(op,args={},timeoutMs=0){return new Promise((resolve,reject)=>{const id=String(++seq);const timer=timeoutMs?setTimeout(()=>{pending.delete(id);reject(new Error('Status check timed out.'));},timeoutMs):null;pending.set(id,{resolve,reject,timer});if(!window.Trasc){pending.delete(id);clearTimeout(timer);reject(new Error('Open this interface in the TRASC Android app.'));return;}Trasc.call(id,op,JSON.stringify(activeProfile?{...args,__profile:activeProfile}:args));});}
 function notice(text,error=false){$('notice').hidden=false;$('notice').classList.toggle('error',error);$('notice').textContent=text;}
 function bytes(n){if(n==null)return '—';return n>=1073741824?(n/1073741824).toFixed(1)+' GB':n>=1048576?(n/1048576).toFixed(1)+' MB':(n/1024).toFixed(0)+' KB';}
 function ready(id,ok){$(id).textContent=ok?'Ready':'Required';$(id).classList.toggle('done',ok);}
-function tab(name){if(currentTab==='client'&&name!=='client')api('controller_capture',{active:false}).catch(()=>{});currentTab=name;document.body.dataset.scene=name;renderOverview();document.querySelectorAll('.tab').forEach(e=>e.classList.toggle('active',e.id===name));document.querySelectorAll('nav button').forEach(e=>e.classList.toggle('active',e.dataset.tab===name));if(name==='setup'&&typeof loadCustomDeployment==='function')loadCustomDeployment().catch(e=>notice(e.message,true));if(name==='client'&&typeof loadController==='function')loadController().catch(e=>notice(e.message,true));if(name==='gameplay'&&typeof refreshEraStatus==='function')refreshEraStatus().catch(e=>notice(e.message,true));if(name==='spire'&&typeof loadSpire==='function')loadSpire().catch(e=>notice(e.message,true));if(name==='bots'&&typeof loadBots==='function')loadBots().catch(e=>notice(e.message,true));if(name==='build'&&typeof loadSourceUpdates==='function')loadSourceUpdates().catch(e=>notice(e.message,true));if(name==='client'&&typeof loadClientConnection==='function')loadClientConnection().catch(e=>notice(e.message,true));if(name==='client'&&typeof loadTakpSkeletons==='function')loadTakpSkeletons().catch(e=>notice(e.message,true));if(name==='files')browse().catch(e=>notice(e.message,true));if(name==='logs'){logs().catch(()=>{});loadLogRetention().catch(e=>notice(e.message,true));}}
-window.appBack=()=>tab('server');
+function tab(name){if(!$(name)?.classList.contains('tab'))return;if(typeof launcherTabAllowed==='function'&&!launcherTabAllowed(name))return;if(currentTab==='client'&&name!=='client')api('controller_capture',{active:false}).catch(()=>{});currentTab=name;document.body.dataset.scene=name;renderOverview();document.querySelectorAll('.tab').forEach(e=>e.classList.toggle('active',e.id===name));document.querySelectorAll('nav [data-tab]').forEach(e=>e.classList.toggle('active',e.dataset.tab===name));if(typeof syncLauncherNavigation==='function')syncLauncherNavigation();if(typeof renderImprovedUi==='function')renderImprovedUi();if(name==='setup'&&typeof loadCustomDeployment==='function')loadCustomDeployment().catch(e=>notice(e.message,true));if(name==='client'&&typeof loadController==='function')loadController().catch(e=>notice(e.message,true));if(name==='gameplay'&&typeof refreshEraStatus==='function')refreshEraStatus().catch(e=>notice(e.message,true));if(name==='spire'&&typeof loadSpire==='function')loadSpire().catch(e=>notice(e.message,true));if(name==='bots'&&typeof loadBots==='function')loadBots().catch(e=>notice(e.message,true));if(name==='build'&&typeof loadSourceUpdates==='function')loadSourceUpdates().catch(e=>notice(e.message,true));if(name==='client'&&typeof loadClientConnection==='function')loadClientConnection().catch(e=>notice(e.message,true));if(['client','appearance'].includes(name)&&typeof loadTakpSkeletons==='function')loadTakpSkeletons().catch(e=>notice(e.message,true));if(name==='files')browse().catch(e=>notice(e.message,true));if(name==='logs'){logs().catch(()=>{});loadLogRetention().catch(e=>notice(e.message,true));}}
+window.appBack=()=>tab('play');
 document.querySelectorAll('[data-tab]').forEach(b=>b.addEventListener('click',()=>tab(b.dataset.tab)));
 function action(id,fn){$(id).addEventListener('click',async()=>{const b=$(id);b.disabled=true;busy++;activeUiActions.add(id);renderSessionControls();try{await fn();}catch(e){notice(e.message,true);}finally{activeUiActions.delete(id);busy--;b.disabled=false;renderSessionControls();poll().catch(()=>{});}});}
 const operationLabels={import_content:'Importing world content',import_client_ui:'Importing client UI skin',client_dll_download:'Preparing Microsoft toolchain',ferry_service_status:'Checking Qeynos–Erudin route',ferry_service_preview:'Previewing route changes',ferry_service_apply:'Saving route changes',boat_trial_status:'Checking ferry',boat_trial_preview:'Previewing ferry changes',boat_trial_apply:'Saving ferry changes',start:'Starting server',stop:'Stopping server',spire_catalog:'Loading Spire',spire_search:'Searching content',spire_detail:'Loading record',spire_preview:'Validating changes',spire_apply:'Saving content',spire_history:'Loading change history'};
@@ -27,10 +27,12 @@ async function job(operation,args={}){
  for(;;){await new Promise(r=>setTimeout(r,1400));const state=await api('state');render(state);const item=state.jobs.find(x=>x.id===j.id);if(!item)throw new Error('Operation status was lost. Check logs.');if(['error','cancelled'].includes(item.status))throw new Error(item.error||'Operation cancelled.');if(item.status==='done'){const result=item.result||{};notice(operation==='start'?'Server started. Verify zone readiness in server logs.':result.message||'Operation completed.');return result;}}
 }
 const tabStories={
+ play:['Your next adventure.','Check your world, finish setup and return to the game.'],
+ appearance:['Make it your world.','Choose player models and the look of your game interface.'],
  setup:['Build your world.','Start with the runtime, then bring in your server, maps and database.'],
  server:['Your realm awaits.','Launch your world, manage connections and preserve your adventures.'],
  gameplay:['Shape the adventure.','Tune the rules and bring your world to life.'],
- build:['At the forge.','Prepare your source, build your server and deploy when ready.'],
+ build:['Keep your world current.','Review updates, deploy your build and check the content that goes with it.'],
  bots:['Gather your companions.','Create your character’s roster and prepare summon buttons for the journey.'],
  spire:['Discover your world.','Explore items, creatures, merchants and the treasures they hold.'],
  fixes:['Restore the journey.','Find world repairs and client recovery tools in one place.'],
@@ -62,6 +64,7 @@ function renderClientActivity(s){
  if(typeof renderSpellbookCompatibilityControls==='function')renderSpellbookCompatibilityControls();
  if(typeof renderClientCompatibilityWarnings==='function')renderClientCompatibilityWarnings();
  if(typeof renderCustomDeploymentControls==='function')renderCustomDeploymentControls();
+ if(typeof renderImprovedUi==='function')renderImprovedUi();
 }
 function renderSessionControls(){
  const n=lastNative,s=lastState,active=s?.jobs?.find(j=>['queued','running'].includes(j.status));
@@ -89,6 +92,7 @@ function renderSessionControls(){
  if(typeof renderClientCompatibilityWarnings==='function')renderClientCompatibilityWarnings();
  if(typeof renderCustomDeploymentControls==='function')renderCustomDeploymentControls();
  renderDatabaseSelection();
+ if(typeof renderImprovedUi==='function')renderImprovedUi();
 }
 function render(s){lastState=s;renderSessionControls();renderOverview();if(typeof renderBoatTrial==='function')renderBoatTrial();if(typeof renderFerryService==='function')renderFerryService();$('free').textContent=bytes(s.free_bytes);
  $('nektulos-status').textContent=s.nektulos?.applied?'Legacy pair applied · original backup: backups/nektulos/'+s.nektulos.backup:s.nektulos?.legacy_ready?'Both legacy files are available.':'Import both legacy Nektulos files before applying the fix.';if(typeof renderClientStatus==='function')renderClientStatus(s.client);ready('source-ready',!!s.source);ready('maps-ready',s.maps_ready);ready('database-ready',s.database_imported);

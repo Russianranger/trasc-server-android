@@ -19,6 +19,7 @@ import zipfile
 
 import takp_build as build
 import traditional_content
+import content_baseline
 from log_retention import rotate
 
 QUESTS_REPOSITORY = 'https://github.com/Russianranger/queststakp'
@@ -143,7 +144,7 @@ def import_content(engine, args):
             prepared.mkdir()
             for path in root.iterdir():
                 engine.check_cancel()
-                if path.name in ('.git', '__MACOSX', MARKER):
+                if path.name in ('.git', '__MACOSX', MARKER, content_baseline.NAME):
                     continue
                 if path.is_dir():
                     shutil.copytree(path, prepared / path.name)
@@ -164,6 +165,7 @@ def import_content(engine, args):
                     shutil.copy2(path, prepared / path.name)
                     count += 1
             metadata['files'] = count
+        content_baseline.capture(engine, prepared, kind, metadata)
         backup = _activate(engine, kind, prepared, target, metadata)
         return {'component': _component(engine, kind), 'backup': backup,
                 'message': 'TAKP ' + kind + ' imported' + ('; previous files retained at ' + backup if backup else '.')}

@@ -1,3 +1,4 @@
+const {openTab,openClientOptions,revealControl}=require('./launcher-ui-helper.cjs');
 const {chromium}=require('playwright');
 const fs=require('fs'),http=require('http'),path=require('path'),assert=require('assert');
 const root=path.resolve('app/src/main/assets/ui');
@@ -37,7 +38,7 @@ function contrast(a,b){const l=c=>c.slice(0,3).map(x=>x/255).map(x=>x<=.04045?x/
    },5);}};
   });
   const url=`http://127.0.0.1:${server.address().port}/`;
-  await page.goto(url);await page.waitForFunction(()=>!document.getElementById('world-profile').disabled);
+  await page.goto(url);await openTab(page,'setup');await page.waitForFunction(()=>!document.getElementById('world-profile').disabled);
   assert.equal(await page.getAttribute('body','data-launcher-theme'),'default');
   assert.equal(await page.locator('.launcher-appearance').count(),0,'Appearance has no duplicate separate bar');
   assert(await page.evaluate(()=>document.getElementById('launcher-theme').closest('.profile-bar')===document.getElementById('world-profile').closest('.profile-bar')),'World and theme selectors share the same bar');
@@ -96,7 +97,7 @@ function contrast(a,b){const l=c=>c.slice(0,3).map(x=>x/255).map(x=>x<=.04045?x/
     }
     assert.equal(await page.inputValue('#launcher-theme'),theme,'Art theme persists across both profiles');
     for(const scene of scenes){
-     await page.locator(`nav [data-tab=${scene}]`).click();
+     await openTab(page,scene);
      assert.equal(await page.getAttribute('body','data-scene'),scene);
      const layers=await page.evaluate(()=>({scene:getComputedStyle(document.body).getPropertyValue('--scene-image'),backdrop:getComputedStyle(document.body,'::before').backgroundImage,hero:getComputedStyle(document.querySelector('.overview')).backgroundImage}));
      for(const layer of Object.values(layers))assert(layer.includes(sceneImage(theme,scene)),`${theme}/${profile}: scene artwork appears in background and hero on ${scene}`);
@@ -109,7 +110,7 @@ function contrast(a,b){const l=c=>c.slice(0,3).map(x=>x/255).map(x=>x<=.04045?x/
     assert.equal(await page.locator('#launcher-theme').evaluate(e=>getComputedStyle(e).outlineWidth),'2px');
     await page.setViewportSize({width:375,height:812});
     for(const scene of scenes){
-     await page.locator(`nav [data-tab=${scene}]`).click();
+     await openTab(page,scene);
      assert(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth+1),`${theme}/${profile}: no page overflow on ${scene}`);
     }
     for(const width of [375,320]){
@@ -121,7 +122,7 @@ function contrast(a,b){const l=c=>c.slice(0,3).map(x=>x/255).map(x=>x<=.04045?x/
     if(screenshotRoot){
      await page.setViewportSize({width:390,height:844});
      for(const scene of theme==='monk'?['setup','gameplay','spire','client']:['setup']){
-      await page.locator(`nav [data-tab=${scene}]`).click();await page.evaluate(()=>window.scrollTo(0,0));
+      await openTab(page,scene);await page.evaluate(()=>window.scrollTo(0,0));
       await page.screenshot({path:path.join(screenshotRoot,`${theme}-${profile}-${scene}-mobile.png`)});
      }
     }
@@ -134,7 +135,7 @@ function contrast(a,b){const l=c=>c.slice(0,3).map(x=>x/255).map(x=>x<=.04045?x/
    await page.selectOption('#world-profile','custom');await page.click('#switch-profile');
    await page.waitForFunction(()=>document.body.dataset.profile==='custom');
   }
-  await page.locator('nav [data-tab=setup]').click();
+  await openTab(page,'setup');
   assert.deepEqual(await appearance(),original,'Default restores the original artwork and component appearance');
   if(screenshotRoot){await page.evaluate(()=>window.scrollTo(0,0));await page.screenshot({path:path.join(screenshotRoot,'default-custom-desktop.png')});}
   assert.equal(await page.evaluate(()=>localStorage.getItem('unrelated.preference')),'keep me');

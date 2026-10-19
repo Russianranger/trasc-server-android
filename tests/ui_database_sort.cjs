@@ -1,3 +1,4 @@
+const {openTab,openClientOptions,revealControl}=require('./launcher-ui-helper.cjs');
 const {chromium}=require('playwright');
 const fs=require('fs'),http=require('http'),path=require('path'),assert=require('assert');
 const root=path.resolve('app/src/main/assets/ui');
@@ -50,7 +51,7 @@ const server=http.createServer((req,res)=>{
   const values=()=>page.locator('#db-candidate option').evaluateAll(options=>options.map(o=>o.value).filter(Boolean));
   const plain='incoming/large.sql',bundle='incoming/bundle.zip!peq/create_all_tables.sql',incomplete='incoming/incomplete.zip!peq/create_all_tables.sql',release='sources/current/utils/sql/eqemu_release/release-peq.sql.gz',migration='sources/current/utils/sql/migrations/required/0001.sql';
   for(const profile of ['custom','traditional','takp']){
-   await page.goto('http://127.0.0.1:'+server.address().port+'/?profile='+profile);
+   await page.goto('http://127.0.0.1:'+server.address().port+'/?profile='+profile);await openTab(page,'setup');
    await page.waitForFunction(p=>activeProfile===p&&!polling,profile);
    assert(await page.isVisible('#database-deployment'),'Shared database card visible for '+profile);
    assert(await page.isVisible('#db-sort'),'Sort dropdown visible for '+profile);

@@ -1,3 +1,4 @@
+const {openTab,openClientOptions,revealControl}=require('./launcher-ui-helper.cjs');
 const {chromium}=require('playwright');
 const fs=require('fs'),http=require('http'),path=require('path'),assert=require('assert');
 const root=path.resolve('app/src/main/assets/ui');
@@ -49,13 +50,13 @@ const server=http.createServer((req,res)=>{const name=req.url==='/'?'index.html'
    }catch(error){window.nativeReply(id,{ok:false,error:error.message});}},operation==='era_preview'?f.delayPreview:operation==='era_status'?f.delayStatus:5);}};
   });
   const sync=async updates=>{await page.evaluate(async updates=>{while(polling)await new Promise(resolve=>setTimeout(resolve,10));Object.assign(fixture,updates);await poll();},updates);};
-  await page.goto(`http://127.0.0.1:${server.address().port}/`);
+  await page.goto(`http://127.0.0.1:${server.address().port}/`);await openTab(page,'setup');
   await page.waitForFunction(()=>activeProfile==='custom'&&!document.getElementById('world-profile').disabled);
-  await page.locator('nav [data-tab=gameplay]').click();
+  await openTab(page,'gameplay');
   assert(!(await page.locator('#era-rules-panel').isVisible()),'Custom hides era controls');
   assert.equal(await page.evaluate(()=>fixture.calls.filter(call=>call.operation.startsWith('era_')).length),0,'Custom does not probe Traditional database');
   await page.selectOption('#world-profile','traditional');await page.click('#switch-profile');await page.waitForFunction(()=>activeProfile==='traditional');
-  await page.locator('nav [data-tab=gameplay]').click();assert(await page.locator('#era-rules-panel').isVisible());assert(await page.isDisabled('#era-velious'),'Closed runtime blocks era changes');
+  await openTab(page,'gameplay');assert(await page.locator('#era-rules-panel').isVisible());assert(await page.isDisabled('#era-velious'),'Closed runtime blocks era changes');
   await page.click('#runtime-open');await page.waitForFunction(()=>lastNative?.alive&&!document.getElementById('era-velious').disabled);
   await page.waitForFunction(()=>document.getElementById('era-current').textContent.includes('default (7)'));
   await page.click('#load-rules');await page.waitForFunction(()=>busy===0&&loadedRuleset===3);

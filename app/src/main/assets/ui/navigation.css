@@ -1,0 +1,41 @@
+/* Four stable areas above contextual tools, with the existing fantasy themes. */
+.primary-nav{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:6px;margin-bottom:8px;padding:6px;overflow:visible}
+.primary-nav button{min-width:0;min-height:48px;padding:10px 8px;font-size:13px}
+.primary-nav button.active{border:1px solid var(--gold);background:linear-gradient(135deg,#44533b,#293e31)}
+.secondary-nav{display:flex;gap:5px;margin:0 0 16px;padding:5px;background:#0d1b18c9;border-color:#6b624377;flex-wrap:wrap}
+.secondary-nav[hidden]{display:none!important}
+.secondary-nav button{font:600 12px/1.4 system-ui,sans-serif;min-height:44px;padding:10px 14px}
+.runtime-actions{grid-template-columns:repeat(3,minmax(0,1fr))}
+.runtime-actions .server-controls .buttons{grid-template-columns:repeat(2,minmax(0,1fr))}
+.overview{min-height:118px;margin:14px 0;padding:20px 24px}
+.overview h1{font-size:27px}.overview p{font-size:16px}.overview .eyebrow{font-size:10px}
+.navigation-tools{margin:18px 0;border:1px solid var(--line);border-radius:5px;background:#12221cdd}
+.navigation-tools>summary{min-height:52px;padding:16px 18px;font-size:14px;color:var(--gold);cursor:pointer}
+.navigation-tools-body{padding:0 18px 2px}
+.navigation-tools-body>.section-title{margin-top:14px}
+.navigation-tools-body input,.navigation-tools-body select{max-width:100%}
+body[data-scene=appearance]{--scene-image:url('fantasy-gameplay.webp')}
+body[data-profile=traditional][data-scene=appearance]{--scene-image:url('classic-gameplay.webp')}
+body[data-profile=traditional][data-scene=play]{--scene-image:url('classic-server.webp')}
+.controller-menu-help{margin:0 0 12px}
+@media(max-width:680px){
+ .primary-nav button{font-size:11px;padding:10px 4px;min-height:46px}
+ .secondary-nav{flex-wrap:nowrap;overflow-x:auto}.secondary-nav button{font-size:11px;padding:9px 11px}
+ .overview{min-height:108px;padding:17px 16px}.overview h1{font-size:23px}.overview p{font-size:14px}
+ .navigation-tools-body{padding:0 12px 2px}.navigation-tools>summary{font-size:13px;padding:15px 12px}
+}
+@media(max-width:539px){
+ .runtime-actions{grid-template-columns:repeat(3,minmax(0,1fr));gap:8px}
+ .control-group{display:block}.control-group+.control-group{border:0;padding-top:0}
+ .control-group-label{margin:0 0 5px;text-align:center;font-size:9px}
+ .runtime-actions .buttons{gap:4px}.runtime-actions button,.runtime-toolbar #client-launch{height:49px;font-size:9px;padding:5px 1px}
+ .runtime-heading{gap:8px}.runtime-toolbar{padding:9px}.runtime-heading small{font-size:10px}
+}
+
+/* Keep the main action in view; Play already has its own adaptive heading. */
+header{padding-top:13px;padding-bottom:13px}
+.profile-selector{margin-top:10px;margin-bottom:10px}
+.runtime-actions{margin-top:8px}
+.runtime-actions button,.runtime-toolbar #client-launch{height:46px;min-height:44px}
+body[data-area=play] .overview{display:none}
+body[data-area=play] .readiness-hero{background-image:linear-gradient(90deg,#102219f5,#102219df 55%,#102219a8),var(--scene-image);background-size:cover;background-position:center 44%}

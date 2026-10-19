@@ -1,3 +1,4 @@
+const {openTab,openClientOptions,revealControl}=require('./launcher-ui-helper.cjs');
 const {chromium}=require('playwright');
 const fs=require('fs'),http=require('http'),path=require('path'),assert=require('assert');
 const {execFileSync}=require('child_process');
@@ -37,10 +38,10 @@ const server=http.createServer((req,res)=>{
      }catch(error){window.nativeReply(id,{ok:false,error:error.message});}
     },5);}};
    },{profile,nativeStates});
-   await page.goto(`http://127.0.0.1:${server.address().port}/`);
+   await page.goto(`http://127.0.0.1:${server.address().port}/`);await openTab(page,'setup');
    const idle=()=>page.waitForFunction(()=>!busy&&!polling&&!clientCompatibilityWarningsSaving);
    await page.waitForFunction(p=>activeProfile===p&&lastClientNative?.profile===p&&!polling,profile);
-   await page.click('nav [data-tab=client]');await page.locator('#client-options > summary').click();await idle();
+   await openTab(page,'client');await openClientOptions(page);await idle();
    assert.equal(await page.isVisible('#client-compatibility-warnings-panel'),profile==='custom','Compatibility preferences belong to Custom');
    assert(await page.isChecked('#client-compatibility-warnings'),'Warnings default to enabled when native state omits a saved preference');
    assert.equal(await page.evaluate(()=>fixture.calls.filter(c=>c.op==='client_compatibility_warnings').length),0,'Inspecting the launcher never mutates preferences');
@@ -53,7 +54,7 @@ const server=http.createServer((req,res)=>{
     // Native persistence is authoritative after a reload, including suppression
     // selected by the separate Android warning dialog.
     await page.evaluate(()=>{fixture.omitPreference=false;fixture.preferences.custom=false;return clientRuntimeState();});
-    await page.click('nav [data-tab=client]');await page.locator('#client-options > summary').click();await idle();
+    await openTab(page,'client');await openClientOptions(page);await idle();
     assert(!(await page.isChecked('#client-compatibility-warnings')),'Saved native suppression is displayed');
     await page.check('#client-compatibility-warnings');await idle();
     assert(await page.evaluate(()=>fixture.preferences.custom),'The setting can re-enable future warnings');

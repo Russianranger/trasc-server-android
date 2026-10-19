@@ -1,3 +1,4 @@
+const {openTab,openClientOptions,revealControl}=require('./launcher-ui-helper.cjs');
 const {chromium}=require('playwright');
 const fs=require('fs'),http=require('http'),path=require('path'),assert=require('assert');
 const root=path.resolve('app/src/main/assets/ui');
@@ -19,6 +20,7 @@ const server=http.createServer((req,res)=>{
     client:{imported:f.imported,prepared:f.prepared},free_bytes:50e9,
     traditional:{build:{},components:{}},
     takp:{source_ready:f.source,quests_ready:f.quests,maps_ready:f.maps,database_ready:f.initialized,bot_schema_ready:f.bots,local_accounts:f.accounts,login_port:6000,
+     components:{quests:{imported:f.quests,source:{commit:'f43d4fcfa89fecd76b5ac3fb5096f8d658a6c65f'}},maps:{imported:f.maps,source:{commit:'95cb9322b853e7ec2f67158b87442286315042eb'}},assets:{imported:f.source}},
      build:{runtime_ready:true,build_allowed:f.source&&!f.running,staged_valid:f.staged,deployed_valid:f.deployed,message:f.source?'TAKP ARM64 source qualified.':'Import the tested TAKP source first.'},
      deployment:{deploy_allowed:f.staged&&f.initialized&&f.bots&&f.quests&&f.maps&&!f.running,start_allowed:f.deployed&&f.initialized&&f.bots&&f.accounts>0&&!f.running,client_data_allowed:f.deployed&&f.initialized&&f.bots,rollback_allowed:f.deployed,deployed_valid:f.deployed,message:f.deployed?'TAKP build deployed.':f.staged?'Initialize the TAKP database, then deploy.':'Compile the TAKP source first.'},message:'TAKP fixture readiness'}});
    window.Trasc={call(id,op,input){setTimeout(()=>{const a=JSON.parse(input);f.calls.push({op,a});let result={};try{
@@ -39,6 +41,9 @@ const server=http.createServer((req,res)=>{
      let value={};
      if(op==='spire_catalog')value={entities:[]};
      if(op==='takp_setup'){f.source=f.quests=f.maps=true;value={message:'TAKP server, quests and maps prepared.'};}
+     if(op==='update_checklist_scan')value={profile:'takp',scanned_at:Date.now()/1000,source:{revision:'03e934d0fdf460e2e6ce34c0a25a3e05d9f7e167'},rows:[{id:'quests',label:'Quests',state:'review',detail:'Review quest revision.',action:{target:'takp-setup'}},{id:'maps',label:'Maps',state:'review',detail:'Review independent map revision.',action:{target:'takp-setup'}}]};
+     if(op==='import_content'){if(f.running||f.client||f.busy)throw Error('Content import while running');if(!a.replace)throw Error('Replacement not approved');if(a.kind==='quests')f.quests=true;else if(a.kind==='maps')f.maps=true;else throw Error('Unsupported TAKP content');value={message:'TAKP '+a.kind+' imported.',backup:'backups/takp-'+a.kind+'-fixture'};}
+
      if(op==='build'){f.staged=true;value={staged:true,message:'Nine TAKP binaries compiled and staged.'};}
      if(op==='takp_initialize_database'){f.initialized=f.bots=true;value={message:'TAKP database initialized; eleven bot migrations verified.'};}
      if(op==='takp_create_account'){f.accounts++;value={message:'Local TAKP account created.'};}
@@ -52,7 +57,7 @@ const server=http.createServer((req,res)=>{
     window.nativeReply(id,{ok:true,result});
    }catch(e){window.nativeReply(id,{ok:false,error:e.message});}},5);}};
   });
-  await page.goto(`http://127.0.0.1:${server.address().port}/`);
+  await page.goto(`http://127.0.0.1:${server.address().port}/`);await openTab(page,'setup');
   await page.waitForFunction(()=>!document.getElementById('world-profile').disabled&&!polling);
   const profiles=await page.locator('#world-profile option').allTextContents();
   assert(profiles.some(label=>label.includes('TAKP')),'TAKP appears alongside Custom and Traditional');
@@ -62,13 +67,13 @@ const server=http.createServer((req,res)=>{
   assert.equal(await page.inputValue('#source-url'),'https://github.com/Russianranger/Servertakp');
   assert.equal(await page.inputValue('#source-ref'),'03e934d0fdf460e2e6ce34c0a25a3e05d9f7e167');
   assert.equal(await page.inputValue('#maps-url'),'https://github.com/Russianranger/Mapstakp');
-  assert(await page.locator('#takp-setup').isVisible());
+  await openTab(page,'setup');assert(await page.locator('#takp-setup').isVisible());
   for(const id of ['source-git','maps-git','import-db'])assert(!(await page.locator('#'+id).isVisible()),'Generic import control is hidden for TAKP: '+id);
-  await page.locator('nav [data-tab=server]').click();
+  await openTab(page,'server');
   const endpointLabel=await page.locator('#login-endpoint-label').textContent();
   assert(endpointLabel.includes('TAKP')&&endpointLabel.includes('UDP'),'TAKP connection copy identifies its legacy UDP endpoint');
   assert.deepEqual(await page.locator('#client-export-files li').allTextContents(),['spells_us.txt','SkillCaps.txt'],'TAKP exports exactly its two legacy client data files');
-  await page.locator('nav [data-tab=client]').click();await page.click('#client-options > summary');
+  await openTab(page,'client');await openClientOptions(page);
   for(const id of ['client-native-dll','client-fast-spells','client-load-pauses','client-mouse-warp']){
    assert(await page.isDisabled('#'+id),'RoF2 adapter blocked for TAKP: '+id);
    assert(!(await page.isChecked('#'+id)),'RoF2 adapter forced off for TAKP: '+id);
@@ -77,39 +82,74 @@ const server=http.createServer((req,res)=>{
   assert.equal(options.cpu_profile,'accurate','Fresh TAKP settings use the device-confirmed math mode');
   assert((await page.textContent('#client-cpu-help')).includes('restored visible TAKP NPC models'));
   for(const key of ['native_dinput8','fast_spell_parse','reduce_load_pauses','mouse_warp'])assert.equal(options[key],false);
-  await page.locator('nav [data-tab=fixes]').click();
+  await openTab(page,'fixes');
   assert(!(await page.locator('#ferry-service-panel').isVisible()),'RoF2 ferry controls stay hidden');
   assert(!(await page.locator('nav [data-tab=spire]').isVisible()),'PEQ Spire editing is hidden for TAKP');
-  await page.locator('nav [data-tab=gameplay]').click();
+  await openTab(page,'gameplay');
   assert(!(await page.locator('#era-rules-panel').isVisible()),'Traditional PEQ era rules stay hidden for TAKP');
-  await page.locator('nav [data-tab=setup]').click();await page.click('#runtime-open');
+  await openTab(page,'setup');await page.click('#runtime-open');
   await page.waitForFunction(()=>lastNative?.alive&&!polling);
   assert(await page.isDisabled('#world-profile'),'Active TAKP runtime blocks profile switching');
   assert(await page.isDisabled('#build-server'),'Missing TAKP source blocks compilation');
   assert(await page.isDisabled('#deploy-build'));
   assert(await page.isDisabled('#start-server'));
   await page.click('#takp-setup');await page.waitForFunction(()=>lastState?.takp?.source_ready&&!polling&&!busy);
-  await page.locator('nav [data-tab=build]').click();
+  await openTab(page,'build');
+  assert(await page.isDisabled('#takp-setup'),'First setup remains disabled after world components are installed');
+  assert.equal(await page.locator('#takp-content-refresh').evaluate(element=>element.parentElement.id),'build','Content refresh stays outside first-build tools');
+  await page.click('#update-checklist-scan');await page.waitForFunction(()=>document.getElementById('update-row-maps')&&!busy);
+  await page.click('#update-row-maps');assert.equal(await page.inputValue('#takp-content-kind'),'maps','Map checklist review selects refreshable maps');
+  assert(await page.isVisible('#takp-content-url'));assert.equal(await page.inputValue('#takp-content-ref'),'95cb9322b853e7ec2f67158b87442286315042eb');
+  assert.equal(await page.evaluate(()=>fixture.calls.filter(c=>c.op==='import_content').length),0,'Checklist Review only navigates; it never imports');
+  await page.evaluate(()=>navigateToControl('update-checklist'));await page.click('#update-row-quests');
+  assert.equal(await page.inputValue('#takp-content-kind'),'quests','Quest checklist review selects quests');
+  assert.equal(await page.inputValue('#takp-content-url'),'https://github.com/Russianranger/queststakp');
+  assert.equal(await page.inputValue('#takp-content-ref'),'f43d4fcfa89fecd76b5ac3fb5096f8d658a6c65f');
+  assert(await page.isDisabled('#takp-content-git'));assert(await page.isDisabled('#takp-content-zip'));
+  assert((await page.evaluate(()=>refreshTakpContent().catch(error=>error.message))).includes('Select replacement'),'Unchecked replacement also rejected by handler guard');
+  assert.equal(await page.evaluate(()=>fixture.calls.filter(c=>c.op==='import_content').length),0);
+  await page.check('#takp-content-replace');assert(!(await page.isDisabled('#takp-content-git')));
+  for(const flag of ['running','client','busy']){
+   await page.evaluate(async key=>{while(polling)await new Promise(r=>setTimeout(r,10));fixture[key]=true;await poll();},flag);
+   assert(await page.isDisabled('#takp-content-git'),'Content refresh blocked while '+flag);assert(await page.isDisabled('#takp-content-zip'));
+   assert((await page.evaluate(()=>refreshTakpContent().catch(error=>error.message))).includes('stop the server and client'),'Handler rejects blocked refresh');
+   await page.evaluate(async key=>{while(polling)await new Promise(r=>setTimeout(r,10));fixture[key]=false;await poll();},flag);
+  }
+  await page.click('#takp-content-git');await page.waitForFunction(()=>fixture.calls.some(c=>c.op==='import_content')&&!polling&&!busy);
+  const questsRefresh=await page.evaluate(()=>fixture.calls.find(c=>c.op==='import_content'));
+  assert.equal(questsRefresh.a.__profile,'takp');assert.equal(questsRefresh.a.kind,'quests');assert.equal(questsRefresh.a.replace,true);
+  assert.equal(questsRefresh.a.url,'https://github.com/Russianranger/queststakp');assert.equal(questsRefresh.a.ref,'f43d4fcfa89fecd76b5ac3fb5096f8d658a6c65f');
+  assert(!(await page.isChecked('#takp-content-replace')),'Replacement approval clears after each import');
+  assert((await page.textContent('#takp-content-result')).includes('backups/takp-quests-fixture'));
+  await page.selectOption('#takp-content-kind','maps');assert.equal(await page.inputValue('#takp-content-url'),'https://github.com/Russianranger/Mapstakp');
+  await page.check('#takp-content-replace');await page.fill('#takp-content-ref','reviewed-map-branch');
+  assert(!(await page.isChecked('#takp-content-replace')),'Changing source revision clears approval');
+  await page.check('#takp-content-replace');await page.click('#takp-content-zip');
+  await page.waitForFunction(()=>fixture.calls.filter(c=>c.op==='import_content').length===2&&!polling&&!busy);
+  const mapRefresh=await page.evaluate(()=>fixture.calls.filter(c=>c.op==='import_content').at(-1));
+  assert.equal(mapRefresh.a.kind,'maps');assert.equal(mapRefresh.a.replace,true);assert.equal(mapRefresh.a.file,'takp-client.zip');
+  assert.equal(mapRefresh.a.url,undefined,'Offline refresh uses the chosen ZIP');
+  assert.deepEqual(await page.locator('#takp-content-kind option').evaluateAll(options=>options.map(option=>option.value)),['quests','maps'],'Unsupported asset refresh is not offered');
   await page.waitForFunction(()=>!document.getElementById('build-server').disabled);
   await page.click('#build-server');await page.waitForFunction(()=>lastState?.takp?.build?.staged_valid&&!polling&&!busy);
   assert(await page.isDisabled('#deploy-build'),'Compiled TAKP source requires its initialized database');
-  await page.locator('nav [data-tab=setup]').click();await page.click('#takp-initialize');
+  await openTab(page,'setup');await page.click('#takp-initialize');
   await page.waitForFunction(()=>lastState?.takp?.bot_schema_ready&&!polling&&!busy);
-  await page.locator('nav [data-tab=build]').click();await page.waitForFunction(()=>!document.getElementById('deploy-build').disabled);
+  await openTab(page,'build');await page.waitForFunction(()=>!document.getElementById('deploy-build').disabled);
   await page.click('#deploy-build');await page.waitForFunction(()=>lastState?.takp?.deployment?.deployed_valid&&!polling&&!busy);
   assert(await page.isDisabled('#start-server'),'A local login account is required for TAKP startup');
-  await page.locator('nav [data-tab=setup]').click();
+  await openTab(page,'setup');
   await page.fill('#takp-username','Thorbot');await page.fill('#takp-password','fixture-password');await page.click('#takp-create-account');
   await page.waitForFunction(()=>lastState?.takp?.local_accounts===1&&!polling&&!busy);
   assert.equal(await page.inputValue('#takp-password'),'','Account password is cleared after submission');
   const account=await page.evaluate(()=>fixture.calls.find(call=>call.op==='takp_create_account'));
   assert.equal(account.a.__profile,'takp');
   assert.equal(account.a.username,'Thorbot');assert.equal(account.a.password,'fixture-password');
-  await page.locator('nav [data-tab=server]').click();assert(!(await page.isDisabled('#start-server')));
+  await openTab(page,'server');assert(!(await page.isDisabled('#start-server')));
   await page.click('#start-server');await page.waitForFunction(()=>lastState?.running&&!polling&&!busy);
   assert(await page.isDisabled('#takp-initialize'),'Running TAKP server blocks database initialization');
   await page.click('#stop-server');await page.waitForFunction(()=>!lastState?.running&&!polling&&!busy);
-  await page.locator('nav [data-tab=client]').click();
+  await openTab(page,'client');
   assert(!(await page.isDisabled('#export-client')),'TAKP exports are enabled only with a deployed database');
   assert(await page.isDisabled('#client-prepare'),'Full client import is required for preparation');
   await page.click('#client-import-title');
@@ -125,23 +165,24 @@ const server=http.createServer((req,res)=>{
    for(const viewport of [{width:1280,height:720},{width:393,height:852}]){
     await page.setViewportSize(viewport);
     for(const tab of ['setup','build','server','client']){
-     await page.locator(`nav [data-tab=${tab}]`).click();await page.evaluate(()=>scrollTo(0,0));
+     await openTab(page,tab);await page.evaluate(()=>scrollTo(0,0));
      assert(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth+1),'TAKP profile has horizontal overflow');
      if(theme==='default')await page.screenshot({path:`ui-reports/takp-${tab}-${viewport.width}.png`,fullPage:true});
     }
    }
   }
-  await page.locator('nav [data-tab=setup]').click();await page.click('#runtime-close');
+  await openTab(page,'setup');await page.click('#runtime-close');
   await page.waitForFunction(()=>!lastNative?.alive&&!document.getElementById('world-profile').disabled&&!polling);
   await page.selectOption('#world-profile','custom');await page.click('#switch-profile');
   await page.waitForFunction(()=>activeProfile==='custom'&&!polling);
   assert.equal(await page.inputValue('#source-url'),'https://github.com/Russianranger/Triptych-Triumvirate');
   assert(!(await page.locator('#takp-setup').isVisible()),'TAKP controls are scoped to TAKP');
+  assert(!(await page.locator('#takp-content-refresh').isVisible()),'TAKP refresh stays hidden in other profiles');
   assert.equal(await page.inputValue('#client-cpu-profile'),'balanced','Custom retains its existing default');
   await page.evaluate(()=>{localStorage.takpWorld='takp';localStorage.takpCpu='balanced';});
   await page.reload();await page.waitForFunction(()=>activeProfile==='takp'&&!polling&&launchOptionsLoaded);
   assert.equal(await page.inputValue('#client-cpu-profile'),'balanced','Explicit saved TAKP comparison choices are retained');
   assert.deepEqual(errors,[]);
-  console.log('PASS: TAKP third profile, pinned forks, blocked RoF2 hooks, staged/seed/account/deploy readiness, password clearing, busy guards and all launcher themes at Thor/phone sizes');
+  console.log('PASS: TAKP third profile, pinned forks, blocked RoF2 hooks, staged/seed/account/deploy readiness, password clearing, busy guards, deliberate installed-content refresh and all launcher themes at Thor/phone sizes');
  }finally{await browser.close();server.close();}
 })().catch(error=>{console.error(error);process.exitCode=1;server.close();});
