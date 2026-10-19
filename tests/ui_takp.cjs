@@ -160,7 +160,7 @@ const server=http.createServer((req,res)=>{
   assert(await page.isDisabled('#world-profile'));
   await page.evaluate(async()=>{while(polling)await new Promise(r=>setTimeout(r,10));fixture.busy=false;await poll();});
   fs.mkdirSync('ui-reports',{recursive:true});
-  for(const theme of ['default','necromancer','monk']){
+  for(const theme of ['default','necromancer','monk','1999']){
    await page.selectOption('#launcher-theme',theme);
    for(const viewport of [{width:1280,height:720},{width:393,height:852}]){
     await page.setViewportSize(viewport);

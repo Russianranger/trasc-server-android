@@ -127,7 +127,7 @@ const server=http.createServer((req,res)=>{
   for(const profile of ['custom','traditional','takp']){
    await page.evaluate(profile=>localStorage.sessionProfile=profile,profile);await page.reload();await waitIdle();
    await page.waitForFunction(profile=>document.body.dataset.profile===profile,profile);
-   for(const theme of ['default','necromancer','monk']){
+   for(const theme of ['default','necromancer','monk','1999']){
     await page.selectOption('#launcher-theme',theme);
     for(const [width,height] of [[1280,720],[1024,600],[854,480],[680,480],[393,852],[360,740]]){
      await page.setViewportSize({width,height});await page.evaluate(()=>scrollTo(0,0));

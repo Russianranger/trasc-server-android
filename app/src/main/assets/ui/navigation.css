@@ -14,9 +14,9 @@
 .navigation-tools-body{padding:0 18px 2px}
 .navigation-tools-body>.section-title{margin-top:14px}
 .navigation-tools-body input,.navigation-tools-body select{max-width:100%}
-body[data-scene=appearance]{--scene-image:url('fantasy-gameplay.webp')}
-body[data-profile=traditional][data-scene=appearance]{--scene-image:url('classic-gameplay.webp')}
-body[data-profile=traditional][data-scene=play]{--scene-image:url('classic-server.webp')}
+body[data-launcher-theme=default][data-scene=appearance]{--scene-image:url('fantasy-gameplay.webp')}
+body[data-launcher-theme=default][data-profile=traditional][data-scene=appearance]{--scene-image:url('classic-gameplay.webp')}
+body[data-launcher-theme=default][data-profile=traditional][data-scene=play]{--scene-image:url('classic-server.webp')}
 .controller-menu-help{margin:0 0 12px}
 @media(max-width:680px){
  .primary-nav button{font-size:11px;padding:10px 4px;min-height:46px}

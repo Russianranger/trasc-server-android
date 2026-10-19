@@ -1,6 +1,8 @@
 # Improved UI review branch
 
-This work belongs to `improved-ui`, based on main `5f10025c82aa1479963917aa4264c999a1af897e` (published 0.6.42). It is a review candidate, not a release. The user will decide whether to merge and publish it. Do not merge, move release tags, or replace preview/Latest artifacts as part of this review.
+This work belongs to `improved-ui`, based on main `5f10025c82aa1479963917aa4264c999a1af897e` (published 0.6.42). After accepting the UI, the user authorized merging it into main together with the new 1999 theme and Necromancer bone frames. Qualification still precedes that merge. Production publication is separate and remains unapproved; this update supplies a signed test APK and does not move release tags or replace preview/Latest artifacts.
+
+The [1999 and Necromancer theme guide](launcher-themes-1999.md) describes the four original paintings, scene destinations, border changes, artwork prompts and device checks. All four themes work with Custom, Traditional and TAKP worlds, including appearance backup/restore.
 
 ## Navigation
 
@@ -76,4 +78,6 @@ Recovery checkpoint (2026-10-19 UTC): preserved 50 unpublished files from the pr
 - The Android version name is `0.6.42-improved-ui-test`, retaining versionCode 91 and the established application/signing identity so the review APK can replace 0.6.42 without a reset.
 - Broad native rebuild PR jobs exclude this branch because its dedicated workflow verifies the exact reused 0.6.42 native payload. Production workflows are unchanged for main.
 
-Local recovery qualification: the 850-test baseline Python suite passed with 30 environment-dependent skips; all native/Java host checks passed. All 25 browser suites passed after correcting the era test's reload wait. The update checklist suite has 20 cases, including four added recovery regressions. The final branch workflow reruns the complete suite, builds/lints Android, verifies the signing certificate and native/asset preservation, and uploads test artifacts.
+Recovery qualification: CI run [39188914794](https://github.com/Russianranger/trasc-server-android/actions/runs/39188914794) passed all 854 Python tests without skips, native/Java host checks, all 25 browser suites, Android assembly/lint and signer/native-payload verification at `cc56cfa254f2a49ec72efd91dfb4fed0cff5658c`. The final theme commit reruns those gates and adds all-theme/all-profile layout, scene and restoration coverage plus exact APK checks for the four paintings and bone frame.
+
+The merge may carry `[skip ci]` only after the exact branch tree passes the dedicated workflow and the main base is unchanged. This prevents the main workflow's automatic preview publication, rather than replacing branch qualification. If main changes, requalify the combined tree before merging.

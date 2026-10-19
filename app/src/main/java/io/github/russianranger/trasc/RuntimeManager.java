@@ -376,7 +376,7 @@ public final class RuntimeManager {
         }
         props.setProperty("client_controls",controls.toString());
         String theme=launcher==null?"default":launcher.optString("theme","default");
-        if(!Arrays.asList("default","necromancer","monk").contains(theme))throw new IOException("Unknown launcher appearance");
+        if(!Arrays.asList("default","necromancer","monk","1999").contains(theme))throw new IOException("Unknown launcher appearance");
         props.setProperty("launcher_preferences",new JSONObject().put("theme",theme).toString());
         File file=File.createTempFile("session-preferences-",".properties",context.getCacheDir());
         try(FileOutputStream out=new FileOutputStream(file)){props.store(out,"Saved client controls and launcher appearance");out.getFD().sync();}
@@ -405,7 +405,7 @@ public final class RuntimeManager {
             else if(type.equals("int"))item.getInt("value");else if(type.equals("long"))item.getLong("value");else if(item.getString("value").length()>8192)throw new IOException("Invalid control preference value");
         }
         JSONObject launcher=new JSONObject(p.getProperty("launcher_preferences","{}"));
-        if(!Arrays.asList("default","necromancer","monk").contains(launcher.getString("theme")))throw new IOException("Invalid launcher appearance");return p;
+        if(!Arrays.asList("default","necromancer","monk","1999").contains(launcher.getString("theme")))throw new IOException("Invalid launcher appearance");return p;
     }
     private JSONObject applyAllPreferences()throws IOException {
         File file=new File(context.getFilesDir(),"session-preferences.properties");if(!file.isFile())return null;

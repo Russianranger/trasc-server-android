@@ -71,3 +71,36 @@ body[data-launcher-theme=monk][data-scene=spire] .overview,body[data-launcher-th
 
 body[data-launcher-theme=necromancer][data-scene=bots]{--scene-image:url('theme-necromancer-grimoire.webp')}
 body[data-launcher-theme=monk][data-scene=bots]{--scene-image:url('theme-monk-meditation.webp')}
+
+/* New navigation destinations keep the selected theme's own artwork. */
+body[data-launcher-theme=necromancer][data-scene=play]{--scene-image:url('theme-necromancer-crypt.webp')}
+body[data-launcher-theme=necromancer][data-scene=appearance]{--scene-image:url('theme-necromancer-ritual.webp')}
+body[data-launcher-theme=monk][data-scene=play]{--scene-image:url('theme-monk-temple.webp')}
+body[data-launcher-theme=monk][data-scene=appearance]{--scene-image:url('theme-monk-combat.webp')}
+body[data-launcher-theme]:not([data-launcher-theme=default])[data-area=play] .readiness-hero{background-color:var(--theme-header);background-image:linear-gradient(90deg,var(--theme-header),var(--theme-card) 48%,transparent 100%),var(--scene-image);background-size:cover;background-position:center 44%}
+body[data-launcher-theme]:not([data-launcher-theme=default]) .navigation-tools{background:var(--theme-card);border-color:var(--line)}
+
+/* 1999: parchment lettering, bronze bevels and dark stone, like an old spellbook. */
+body[data-launcher-theme="1999"]{--bg:#14171c;--panel:#292720f5;--line:#a58e61;--text:#f3e9ce;--muted:#d1c2a1;--green:#c8d9aa;--gold:#e8c784;--red:#ffb5a0;--theme-card:#262720f5;--theme-card-edge:#38342bf5;--theme-surface:#171c25;--theme-header:#1b2028;--theme-button:#d7bd80;--theme-button-edge:#b79a60;--theme-button-text:#201a0e;--theme-secondary:#383d46;--theme-secondary-edge:#252b35;--theme-muted:#dcd0b2}
+body[data-launcher-theme="1999"][data-scene=play],body[data-launcher-theme="1999"][data-scene=setup],body[data-launcher-theme="1999"][data-scene=server]{--scene-image:url('theme-1999-gates.webp')}
+body[data-launcher-theme="1999"][data-scene=gameplay],body[data-launcher-theme="1999"][data-scene=appearance],body[data-launcher-theme="1999"][data-scene=client]{--scene-image:url('theme-1999-wilds.webp')}
+body[data-launcher-theme="1999"][data-scene=spire],body[data-launcher-theme="1999"][data-scene=database],body[data-launcher-theme="1999"][data-scene=bots],body[data-launcher-theme="1999"][data-scene=logs]{--scene-image:url('theme-1999-spellbook.webp')}
+body[data-launcher-theme="1999"][data-scene=build],body[data-launcher-theme="1999"][data-scene=files],body[data-launcher-theme="1999"][data-scene=fixes]{--scene-image:url('theme-1999-dragon.webp')}
+body[data-launcher-theme="1999"][data-profile]::before{background-image:linear-gradient(180deg,#14171c30,#14171ce8 90%),var(--scene-image)}
+body[data-launcher-theme="1999"][data-profile] :is(.card,.overview,.runtime-toolbar,.profile-selector,.primary-nav,#setup-guide,#update-checklist){border:3px ridge #b49d70;border-radius:2px;box-shadow:inset 0 0 0 2px #0c1018,inset 0 0 0 4px #8f7b4b66,0 5px 16px #0008}
+body[data-launcher-theme="1999"][data-profile] .card::before,body[data-launcher-theme="1999"][data-profile] .card::after{width:7px;height:7px;border:1px solid #e2c485;border-radius:0;transform:rotate(45deg);background:#675231;box-shadow:0 0 0 1px #181918;top:7px;left:7px}
+body[data-launcher-theme="1999"][data-profile] .card::after{top:auto;left:auto;bottom:7px;right:7px}
+body[data-launcher-theme="1999"][data-profile] :is(button,input,select,textarea){border-radius:2px}
+body[data-launcher-theme="1999"][data-profile] nav button.active{border:1px solid #c4a971;box-shadow:inset 0 0 0 1px #10151e,0 1px 0 #e8c78444;background:linear-gradient(#464957,#292e3a)}
+body[data-launcher-theme="1999"][data-profile] .overview{background-image:linear-gradient(90deg,#1b2028f5 0%,#1b2028d9 36%,#1b202822 72%,#1b202888),var(--scene-image)}
+
+/* A nine-slice SVG gives Necromancer real repeating bones and corner skulls.
+   The overlay stays inside existing surfaces and never intercepts touch/focus. */
+body[data-launcher-theme=necromancer][data-profile] :is(.card,.overview,.runtime-toolbar,.profile-selector,.primary-nav,#setup-guide,#update-checklist){position:relative;border-radius:2px;border-color:#7c6954}
+body[data-launcher-theme=necromancer][data-profile] .card::before{content:none}
+body[data-launcher-theme=necromancer][data-profile] :is(.card,.overview,.runtime-toolbar,.profile-selector,.primary-nav,#setup-guide,#update-checklist)::after{content:'';position:absolute;inset:0;width:auto;height:auto;border:14px solid transparent;border-image:url('theme-necromancer-bones.svg') 24 / 14px / 0 round;pointer-events:none;z-index:1}
+body[data-launcher-theme=necromancer][data-profile] :is(.runtime-toolbar,.profile-selector,.primary-nav)::after{border-width:10px;border-image-width:10px}
+body[data-launcher-theme=necromancer][data-profile] .primary-nav{padding:10px}
+body[data-launcher-theme=necromancer][data-profile] .profile-selector{padding-left:14px;padding-right:14px}
+body[data-launcher-theme=necromancer][data-profile] .runtime-toolbar{padding:14px}
+@media(max-width:539px){body[data-launcher-theme=necromancer][data-profile] .runtime-toolbar{padding:10px}}
