@@ -1,6 +1,6 @@
 # Improved UI review branch
 
-This work belongs to `improved-ui`, based on main `5f10025c82aa1479963917aa4264c999a1af897e` (published 0.6.42). After accepting the UI, the user authorized merging it into main together with the new 1999 theme and Necromancer bone frames. Qualification still precedes that merge. Production publication is separate and remains unapproved; this update supplies a signed test APK and does not move release tags or replace preview/Latest artifacts.
+This work belongs to `improved-ui`, based on main `5f10025c82aa1479963917aa4264c999a1af897e` (published 0.6.42). After accepting the UI, the user authorized merging it into main together with the new 1999 theme and Necromancer bone frames. The UI and theme changes are now merged and qualified. The user has separately authorized Beta 0.7.0 publication from main; see [release notes](release-070-beta-notes.md). Historical branch qualification details follow.
 
 The [1999 and Necromancer theme guide](launcher-themes-1999.md) describes the four retro game-style scenes, scene destinations, border changes, artwork prompts and device checks. All four themes work with Custom, Traditional and TAKP worlds, including appearance backup/restore.
 
@@ -81,3 +81,7 @@ Recovery checkpoint (2026-10-19 UTC): preserved 50 unpublished files from the pr
 Recovery qualification: CI run [39188914794](https://github.com/Russianranger/trasc-server-android/actions/runs/39188914794) passed all 854 Python tests without skips, native/Java host checks, all 25 browser suites, Android assembly/lint and signer/native-payload verification at `cc56cfa254f2a49ec72efd91dfb4fed0cff5658c`. The final theme commit reruns those gates and adds all-theme/all-profile layout, scene and restoration coverage plus exact APK checks for the four scenes and bone frame.
 
 The merge may carry `[skip ci]` only after the exact branch tree passes the dedicated workflow and the main base is unchanged. This prevents the main workflow's automatic preview publication, rather than replacing branch qualification. If main changes, requalify the combined tree before merging.
+
+## Beta 0.7.0 publication
+
+The UI and theme revisions were merged into main and qualified in run 39195282897. Beta 0.7.0 uses versionName `0.7.0-beta`, versionCode 92 and the existing signing identity. `.github/workflows/release-beta-070.yml` runs the full regression suite, builds/lints the APK, verifies packaged assets and publishes a prerelease at `v0.7.0-beta`. Stable 0.6.42 and preview remain available. Earlier branch build details above describe the review milestones.

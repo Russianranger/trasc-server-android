@@ -1,0 +1,114 @@
+name: Build and publish Beta 0.7.0
+on:
+  push:
+    branches: [main]
+permissions:
+  contents: read
+concurrency:
+  group: release-beta-070
+  cancel-in-progress: false
+jobs:
+  regression:
+    if: github.ref == 'refs/heads/main' && contains(github.event.head_commit.message, '[beta-070]')
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Install regression dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y mariadb-server binutils g++ zlib1g-dev
+          python3 -m pip install lupa==2.6
+          npm install --no-save --package-lock=false playwright@1.55.0
+          npx playwright install --with-deps chromium
+      - name: Verify backend and host lifecycle contracts
+        env:
+          ERARULES_MARIADB: '1'
+        run: |
+          python3 -m unittest discover -s tests -p 'test_*.py' -v
+          bash scripts/check-management.sh
+      - name: Verify guided setup, navigation and existing browser flows
+        run: |
+          for script in tests/ui_*.cjs; do
+            timeout 180 node "$script"
+          done
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: beta-070-browser-reports
+          path: ui-reports/
+          if-no-files-found: ignore
+  test-apk:
+    if: github.ref == 'refs/heads/main' && contains(github.event.head_commit.message, '[beta-070]')
+    needs: regression
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    env:
+      TRASC_PREVIEW_KEYSTORE: ${{ github.workspace }}/runtime-work/signing/preview.keystore
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+      - uses: android-actions/setup-android@v3
+        with:
+          packages: platform-tools
+      - run: sdkmanager 'platforms;android-35' 'build-tools;35.0.0'
+      - uses: gradle/actions/setup-gradle@v4
+        with:
+          gradle-version: '8.11.1'
+      - uses: actions/cache/restore@v4
+        with:
+          path: runtime-work/signing/preview.keystore
+          key: trasc-preview-signing-v2
+      - name: Require the existing signing identity
+        run: bash scripts/prepare-preview-signing.sh
+      - name: Reuse the verified 0.6.42 native payload
+        run: |
+          mkdir -p runtime-work/improved-ui-baseline dist
+          curl --fail --location --retry 3 -o runtime-work/improved-ui-baseline/base.apk https://github.com/Russianranger/trasc-server-android/releases/download/v0.6.42/trasc-server-android-0.6.42.apk
+          python3 scripts/reuse-launcher-native.py extract --apk runtime-work/improved-ui-baseline/base.apk --receipt dist/native-reuse.json --expected-sha 44d6f91f23a1b86aa1ea4ba72dbdcee7100f83d4aaf32e61f1ff084390478551 --baseline-version 0.6.42 --include-camera
+      - name: Compile and lint Beta 0.7.0 APK
+        run: gradle --no-daemon :app:assembleDebug :app:lintDebug
+      - name: Verify signing, native preservation and packaged beta assets
+        run: |
+          "$ANDROID_HOME/build-tools/35.0.0/apksigner" verify --print-certs app/build/outputs/apk/debug/app-debug.apk > dist/apk-signing.txt
+          python3 scripts/reuse-launcher-native.py verify --apk app/build/outputs/apk/debug/app-debug.apk --receipt dist/native-reuse.json
+          python3 scripts/verify-takp-apk.py --apk app/build/outputs/apk/debug/app-debug.apk --signing-report dist/apk-signing.txt
+          python3 scripts/package-beta-070.py
+      - uses: actions/upload-artifact@v4
+        with:
+          name: beta-070-release
+          path: dist/
+          if-no-files-found: error
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: beta-070-android-reports
+          path: app/build/reports/
+          if-no-files-found: ignore
+  publish:
+    needs: [regression, test-apk]
+    if: github.ref == 'refs/heads/main' && contains(github.event.head_commit.message, '[beta-070]')
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/download-artifact@v4
+        with:
+          name: beta-070-release
+          path: dist
+      - name: Publish verified Beta 0.7.0 from main
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: bash scripts/publish-beta-070.sh

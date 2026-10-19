@@ -14,7 +14,7 @@ jobs:
   # reuse workflows; keep these heavy runtime jobs and duplicate preview publication idle.
   display-auth:
     # The TAKP workflow verifies this profile and reuses its existing native payload.
-    if: github.head_ref != 'improved-ui' && github.head_ref != 'codex/takp-world' && github.ref != 'refs/heads/codex/takp-world' && (github.event_name != 'push' || (!contains(github.event.head_commit.message, '[client-beta]') && !contains(github.event.head_commit.message, '[database-sort-release]') && !contains(github.event.head_commit.message, '[ntcore-release]')))
+    if: github.head_ref != 'improved-ui' && github.head_ref != 'codex/takp-world' && github.ref != 'refs/heads/codex/takp-world' && (github.event_name != 'push' || (!contains(github.event.head_commit.message, '[client-beta]') && !contains(github.event.head_commit.message, '[database-sort-release]') && !contains(github.event.head_commit.message, '[ntcore-release]') && !contains(github.event.head_commit.message, '[beta-070]')))
     runs-on: ubuntu-24.04-arm
     timeout-minutes: 15
     steps:
@@ -51,29 +51,29 @@ jobs:
             runtime-work/xauthority-test/manifest.json
   ferry-server:
     # The TAKP workflow verifies this profile and reuses its existing native payload.
-    if: github.head_ref != 'improved-ui' && github.head_ref != 'codex/takp-world' && github.ref != 'refs/heads/codex/takp-world' && (github.event_name != 'push' || (!contains(github.event.head_commit.message, '[client-beta]') && !contains(github.event.head_commit.message, '[database-sort-release]') && !contains(github.event.head_commit.message, '[ntcore-release]')))
+    if: github.head_ref != 'improved-ui' && github.head_ref != 'codex/takp-world' && github.ref != 'refs/heads/codex/takp-world' && (github.event_name != 'push' || (!contains(github.event.head_commit.message, '[client-beta]') && !contains(github.event.head_commit.message, '[database-sort-release]') && !contains(github.event.head_commit.message, '[ntcore-release]') && !contains(github.event.head_commit.message, '[beta-070]')))
     uses: ./.github/workflows/ferry-server.yml
   traditional-runtime:
     # The TAKP workflow verifies this profile and reuses its existing native payload.
-    if: github.head_ref != 'improved-ui' && github.head_ref != 'codex/takp-world' && github.ref != 'refs/heads/codex/takp-world' && (github.event_name != 'push' || (!contains(github.event.head_commit.message, '[client-beta]') && !contains(github.event.head_commit.message, '[database-sort-release]') && !contains(github.event.head_commit.message, '[ntcore-release]')))
+    if: github.head_ref != 'improved-ui' && github.head_ref != 'codex/takp-world' && github.ref != 'refs/heads/codex/takp-world' && (github.event_name != 'push' || (!contains(github.event.head_commit.message, '[client-beta]') && !contains(github.event.head_commit.message, '[database-sort-release]') && !contains(github.event.head_commit.message, '[ntcore-release]') && !contains(github.event.head_commit.message, '[beta-070]')))
     uses: ./.github/workflows/traditional-runtime.yml
     permissions:
       contents: write
   client-dll:
     # The TAKP workflow verifies this profile and reuses its existing native payload.
-    if: github.head_ref != 'improved-ui' && github.head_ref != 'codex/takp-world' && github.ref != 'refs/heads/codex/takp-world' && (github.event_name != 'push' || (!contains(github.event.head_commit.message, '[client-beta]') && !contains(github.event.head_commit.message, '[database-sort-release]') && !contains(github.event.head_commit.message, '[ntcore-release]')))
+    if: github.head_ref != 'improved-ui' && github.head_ref != 'codex/takp-world' && github.ref != 'refs/heads/codex/takp-world' && (github.event_name != 'push' || (!contains(github.event.head_commit.message, '[client-beta]') && !contains(github.event.head_commit.message, '[database-sort-release]') && !contains(github.event.head_commit.message, '[ntcore-release]') && !contains(github.event.head_commit.message, '[beta-070]')))
     uses: ./.github/workflows/client-dll.yml
   wined3d:
     # The TAKP workflow verifies this profile and reuses its existing native payload.
-    if: github.head_ref != 'improved-ui' && github.head_ref != 'codex/takp-world' && github.ref != 'refs/heads/codex/takp-world' && (github.event_name != 'push' || (!contains(github.event.head_commit.message, '[client-beta]') && !contains(github.event.head_commit.message, '[database-sort-release]') && !contains(github.event.head_commit.message, '[ntcore-release]')))
+    if: github.head_ref != 'improved-ui' && github.head_ref != 'codex/takp-world' && github.ref != 'refs/heads/codex/takp-world' && (github.event_name != 'push' || (!contains(github.event.head_commit.message, '[client-beta]') && !contains(github.event.head_commit.message, '[database-sort-release]') && !contains(github.event.head_commit.message, '[ntcore-release]') && !contains(github.event.head_commit.message, '[beta-070]')))
     uses: ./.github/workflows/wined3d.yml
   vulkan:
     # The TAKP workflow verifies this profile and reuses its existing native payload.
-    if: github.head_ref != 'improved-ui' && github.head_ref != 'codex/takp-world' && github.ref != 'refs/heads/codex/takp-world' && (github.event_name != 'push' || (!contains(github.event.head_commit.message, '[client-beta]') && !contains(github.event.head_commit.message, '[database-sort-release]') && !contains(github.event.head_commit.message, '[ntcore-release]')))
+    if: github.head_ref != 'improved-ui' && github.head_ref != 'codex/takp-world' && github.ref != 'refs/heads/codex/takp-world' && (github.event_name != 'push' || (!contains(github.event.head_commit.message, '[client-beta]') && !contains(github.event.head_commit.message, '[database-sort-release]') && !contains(github.event.head_commit.message, '[ntcore-release]') && !contains(github.event.head_commit.message, '[beta-070]')))
     uses: ./.github/workflows/vulkan.yml
   client-runtime:
     # The TAKP workflow verifies this profile and reuses its existing native payload.
-    if: github.head_ref != 'improved-ui' && github.head_ref != 'codex/takp-world' && github.ref != 'refs/heads/codex/takp-world' && (github.event_name != 'push' || (!contains(github.event.head_commit.message, '[client-beta]') && !contains(github.event.head_commit.message, '[database-sort-release]') && !contains(github.event.head_commit.message, '[ntcore-release]')))
+    if: github.head_ref != 'improved-ui' && github.head_ref != 'codex/takp-world' && github.ref != 'refs/heads/codex/takp-world' && (github.event_name != 'push' || (!contains(github.event.head_commit.message, '[client-beta]') && !contains(github.event.head_commit.message, '[database-sort-release]') && !contains(github.event.head_commit.message, '[ntcore-release]') && !contains(github.event.head_commit.message, '[beta-070]')))
     needs: [wined3d, vulkan]
     uses: ./.github/workflows/client-runtime.yml
     permissions:
@@ -81,7 +81,7 @@ jobs:
       actions: read
   database:
     # The TAKP workflow verifies this profile and reuses its existing native payload.
-    if: github.head_ref != 'improved-ui' && github.head_ref != 'codex/takp-world' && github.ref != 'refs/heads/codex/takp-world' && (github.event_name != 'push' || (!contains(github.event.head_commit.message, '[client-beta]') && !contains(github.event.head_commit.message, '[database-sort-release]') && !contains(github.event.head_commit.message, '[ntcore-release]')))
+    if: github.head_ref != 'improved-ui' && github.head_ref != 'codex/takp-world' && github.ref != 'refs/heads/codex/takp-world' && (github.event_name != 'push' || (!contains(github.event.head_commit.message, '[client-beta]') && !contains(github.event.head_commit.message, '[database-sort-release]') && !contains(github.event.head_commit.message, '[ntcore-release]') && !contains(github.event.head_commit.message, '[beta-070]')))
     runs-on: ubuntu-24.04-arm
     timeout-minutes: 30
     steps:
@@ -155,7 +155,7 @@ jobs:
             database-test/runtime-manifest.json
   apk:
     # The TAKP workflow verifies this profile and reuses its existing native payload.
-    if: github.head_ref != 'improved-ui' && github.head_ref != 'codex/takp-world' && github.ref != 'refs/heads/codex/takp-world' && (github.event_name != 'push' || (!contains(github.event.head_commit.message, '[client-beta]') && !contains(github.event.head_commit.message, '[database-sort-release]') && !contains(github.event.head_commit.message, '[ntcore-release]')))
+    if: github.head_ref != 'improved-ui' && github.head_ref != 'codex/takp-world' && github.ref != 'refs/heads/codex/takp-world' && (github.event_name != 'push' || (!contains(github.event.head_commit.message, '[client-beta]') && !contains(github.event.head_commit.message, '[database-sort-release]') && !contains(github.event.head_commit.message, '[ntcore-release]') && !contains(github.event.head_commit.message, '[beta-070]')))
     needs: [wined3d, vulkan]
     runs-on: ubuntu-latest
     env:
@@ -269,7 +269,7 @@ jobs:
           name: android-reports
           path: app/build/reports/
   preview:
-    if: github.ref == 'refs/heads/main' && github.event_name != 'pull_request' && (github.event_name != 'push' || (!contains(github.event.head_commit.message, '[client-beta]') && !contains(github.event.head_commit.message, '[database-sort-release]') && !contains(github.event.head_commit.message, '[ntcore-release]')))
+    if: github.ref == 'refs/heads/main' && github.event_name != 'pull_request' && (github.event_name != 'push' || (!contains(github.event.head_commit.message, '[client-beta]') && !contains(github.event.head_commit.message, '[database-sort-release]') && !contains(github.event.head_commit.message, '[ntcore-release]') && !contains(github.event.head_commit.message, '[beta-070]')))
     needs: [apk, database, client-runtime, client-dll, ferry-server, display-auth, traditional-runtime]
     runs-on: ubuntu-latest
     permissions:
