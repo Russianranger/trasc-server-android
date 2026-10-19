@@ -3,6 +3,8 @@ const $=id=>document.getElementById(id), pending=new Map(),activeUiActions=new S
 let activeProfile=null,lastClientNative=null;
 let databaseCandidates=[],databaseScanning=false,databaseScanGeneration=0;
 let seq=0,currentTab='play',lastState=null,lastNative=null,busy=0,rulesLoaded=false,rulesValues={},initialSettings=false,polling=false,sessionAction=null;
+let lifecycleErrors={profile:null,runtime:'',server:'',client:''};
+function lifecycleKind(id){return /^runtime-(open|close)$/.test(id)?'runtime':/^(start|stop|restart)-server$/.test(id)?'server':/^client-(launch|desktop|stop)$/.test(id)?'client':null;}
 window.nativeReply=(id,response)=>{const p=pending.get(id);if(!p)return;pending.delete(id);clearTimeout(p.timer);response.ok?p.resolve(response.result):p.reject(new Error(response.error));};
 function api(op,args={},timeoutMs=0){return new Promise((resolve,reject)=>{const id=String(++seq);const timer=timeoutMs?setTimeout(()=>{pending.delete(id);reject(new Error('Status check timed out.'));},timeoutMs):null;pending.set(id,{resolve,reject,timer});if(!window.Trasc){pending.delete(id);clearTimeout(timer);reject(new Error('Open this interface in the TRASC Android app.'));return;}Trasc.call(id,op,JSON.stringify(activeProfile?{...args,__profile:activeProfile}:args));});}
 function notice(text,error=false){$('notice').hidden=false;$('notice').classList.toggle('error',error);$('notice').textContent=text;}
@@ -11,7 +13,7 @@ function ready(id,ok){$(id).textContent=ok?'Ready':'Required';$(id).classList.to
 function tab(name){if(!$(name)?.classList.contains('tab'))return;if(typeof launcherTabAllowed==='function'&&!launcherTabAllowed(name))return;if(currentTab==='client'&&name!=='client')api('controller_capture',{active:false}).catch(()=>{});currentTab=name;document.body.dataset.scene=name;renderOverview();document.querySelectorAll('.tab').forEach(e=>e.classList.toggle('active',e.id===name));document.querySelectorAll('nav [data-tab]').forEach(e=>e.classList.toggle('active',e.dataset.tab===name));if(typeof syncLauncherNavigation==='function')syncLauncherNavigation();if(typeof renderImprovedUi==='function')renderImprovedUi();if(name==='setup'&&typeof loadCustomDeployment==='function')loadCustomDeployment().catch(e=>notice(e.message,true));if(name==='client'&&typeof loadController==='function')loadController().catch(e=>notice(e.message,true));if(name==='gameplay'&&typeof refreshEraStatus==='function')refreshEraStatus().catch(e=>notice(e.message,true));if(name==='spire'&&typeof loadSpire==='function')loadSpire().catch(e=>notice(e.message,true));if(name==='bots'&&typeof loadBots==='function')loadBots().catch(e=>notice(e.message,true));if(name==='build'&&typeof loadSourceUpdates==='function')loadSourceUpdates().catch(e=>notice(e.message,true));if(name==='client'&&typeof loadClientConnection==='function')loadClientConnection().catch(e=>notice(e.message,true));if(['client','appearance'].includes(name)&&typeof loadTakpSkeletons==='function')loadTakpSkeletons().catch(e=>notice(e.message,true));if(name==='files')browse().catch(e=>notice(e.message,true));if(name==='logs'){logs().catch(()=>{});loadLogRetention().catch(e=>notice(e.message,true));}}
 window.appBack=()=>tab('play');
 document.querySelectorAll('[data-tab]').forEach(b=>b.addEventListener('click',()=>tab(b.dataset.tab)));
-function action(id,fn){$(id).addEventListener('click',async()=>{const b=$(id);b.disabled=true;busy++;activeUiActions.add(id);renderSessionControls();try{await fn();}catch(e){notice(e.message,true);}finally{activeUiActions.delete(id);busy--;b.disabled=false;renderSessionControls();poll().catch(()=>{});}});}
+function action(id,fn){$(id).addEventListener('click',async()=>{const b=$(id),profile=activeProfile,kind=lifecycleKind(id);b.disabled=true;busy++;activeUiActions.add(id);if(kind)lifecycleErrors[kind]='';renderSessionControls();try{await fn();}catch(e){if(kind&&profile===activeProfile)lifecycleErrors[kind]=e.message;notice(e.message,true);}finally{activeUiActions.delete(id);busy--;b.disabled=false;renderSessionControls();poll().catch(()=>{});}});}
 const operationLabels={import_content:'Importing world content',import_client_ui:'Importing client UI skin',client_dll_download:'Preparing Microsoft toolchain',ferry_service_status:'Checking Qeynos–Erudin route',ferry_service_preview:'Previewing route changes',ferry_service_apply:'Saving route changes',boat_trial_status:'Checking ferry',boat_trial_preview:'Previewing ferry changes',boat_trial_apply:'Saving ferry changes',start:'Starting server',stop:'Stopping server',spire_catalog:'Loading Spire',spire_search:'Searching content',spire_detail:'Loading record',spire_preview:'Validating changes',spire_apply:'Saving content',spire_history:'Loading change history'};
 Object.assign(operationLabels,{activate_client_ui:'Saving client UI skin',restore_client_ui:'Restoring client UI settings',era_preview:'Reviewing era rules',era_apply:'Applying era rules',era_restore:'Restoring database default'});
 Object.assign(operationLabels,{bots_storage_preview:'Reviewing bot storage',bots_storage_enable:'Backing up and enabling bot storage',bots_preview:'Reviewing companions',bots_generate:'Generating companions',bots_socials_preview:'Reviewing summon buttons',bots_socials_install:'Saving summon buttons',bots_socials_restore:'Restoring character buttons'});
@@ -42,12 +44,13 @@ const tabStories={
  logs:['Chronicles of your realm.','Review recent events and gather clues when something goes wrong.']
 };
 function renderOverview(){const [title,summary]=tabStories[currentTab]||tabStories.setup;$('headline').textContent=currentTab==='server'&&lastState?.running?'Your world is running.':title;$('summary').textContent=activeProfile==='takp'&&currentTab==='setup'?'Download your TAKP forks, prepare the local world and bring in your Windows TAKP client.':activeProfile==='takp'&&currentTab==='build'?'Compile and stage the pinned TAKP server with playerbots.':activeProfile==='traditional'&&currentTab==='build'?'Prepare a copy of the tested source, then compile and stage its binaries.':summary;}
-function statusBadge(id,label,state){const el=$(id);el.textContent=label;el.dataset.state=state;el.classList.toggle('online',state==='running');}
+function statusBadge(id,label,state){const el=$(id);if(!el)return;el.textContent=label;el.dataset.state=state;el.classList.toggle('online',state==='running');}
 function clientStopBlocked(s=lastClientNative){return !s?.alive||!!(s.busy||lastNative?.session_busy||['client-stop','session-import','session-export','session-import-all','session-export-all','files-session-export-all'].some(id=>activeUiActions.has(id))||(s.profile&&activeProfile&&s.profile!==activeProfile));}
 function renderClientActivity(s){
  lastClientNative=s;if(typeof syncProfileControls==='function')syncProfileControls();if(typeof cleanupControls==='function')cleanupControls();
  let label='Client · Stopped',state='stopped';
- if(s.alive){
+ if(!s.busy&&(lifecycleErrors.client||s.launch?.phase==='error')){label='Client · Error';state='error';}
+ else if(s.alive){
   const launch=s.launch||{};
   if(launch.compiler||launch.mode==='compiler'){label='Client · Compiler active';state='busy';}
   else if(launch.mode==='desktop'){label='Client · Wine desktop';state='busy';}
@@ -67,7 +70,10 @@ function renderClientActivity(s){
  if(typeof renderImprovedUi==='function')renderImprovedUi();
 }
 function renderSessionControls(){
+ if(lifecycleErrors.profile!==activeProfile)lifecycleErrors={profile:activeProfile,runtime:'',server:'',client:''};
  const n=lastNative,s=lastState,active=s?.jobs?.find(j=>['queued','running'].includes(j.status));
+ const runtimeAction=activeUiActions.has('runtime-open')?'Starting':activeUiActions.has('runtime-close')?'Stopping':n?.installing?'Installing':n?.session_busy?'Transferring':null;
+ statusBadge('runtime-badge','Runtime · '+(runtimeAction|| (lifecycleErrors.runtime?'Error':!n?'Status unavailable':n.alive?'Running':n.installed?'Stopped':'Not installed')),runtimeAction?'busy':lifecycleErrors.runtime?'error':!n?'unknown':n.alive?'running':'stopped');
  const blocked=!!(busy||sessionAction||n?.installing||n?.session_busy||n?.lon_input?.busy||active);
  $('runtime-open').disabled=blocked||!n?.installed||!!n?.alive;
  $('runtime-close').disabled=blocked||!n?.alive;
@@ -75,7 +81,9 @@ function renderSessionControls(){
  $('stop-server').disabled=$('restart-server').disabled=blocked||!n?.alive||!s?.running;
  $('client-stop').disabled=clientStopBlocked();
  const operation=sessionAction||active?.operation;
+ const recentLifecycle=[...(s?.jobs||[])].reverse().find(j=>['start','stop','restart'].includes(j.operation));
  if(['start','stop','restart'].includes(operation)){statusBadge('badge','Server · '+({start:'Starting',stop:'Stopping',restart:'Restarting'}[operation]),'busy');}
+ else if(lifecycleErrors.server||recentLifecycle?.status==='error'){statusBadge('badge','Server · Error','error');}
  else if(!n){statusBadge('badge','Server · Status unavailable','unknown');}
  else if(!n.alive){statusBadge('badge','Server · Offline','stopped');}
  else if(!s){statusBadge('badge','Server · Status unavailable','unknown');}
@@ -211,8 +219,9 @@ action('runtime-close',async()=>{await api('runtime_stop');notice('Server and da
 const sourceArgs=()=>({url:$('source-url').value.trim(),ref:$('source-ref').value.trim()});
 action('source-git',async()=>{await job('import_source',sourceArgs());await scanDB();});
 action('source-zip',async()=>{const f=await api('pick',{kind:'source'});await job('import_source',{file:f.file});await scanDB();});
-action('maps-git',async()=>{await job('import_maps',{url:$('maps-url').value.trim(),ref:$('maps-ref').value.trim()});});
-action('maps-zip',async()=>{const f=await api('pick',{kind:'maps'});await job('import_maps',{file:f.file});});
+function confirmMapImport(){return !lastState?.maps_ready||window.confirm('Import maps into this profile? Matching filenames will be replaced, including customized maps. A complete backup of the current maps is retained; unrelated local files are kept. Review the selected source and installed-file checklist before continuing.');}
+action('maps-git',async()=>{if(confirmMapImport())await job('import_maps',{url:$('maps-url').value.trim(),ref:$('maps-ref').value.trim()});});
+action('maps-zip',async()=>{if(!confirmMapImport())return;const f=await api('pick',{kind:'maps'});await job('import_maps',{file:f.file});});
 action('scan-db',scanDB);
 action('upload-db',async()=>{const f=await api('pick',{kind:'database'});if(typeof clearSeedBundle==='function')clearSeedBundle();await scanDB(f.path||f.file);});
 action('import-db',async()=>{if(activeProfile==='takp')throw new Error('Use Initialize fresh TAKP database to deploy its matching pinned database.');const c=selectedDatabaseCandidate();if(!c)throw new Error('Choose a database file first.');if(c.kind==='unsupported_bundle')throw new Error(c.reason||'Choose a complete database bundle.');if(c.kind==='peq_bundle'&&activeProfile!=='traditional')throw new Error('Switch to Traditional EQEmu to import this split PEQ database.');await job('import_database',{selection:c.id,replace:$('replace-db').checked});});

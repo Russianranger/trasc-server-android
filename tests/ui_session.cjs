@@ -15,20 +15,20 @@ const server=http.createServer((req,res)=>{
   await page.addInitScript(()=>{
    window.fixture={profile:localStorage.sessionProfile||'custom',runtime:false,server:false,client:false,clientBusy:false,sessionBusy:false,mode:'client',game:true,stale:false,failState:false,failNative:false,failClient:false,hold:false,calls:[],jobs:[]};
    let seq=0;
-   window.finishSessionJob=()=>{const f=fixture,j=f.jobs.find(j=>j.status==='running');if(j){f.server=j.operation==='start';j.status='done';j.result={};}};
+   window.finishSessionJob=()=>{const f=fixture,j=f.jobs.find(j=>j.status==='running');if(j){if(f.failStart&&j.operation==='start'){j.status='error';j.error='Fixture server startup failed';}else{f.server=j.operation==='start';j.status='done';j.result={};}}};
    window.Trasc={call(id,op,input){setTimeout(()=>{
     const f=fixture;f.calls.push(op);let result={};
     try{
      if(op==='native_state'&&f.failNative)throw Error('Native status unavailable');
      if(op==='native_state')result={profile:f.profile,installed:true,alive:f.runtime,session_busy:f.sessionBusy,status:f.runtime?'Runtime ready':'Runtime closed',free_bytes:50e9};
-     else if(op==='runtime_start'){f.runtime=true;result={};}
+     else if(op==='runtime_start'){if(f.failRuntimeStart)throw Error('Fixture runtime startup failed');f.runtime=true;result={};}
      else if(op==='runtime_stop'){f.runtime=f.server=false;result={};}
      else if(op==='state'){
       if(f.failState)throw Error('Control daemon unavailable');
       result={running:f.server,settings:{ip:'127.0.0.1',login_port:5999,repo:'fixture',ref:'main',workers:3,jobs:2},processes:{},jobs:f.jobs,source:{},binaries_ready:true,database_imported:true,maps_ready:true,client:{},free_bytes:50e9};
      }else if(op==='client_native_state'){
       if(f.failClient)throw Error('Client status unavailable');
-      result={profile:f.profile,alive:f.client,display_ready:f.client,installed:true,busy:f.clientBusy,launch:{mode:f.mode,thread_sample:{sampled_at:Date.now()/1000-(f.stale?60:0),game_running:f.game}}};
+      result={profile:f.profile,alive:f.client,display_ready:f.client,installed:true,busy:f.clientBusy,launch:{phase:f.clientError?'error':'running',mode:f.mode,thread_sample:{sampled_at:Date.now()/1000-(f.stale?60:0),game_running:f.game}}};
      }else if(op==='client_stop'){
       f.client=false;result={};
      }else if(op==='start'||op==='stop'){
@@ -55,7 +55,13 @@ const server=http.createServer((req,res)=>{
   }
   for(const label of ['Runtime','Server','Client'])assert.equal(await page.getByRole('group',{name:label,exact:true}).count(),1,'Each lifecycle group has an accessible visible label');
   assert.equal(await page.locator('#client #client-launch, #client #client-stop').count(),0,'Client tab directs launch actions to the shared toolbar');
-  await page.locator('#runtime-open').click();await page.waitForFunction(()=>!document.getElementById('start-server').disabled);
+  await page.evaluate(()=>fixture.failRuntimeStart=true);await page.locator('#runtime-open').click();await waitIdle();
+  assert.equal(await page.getAttribute('#runtime-badge','data-state'),'error','Runtime failure remains visible at the top');
+  await page.evaluate(()=>fixture.failRuntimeStart=false);await page.locator('#runtime-open').click();await page.waitForFunction(()=>!document.getElementById('start-server').disabled);
+  assert.equal(await page.getAttribute('#runtime-badge','data-state'),'running','Retry clears runtime failure');
+  await page.evaluate(()=>fixture.failStart=true);await page.locator('#start-server').click();await waitIdle();
+  assert.equal(await page.getAttribute('#badge','data-state'),'error','Failed server start remains distinct from stopped');
+  await page.evaluate(()=>fixture.failStart=false);
   await openTab(page,'fixes');
   assert.equal(await page.locator('#spire #ferry-service-panel, #spire #boat-trial-panel').count(),0);
   assert.equal(await page.locator('#fixes #fix-nektulos, #fixes #spell-test-apply, #fixes #client-prefix-repair, #fixes #ferry-service-panel').count(),4);
@@ -66,7 +72,10 @@ const server=http.createServer((req,res)=>{
   await page.evaluate(()=>{finishSessionJob();fixture.hold=false;});await page.waitForFunction(()=>!document.getElementById('stop-server').disabled);
   assert.equal(await page.locator('#badge').textContent(),'Server · Running');
   await openTab(page,'server');assert.equal(await page.locator('.runtime-toolbar #restart-server').count(),0,'Restart belongs in Server');await page.locator('#restart-server').click();await page.waitForFunction(()=>!document.getElementById('stop-server').disabled);
-  assert.deepEqual(await page.evaluate(()=>fixture.calls.filter(x=>x==='start'||x==='stop')),['start','stop','start']);
+  assert.deepEqual(await page.evaluate(()=>fixture.calls.filter(x=>x==='start'||x==='stop')),['start','start','stop','start']);
+  await page.evaluate(()=>fixture.clientError=true);await page.waitForFunction(()=>lastClientNative?.launch?.phase==='error');await waitIdle();
+  assert.equal(await page.getAttribute('#client-badge','data-state'),'error','Native client error phase is visible after process exit');
+  await page.evaluate(()=>fixture.clientError=false);
   await page.evaluate(()=>fixture.client=true);await page.waitForFunction(()=>document.getElementById('client-badge').dataset.state==='running');
   assert(!(await page.locator('#client-stop').isDisabled()),'Top Stop client is enabled for the background client');
   await page.evaluate(()=>{fixture.jobs.push({id:'build-running',operation:'build',status:'running'});busy++;sessionAction='restart';renderSessionControls();});

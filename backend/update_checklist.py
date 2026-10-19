@@ -11,6 +11,7 @@ import re
 import time
 
 import custom_deployment as deployment
+import client_launch_compatibility
 import content_baseline
 import quest_sync
 import source_updates
@@ -23,12 +24,12 @@ LABELS = {'source': 'Imported server source', 'build': 'Built server',
           'deployed': 'Deployed server', 'quests': 'Quests', 'plugins': 'Perl plugins',
           'lua_modules': 'Lua modules', 'maps': 'Maps', 'assets': 'Server support files',
           'lon': 'Legends of Norrath', 'client_data': 'Generated client data',
-          'database': 'Database migrations'}
+          'database': 'Database migrations', 'compatibility': 'Client/server compatibility'}
 TARGETS = {'source': 'source-update-check', 'build': 'source-update-build',
            'deployed': 'source-update-deploy', 'quests': 'quest-scan',
            'plugins': 'quest-scan', 'lua_modules': 'quest-scan', 'maps': 'maps-git',
            'assets': 'assets-git', 'lon': 'lon-verify', 'client_data': 'export-client',
-           'database': 'load-backups'}
+           'database': 'load-backups', 'compatibility': 'client-spellbook-check'}
 STATES = ('current', 'attention', 'review', 'not_applicable')
 
 
@@ -42,6 +43,13 @@ def _path(engine, relative):
     return deployment.confined(engine, Path(engine.work) / relative)
 
 
+def _presence_condition(engine, relative):
+    try:
+        return 'review' if _path(engine, relative).exists() else 'missing'
+    except (OSError, ValueError):
+        return 'review'
+
+
 def _json(engine, relative):
     path = _path(engine, relative)
     if not path.is_file() or path.stat().st_size > 1024 * 1024:
@@ -53,6 +61,7 @@ def _json(engine, relative):
 
 
 def _row(key, state, detail, **extra):
+    extra.setdefault('condition', state)
     return dict(id=key, label=LABELS[key], state=state, detail=detail,
                 action={'target': TARGETS[key], 'section': 'manage', 'label': 'Review'}, **extra)
 
@@ -88,7 +97,8 @@ def _build(engine, directory, source):
         info = _json(engine, directory + '/build-info.json')
     except (OSError, ValueError) as error:
         _check(engine)
-        return {'state': 'review', 'revision': None, 'detail': str(error), 'available': False}
+        return {'state': 'review', 'condition': _presence_condition(engine, directory),
+                'revision': None, 'detail': str(error), 'available': False}
     provenance = info.get('source')
     if not isinstance(provenance, dict):
         return {'state': 'review', 'revision': None, 'detail': 'Invalid build source evidence', 'available': True}
@@ -104,12 +114,12 @@ def _build(engine, directory, source):
         if not expected:
             raise ValueError('This older build has no complete source fingerprint; build the imported source to establish evidence')
         if expected != source['tree_sha256']:
-            result.update(state='attention', detail='Built from different source bytes. Build and deploy the imported source after reviewing local edits.')
+            result.update(state='attention', condition='outdated', detail='Built from different source bytes. Build and deploy the imported source after reviewing local edits.')
             return result
         # TAKP's receipt records qualified source independently of the importer.
         # Traditional also normalizes import metadata, so compare revision only.
         if source.get('revision') and result['revision'] != source['revision']:
-            result.update(state='attention', detail='The build revision differs from the imported source revision. Build and deploy the selected source.')
+            result.update(state='attention', condition='outdated', detail='The build revision differs from the imported source revision. Build and deploy the selected source.')
             return result
         if engine.profile == 'traditional':
             report = _json(engine, directory + '/verification.json')
@@ -125,7 +135,7 @@ def _build(engine, directory, source):
                 raise ValueError('The build receipt does not fingerprint every required binary')
             for name in expected_names:
                 if _digest(engine, _path(engine, directory + '/' + name)) != hashes[name]:
-                    result.update(state='attention', detail='Binary differs from its build receipt: ' + name + '. Rebuild or review deployment.')
+                    result.update(state='attention', condition='modified', detail='Binary differs from its build receipt: ' + name + '. Rebuild or review deployment.')
                     return result
             count = len(expected_names)
         result.update(state='current', detail=str(count) + ' binary hashes and build inputs match the imported source. Runtime compatibility remains subject to the existing launch checks.')
@@ -135,10 +145,10 @@ def _build(engine, directory, source):
     return result
 
 
-def _compare(engine, source, destination, exclude=()):
+def _compare(engine, source, destination, exclude=(), previous=None):
     left = deployment.inventory(engine, source, exclude)
     right = deployment.inventory(engine, destination, exclude)
-    counts = dict(new=0, changed=0, matching=0, runtime_only=0, errors=0)
+    counts = dict(new=0, changed=0, matching=0, runtime_only=0, errors=0, conflicts=0, untracked_changes=0)
     for name in set(left) | set(right):
         _check(engine)
         a, b = left.get(name), right.get(name)
@@ -146,26 +156,42 @@ def _compare(engine, source, destination, exclude=()):
                'runtime_only' if a is None else 'new' if b is None else
                'matching' if a['sha256'] == b['sha256'] else 'changed')
         counts[key] += 1
+        if key == 'changed':
+            baseline = (previous or {}).get(str(destination / name))
+            if not isinstance(baseline, dict) or not baseline.get('sha256'):
+                counts['untracked_changes'] += 1
+            elif b['sha256'] != baseline['sha256']:
+                counts['conflicts'] += 1
     return counts
 
 
 def _comparison_row(key, counts):
     state = ('review' if counts['errors'] or not sum(counts[name] for name in ('new', 'changed', 'matching')) else
              'attention' if counts['new'] or counts['changed'] else 'current')
-    detail = ('{new} missing, {changed} different, {matching} matching, '
+    detail = ('{new} new/missing, {changed} changed, {matching} matching, '
               '{runtime_only} runtime-only, {errors} unreadable. ').format(**counts)
+    if 'conflicts' in counts:
+        detail += str(counts['conflicts']) + ' confirmed local conflicts. '
+        if counts.get('untracked_changes'):
+            detail += str(counts['untracked_changes']) + ' changed files have no prior baseline; inspect them before replacement. '
     detail += ('Review differences before synchronization; existing edits and runtime-only files are preserved.' if state != 'current' else
                'All imported source files match. Runtime-only files are retained; they are not declared obsolete.')
-    return _row(key, state, detail, counts=counts)
+    condition = ('review' if state == 'review' else 'modified' if counts['changed'] else
+                 'missing' if counts['new'] else state)
+    return _row(key, state, detail, counts=counts, condition=condition)
 
 
 def _custom_scripts(engine):
     try:
         root = quest_sync._source(engine)
+        manifest = deployment._manifest_path(engine, quest_sync.KIND)
+        previous = deployment.read(engine, manifest).get('entries', {}) if manifest.exists() else {}
+        if not isinstance(previous, dict):
+            raise ValueError('Invalid previous script baseline. Inspect synchronization history.')
         grouped = {}
         for group in quest_sync._groups(engine, root):
             key = 'lua_modules' if group['name'].startswith('lua_modules') else group['name']
-            counts = _compare(engine, group['source'], group['destination'], group['exclude'])
+            counts = _compare(engine, group['source'], group['destination'], group['exclude'], previous)
             total = grouped.setdefault(key, {name: 0 for name in counts})
             for name, value in counts.items():
                 total[name] += value
@@ -176,7 +202,11 @@ def _custom_scripts(engine):
 
 
 def _baseline_row(key, evidence, counts=None):
-    row = _comparison_row(key, evidence['counts'] if counts is None else counts)
+    counts = dict(evidence['counts'] if counts is None else counts)
+    # These bytes differ from the recorded import, so replacing them would
+    # replace a local modification. No remote comparison is implied.
+    counts['conflicts'] = counts['changed']
+    row = _comparison_row(key, counts)
     source = evidence['source']
     label = source.get('repo') or ('archive ' + str(source['archive_sha256'])[:12] if source.get('archive_sha256') else 'recorded component import')
     if source.get('commit'):
@@ -275,7 +305,7 @@ def _maps(engine):
             _check(engine)
             present = root.is_dir() and ((root / 'base').is_dir() if engine.profile != 'takp' else any(root.glob('*.map')))
             row = _row('maps', 'review' if present else 'attention',
-                       str(error) + '. Maps have an independent source; folder presence and a server revision cannot prove matching maps. Review or explicitly import the maps to establish a per-file baseline.')
+                       str(error) + '. Maps have an independent source; folder presence and a server revision cannot prove matching maps. Review or explicitly import the maps to establish a per-file baseline.', condition='review' if present else 'missing')
     if engine.profile == 'takp':
         row['action']['target'] = 'takp-content-kind'
     return row
@@ -302,6 +332,23 @@ def _client_data(engine, deployed):
         return _row('client_data', 'review', str(error))
 
 
+def _compatibility(engine, args):
+    if engine.profile != 'custom':
+        row = _row('compatibility', 'review', 'Review this profile’s client connection, generated data and first login. Custom spellbook checks do not apply to this client.')
+        row['action']['target'] = 'client-connection-reload'
+        return row
+    options = (args or {}).get('client_options', {})
+    if not isinstance(options, dict):
+        raise ValueError('Invalid client launch options')
+    result = client_launch_compatibility.preflight(engine, {
+        'mode': 'client', 'native_dinput8': options.get('native_dinput8', True) is not False})
+    warnings = result.get('warnings') or []
+    state = 'review' if warnings else 'current' if result.get('requirements', {}).get('known_deployed') else 'review'
+    detail = ' '.join(warnings) if warnings else ('The existing launch check found no mismatch with the deployed local server. Test world entry on the device.' if state == 'current' else 'Deployed server compatibility is not yet established.')
+    return _row('compatibility', state, detail + ' Launch remains available with the established confirmation and per-profile warning preference.',
+                requires_confirmation=bool(result.get('requires_confirmation')))
+
+
 def scan(engine, args=None):
     if engine.profile not in ('custom', 'traditional', 'takp'):
         raise ValueError('Unknown world profile')
@@ -316,12 +363,12 @@ def scan(engine, args=None):
                          '. This scan compares local imported source; use Check source update to inspect remote changes.'))
     except (OSError, ValueError, KeyError, TypeError) as error:
         _check(engine)
-        rows.append(_row('source', 'review', str(error)))
+        rows.append(_row('source', 'review', str(error), condition=_presence_condition(engine, 'sources/current')))
     staged = _build(engine, 'server/bin.staged', source)
     deployed = _build(engine, 'server/bin', source)
     build = staged if staged['available'] else deployed
-    rows.append(_row('build', build['state'], build['detail'] + (' (Using deployed-build evidence; no separate staged build.)' if not staged['available'] else '')))
-    rows.append(_row('deployed', deployed['state'], deployed['detail']))
+    rows.append(_row('build', build['state'], build['detail'] + (' (Using deployed-build evidence; no separate staged build.)' if not staged['available'] else ''), condition=build.get('condition', build['state'])))
+    rows.append(_row('deployed', deployed['state'], deployed['detail'], condition=deployed.get('condition', deployed['state'])))
     if engine.profile == 'custom':
         rows.extend(_custom_scripts(engine))
     else:
@@ -331,7 +378,8 @@ def scan(engine, args=None):
             _check(engine)
             rows.extend(_row(key, 'review', str(error)) for key in ('quests', 'plugins', 'lua_modules'))
     for key, action in (('maps', lambda: _maps(engine)), ('assets', lambda: _assets(engine)),
-                        ('client_data', lambda: _client_data(engine, deployed))):
+                        ('client_data', lambda: _client_data(engine, deployed)),
+                        ('compatibility', lambda: _compatibility(engine, args))):
         try:
             rows.append(action())
         except (OSError, ValueError, KeyError, TypeError) as error:
@@ -357,7 +405,7 @@ def scan(engine, args=None):
                     identity.update(state='review', detail='Imported source changed during inspection; scan again.')
             for row in rows:
                 if row['state'] == 'current':
-                    row.update(state='review', detail='Imported source changed during this scan. Scan again before relying on this comparison.')
+                    row.update(state='review', condition='review', detail='Imported source changed during this scan. Scan again before relying on this comparison.')
     _check(engine)
     return {'profile': engine.profile, 'scanned_at': time.time(), 'read_only': True,
             'scope': 'imported_source', 'source': source, 'staged': staged, 'deployed': deployed,

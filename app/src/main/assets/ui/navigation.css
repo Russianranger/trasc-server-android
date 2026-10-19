@@ -39,3 +39,8 @@ header{padding-top:13px;padding-bottom:13px}
 .runtime-actions button,.runtime-toolbar #client-launch{height:46px;min-height:44px}
 body[data-area=play] .overview{display:none}
 body[data-area=play] .readiness-hero{background-image:linear-gradient(90deg,#102219f5,#102219df 55%,#102219a8),var(--scene-image);background-size:cover;background-position:center 44%}
+
+.badge[data-state=error]{color:#ffb2a8;border-color:#c75d55;background:#431f23}
+.update-workflow{padding-left:20px;color:var(--muted);font-size:13px}.update-workflow li{margin:7px 0}
+
+.session-status .badge[data-state=error]::before{color:#ff8b80}

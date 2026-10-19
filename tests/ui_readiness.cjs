@@ -32,6 +32,9 @@ const server=http.createServer((req,res)=>{const name=req.url==='/'?'index.html'
   await idle();assert.equal(await page.locator('.runtime-toolbar button').count(),6);
   assert(await page.isVisible('#play-primary'));assert.equal(await page.textContent('#play-primary'),'Set up this world');
   await page.click('#play-primary');assert(await page.isVisible('#setup-guide'));assert.equal(await page.locator('#setup-tools').getAttribute('open'),null);
+  assert.deepEqual(await page.locator('#setup-step-list li').evaluateAll(rows=>rows.map(row=>row.dataset.key)),['profile','runtime','build','database','world','client','compatibility','launch'],'All eight setup requirements appear in order');
+  await page.click('#setup-mode-existing');await page.reload();await idle();await page.evaluate(()=>navigateToControl('setup-guide'));
+  assert.equal(await page.getAttribute('#setup-mode-existing','aria-pressed'),'true','Setup path survives reopening without storing unverified completion flags');
   await page.click('#setup-mode-restore');assert(await page.isVisible('#setup-restore-one'));assert.equal(await page.isVisible('#setup-step-list'),false);
   await page.click('#setup-restore-one');assert(await page.isVisible('#session-import'));
   assert.equal(await page.evaluate(()=>fixture.calls.some(c=>/session_import|runtime_online|import_source/.test(c.op))),false,'Navigation does not import or overwrite data');
@@ -42,10 +45,12 @@ const server=http.createServer((req,res)=>{const name=req.url==='/'?'index.html'
   await page.click('#play-primary');await page.waitForFunction(()=>lastNative?.alive&&!polling&&!busy);
   assert.equal(await page.textContent('#play-primary'),'Continue setup');
   await page.evaluate(async()=>{fixture.ready=true;await poll();});await idle();
+  for(const key of ['profile','runtime','database','build'])assert.equal(await page.locator('#setup-step-list [data-key='+key+']').getAttribute('data-state'),'current','Existing installation detected: '+key);
   assert.equal(await page.textContent('#play-primary'),'Start server');
   await page.evaluate(async()=>{fixture.running=true;await poll();});await idle();assert.equal(await page.textContent('#play-primary'),'Launch client');
   assert.equal(await page.evaluate(()=>fixture.calls.some(c=>c.op==='client_start')),false,'Readiness does not auto-launch');
   await page.evaluate(()=>navigateToControl('update-checklist'));
+  assert.equal(await page.locator('.update-workflow li').count(),3,'Review, Apply and Verify are explicit');
   await page.click('#update-checklist-scan');await page.waitForFunction(()=>document.getElementById('update-checklist-summary').textContent.includes('1 checked'));
   assert((await page.textContent('#update-checklist-summary')).includes('1 need action · 2 need review'));
   assert.equal(await page.locator('#update-checklist-rows [data-state=current]').count(),1,'Unknown maps cannot appear verified');
@@ -64,6 +69,7 @@ const server=http.createServer((req,res)=>{const name=req.url==='/'?'index.html'
   await page.evaluate(()=>navigateToControl('update-checklist'));
   await page.evaluate(()=>fixture.scanProfile='traditional');await page.click('#update-checklist-scan');await page.waitForFunction(()=>document.getElementById('update-checklist-summary').textContent.includes('did not return results'));
   assert.equal(await page.locator('#update-checklist-rows li').count(),0,'Results from another world never render');
+  await page.evaluate(()=>fixture.scanProfile='custom');await page.click('#update-checklist-verify');await page.waitForFunction(()=>document.getElementById('update-checklist-summary').textContent.includes('1 checked'));
   await page.evaluate(async()=>{fixture.alive=false;await poll();});await idle();
   assert.equal(await page.textContent('#update-checklist-scan'),'Open runtime to check');
   await page.setViewportSize({width:393,height:852});await page.evaluate(()=>scrollTo(0,0));assert(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth+1),'Checklist fits narrow screens');

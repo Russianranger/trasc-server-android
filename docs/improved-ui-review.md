@@ -19,7 +19,7 @@ LB/RB cycle the four main areas, remembering their last subpage. D-pad navigates
 
 **Manage → Setup** starts with a checklist derived from the selected profile's actual state. The user can choose a new setup, existing files, or session restoration. Restoring a complete backup does not require installing a runtime first. The existing import tools are in a disclosure below the guide; each checklist action opens the correct tool without starting an import.
 
-The guide checks runtime, world files, database/account, server build/deployment, and client preparation. A stopped runtime makes unknown components “Needs review,” rather than declaring their files absent. Traditional/TAKP use their qualified deployment status. The guide does not initialize or replace existing databases, automatically download content, or override launch warnings.
+The eight steps cover profile selection, runtime installation, server configuration/build, database/account, required content, client preparation, compatibility review and session launch. The selected setup path is retained separately for each profile; completion is always recomputed from installed evidence. A stopped runtime makes unknown components “Needs review,” rather than declaring their files absent. Traditional/TAKP use their qualified deployment status. The guide does not initialize or replace existing databases, automatically download content, or override launch warnings.
 
 Play uses the existing action handlers. It never updates, builds, deploys or replaces content as part of launching. The user can still use the six top controls independently.
 
@@ -35,7 +35,7 @@ Use **Manage → Updates & builds → Check installed files** after reviewing/ap
 
 - Imported source is fingerprinted locally. This does not establish that a remote branch has no newer commits; use the separate source-update review.
 - Staged and deployed binaries are compared with their receipts and current imported source. A successful build and a deployed build remain separate states.
-- Custom quests, Perl plugins and Lua modules compare live files with imported source, showing missing, different, matching, runtime-only and unreadable counts. The comparison does not overwrite local edits or delete runtime-only files.
+- Custom quests, Perl plugins and Lua modules compare live files with imported source, showing new/missing, changed, matching, runtime-only, unreadable and confirmed local conflict counts. Changes without a previous sync baseline are explicitly flagged for inspection. The comparison does not overwrite local edits or delete runtime-only files.
 - Maps and independent content repositories are reviewed against per-file fingerprints recorded by future explicit imports, never inferred current from a server revision. Legacy imports without verifiable evidence require review. TAKP quest/map Review links open a dedicated component importer; replacing installed content requires explicit confirmation and retains a backup.
 - Map imports prepare a complete directory before activation. Cancelling preparation leaves the active maps unchanged. Each successful replacement retains the complete previous directory under a unique `backups/maps-before-import/<token>` path, with interrupted activation recovery.
 - Support files are compared when a source/destination mapping is known.
@@ -65,3 +65,15 @@ Results are snapshots. They are invalidated after tracked mutation/recovery jobs
 New browser coverage exercises four-area navigation, retained six controls, disclosure/controller behavior, settings preservation/search, resumed setup, manual update checks, stale-result invalidation, cross-profile result rejection and narrow/wide layouts. New backend coverage verifies live-file comparisons, import evidence, changed source/binaries, missing/invalid receipts, cancellation and profile boundaries. Physical Android acceptance remains the user's next review step.
 
 Recovery checkpoint (2026-10-19 UTC): preserved 50 unpublished files from the prior local `improved-ui` checkout in an isolated checkout based on the verified main SHA above. No unpublished local commits or stashes were found. Syntax/whitespace checks and the navigation, readiness and preferences browser suites pass. Full backend/browser and Android qualification is in progress; earlier local test claims are not treated as fresh verification. CI installs MariaDB/Lua dependencies and verifies the actual APK. No production publication is authorized.
+
+## Recovery qualification additions
+
+- Runtime, server and client failures now have explicit Error badges, and retry clears the matching operation failure.
+- Eight setup steps include a per-profile remembered setup path and live completion count. No saved completion checkbox can override file evidence.
+- Update rows distinguish missing files, out-of-date builds, modified files and manual review. Custom script conflicts reuse the last synchronization manifest; untracked differences are explicitly disclosed.
+- Compatibility review reuses the existing read-only client launch preflight with the selected native DLL option. It does not change the Continue/Cancel dialog or warning suppression. Traditional and TAKP retain their own manual client review.
+- Review → Apply → Verify routes into existing component tools. The separate Verify button rescans all components; a failed component retains its own review state without erasing unrelated results. Installed-map replacement requires confirmation and keeps the complete previous directory.
+- The Android version name is `0.6.42-improved-ui-test`, retaining versionCode 91 and the established application/signing identity so the review APK can replace 0.6.42 without a reset.
+- Broad native rebuild PR jobs exclude this branch because its dedicated workflow verifies the exact reused 0.6.42 native payload. Production workflows are unchanged for main.
+
+Local recovery qualification: the 850-test baseline Python suite passed with 30 environment-dependent skips; all native/Java host checks passed. All 25 browser suites passed after correcting the era test's reload wait. The update checklist suite has 20 cases, including four added recovery regressions. The final branch workflow reruns the complete suite, builds/lints Android, verifies the signing certificate and native/asset preservation, and uploads test artifacts.

@@ -120,6 +120,61 @@ class ChecklistTests(unittest.TestCase):
         self.assertEqual(rows['quests']['counts']['new'], 1)
         self.assertEqual((self.work / 'server/quests/qeynos/player.lua').read_text(), 'local edit')
 
+    def test_local_conflicts_use_last_sync_baseline_without_overwriting_files(self):
+        import custom_deployment
+        self.install_scripts()
+        target = self.work / 'server/quests/qeynos/player.lua'
+        manifest = custom_deployment._manifest_path(self.engine, 'quest_sync')
+        self.write(str(manifest.relative_to(self.work)), {'entries': {
+            str(target): {'sha256': hashlib.sha256(b'quest').hexdigest()}}})
+        self.write('sources/current/Release-NMS-Quests/qeynos/player.lua', 'upstream edit')
+        counts = self.rows()['quests']['counts']
+        self.assertEqual((counts['changed'], counts['conflicts'], counts['untracked_changes']), (1, 0, 0))
+        self.write('server/quests/qeynos/player.lua', 'my local edit')
+        before = self.snapshot()
+        row = self.rows()['quests']
+        self.assertEqual(row['condition'], 'modified')
+        self.assertEqual(row['counts']['conflicts'], 1)
+        self.assertEqual(self.snapshot(), before)
+
+    def test_unknown_script_baseline_does_not_claim_zero_local_modifications(self):
+        self.install_scripts()
+        self.write('server/quests/qeynos/player.lua', 'custom script')
+        row = self.rows()['quests']
+        self.assertEqual(row['counts']['untracked_changes'], 1)
+        self.assertIn('no prior baseline', row['detail'])
+
+    def test_component_conditions_and_failed_scan_are_independent(self):
+        self.install_scripts()
+        self.install_build()
+        self.write('sources/current/Release-NMS-Server/world/main.cpp', 'new source')
+        rows = self.rows()
+        self.assertEqual(rows['deployed']['condition'], 'outdated')
+        self.assertEqual(rows['maps']['condition'], 'missing')
+        self.assertEqual(rows['quests']['condition'], 'current')
+
+        with patch.object(checklist, '_maps', side_effect=ValueError('Map read failed')):
+            rows = self.rows()
+        self.assertEqual(rows['maps']['condition'], 'review')
+        self.assertEqual(rows['quests']['condition'], 'current')
+
+    def test_compatibility_reuses_nonblocking_preflight_and_actual_dll_option(self):
+        with patch('client_launch_compatibility.preflight', return_value={
+                'allowed': True, 'requirements': {'known_deployed': True}, 'warnings': []}) as preflight:
+            result = checklist.scan(self.engine, {'client_options': {'native_dinput8': False}})
+        row = next(row for row in result['rows'] if row['id'] == 'compatibility')
+        self.assertEqual(row['state'], 'current')
+        self.assertIs(preflight.call_args.args[1]['native_dinput8'], False)
+        with patch('client_launch_compatibility.preflight', return_value={
+                'allowed': True, 'requires_confirmation': True, 'warnings': ['Known mismatch']}) as preflight:
+            row = self.rows()['compatibility']
+        self.assertEqual(row['state'], 'review')
+        self.assertTrue(row['requires_confirmation'])
+        self.assertIn('Launch remains available', row['detail'])
+        self.engine.profile = 'takp'
+        with patch('client_launch_compatibility.preflight', side_effect=AssertionError('Custom only')):
+            self.assertEqual(self.rows()['compatibility']['state'], 'review')
+
     def test_absent_source_and_support_files_cannot_be_current(self):
         shutil.rmtree(self.work / 'sources/current')
         rows = self.rows()

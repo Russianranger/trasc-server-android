@@ -8,6 +8,8 @@ permissions:
   contents: read
 jobs:
   native:
+    # UI review reuses the verified 0.6.42 native payload in improved-ui.yml.
+    if: github.head_ref != 'improved-ui'
     runs-on: ubuntu-24.04
     timeout-minutes: 25
     strategy:
