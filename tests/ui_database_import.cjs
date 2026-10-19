@@ -1,3 +1,4 @@
+const {openTab,openClientOptions,revealControl}=require('./launcher-ui-helper.cjs');
 const {chromium}=require('playwright');
 const fs=require('fs'),http=require('http'),path=require('path'),assert=require('assert');
 const root=path.resolve('app/src/main/assets/ui');
@@ -42,7 +43,7 @@ const server=http.createServer((req,res)=>{
     window.nativeReply(id,{ok:true,result});
    },5);}};
   });
-  await page.goto('http://127.0.0.1:'+server.address().port+'/');
+  await page.goto('http://127.0.0.1:'+server.address().port+'/');await openTab(page,'setup');
   await page.waitForFunction(()=>activeProfile==='traditional'&&!polling);
   assert.equal(await page.inputValue('#maps-url'),'https://github.com/Russianranger/eqemu-maps');
   assert.equal(await page.inputValue('#maps-ref'),'');

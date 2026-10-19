@@ -1,3 +1,4 @@
+const {openTab,openClientOptions,revealControl}=require('./launcher-ui-helper.cjs');
 const {chromium}=require('playwright');
 const fs=require('fs'),http=require('http'),path=require('path'),assert=require('assert');
 const root=path.resolve('app/src/main/assets/ui');
@@ -7,10 +8,11 @@ const server=http.createServer((req,res)=>{
  try{const types={js:'text/javascript',css:'text/css',svg:'image/svg+xml',webp:'image/webp',ttf:'font/ttf',html:'text/html'};res.setHeader('Content-Type',types[name.split('.').pop()]||'application/octet-stream');res.end(fs.readFileSync(path.join(root,name)));}catch{res.writeHead(404);res.end();}
 });
 const key='trasc.launcher.theme';
-const scenes=['setup','server','gameplay','build','spire','fixes','database','client','files','logs'];
+const scenes=['play','appearance','bots','setup','server','gameplay','build','spire','fixes','database','client','files','logs'];
 const themeImages={
- necromancer:{setup:'crypt',server:'crypt',gameplay:'ritual',fixes:'ritual',spire:'grimoire',database:'grimoire',build:'ossuary',client:'ossuary',files:'ossuary',logs:'ossuary'},
- monk:{setup:'temple',server:'temple',gameplay:'combat',fixes:'combat',spire:'meditation',database:'meditation',build:'dojo',client:'dojo',files:'dojo',logs:'dojo'}
+ necromancer:{play:'crypt',appearance:'ritual',bots:'grimoire',setup:'crypt',server:'crypt',gameplay:'ritual',fixes:'ritual',spire:'grimoire',database:'grimoire',build:'ossuary',client:'ossuary',files:'ossuary',logs:'ossuary'},
+ monk:{play:'temple',appearance:'combat',bots:'meditation',setup:'temple',server:'temple',gameplay:'combat',fixes:'combat',spire:'meditation',database:'meditation',build:'dojo',client:'dojo',files:'dojo',logs:'dojo'},
+ '1999':{play:'gates',setup:'gates',server:'gates',gameplay:'wilds',appearance:'wilds',client:'wilds',spire:'spellbook',database:'spellbook',bots:'spellbook',logs:'spellbook',build:'dragon',files:'dragon',fixes:'dragon'}
 };
 const sceneImage=(theme,scene)=>`theme-${theme}-${themeImages[theme][scene]}.webp`;
 const screenshotRoot=process.env.THEME_SCREENSHOT_DIR;
@@ -37,7 +39,7 @@ function contrast(a,b){const l=c=>c.slice(0,3).map(x=>x/255).map(x=>x<=.04045?x/
    },5);}};
   });
   const url=`http://127.0.0.1:${server.address().port}/`;
-  await page.goto(url);await page.waitForFunction(()=>!document.getElementById('world-profile').disabled);
+  await page.goto(url);await openTab(page,'setup');await page.waitForFunction(()=>!document.getElementById('world-profile').disabled);
   assert.equal(await page.getAttribute('body','data-launcher-theme'),'default');
   assert.equal(await page.locator('.launcher-appearance').count(),0,'Appearance has no duplicate separate bar');
   assert(await page.evaluate(()=>document.getElementById('launcher-theme').closest('.profile-bar')===document.getElementById('world-profile').closest('.profile-bar')),'World and theme selectors share the same bar');
@@ -57,7 +59,7 @@ function contrast(a,b){const l=c=>c.slice(0,3).map(x=>x/255).map(x=>x<=.04045?x/
   await page.selectOption('#world-profile','traditional');await page.click('#switch-profile');
   await page.waitForFunction(()=>document.body.dataset.profile==='traditional');
   assert.equal(await page.inputValue('#launcher-theme'),'necromancer','Theme survives real profile-switch reload');
-  for(const theme of ['necromancer','monk']){
+  for(const theme of ['necromancer','monk','1999']){
    const selection=await page.evaluate(value=>{
     const snapshot=()=>({calls:fixture.calls.length,resolution:document.getElementById('client-resolution').value,d3dx:document.getElementById('client-native-models').checked});
     const before=snapshot(),select=document.getElementById('launcher-theme');
@@ -72,6 +74,17 @@ function contrast(a,b){const l=c=>c.slice(0,3).map(x=>x/255).map(x=>x<=.04045?x/
    assert.equal(artwork.length,4,`${theme}: scenes use four distinct artworks`);
    const loaded=await page.evaluate(files=>Promise.all(files.map(file=>new Promise((resolve,reject)=>{const image=new Image();image.onload=()=>resolve({file,width:image.naturalWidth,height:image.naturalHeight});image.onerror=()=>reject(Error(`Artwork failed to load: ${file}`));image.src=file;}))),artwork);
    assert(loaded.every(image=>image.width>0&&image.height>0),'Referenced artwork is packaged and decodes in Chromium');
+   await openTab(page,'setup');
+   const frames=await page.evaluate(()=>['.card','.runtime-toolbar','.profile-selector','.primary-nav','#setup-guide'].map(selector=>{
+    const element=document.querySelector(selector),frame=getComputedStyle(element,'::after'),box=element.getBoundingClientRect();
+    return {selector,source:frame.borderImageSource,pointerEvents:frame.pointerEvents,width:frame.borderImageWidth,radius:getComputedStyle(element).borderTopLeftRadius,boxWidth:box.width};
+   }));
+   for(const frame of frames){
+    assert.equal(frame.source.includes('theme-necromancer-bones.svg'),theme==='necromancer',`${theme}: bones are scoped to Necromancer ${frame.selector}`);
+    if(theme==='necromancer')assert.equal(frame.pointerEvents,'none','Decorative bones never intercept controls');
+    if(theme==='1999')assert.equal(frame.radius,'2px','1999 uses squared classic frames');
+   }
+   if(theme==='necromancer')assert(await page.evaluate(()=>new Promise(resolve=>{const img=new Image();img.onload=()=>resolve(img.naturalWidth===144);img.onerror=()=>resolve(false);img.src='theme-necromancer-bones.svg';})),'Bone frame decodes offline');
    const colors=await page.evaluate(()=>{
     const s=getComputedStyle(document.body),canvas=document.createElement('canvas'),ctx=canvas.getContext('2d');
     const color=name=>{ctx.clearRect(0,0,1,1);ctx.fillStyle=s.getPropertyValue(name).trim();ctx.fillRect(0,0,1,1);return [...ctx.getImageData(0,0,1,1).data];};
@@ -83,24 +96,28 @@ function contrast(a,b){const l=c=>c.slice(0,3).map(x=>x/255).map(x=>x<=.04045?x/
    if(theme==='necromancer'){
     assert(colors['--bg'].slice(0,3).every(v=>v<=12),'Necromancer base is near black');
     for(const name of ['--theme-button','--theme-button-edge'])assert(colors[name][0]>=colors[name][1]*2&&colors[name][0]>=colors[name][2]*2,'Necromancer primary actions use dark red');
-   }else{
+   }else if(theme==='monk'){
     for(const name of ['--bg','--theme-card','--theme-surface','--theme-header','--theme-secondary'])assert(colors[name][2]>colors[name][1]&&colors[name][1]>colors[name][0],`Monk: ${name} uses sea blue`);
     const coral=colors['--gold'];assert(coral[0]>=220&&coral[1]>=120&&coral[2]>=120&&coral[0]>coral[1]+40&&coral[0]>coral[2]+40,'Monk accents use light coral red');
    }
-   for(const profile of ['traditional','custom']){
+   if(theme==='1999'){
+    const bronze=colors['--gold'];assert(bronze[0]>bronze[1]&&bronze[1]>bronze[2],'1999 uses warm bronze accents');
+    assert.deepEqual(await page.evaluate(()=>window.launcherAppearanceSnapshot()),{theme:'1999'},'1999 can be captured for native backups');
+   }
+   for(const profile of ['traditional','custom','takp']){
     await page.waitForFunction(()=>!document.getElementById('world-profile').disabled);
     if(await page.getAttribute('body','data-profile')!==profile){
      await page.selectOption('#world-profile',profile);await page.click('#switch-profile');
      await page.waitForFunction(p=>document.body.dataset.profile===p,profile);
      await page.waitForFunction(()=>!document.getElementById('world-profile').disabled);
     }
-    assert.equal(await page.inputValue('#launcher-theme'),theme,'Art theme persists across both profiles');
-    for(const scene of scenes){
-     await page.locator(`nav [data-tab=${scene}]`).click();
+    assert.equal(await page.inputValue('#launcher-theme'),theme,'Art theme persists across all profiles');
+    for(const scene of scenes.filter(scene=>profile!=='takp'||scene!=='spire')){
+     await openTab(page,scene);
      assert.equal(await page.getAttribute('body','data-scene'),scene);
-     const layers=await page.evaluate(()=>({scene:getComputedStyle(document.body).getPropertyValue('--scene-image'),backdrop:getComputedStyle(document.body,'::before').backgroundImage,hero:getComputedStyle(document.querySelector('.overview')).backgroundImage}));
+     const layers=await page.evaluate(()=>({scene:getComputedStyle(document.body).getPropertyValue('--scene-image'),backdrop:getComputedStyle(document.body,'::before').backgroundImage,hero:getComputedStyle(document.querySelector(document.body.dataset.scene==='play'?'.readiness-hero':'.overview')).backgroundImage}));
      for(const layer of Object.values(layers))assert(layer.includes(sceneImage(theme,scene)),`${theme}/${profile}: scene artwork appears in background and hero on ${scene}`);
-     if(screenshotRoot&&['setup','gameplay','spire','client'].includes(scene)){
+     if(screenshotRoot&&['play','setup','gameplay','build','bots'].includes(scene)){
       await page.evaluate(()=>window.scrollTo(0,0));
       await page.screenshot({path:path.join(screenshotRoot,`${theme}-${profile}-${scene}-desktop.png`)});
      }
@@ -108,8 +125,8 @@ function contrast(a,b){const l=c=>c.slice(0,3).map(x=>x/255).map(x=>x<=.04045?x/
     await page.locator('#launcher-theme').focus();
     assert.equal(await page.locator('#launcher-theme').evaluate(e=>getComputedStyle(e).outlineWidth),'2px');
     await page.setViewportSize({width:375,height:812});
-    for(const scene of scenes){
-     await page.locator(`nav [data-tab=${scene}]`).click();
+    for(const scene of scenes.filter(scene=>profile!=='takp'||scene!=='spire')){
+     await openTab(page,scene);
      assert(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth+1),`${theme}/${profile}: no page overflow on ${scene}`);
     }
     for(const width of [375,320]){
@@ -120,8 +137,8 @@ function contrast(a,b){const l=c=>c.slice(0,3).map(x=>x/255).map(x=>x<=.04045?x/
     }
     if(screenshotRoot){
      await page.setViewportSize({width:390,height:844});
-     for(const scene of theme==='monk'?['setup','gameplay','spire','client']:['setup']){
-      await page.locator(`nav [data-tab=${scene}]`).click();await page.evaluate(()=>window.scrollTo(0,0));
+     for(const scene of ['play','setup']){
+      await openTab(page,scene);await page.evaluate(()=>window.scrollTo(0,0));
       await page.screenshot({path:path.join(screenshotRoot,`${theme}-${profile}-${scene}-mobile.png`)});
      }
     }
@@ -134,7 +151,7 @@ function contrast(a,b){const l=c=>c.slice(0,3).map(x=>x/255).map(x=>x<=.04045?x/
    await page.selectOption('#world-profile','custom');await page.click('#switch-profile');
    await page.waitForFunction(()=>document.body.dataset.profile==='custom');
   }
-  await page.locator('nav [data-tab=setup]').click();
+  await openTab(page,'setup');
   assert.deepEqual(await appearance(),original,'Default restores the original artwork and component appearance');
   if(screenshotRoot){await page.evaluate(()=>window.scrollTo(0,0));await page.screenshot({path:path.join(screenshotRoot,'default-custom-desktop.png')});}
   assert.equal(await page.evaluate(()=>localStorage.getItem('unrelated.preference')),'keep me');
@@ -146,6 +163,6 @@ function contrast(a,b){const l=c=>c.slice(0,3).map(x=>x/255).map(x=>x<=.04045?x/
   assert.equal(await blocked.getAttribute('body','data-launcher-theme'),'monk');
   assert((await blocked.textContent('#launcher-theme-status')).includes('this session'),'Blocked storage still allows session-only choice');
   await blocked.close();
-  assert.deepEqual(errors,[]);console.log('Launcher themes: shared profile bar, four artworks per class, Necromancer red/black and Monk sea-blue/coral palettes, native/client isolation, persistence, Default restoration, both worlds, all tabs, contrast and phone layout passed.');
+  assert.deepEqual(errors,[]);console.log('Launcher themes: shared profile bar, four artworks per theme, Necromancer bone frames and 1999 bronze/stone styling, native/client isolation, persistence, Default restoration, all three worlds, all tabs, contrast and phone layout passed.');
  }finally{await browser.close();server.close();}
 })().catch(e=>{console.error(e);server.close();process.exitCode=1;});

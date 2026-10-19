@@ -3,7 +3,7 @@
 // This deliberately does not call the native bridge or alter a client skin/INI.
 (()=>{
  const key='trasc.launcher.theme';
- const names={default:'Default',necromancer:'Necromancer',monk:'Monk'};
+ const names={default:'Default',necromancer:'Necromancer',monk:'Monk','1999':'1999'};
  const select=document.getElementById('launcher-theme');
  const status=document.getElementById('launcher-theme-status');
  const valid=value=>Object.prototype.hasOwnProperty.call(names,value)?value:'default';

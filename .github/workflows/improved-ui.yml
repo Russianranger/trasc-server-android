@@ -1,0 +1,119 @@
+name: Verify improved UI and build test APK
+on:
+  push:
+    branches: [improved-ui]
+permissions:
+  contents: read
+concurrency:
+  group: improved-ui-${{ github.ref }}
+  cancel-in-progress: true
+jobs:
+  regression:
+    if: github.ref == 'refs/heads/improved-ui'
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Install regression dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y mariadb-server binutils g++ zlib1g-dev
+          python3 -m pip install lupa==2.6
+          npm install --no-save --package-lock=false playwright@1.55.0
+          npx playwright install --with-deps chromium
+      - name: Verify backend and host lifecycle contracts
+        env:
+          ERARULES_MARIADB: '1'
+        run: |
+          python3 -m unittest discover -s tests -p 'test_*.py' -v
+          bash scripts/check-management.sh
+      - name: Verify guided setup, navigation and existing browser flows
+        run: |
+          for script in tests/ui_*.cjs; do
+            timeout 180 node "$script"
+          done
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: improved-ui-browser-reports
+          path: ui-reports/
+          if-no-files-found: ignore
+  test-apk:
+    if: github.ref == 'refs/heads/improved-ui'
+    needs: regression
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    env:
+      TRASC_PREVIEW_KEYSTORE: ${{ github.workspace }}/runtime-work/signing/preview.keystore
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+      - uses: android-actions/setup-android@v3
+        with:
+          packages: platform-tools
+      - run: sdkmanager 'platforms;android-35' 'build-tools;35.0.0'
+      - uses: gradle/actions/setup-gradle@v4
+        with:
+          gradle-version: '8.11.1'
+      - uses: actions/cache/restore@v4
+        with:
+          path: runtime-work/signing/preview.keystore
+          key: trasc-preview-signing-v2
+      - name: Require the existing signing identity
+        run: bash scripts/prepare-preview-signing.sh
+      - name: Reuse the verified 0.6.42 native payload
+        run: |
+          mkdir -p runtime-work/improved-ui-baseline dist
+          curl --fail --location --retry 3 -o runtime-work/improved-ui-baseline/base.apk https://github.com/Russianranger/trasc-server-android/releases/download/v0.6.42/trasc-server-android-0.6.42.apk
+          python3 scripts/reuse-launcher-native.py extract --apk runtime-work/improved-ui-baseline/base.apk --receipt dist/native-reuse.json --expected-sha 44d6f91f23a1b86aa1ea4ba72dbdcee7100f83d4aaf32e61f1ff084390478551 --baseline-version 0.6.42 --include-camera
+      - name: Compile and lint branch test APK
+        run: gradle --no-daemon :app:assembleDebug :app:lintDebug
+      - name: Verify signing, native preservation and packaged branch assets
+        run: |
+          "$ANDROID_HOME/build-tools/35.0.0/apksigner" verify --print-certs app/build/outputs/apk/debug/app-debug.apk > dist/apk-signing.txt
+          python3 scripts/reuse-launcher-native.py verify --apk app/build/outputs/apk/debug/app-debug.apk --receipt dist/native-reuse.json
+          python3 scripts/verify-takp-apk.py --apk app/build/outputs/apk/debug/app-debug.apk --signing-report dist/apk-signing.txt
+          python3 - <<'PY'
+          import hashlib,json,os,pathlib,re,shutil,zipfile
+          actual=re.search(r'Signer #1 certificate SHA-256 digest: ([0-9a-f]+)',pathlib.Path('dist/apk-signing.txt').read_text()).group(1)
+          assert actual==pathlib.Path('docs/preview-signing.sha256').read_text().strip()
+          apk=pathlib.Path('dist/trasc-server-android-improved-ui-test.apk')
+          shutil.copyfile('app/build/outputs/apk/debug/app-debug.apk',apk)
+          with zipfile.ZipFile(apk) as archive:
+              for name in ('themes.js','themes.css','theme-necromancer-bones.svg','theme-1999-gates.webp','theme-1999-wilds.webp','theme-1999-spellbook.webp','theme-1999-dragon.webp','index.html','app.js','client.js','profiles.js','controller-menu.js','navigation.js','navigation.css','preferences.js','preferences.css','readiness.js','readiness.css'):
+                  assert archive.read('assets/ui/'+name)==pathlib.Path('app/src/main/assets/ui',name).read_bytes(),name
+              for name in ('engine.py','update_checklist.py','content_baseline.py','traditional_content.py','takp_runtime.py'):
+                  assert archive.read('assets/'+name)==pathlib.Path('backend',name).read_bytes(),name
+              dex=b''.join(archive.read(name) for name in archive.namelist() if name.startswith('classes') and name.endswith('.dex'))
+              for marker in (b'update_checklist.py',b'content_baseline.py'):
+                  assert marker in dex,'Runtime must stage '+marker.decode()
+          manifest={'branch':'improved-ui','commit':os.environ['GITHUB_SHA'],'file':apk.name,'sha256':hashlib.file_digest(apk.open('rb'),'sha256').hexdigest(),'test_only':True,'native_payload_reused_from':'0.6.42','build_run':os.environ['GITHUB_RUN_ID'],'signing_certificate_sha256':actual,'native_sources_url':'https://github.com/Russianranger/trasc-server-android/releases/download/v0.6.42/launcher-sources.tar.gz','native_sources_sha256':'404d24a6c18be44b8efa15764ddc8bef82608cd307e7f6df3c6863a4d4827561'}
+          pathlib.Path('dist/improved-ui-build.json').write_text(json.dumps(manifest,indent=2)+'\n')
+          PY
+          git archive --format=tar.gz HEAD > dist/improved-ui-launcher-source.tar.gz
+      - uses: actions/upload-artifact@v4
+        with:
+          name: improved-ui-test-apk
+          path: |
+            dist/trasc-server-android-improved-ui-test.apk
+            dist/improved-ui-build.json
+            dist/improved-ui-launcher-source.tar.gz
+            dist/native-reuse.json
+            dist/apk-signing.txt
+          if-no-files-found: error
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: improved-ui-android-reports
+          path: app/build/reports/
+          if-no-files-found: ignore

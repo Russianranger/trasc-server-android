@@ -1,0 +1,24 @@
+/* Client preferences use the active launcher palette and preserve profile styles. */
+.preferences-search h3{margin-bottom:4px}
+.preferences-search label{margin-top:10px}
+.preferences-search-results{list-style:none;padding:0;margin:12px 0 0;display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:8px}
+.preferences-search-results[hidden],.preferences-differences[hidden],#preferences-search-clear[hidden]{display:none}
+.preferences-result{width:100%;height:100%;text-align:left;padding:12px 14px;overflow-wrap:anywhere}
+.preferences-result>span{display:block}
+.preferences-result small{margin:5px 0 0;font:12px/1.5 system-ui,sans-serif;color:var(--muted)}
+.preferences-overview{border-left:3px solid var(--gold);padding:2px 0 2px 14px;margin:8px 0 24px}
+.preferences-state{font:600 14px/1.5 system-ui,sans-serif;color:var(--text);margin:0}
+.preferences-overview .hint{margin:5px 0 0}
+.preferences-everyday{margin-bottom:18px}
+.preferences-everyday>.hint{margin-top:0;margin-bottom:12px}
+.preferences-everyday .option-checks{margin-top:14px}
+.preferences-shortcuts{padding-top:8px}
+.preferences-group{margin:14px 0;padding-top:0;border-top:1px solid var(--line)}
+.preferences-group>summary{padding:16px 0;min-height:48px;font-size:14px;cursor:pointer;color:var(--gold)}
+.preferences-group>p:first-of-type{margin-top:0}
+.preferences-group .option-checks{margin-top:14px}
+.preferences-differences{list-style:none;padding:0;border-top:1px solid var(--line);margin:14px 0 0}
+.preferences-differences li{padding:10px 0}
+.preferences-differences button{text-align:left;width:100%;padding:8px 10px;color:var(--text)}
+.preferences-differences small{margin:3px 10px 0}
+@media(max-width:680px){.preferences-search-results{grid-template-columns:minmax(0,1fr)}.preferences-search .path-bar{align-items:stretch}.preferences-shortcuts{display:grid;grid-template-columns:minmax(0,1fr)}}

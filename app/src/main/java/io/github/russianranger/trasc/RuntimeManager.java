@@ -100,7 +100,7 @@ public final class RuntimeManager {
         File proot=new File(nativeDir,"libproot.so"), loader=new File(nativeDir,"libproot-loader.so");
         if (!proot.canExecute() || !loader.exists()) throw new IOException("This APK is missing its ARM64 runtime launcher");
         File backend=new File(home,"backend"); backend.mkdirs();
-        for(String name:new String[]{"engine.py","source_updates.py","takp_skeletons.py","bots.py","bot_socials.py","modern_bot_bridge.py","modern_bot_bridge.h","era_rules.py","era_presets.json","peq_database.py","client_ui.py","traditional_content.py","traditional_build.py","traditional_verify.py","traditional_runtime.py","takp_build.py","takp_runtime.py","takp_client.py","takp-client/bundle.json","takp-client/eqw-camera-build.json","takp-client/eqw-cursor-verification.json","takp-client/d3d8.dll","takp-client/eqgame.dll","takp-client/eqw.dll","boat_trial.py","ferry_service.py","ferry_service.lua","ferry_route.py","server_ferry.py","eq_server_ferry.h","spire.py","spire_catalog.py","log_retention.py","rule_catalog.py","managed_content.py","client_display.py","client_xauthority.py","client_settings.py","client_connection.py","client_spellbook.py","client_compatibility.py","client_launch_compatibility.py","custom_deployment.py","quest_sync.py","lon_data.py","client_spells.py","client_addons.py","client_dll.py","client_toolchain.py","pack-client-sdk.py","client_mouse.py","eq_camera_mouse.h","eq_client_loading.h","eq_fast_decimal.h","eq_spell_checksum.h","eq_display_loading.h","eq_first_person_particles.h","eq_boat_diagnostics.h","player_data.py","player_tables.py","client_compile_runner.py"})
+        for(String name:new String[]{"engine.py","content_baseline.py","update_checklist.py","source_updates.py","takp_skeletons.py","bots.py","bot_socials.py","modern_bot_bridge.py","modern_bot_bridge.h","era_rules.py","era_presets.json","peq_database.py","client_ui.py","traditional_content.py","traditional_build.py","traditional_verify.py","traditional_runtime.py","takp_build.py","takp_runtime.py","takp_client.py","takp-client/bundle.json","takp-client/eqw-camera-build.json","takp-client/eqw-cursor-verification.json","takp-client/d3d8.dll","takp-client/eqgame.dll","takp-client/eqw.dll","boat_trial.py","ferry_service.py","ferry_service.lua","ferry_route.py","server_ferry.py","eq_server_ferry.h","spire.py","spire_catalog.py","log_retention.py","rule_catalog.py","managed_content.py","client_display.py","client_xauthority.py","client_settings.py","client_connection.py","client_spellbook.py","client_compatibility.py","client_launch_compatibility.py","custom_deployment.py","quest_sync.py","lon_data.py","client_spells.py","client_addons.py","client_dll.py","client_toolchain.py","pack-client-sdk.py","client_mouse.py","eq_camera_mouse.h","eq_client_loading.h","eq_fast_decimal.h","eq_spell_checksum.h","eq_display_loading.h","eq_first_person_particles.h","eq_boat_diagnostics.h","player_data.py","player_tables.py","client_compile_runner.py"})
             try(InputStream in=context.getAssets().open(name)) { copy(in,new File(backend,name)); }
         for(String name:new String[]{"takp-client/eqw-LICENSE.txt","takp-client/d3d8to9-LICENSE.txt","takp-skeleton-patcher/LICENSE"})
             try(InputStream in=context.getAssets().open(name)) { copy(in,new File(backend,name)); }
@@ -376,7 +376,7 @@ public final class RuntimeManager {
         }
         props.setProperty("client_controls",controls.toString());
         String theme=launcher==null?"default":launcher.optString("theme","default");
-        if(!Arrays.asList("default","necromancer","monk").contains(theme))throw new IOException("Unknown launcher appearance");
+        if(!Arrays.asList("default","necromancer","monk","1999").contains(theme))throw new IOException("Unknown launcher appearance");
         props.setProperty("launcher_preferences",new JSONObject().put("theme",theme).toString());
         File file=File.createTempFile("session-preferences-",".properties",context.getCacheDir());
         try(FileOutputStream out=new FileOutputStream(file)){props.store(out,"Saved client controls and launcher appearance");out.getFD().sync();}
@@ -405,7 +405,7 @@ public final class RuntimeManager {
             else if(type.equals("int"))item.getInt("value");else if(type.equals("long"))item.getLong("value");else if(item.getString("value").length()>8192)throw new IOException("Invalid control preference value");
         }
         JSONObject launcher=new JSONObject(p.getProperty("launcher_preferences","{}"));
-        if(!Arrays.asList("default","necromancer","monk").contains(launcher.getString("theme")))throw new IOException("Invalid launcher appearance");return p;
+        if(!Arrays.asList("default","necromancer","monk","1999").contains(launcher.getString("theme")))throw new IOException("Invalid launcher appearance");return p;
     }
     private JSONObject applyAllPreferences()throws IOException {
         File file=new File(context.getFilesDir(),"session-preferences.properties");if(!file.isFile())return null;

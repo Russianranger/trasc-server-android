@@ -1,3 +1,4 @@
+const {openTab,openClientOptions,revealControl}=require('./launcher-ui-helper.cjs');
 const {chromium}=require('playwright');
 const fs=require('fs'),http=require('http'),path=require('path'),assert=require('assert');
 const root=path.resolve('app/src/main/assets/ui');
@@ -36,7 +37,7 @@ const server=http.createServer((req,res)=>{const name=req.url==='/'?'index.html'
     setTimeout(()=>window.nativeReply(id,{ok:true,result}),10);
    }catch(e){setTimeout(()=>window.nativeReply(id,{ok:false,error:e.message}),10);}}};
   });
-  await page.goto('http://127.0.0.1:'+server.address().port);await page.locator('nav [data-tab="spire"]').click();
+  await page.goto('http://127.0.0.1:'+server.address().port);await openTab(page,'setup');await openTab(page,'spire');
   await page.waitForFunction(()=>!spireState.working&&spireState.loaded);assert.equal(await page.locator('#spire-results tr').count(),1);
   await page.locator('#spire-results button').click();await page.waitForFunction(()=>!spireState.working&&spireState.record);
   await page.locator('#spire-field-hp').fill('20');await page.locator('#spire-preview').click();await page.waitForFunction(()=>!spireState.working&&spireState.preview);

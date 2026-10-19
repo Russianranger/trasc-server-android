@@ -1,5 +1,7 @@
 # TRASC Server for Android
 
+**Improved launcher UI:** four-area navigation, guided setup, searchable preferences and a server-update synchronization checklist. The six top Start/Stop controls are retained; server Restart is under Manage → Server. [Review guide and device checks](docs/improved-ui-review.md). The [1999 theme](docs/launcher-themes-1999.md) adds four original fantasy paintings and classic bronze frames; Necromancer adds bone borders. The user has authorized the qualified UI merge; builds remain test artifacts pending separate release approval.
+
 **Latest APK: [TRASC Android 0.6.42](https://github.com/Russianranger/trasc-server-android/releases/download/v0.6.42/trasc-server-android-0.6.42.apk)** · [Release page](https://github.com/Russianranger/trasc-server-android/releases/latest)
 
 Fixes the 0.6.41 missing `client_spellbook` startup module and makes client compatibility mismatches an optional warning with **Continue / Cancel** and a per-profile **Don't warn again** setting. Re-enable warnings in Client settings. Install over the existing app; no database reset or DLL rebuild is required for this launcher update. Existing optional executable repair, quests, LoN data, players and all three profiles are preserved. [Release notes and device checklist](docs/release-0642-notes.md).

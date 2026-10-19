@@ -1,3 +1,4 @@
+const {openTab,openClientOptions,revealControl}=require('./launcher-ui-helper.cjs');
 const {chromium}=require('playwright');
 const fs=require('fs'),http=require('http'),path=require('path'),assert=require('assert');
 const root=path.resolve('app/src/main/assets/ui');
@@ -41,9 +42,9 @@ const server=http.createServer((req,res)=>{
     window.nativeReply(id,{ok:true,result});
    }catch(e){window.nativeReply(id,{ok:false,error:e.message});}},5);}};
   });
-  await page.goto(`http://127.0.0.1:${server.address().port}/`);
+  await page.goto(`http://127.0.0.1:${server.address().port}/`);await openTab(page,'setup');
   await page.waitForFunction(()=>lastNative&&lastClientNative&&activeProfile==='custom');
-  await page.locator('nav [data-tab=files]').click();
+  await openTab(page,'files');
   await page.waitForFunction(()=>document.querySelector('#file-list').textContent.includes('settings.json'));
   assert.equal(await page.locator('[data-delete-path]:not([disabled])').count(),0,'Essential root entries are protected');
   assert.equal(await page.locator('#file-list button[aria-label^="Why is "]').count(),4,'Protected rows offer a reason');
@@ -96,7 +97,7 @@ const server=http.createServer((req,res)=>{
   }
   await page.waitForFunction(()=>!document.getElementById('world-profile').disabled);
   await page.selectOption('#world-profile','traditional');await page.locator('#switch-profile').click();await page.waitForFunction(()=>document.body.dataset.profile==='traditional');
-  await page.locator('nav [data-tab=files]').click();await page.locator('#cleanup-exports').click();await page.waitForFunction(()=>document.getElementById('file-list').textContent.includes('session-export.zip'));
+  await openTab(page,'files');await page.locator('#cleanup-exports').click();await page.waitForFunction(()=>document.getElementById('file-list').textContent.includes('session-export.zip'));
   assert.equal(await checked().count(),0,'Profile switch discards prior selection');assert(await page.locator('#cleanup-confirm').isHidden());
   await page.locator('#cleanup-select-page').click();await review();
   assert.equal((await page.evaluate(()=>fixture.calls.filter(x=>x.op==='file_delete_preview').at(-1))).a.__profile,'traditional');
@@ -120,7 +121,7 @@ const server=http.createServer((req,res)=>{
     await page.selectOption('#world-profile',profile);await page.locator('#switch-profile').click();await page.waitForFunction(p=>activeProfile===p,profile);
    }
    await page.evaluate(()=>fixture.emptyPrefixes=true);
-   await page.locator('nav [data-tab=files]').click();await page.locator('#cleanup-prefix').click();
+   await openTab(page,'files');await page.locator('#cleanup-prefix').click();
    await page.waitForFunction(()=>document.getElementById('file-results').textContent.startsWith('No old Wine prefixes saved for this profile.'));
    assert.equal(await page.locator('#file-list tr').count(),0);
    assert(await page.isDisabled('#cleanup-select-page'),'No stale page selection after an empty result');
@@ -129,7 +130,7 @@ const server=http.createServer((req,res)=>{
   // Both visible entry points invoke the same direct-destination picker, including cancel.
   assert(await page.locator('#files-session-export-all').isVisible());
   await page.locator('#files-session-export-all').click();await page.waitForFunction(()=>!busy);
-  await page.locator('nav [data-tab=server]').click();await page.locator('#session-export-all').click();await page.waitForFunction(()=>!busy);
+  await openTab(page,'server');await page.locator('#session-export-all').click();await page.waitForFunction(()=>!busy);
   const exports=await page.evaluate(()=>fixture.calls.filter(x=>x.op==='pick'));
   assert.equal(exports.length,2);assert(exports.every(x=>x.a.kind==='session-export-all'&&x.a.__profile==='takp'));
   assert.equal(await page.locator('#notice').textContent(),'All-profile backup cancelled.');

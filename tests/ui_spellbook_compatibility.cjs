@@ -1,3 +1,4 @@
+const {openTab,openClientOptions,revealControl}=require('./launcher-ui-helper.cjs');
 const {chromium}=require('playwright');
 const fs=require('fs'),http=require('http'),path=require('path'),assert=require('assert');
 const {execFileSync}=require('child_process');
@@ -140,14 +141,14 @@ async function fullUi(browser){
       window.nativeReply(id,{ok:true,result});
      }catch(e){window.nativeReply(id,{ok:false,error:e.message});}},5);}};
     },{profile,nativeStates});
-    await page.goto(`http://127.0.0.1:${server.address().port}/`);
+    await page.goto(`http://127.0.0.1:${server.address().port}/`);await openTab(page,'setup');
     await page.waitForFunction(p=>activeProfile===p&&lastNative&&lastClientNative&&!polling,profile);
     assert.equal(await page.evaluate(()=>fixture.calls.filter(c=>c.op==='client_spellbook_status').length),0,'Closed runtime makes no backend compatibility request');
     await page.click('#runtime-open');
     await page.waitForFunction(()=>!busy&&!polling&&lastNative.alive);
     if(profile==='custom'){
      await page.waitForFunction(()=>spellbookCompatibilityData?.profile==='custom'&&!spellbookCompatibilityLoading&&!document.getElementById('client-spellbook-apply').disabled);
-     await page.locator('nav [data-tab=client]').click();await page.locator('#client-spellbook-panel > summary').click();
+     await openTab(page,'client');await page.locator('#client-spellbook-panel > summary').click();
      assert((await page.textContent('#client-spellbook-dll')).includes('Rebuild required'));
      await page.click('#client-spellbook-apply');
      await page.waitForFunction(()=>fixture.patched&&!busy&&!spellbookCompatibilityMutating);

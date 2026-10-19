@@ -9,7 +9,7 @@
  function prepareCards(){
   for(const card of document.querySelectorAll('article.card')){
    if(cards.has(card))continue;cards.add(card);
-   let headings=[...card.children].flatMap(child=>child.tagName==='H3'?[child]:child.classList.contains('card-heading')?[...child.querySelectorAll('h3')]:[]);
+   let headings=[...card.children].flatMap(child=>child.tagName==='H3'?[child]:(child.classList.contains('card-heading')||child.classList.contains('section-title'))?[...child.querySelectorAll('h3')]:[]);
    if(!headings.length){const heading=document.createElement('h3');heading.textContent=card.querySelector('#file-path')?'File browser':card.getAttribute('aria-label')||'Settings';card.prepend(heading);headings=[heading];}
    for(const heading of headings){
     heading.tabIndex=0;heading.setAttribute('role','button');heading.setAttribute('aria-expanded','true');heading.dataset.controllerCardHeading='true';
@@ -33,8 +33,8 @@
   return true;
  }
  function modal(){return [...document.querySelectorAll('dialog[open],[role="dialog"][aria-modal="true"]')].filter(visible).at(-1)||null;}
- function candidates(root=modal()||document){return [...root.querySelectorAll(focusable)].filter(element=>visible(element)&&(!element.matches('nav [data-tab]')||element.classList.contains('active')));}
- function tabButton(){return [...document.querySelectorAll('nav [data-tab].active')].find(visible);}
+ function candidates(root=modal()||document){return [...root.querySelectorAll(focusable)].filter(element=>visible(element)&&(!element.matches('.primary-nav [data-area],nav:not(.secondary-nav) [data-tab]')||element.classList.contains('active')));}
+ function tabButton(){return [...document.querySelectorAll('.primary-nav [data-area].active,nav [data-tab].active')].find(visible);}
  function mark(element){
   if(focused!==element)focused?.classList.remove('controller-menu-focus');
   focused=element;if(element)element.classList.add('controller-menu-focus');
@@ -85,17 +85,21 @@
    if(scope.tagName==='DIALOG'){scope.close();return true;}
    const close=[...scope.querySelectorAll('[data-controller-close],[aria-label="Close"],[aria-label="Cancel"]')].find(visible);close?.click();return true;
   }
-  let detail=document.activeElement?.closest('details[open]');
-  if(detail){detail.open=false;focus(detail.querySelector(':scope > summary'));return true;}
+  const detail=document.activeElement?.closest('details[open]');
   const card=document.activeElement?.closest('article.card');
-  if(card&&card.dataset.controllerCardCollapsed!=='true'){setCard(card,true);focus(cardHeading(card));return true;}
+  const expandedCard=card&&card.dataset.controllerCardCollapsed!=='true';
+  // Collapse the innermost surface: setup/build disclosure groups can contain
+  // cards, and those cards can themselves contain nested details.
+  if(detail&&(!expandedCard||card.contains(detail))){detail.open=false;focus(detail.querySelector(':scope > summary'));return true;}
+  if(expandedCard){setCard(card,true);focus(cardHeading(card));return true;}
   const tab=tabButton();if(tab&&document.activeElement!==tab){focus(tab);return true;}
   if(typeof window.appBack==='function'){window.appBack();focus(tabButton());return true;}
   return false;
  }
  function cycleTab(step){
   if(modal())return true;
-  const tabs=[...document.querySelectorAll('nav [data-tab]')].filter(visible);if(!tabs.length)return false;
+  const primary=document.querySelector('.primary-nav');
+  const tabs=[...(primary?primary.querySelectorAll('[data-area]'):document.querySelectorAll('nav [data-tab]'))].filter(visible);if(!tabs.length)return false;
   const index=tabs.findIndex(button=>button.classList.contains('active'));
   const next=tabs[(Math.max(0,index)+step+tabs.length)%tabs.length];keyboard(false);editing=null;next.click();focus(next);return true;
  }
@@ -147,5 +151,5 @@
  document.addEventListener('focusin',event=>{if(document.body.dataset.controllerMenu==='active'&&event.target.matches(focusable))mark(event.target);});
  document.addEventListener('pointerdown',()=>{delete document.body.dataset.controllerMenu;mark(null);editing=null;},true);
  prepareCards();
- const help=document.createElement('p');help.className='controller-menu-help';help.textContent='LB / RB: tabs · D-pad: move · A: select / keyboard · B: collapse / back';document.querySelector('nav')?.insertAdjacentElement('afterend',help);
+ const help=document.createElement('p');help.className='controller-menu-help';help.textContent='LB / RB: main areas · D-pad: move · A: select / keyboard · B: collapse / back';document.querySelector('nav')?.insertAdjacentElement('afterend',help);
 })();

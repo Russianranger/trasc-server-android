@@ -63,9 +63,9 @@ class EngineTests(unittest.TestCase):
         self.zipped('maps.zip',[('maps/base/nektulos.map','old')])
         self.engine.import_maps({'file':'maps.zip'})
         self.zipped('maps2.zip',[('repo-main/maps/base/nektulos.map','new')])
-        self.engine.import_maps({'file':'maps2.zip'})
+        imported = self.engine.import_maps({'file':'maps2.zip'})
         self.assertEqual((self.root/'maps/base/nektulos.map').read_text(),'new')
-        self.assertEqual((self.root/'backups/maps-before-import/base/nektulos.map').read_text(),'old')
+        self.assertEqual((self.root/imported['previous_files']/'base/nektulos.map').read_text(),'old')
     def test_nested_seed_discovery_and_source_updates_preserve_runtime(self):
         inner=io.BytesIO()
         with zipfile.ZipFile(inner,'w') as z:z.writestr('release-peq.sql','CREATE TABLE example (id int);')

@@ -1,3 +1,4 @@
+const {openTab,openClientOptions,revealControl}=require('./launcher-ui-helper.cjs');
 const {chromium}=require('playwright');
 const fs=require('fs'),http=require('http'),path=require('path'),assert=require('assert');
 const root=path.resolve('app/src/main/assets/ui');
@@ -34,9 +35,9 @@ const server=http.createServer((req,res)=>{const name=req.url==='/'?'index.html'
      window.nativeReply(id,{ok:true,result});
     },5);}};
    },profile);
-   await page.goto(`http://127.0.0.1:${server.address().port}/`);
+   await page.goto(`http://127.0.0.1:${server.address().port}/`);await openTab(page,'setup');
    const idle=()=>page.waitForFunction(()=>lastState&&lastClientNative&&!polling&&busy===0&&!sourceUpdateLoading&&!takpSkeletonLoading);
-   await idle();await page.locator('nav [data-tab=build]').click();await idle();
+   await idle();await openTab(page,'build');await idle();
    assert.equal(await page.isDisabled('#start-server'),false,'Legacy deployed server remains startable even while source needs updating');
    assert(await page.isDisabled('#source-update-deploy'),'An old stage cannot be called an updated build');
    assert.equal(await page.isVisible('#source-update-fresh'),profile==='custom','Only unqualified historical caches request a fresh build');
@@ -63,7 +64,7 @@ const server=http.createServer((req,res)=>{const name=req.url==='/'?'index.html'
    assert(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth+1),'Updates fit a narrow screen');
    await page.screenshot({path:'ui-reports/source-updates-'+profile+'-393.png',fullPage:true});
    if(profile==='takp'){
-    await page.locator('nav [data-tab=client]').click();await idle();
+    await openTab(page,'appearance');await idle();
     await page.check('#takp-skeleton-enabled');assert.equal(await page.evaluate(()=>fixture.calls.filter(c=>c.op==='set_takp_skeletons').length),0,'Model checkbox requires explicit application');
     await page.click('#takp-skeleton-apply');await idle();assert(await page.isChecked('#takp-skeleton-enabled'));assert.equal(await page.isDisabled('#takp-skeleton-restore'),false);
     await page.evaluate(async()=>{fixture.client=true;await poll();});assert(await page.isDisabled('#takp-skeleton-restore'),'Active client blocks archive restoration');

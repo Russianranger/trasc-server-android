@@ -5,6 +5,60 @@ function traditional(){return activeProfile==='traditional';}
 const takpRepository='https://github.com/Russianranger/Servertakp';
 const takpRevision='03e934d0fdf460e2e6ce34c0a25a3e05d9f7e167';
 function takp(){return activeProfile==='takp';}
+const takpContentDefaults={
+ quests:{repo:'https://github.com/Russianranger/queststakp',commit:'f43d4fcfa89fecd76b5ac3fb5096f8d658a6c65f'},
+ maps:{repo:'https://github.com/Russianranger/Mapstakp',commit:'95cb9322b853e7ec2f67158b87442286315042eb'}
+};
+function takpContentInstalled(kind){const world=lastState?.takp;return !!(world?.components?.[kind]?.imported||world?.[kind+'_ready']);}
+function takpContentBlocked(ownAction=false){
+ return !takp()||!lastNative?.alive||lastNative?.profile!=='takp'||lastState?.profile!=='takp'||!lastClientNative||
+  !!(lastClientNative.profile&&lastClientNative.profile!=='takp')||busy>(ownAction?1:0)||!!(sessionAction||lastNative.installing||lastNative.session_busy||lastState.running||lastClientNative.alive||lastClientNative.busy||lastState.jobs?.some(j=>['queued','running'].includes(j.status)));
+}
+function renderTakpContentRefresh(){
+ const kind=$('takp-content-kind').value,installed=takpContentInstalled(kind),blocked=takpContentBlocked();
+ for(const id of ['takp-content-kind','takp-content-url','takp-content-ref','takp-content-replace'])$(id).disabled=blocked;
+ const replacementMissing=installed&&!$('takp-content-replace').checked;
+ $('takp-content-git').disabled=blocked||replacementMissing||!$('takp-content-url').value.trim();
+ $('takp-content-zip').disabled=blocked||replacementMissing;
+ const component=lastState?.takp?.components?.[kind],revision=component?.source?.commit;
+ $('takp-content-status').textContent=!takp()?'Available in TAKP World.':!lastNative?.alive?'Open the TAKP runtime to inspect and refresh this component.':lastState?.running?'Stop the TAKP server before refreshing content.':lastClientNative?.alive||lastClientNative?.busy?'Stop the client and finish client work before refreshing content.':blocked?'Finish the current operation before refreshing content.':
+  (installed?'Installed'+(revision?' · '+revision:'')+'. Select replacement to preserve a backup and refresh the complete folder.':'This component is not installed. Import the selected repository or a complete matching ZIP.');
+}
+function takpContentChoice(){
+ const kind=$('takp-content-kind').value,defaults=lastState?.takp?.provenance?.[kind]||takpContentDefaults[kind];
+ if(!defaults)return;
+ $('takp-content-url').value=defaults.repo;$('takp-content-ref').value=defaults.commit;
+ $('takp-content-replace').checked=false;$('takp-content-result').textContent='';renderTakpContentRefresh();
+}
+function reviewTakpContent(kind){
+ if(!takp()||!takpContentDefaults[kind])return false;
+ if($('takp-content-kind').value!==kind){$('takp-content-kind').value=kind;takpContentChoice();}
+ return typeof navigateToControl==='function'?navigateToControl('takp-content-kind'):false;
+}
+window.reviewTakpContent=reviewTakpContent;
+async function refreshTakpContent(archive=false){
+ if(takpContentBlocked(true))throw Error('Open the TAKP runtime, stop the server and client, and finish current operations before refreshing content.');
+ const kind=$('takp-content-kind').value,replace=$('takp-content-replace').checked;
+ if(!takpContentDefaults[kind])throw Error('Choose TAKP quests or maps.');
+ if(takpContentInstalled(kind)&&!replace)throw Error('Select replacement to preserve a backup before refreshing installed TAKP content.');
+ const args={kind,replace};
+ if(archive){
+  const file=await api('pick',{kind:'content'});if(file.cancelled)return;
+  if(takpContentBlocked(true))throw Error('TAKP state changed while choosing the ZIP. Check this world and try again.');
+  args.file=file.file;if(!args.file)throw Error('Choose a complete component ZIP.');
+ }else{
+  args.url=$('takp-content-url').value.trim();args.ref=$('takp-content-ref').value.trim();
+  if(!args.url)throw Error('Enter the selected component’s GitHub repository.');
+ }
+ const result=await job('import_content',args);
+ $('takp-content-replace').checked=false;
+ $('takp-content-result').textContent=(result.message||'TAKP '+kind+' refreshed.')+(result.backup?' Previous folder: '+result.backup+'.':'')+' Run the update checklist again to verify the installed content.';
+}
+$('takp-content-kind').addEventListener('change',takpContentChoice);
+$('takp-content-replace').addEventListener('change',renderTakpContentRefresh);
+for(const id of ['takp-content-url','takp-content-ref'])$(id).addEventListener('input',()=>{$('takp-content-replace').checked=false;renderTakpContentRefresh();});
+action('takp-content-git',()=>refreshTakpContent());
+action('takp-content-zip',()=>refreshTakpContent(true));
 function renderProfile(n){
  const profile=n.profile||'custom';
  if(activeProfile&&activeProfile!==profile){if(typeof resetEraRules==='function')resetEraRules();resetClientUi();if(typeof resetBots==='function')resetBots();location.reload();return false;}
@@ -73,7 +127,7 @@ function syncProfileControls(){
  }
  const contentBlocked=!!(busy||sessionAction||!lastNative?.alive||lastNative?.installing||lastNative?.session_busy||lastState?.running||lastState?.jobs?.some(j=>['queued','running'].includes(j.status)));
  for(const id of ['content-git','content-zip',...Object.keys(contentComponents).flatMap(id=>[id+'-git',id+'-zip'])])$(id).disabled=contentBlocked;
- renderContentStatus();renderClientUi();renderTraditionalStatus();renderTakpStatus();
+ renderContentStatus();renderClientUi();renderTraditionalStatus();renderTakpStatus();renderTakpContentRefresh();
 }
 function renderTakpStatus(){
  if(!takp())return;

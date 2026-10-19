@@ -1,3 +1,4 @@
+const {openTab,openClientOptions,revealControl}=require('./launcher-ui-helper.cjs');
 const {chromium}=require('playwright');
 const fs=require('fs'),http=require('http'),path=require('path'),assert=require('assert');
 const root=path.resolve('app/src/main/assets/ui');
@@ -51,8 +52,8 @@ async function verifyClientUiActivation(browser,address){
     }catch(e){window.nativeReply(id,{ok:false,error:e.message});}
    },5);}};
   });
-  await page.goto(address);await page.waitForFunction(()=>activeProfile==='traditional'&&!polling&&lastClientNative);
-  await page.locator('nav [data-tab=client]').click();
+  await page.goto(address);await openTab(page,'setup');await page.waitForFunction(()=>activeProfile==='traditional'&&!polling&&lastClientNative);
+  await openTab(page,'appearance');
   const update=changes=>page.evaluate(async changes=>{while(polling)await new Promise(r=>setTimeout(r,10));Object.assign(__uiFixture,changes);await poll();},changes);
   const stopped=()=>page.waitForFunction(()=>busy===0&&!polling&&!document.getElementById('client-ui-activate').disabled);
   assert(!(await page.isDisabled('#client-ui-activate')),'A stopped imported client can activate its UI');
@@ -104,7 +105,7 @@ async function verifyClientUiActivation(browser,address){
   const help=await page.textContent('#client-ui-panel');assert(help.includes('/loadskin StoneUI 0'));assert(help.includes('/loadskin StoneUI 1'));assert(help.includes('personal preferences'));
   await page.click('#runtime-close');await page.waitForFunction(()=>!lastNative?.alive&&!polling);
   await page.selectOption('#world-profile','custom');await page.click('#switch-profile');await page.waitForFunction(()=>activeProfile==='custom'&&!polling&&lastClientNative);
-  await page.locator('nav [data-tab=client]').click();
+  await openTab(page,'appearance');
   assert.equal(await page.inputValue('#client-ui-skin'),'default');assert.equal(await page.inputValue('#client-ui-character'),'UI_Custom_Custom.ini');assert(!(await page.isChecked('#client-ui-layout')));
   assert(!(await page.textContent('#client-ui-current')).includes('Traditional'),'Switching profiles resets character and backup state');
   // Hold an actual operation response, switch the observed world, then release it.
@@ -193,11 +194,11 @@ async function verifyClientUiActivation(browser,address){
    },5);}};
   },fixture);
   const clickDone=async id=>{await page.locator('#'+id).click();await page.waitForFunction(id=>!document.getElementById(id).disabled,id);};
-  await page.goto('http://127.0.0.1:'+server.address().port);
+  await page.goto('http://127.0.0.1:'+server.address().port);await openTab(page,'setup');
   await page.locator('#runtime-close').click();await page.waitForFunction(()=>!window.__alive);
   await page.locator('#runtime-open').click();await page.waitForFunction(()=>window.__alive);
   assert.equal(await page.locator('#setup #runtime-open').count(),0,'Runtime controls are outside Setup');
-  await page.locator('nav [data-tab=gameplay]').click();await page.locator('#load-rules').click();
+  await openTab(page,'gameplay');await page.locator('#load-rules').click();
   await page.waitForFunction(()=>document.getElementById('rules-count').textContent.includes('1105'));
   assert.equal(await page.locator('.rule-category[open]').count(),0,'Categories start collapsed');
   await page.locator('#rule-search').fill('FinalRaid');await page.locator('#rule-Character-FinalRaidExpMultiplier').waitFor();
@@ -211,17 +212,17 @@ async function verifyClientUiActivation(browser,address){
   await page.waitForFunction(()=>document.getElementById('notice').textContent.includes('Settings saved. Restart'));
   assert.deepEqual(await page.evaluate(()=>window.__saves[0].values),{'Character:RaidExpMultiplier':'0.4'},'Only edited values saved');
   await page.locator('#rule-search').fill('MaxClientsPerIP');assert.equal(await page.locator('#rule-World-MaxClientsPerIP').inputValue(),'-1');
-  await page.locator('nav [data-tab=client]').click();
+  await openTab(page,'client');
   assert(await page.locator('#client-launch').isVisible(),'Launch is visible without opening settings');
-  assert(!(await page.locator('#client-resolution').isVisible()),'Settings start collapsed');
+  assert(await page.locator('#client-resolution').isVisible(),'Everyday display settings are visible');assert(!(await page.locator('#client-particles').isVisible()),'Experiments start collapsed');
   await page.screenshot({path:'ui-reports/client-collapsed-mobile.png',fullPage:true});
-  await page.locator('#client-options > summary').click();
+  await openClientOptions(page);
   for(const [name,width,height] of [['mobile',412,915],['landscape',854,480],['wide',1280,720]]){
    await page.setViewportSize({width,height});
    await page.locator('#client-options').evaluate(el=>el.scrollIntoView({block:'start'}));
    await page.screenshot({path:'ui-reports/launch-options-'+name+'.png'});
    assert(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth),'Launch options fit the viewport');
-   await page.locator('.option-checks').evaluate(el=>el.scrollIntoView({block:'start'}));
+   await page.locator('#preferences-experiments .option-checks').evaluate(el=>el.scrollIntoView({block:'start'}));
    await page.screenshot({path:'ui-reports/launch-checkboxes-'+name+'.png'});
   }
   await page.setViewportSize({width:412,height:915});
@@ -232,15 +233,15 @@ async function verifyClientUiActivation(browser,address){
   await page.locator('#client-particles').scrollIntoViewIfNeeded();
   await page.screenshot({path:'ui-reports/particles-landscape.png'});
   await page.setViewportSize({width:412,height:915});
-  await clickDone('game-settings-load');await page.waitForFunction(()=>!document.getElementById('game-settings-editor').hidden);
+  await revealControl(page,'game-settings-load');await clickDone('game-settings-load');await page.waitForFunction(()=>!document.getElementById('game-settings-editor').hidden);
   await clickDone('game-models-classic');await clickDone('game-settings-save');
   assert.deepEqual(await page.evaluate(()=>window.__iniChanges),[{section:'Defaults',key:'AllLuclinPcModelsOff',value:'TRUE'},{section:'Defaults',key:'UseLuclinHumanMale',value:'FALSE'}],'Classic preset changes player models only');
   await page.locator('#game-other-settings details').evaluateAll(ds=>ds.forEach(d=>d.open=true));
-  await page.locator('#game-settings-search').fill('MaxFPS');await page.locator('#ini-3').fill('60');await clickDone('game-settings-save');
+  await revealControl(page,'game-settings-search');await page.locator('#game-settings-search').fill('MaxFPS');await page.locator('#ini-3').fill('60');await clickDone('game-settings-save');
   assert.deepEqual(await page.evaluate(()=>window.__iniChanges),[{section:'Options',key:'MaxFPS',value:'60'}],'Only edited existing INI value submitted');
   await page.screenshot({path:'ui-reports/game-settings-mobile.png',fullPage:true});
 
-  await page.locator('#binding-A').selectOption('KeyT');await clickDone('controller-save');
+  await revealControl(page,'binding-A');await page.locator('#binding-A').selectOption('KeyT');await clickDone('controller-save');
   await page.waitForFunction(()=>document.getElementById('notice').textContent==='Controller bindings saved.');
   await page.locator('#controller-preset').selectOption('thor');await clickDone('controller-defaults');
   await page.waitForFunction(()=>document.getElementById('binding-A').value==='F8');
@@ -278,7 +279,7 @@ async function verifyClientUiActivation(browser,address){
   await page.waitForFunction(()=>document.getElementById('addons-status').textContent.includes('0 missing'));
   await page.locator('#dll-status').click();
   await page.waitForFunction(()=>document.getElementById('dll-state').textContent.includes('SDK imported'));
-  await page.locator('nav [data-tab=fixes]').click();await page.locator('#spell-fix-panel > summary').click();
+  await openTab(page,'fixes');await page.locator('#spell-fix-panel > summary').click();
   await page.locator('#spell-test-apply').click();
   await page.waitForFunction(()=>document.getElementById('spell-test-status').textContent.includes('40914 rows'));
   await page.waitForFunction(()=>!document.getElementById('spell-test-restore').disabled);
@@ -290,7 +291,7 @@ async function verifyClientUiActivation(browser,address){
   await page.waitForFunction(()=>document.getElementById('spell-test-status').textContent.includes('restored and verified'));
   await page.waitForFunction(()=>!document.getElementById('spell-test-apply').disabled);
   assert(await page.locator('#spell-test-restore').isDisabled());
-  await page.locator('nav [data-tab=client]').click();
+  await openTab(page,'client');
   await page.locator('#client-directx-online').click();await page.waitForFunction(()=>document.getElementById('client-directx-status').textContent.includes('installed'));
   await page.locator('#client-directx-offline').click();await page.waitForFunction(()=>document.getElementById('notice').textContent==='DirectX model helpers installed.');
   await page.locator('#client-resolution').selectOption('960x540');await page.locator('#client-desktop').click();
@@ -338,7 +339,7 @@ async function verifyClientUiActivation(browser,address){
   assert((await page.locator('#client-launch-status').textContent()).includes('Wine system DirectInput loaded.'));
   await page.locator('#client-view').click();await page.waitForFunction(()=>window.__clientViews===3);
   await page.locator('#client-stop').click();await page.waitForFunction(()=>document.getElementById('client-launch-status').textContent.startsWith('Client stopped.'));
-  await page.locator('#client-graphics-threading').selectOption('opengl_worker');await page.locator('#client-runtime-mode').selectOption('compatibility');await page.locator('#client-cpu-profile').selectOption('compatibility');await page.locator('#client-diagnostics').check();await page.locator('nav [data-tab=fixes]').click();await page.locator('#prefix-fix-panel > summary').click();await page.locator('#client-prefix-repair').click();await page.waitForFunction(()=>window.__clientViews===4);await page.locator('nav [data-tab=client]').click();
+  await page.locator('#client-graphics-threading').selectOption('opengl_worker');await page.locator('#client-runtime-mode').selectOption('compatibility');await page.locator('#client-cpu-profile').selectOption('compatibility');await page.locator('#client-diagnostics').check();await openTab(page,'fixes');await page.locator('#prefix-fix-panel > summary').click();await page.locator('#client-prefix-repair').click();await page.waitForFunction(()=>window.__clientViews===4);await openTab(page,'client');
   assert.deepEqual(await page.evaluate(()=>window.__clientStarts[2]),{__profile:'custom',name_sky_compatibility:false,boat_mode:'off',particle_mode:'off',reduce_load_pauses:false,fast_spell_parse:false,mouse_warp:false,dxvk_hud:false,presentation_mode:'native_surface',display_fps:60,turnip_driver:'24.3.4',sound_diagnostics:false,audio:true,npc_rendering:'compatibility',mode:'desktop',resolution:'960x540',fullscreen:false,native_dinput8:true,diagnostic_logging:true,native_d3dx:false,repair_prefix:true,renderer:'software',cpu_profile:'compatibility',runtime_mode:'compatibility',graphics_threading:'opengl_worker',cpu_affinity:'available'});
   assert((await page.locator('#client-launch-status').textContent()).includes('Verbose diagnostics enabled'));
   await page.locator('#client-stop').click();
@@ -382,11 +383,11 @@ async function verifyClientUiActivation(browser,address){
   await page.locator('#client-renderer').selectOption('virgl');
   assert(!(await page.locator('#client-graphics-threading').isDisabled()),'WineD3D recovery restores threading controls');
   assert(await page.locator('#client-turnip-driver').isDisabled(),'Turnip selection does not apply to VirGL');
-  await page.locator('nav [data-tab=setup]').click();await page.waitForFunction(()=>document.getElementById('controller-focus').textContent==='Controller capture is off.');
+  await openTab(page,'setup');await page.waitForFunction(()=>document.getElementById('controller-focus').textContent==='Controller capture is off.');
   assert(!(await page.locator('#client-input-status').textContent()).includes('KeyT'),'Leaving tab releases input');
   assert(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth+1),'No horizontal page overflow on mobile');
   await page.setViewportSize({width:960,height:540});await page.screenshot({path:'ui-reports/setup-landscape.png',fullPage:true});
-  await page.locator('nav [data-tab=database]').click();
+  await openTab(page,'database');
   await page.locator('#players-local').click();
   await page.locator('#players-review').click();
   await page.waitForFunction(()=>document.getElementById('players-preview').textContent.includes('2 characters'));
@@ -395,7 +396,7 @@ async function verifyClientUiActivation(browser,address){
   await page.locator('#players-restore').click();
   await page.waitForFunction(()=>document.getElementById('notice').textContent.includes('Player/account data restored'));
   await page.screenshot({path:'ui-reports/player-data-mobile.png',fullPage:true});
-  await page.locator('nav [data-tab=server]').click();
+  await openTab(page,'server');
   await page.locator('#export-client').click();
   await page.waitForFunction(()=>document.getElementById('notice').textContent.includes('File exported.'));
   assert((await page.locator('#notice').textContent()).includes('root and Resources'));
@@ -410,12 +411,12 @@ async function verifyClientUiActivation(browser,address){
   await page.waitForFunction(()=>document.getElementById('notice').textContent.includes('simulated storage error'));
   await page.waitForFunction(()=>document.getElementById('badge').textContent==='Server · Offline');
   await page.evaluate(async()=>{await poll();window.__calls=[];});
-  await page.locator('nav [data-tab=logs]').click();
+  await openTab(page,'logs');
   await page.waitForFunction(()=>document.getElementById('log-retention').value==='5');
   for(const count of ['2','3','4','5']) {
     await page.locator('#log-retention').selectOption(count);await page.locator('#save-log-retention').click();
     await page.waitForFunction(()=>document.getElementById('log-retention-status').textContent.includes('Removed 12'));
-    await page.locator('nav [data-tab=server]').click();await page.locator('nav [data-tab=logs]').click();
+    await openTab(page,'server');await openTab(page,'logs');
     await page.waitForFunction(value=>document.getElementById('log-retention').value===value,count);
   }
   await page.evaluate(()=>{window.__cleanupBlocked=true;});
@@ -445,13 +446,13 @@ async function verifyClientUiActivation(browser,address){
   await page.locator('#export-logs').click();await page.waitForFunction(()=>window.__exports.length===1);
   await page.waitForFunction(()=>document.getElementById('notice').textContent==='File exported. A local copy is retained.');
   await page.screenshot({path:'ui-reports/logs-runtime-closed.png',fullPage:true});
-  await page.locator('nav [data-tab=server]').click();await page.locator('#quick-logs').click();
+  await openTab(page,'server');await page.locator('#quick-logs').click();
   await page.waitForFunction(()=>window.__exports.length===2);
   assert.deepEqual(await page.evaluate(()=>window.__exports),['exports/logs-native.zip','exports/logs-native.zip'],'Both buttons save a native log bundle through Android');
   const calls=await page.evaluate(()=>window.__calls);
   assert(!calls.includes('state')&&!calls.includes('runtime_start'),'Offline log access must neither poll backend jobs nor start the runtime');
   await page.locator('#runtime-open').click();await page.waitForFunction(()=>window.__alive);
-  await page.locator('nav [data-tab=files]').click();
+  await openTab(page,'files');
   await page.locator('#file-path').fill('client/current');await page.locator('#file-path').press('Enter');
   await page.waitForFunction(()=>document.getElementById('file-results').textContent==='1–200 of 2104 entries');
   assert(await page.locator('#file-prev').isDisabled());

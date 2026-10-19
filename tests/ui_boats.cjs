@@ -1,3 +1,4 @@
+const {openTab,openClientOptions,revealControl}=require('./launcher-ui-helper.cjs');
 const {chromium}=require('playwright');
 const fs=require('fs'),http=require('http'),path=require('path'),assert=require('assert');
 const root=path.resolve('app/src/main/assets/ui');
@@ -36,7 +37,7 @@ const server=http.createServer((req,res)=>{
     }catch(e){setTimeout(()=>window.nativeReply(id,{ok:false,error:e.message}),5);}
    }};
   });
-  await page.goto('http://127.0.0.1:'+server.address().port);await page.locator('nav [data-tab="fixes"]').click();
+  await page.goto('http://127.0.0.1:'+server.address().port);await openTab(page,'setup');await openTab(page,'fixes');
   await page.locator('#boat-trial-panel summary').click();await page.waitForFunction(()=>!boatTrial.working&&boatTrial.active===true);
   assert.equal(await page.locator('#boat-trial-install, #boat-trial-reset').count(),0,'Retired trials cannot be installed or reset from the app');
   assert.equal(await page.locator('#spire #boat-trial-panel').count(),0);

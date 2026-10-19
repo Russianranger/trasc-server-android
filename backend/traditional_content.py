@@ -10,6 +10,8 @@ import tarfile
 import time
 import zipfile
 
+import content_baseline
+
 KINDS = ('quests', 'plugins', 'lua_modules', 'assets')
 MARKER = '.trasc-content.json'
 
@@ -162,7 +164,7 @@ def prepare_content(engine, root, kind, prepared, metadata):
         engine.check_cancel()
         # ProjectEQ ships plugins and Lua modules alongside its zone quests.
         # Keep those directories together so one quest import updates all three.
-        if source.name in ('.git', '__MACOSX', MARKER) or (kind == 'quests' and source.name == 'assets'):
+        if source.name in ('.git', '__MACOSX', MARKER, content_baseline.NAME) or (kind == 'quests' and source.name == 'assets'):
             continue
         destination = prepared / source.name
         if source.is_dir():
@@ -217,6 +219,7 @@ def install(engine, args):
         metadata['source_path'] = str(root.relative_to(stage / 'unpacked'))
         prepare_content(engine, root, kind, prepared, metadata)
         metadata['files'] = sum(1 for p in prepared.rglob('*') if p.is_file())
+        content_baseline.capture(engine, prepared, kind, metadata)
         atomic_json(prepared / MARKER, metadata)
         engine.check_cancel()
         backup_name = kind + '-' + transaction
