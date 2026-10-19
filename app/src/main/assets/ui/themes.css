@@ -94,13 +94,13 @@ body[data-launcher-theme="1999"][data-profile] :is(button,input,select,textarea)
 body[data-launcher-theme="1999"][data-profile] nav button.active{border:1px solid #c4a971;box-shadow:inset 0 0 0 1px #10151e,0 1px 0 #e8c78444;background:linear-gradient(#464957,#292e3a)}
 body[data-launcher-theme="1999"][data-profile] .overview{background-image:linear-gradient(90deg,#1b2028f5 0%,#1b2028d9 36%,#1b202822 72%,#1b202888),var(--scene-image)}
 
-/* A nine-slice SVG gives Necromancer real repeating bones and corner skulls.
-   The overlay stays inside existing surfaces and never intercepts touch/focus. */
-body[data-launcher-theme=necromancer][data-profile] :is(.card,.overview,.runtime-toolbar,.profile-selector,.primary-nav,#setup-guide,#update-checklist){position:relative;border-radius:2px;border-color:#7c6954}
+/* Textured bones are the frame itself. Hide the old rules and inset outlines;
+   retain border geometry so the decoration never moves or intercepts controls. */
+body[data-launcher-theme=necromancer][data-profile] :is(.card,.overview,.runtime-toolbar,.profile-selector,.primary-nav,.secondary-nav,.navigation-tools,#setup-guide,#update-checklist){position:relative;border-radius:2px;border-color:transparent;box-shadow:0 8px 24px #0006}
 body[data-launcher-theme=necromancer][data-profile] .card::before{content:none}
-body[data-launcher-theme=necromancer][data-profile] :is(.card,.overview,.runtime-toolbar,.profile-selector,.primary-nav,#setup-guide,#update-checklist)::after{content:'';position:absolute;inset:0;width:auto;height:auto;border:14px solid transparent;border-image:url('theme-necromancer-bones.svg') 24 / 14px / 0 round;pointer-events:none;z-index:1}
-body[data-launcher-theme=necromancer][data-profile] :is(.runtime-toolbar,.profile-selector,.primary-nav)::after{border-width:10px;border-image-width:10px}
-body[data-launcher-theme=necromancer][data-profile] .primary-nav{padding:10px}
-body[data-launcher-theme=necromancer][data-profile] .profile-selector{padding-left:14px;padding-right:14px}
-body[data-launcher-theme=necromancer][data-profile] .runtime-toolbar{padding:14px}
-@media(max-width:539px){body[data-launcher-theme=necromancer][data-profile] .runtime-toolbar{padding:10px}}
+body[data-launcher-theme=necromancer][data-profile] :is(.card,.overview,.runtime-toolbar,.profile-selector,.primary-nav,.secondary-nav,.navigation-tools,#setup-guide,#update-checklist)::after{content:'';position:absolute;inset:0;width:auto;height:auto;border:18px solid transparent;border-image:url('theme-necromancer-bones.webp') 12% / 18px / 0 round;pointer-events:none;z-index:1}
+body[data-launcher-theme=necromancer][data-profile] :is(.runtime-toolbar,.profile-selector,.primary-nav,.secondary-nav)::after{border-width:12px;border-image-width:12px}
+body[data-launcher-theme=necromancer][data-profile] :is(.primary-nav,.secondary-nav){padding:12px}
+body[data-launcher-theme=necromancer][data-profile] .profile-selector{padding:18px 18px 16px}
+body[data-launcher-theme=necromancer][data-profile] .runtime-toolbar{padding:18px}
+@media(max-width:539px){body[data-launcher-theme=necromancer][data-profile] .runtime-toolbar{padding:15px}body[data-launcher-theme=necromancer][data-profile] .runtime-toolbar::after{border-width:10px;border-image-width:10px}}

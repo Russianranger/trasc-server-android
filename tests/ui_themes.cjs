@@ -75,16 +75,20 @@ function contrast(a,b){const l=c=>c.slice(0,3).map(x=>x/255).map(x=>x<=.04045?x/
    const loaded=await page.evaluate(files=>Promise.all(files.map(file=>new Promise((resolve,reject)=>{const image=new Image();image.onload=()=>resolve({file,width:image.naturalWidth,height:image.naturalHeight});image.onerror=()=>reject(Error(`Artwork failed to load: ${file}`));image.src=file;}))),artwork);
    assert(loaded.every(image=>image.width>0&&image.height>0),'Referenced artwork is packaged and decodes in Chromium');
    await openTab(page,'setup');
-   const frames=await page.evaluate(()=>['.card','.runtime-toolbar','.profile-selector','.primary-nav','#setup-guide'].map(selector=>{
+   const frames=await page.evaluate(()=>['.card','.runtime-toolbar','.profile-selector','.primary-nav','.secondary-nav','#setup-guide'].map(selector=>{
     const element=document.querySelector(selector),frame=getComputedStyle(element,'::after'),box=element.getBoundingClientRect();
-    return {selector,source:frame.borderImageSource,pointerEvents:frame.pointerEvents,width:frame.borderImageWidth,radius:getComputedStyle(element).borderTopLeftRadius,boxWidth:box.width};
+    return {selector,source:frame.borderImageSource,pointerEvents:frame.pointerEvents,width:frame.borderImageWidth,radius:getComputedStyle(element).borderTopLeftRadius,borderColor:getComputedStyle(element).borderTopColor,shadow:getComputedStyle(element).boxShadow,boxWidth:box.width};
    }));
    for(const frame of frames){
-    assert.equal(frame.source.includes('theme-necromancer-bones.svg'),theme==='necromancer',`${theme}: bones are scoped to Necromancer ${frame.selector}`);
-    if(theme==='necromancer')assert.equal(frame.pointerEvents,'none','Decorative bones never intercept controls');
-    if(theme==='1999')assert.equal(frame.radius,'2px','1999 uses squared classic frames');
+    assert.equal(frame.source.includes('theme-necromancer-bones.webp'),theme==='necromancer',`${theme}: bones are scoped to Necromancer ${frame.selector}`);
+    if(theme==='necromancer'){
+     assert.equal(frame.pointerEvents,'none','Decorative bones never intercept controls');
+     assert.equal(frame.borderColor,'rgba(0, 0, 0, 0)','Bones replace the old border line');
+     assert(!frame.shadow.includes('inset'),'No old inset frame remains beneath the bones');
+    }
+    if(theme==='1999'&&frame.selector!=='.secondary-nav')assert.equal(frame.radius,'2px','1999 uses squared classic frames');
    }
-   if(theme==='necromancer')assert(await page.evaluate(()=>new Promise(resolve=>{const img=new Image();img.onload=()=>resolve(img.naturalWidth===144);img.onerror=()=>resolve(false);img.src='theme-necromancer-bones.svg';})),'Bone frame decodes offline');
+   if(theme==='necromancer')assert(await page.evaluate(()=>new Promise(resolve=>{const img=new Image();img.onload=()=>{const canvas=document.createElement('canvas');canvas.width=img.naturalWidth;canvas.height=img.naturalHeight;const ctx=canvas.getContext('2d');ctx.drawImage(img,0,0);resolve(img.naturalWidth>=512&&img.naturalHeight===img.naturalWidth&&ctx.getImageData(img.naturalWidth/2,img.naturalHeight/2,1,1).data[3]===0);};img.onerror=()=>resolve(false);img.src='theme-necromancer-bones.webp';})),'Textured bone frame decodes offline with a transparent center');
    const colors=await page.evaluate(()=>{
     const s=getComputedStyle(document.body),canvas=document.createElement('canvas'),ctx=canvas.getContext('2d');
     const color=name=>{ctx.clearRect(0,0,1,1);ctx.fillStyle=s.getPropertyValue(name).trim();ctx.fillRect(0,0,1,1);return [...ctx.getImageData(0,0,1,1).data];};
@@ -120,6 +124,7 @@ function contrast(a,b){const l=c=>c.slice(0,3).map(x=>x/255).map(x=>x<=.04045?x/
      if(screenshotRoot&&['play','setup','gameplay','build','bots'].includes(scene)){
       await page.evaluate(()=>window.scrollTo(0,0));
       await page.screenshot({path:path.join(screenshotRoot,`${theme}-${profile}-${scene}-desktop.png`)});
+      if(profile==='custom'&&scene==='setup')await page.locator('.card:visible').first().screenshot({path:path.join(screenshotRoot,`${theme}-setup-card.png`)});
      }
     }
     await page.locator('#launcher-theme').focus();
